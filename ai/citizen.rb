@@ -6,10 +6,11 @@ class DwarfAI
             @ai = ai
             @id = id
             @idlecounter = 0
+            ai.plan.new_citizen(self)
         end
 
         def detach
-            # free rooms etc
+            ai.plan.del_citizen(self)
         end
     end
 end

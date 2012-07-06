@@ -7,11 +7,11 @@ when 'start'
     $dwarfAI = DwarfAI.new
     $dwarfAI.onupdate_register
 
-when 'end'
+when 'end', 'stop'
     $dwarfAI.onupdate_unregister
     puts "removed onupdate"
 
-when 'patch'
+when 'patch', 'update'
     Dir['hack/scripts/ai/*.rb'].each { |f| load f }
 
 else

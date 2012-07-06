@@ -1,38 +1,46 @@
 class DwarfAI
     attr_accessor :onupdate_handle
+    attr_accessor :update_counter
+
     attr_accessor :plan
     attr_accessor :citizen
 
+    def initialize
+        @plan = Plan.new(self)
+        @citizen = {}
+    end
+
+
     def update
-        update_citizen
+        @update_counter += 1
+        update_citizenlist
         update_plan
     end
 
-    def update_citizen
-        @citizen ||= {}
-        oldkeys = @citizen.dup
+    def update_citizenlist
+        old = @citizen.dup
 
+        # add new fort citizen to our list
         df.unit_citizens.each { |u|
             @citizen[u.id] ||= Citizen.new(self, u.id)
-            oldkeys.delete u.id
+            old.delete u.id
         }
 
-        oldkeys.each { |id|
-            c = @citizen.delete(id)
+        # del those who are no longer here
+        old.each { |id, c|
 	    c.detach
+            @citizen.delete(id)
         }
     end
 
     def update_plan
-        @plan ||= Plan.new(self)
-
         @plan.update
     end
 
-    def onupdate_register
-        @onupdate_handle = df.onupdate_register(120) { update }
-	df.onstatechange_register { |st| statechanged(st) }
+    def info_status
+        puts "AI: everything runs according to plans"
     end
+
 
     def statechanged(st)
         if st == :PAUSED
@@ -48,11 +56,14 @@ class DwarfAI
         #df.pause_state = false
     end
 
-    def onupdate_unregister
-        df.onupdate_unregister(@onupdate_handle)
+
+    def onupdate_register
+        @update_counter = 0
+        @onupdate_handle = df.onupdate_register(120) { update }
+	df.onstatechange_register { |st| statechanged(st) }
     end
 
-    def info_status
-        puts "AI: everything runs according to plans"
+    def onupdate_unregister
+        df.onupdate_unregister(@onupdate_handle)
     end
 end
