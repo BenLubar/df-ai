@@ -43,7 +43,7 @@ class DwarfAI
         end
     end
 
-    def pause_event(announce)
+    def handle_pause_event(announce)
         p announce
         #df.pause_state = false
     end
