@@ -6,15 +6,17 @@ class DwarfAI
     attr_accessor :citizen
 
     def initialize
-        @plan = Plan.new(self)
         @citizen = {}
+        @plan = Plan.new(self)
+
+        @plan.setup_blueprint
     end
 
 
     def update
         @update_counter += 1
         update_citizenlist
-        update_plan
+        @plan.update
     end
 
     def update_citizenlist
@@ -33,14 +35,6 @@ class DwarfAI
         }
     end
 
-    def update_plan
-        @plan.update
-    end
-
-    def info_status
-        puts "AI: everything runs according to plans"
-    end
-
 
     def statechanged(st)
         if st == :PAUSED
@@ -52,8 +46,13 @@ class DwarfAI
     end
 
     def handle_pause_event(announce)
-        p announce
-        #df.pause_state = false
+        case announce.type
+        when :MEGABEAST_ARRIVAL
+            puts 'AI: uh oh, megabeast...'
+        else
+            p announce
+            #df.pause_state = false
+        end
     end
 
 
