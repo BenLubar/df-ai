@@ -5,5 +5,9 @@ class DwarfAI
         def initialize(ai)
             @ai = ai
         end
+
+        def update
+            # stuff
+        end
     end
 end
