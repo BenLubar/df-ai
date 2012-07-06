@@ -1,0 +1,9 @@
+A dwarf fortress autonomous script.
+
+Requires the ruby plugin.
+
+Copy all files to df/hack/scripts.
+
+Start a new fortress, chose your site, run 'ai start' in the dfhack console, and watch.
+
+To stop, 'ai end'.
