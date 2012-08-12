@@ -30,7 +30,7 @@ class DwarfAI
 
         # del those who are no longer here
         old.each { |id, c|
-	    c.detach
+            c.detach
             @citizen.delete(id)
         }
     end
@@ -49,6 +49,7 @@ class DwarfAI
         case announce.type
         when :MEGABEAST_ARRIVAL
             puts 'AI: uh oh, megabeast...'
+            df.pause_state = false
         else
             p announce
             #df.pause_state = false
@@ -59,7 +60,7 @@ class DwarfAI
     def onupdate_register
         @update_counter = 0
         @onupdate_handle = df.onupdate_register(120) { update }
-	df.onstatechange_register { |st| statechanged(st) }
+        df.onstatechange_register { |st| statechanged(st) }
     end
 
     def onupdate_unregister

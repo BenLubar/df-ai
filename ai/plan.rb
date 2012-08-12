@@ -18,10 +18,23 @@ class DwarfAI
         end
 
         def getbedroom(id)
-            @rooms.find
+            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
+                r.dig
+                r.owner = id
+                df.add_announcement "AI: assigned a bedroom to #{df.unit_find(id).name}"
+                df.world.status.reports.last.pos = [r.x+1, r.y+1, r.z]
+            else
+                puts "AI cant getbedroom(#{id})"
+            end
         end
 
-        attr_accessor :fort_entrance, :rooms, :corridors, :stairs
+        def freebedroom(id)
+            if r = @rooms.find { |_r| r.type == :bedroom and r.owner == id }
+                r.owner = nil
+            end
+        end
+
+        attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
             puts 'AI: setting up fort blueprint'
@@ -42,7 +55,7 @@ class DwarfAI
             rangey = (-cy..cy).sort_by { |_y| _y.abs }
             rangez = (0...df.world.map.z_count).to_a.reverse
 
-	    bestdist = 100000
+            bestdist = 100000
             off = rangex.map { |_x|
                 # test the whole map for 4x3 clean spots
                 dy = rangey.find { |_y|
@@ -51,7 +64,7 @@ class DwarfAI
                     cz = rangez.find { |z|
                         t = df.map_tile_at(cx+_x, cy+_y, z) and t.shape == :FLOOR
                     }
-		    next if not cz
+                    next if not cz
                     (-1..2).all? { |__x|
                         (-1..1).all? { |__y|
                             t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and
@@ -59,7 +72,7 @@ class DwarfAI
                         }
                     }
                 }
-		bestdist = [_x.abs + dy.abs, bestdist].min if dy
+                bestdist = [_x.abs + dy.abs, bestdist].min if dy
                 [_x, dy] if dy
                 # find the closest to the center of the map
             }.compact.sort_by { |dx, dy| dx.abs + dy.abs }.first
@@ -73,65 +86,137 @@ class DwarfAI
             cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and t.shape == :FLOOR }
 
             @fort_entrance = Stairs.new(cx, cy, cz, cz)
+            @fort_entrance.x2 += 1
         end
 
         # search how much we need to dig to find a spot for the full fortress body
         # here we cheat and work as if the map was fully reveal()ed
         def scan_fort_body
             # use a hardcoded fort layout
-            cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z1
-            @fort_entrance.z2 = (0..cz).to_a.reverse.find { |cz2|
+            cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
+            @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
                 (-26..26).all? { |dx|
                     (-22..22).all? { |dy|
-                        (-6..1).all? { |dz|
-                            t = df.map_tile_at(cx+dx, cy+dy, cz2+dz) and t.shape == :WALL and
-                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL)
+                        (-5..1).all? { |dz|
+                            t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
+                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or t.tilemat == :SOIL)
                         }
                     }
                 }
             }
 
-            raise 'we need more minerals' if not @fort_entrance.z2
+            raise 'we need more minerals' if not @fort_entrance.z1
         end
 
         # assign rooms in the space found by scan_fort_*
         def setup_blueprint_rooms
             @rooms = []
             @corridors = []
-            @stairs = []
 
             # hardcoded layout
-            fe = @fort_entrance.dup
-            fe.x += 1
-            @stairs << @fort_entrance << fe
+            @corridors << @fort_entrance
 
-            # XXX corridors / rooms
+            fx = @fort_entrance.x1
+            fy = @fort_entrance.y1
+
+            # workshops
+            fz = @fort_entrance.z1
+            
+            # stockpiles
+            fz = @fort_entrance.z1 -= 1
+            
+            # dining/well/infirmary/burial
+            fz = @fort_entrance.z1 -= 1
+            
+            # bedrooms
+            2.times {
+                fz = @fort_entrance.z1 -= 1
+
+                5.times { |dx|
+                    cx = fx + (dx-2) * 11
+                    11.times { |dy|
+                        next if dy == 5
+                        cy = fy + (dy-5) * 4
+                        @rooms << Room.new(:bedroom, cx-4, cx-2, cy-1, cy+1, fz, [[cx-1, cy, fz]])
+                        @rooms << Room.new(:bedroom, cx+3, cx+5, cy-1, cy+1, fz, [[cx+2, cy, fz]])
+                    }
+                    vc = Corridor.new(cx, cx+1, fy-5*4, fy+5*4, fz)
+                    @rooms[-20, 20].each { |r| r.accesspath = [vc] }
+                    @corridors << vc
+                }
+                mainc = Corridor.new(fx-22, fx+23, fy-1, fy+1, fz)
+                @corridors[-5, 5].each { |c| c.accesspath = [mainc] }
+                mainc.accesspath = [@fort_entrance]
+                @corridors << mainc
+            }
         end
 
-        class Room
-            attr_accessor :x1, :x2, :y1, :y2, :z, :doors, :type, :owner
-            def initialize(x1, x2, y1, y2, z)
-                @x1, @x2, @y1, @y2, @z = x1, x2, y1, y2, z
+        class PlanRoom
+            attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status
+            def x; x1; end
+            def y; y1; end
+            def z; z1; end
+
+            def dig
+                return if @status != :plan and @status != :dig
+                @status = :dig
+                accesspath.to_a.each { |ap| ap.dig if ap.status == :plan }
+                (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
+                    if t = df.map_tile_at(x, y, z)
+                        t.dig dig_mode(x, y, z)
+                    end
+                } } }
             end
-	    alias x x1
-	    alias y y1
-        end
 
-        class Corridor
-            attr_accessor :x1, :x2, :y1, :y2, :z
-            def initialize(x1, x2, y1, y2, z)
-                @x1, @x2, @y1, @y2, @z = x1, x2, y1, y2, z
+            def dig_mode(x, y, z)
+                wantup = wantdown = false
+                wantup = true if z < z2
+                wantdown = true if z > z1
+                wantup = true if accesspath and accesspath.find { |r|
+                    r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z2 > z
+                }
+                wantdown = true if accesspath and accesspath.find { |r|
+                    r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z1 < z
+                }
+                if wantup
+                    wantdown ? :UpDownStair : :UpStair
+                else
+                    wantdown ? :DownStair : :Default
+                end
             end
-	    alias x x1
-	    alias y y1
         end
 
-        class Stairs
-            attr_accessor :x, :y, :z1, :z2
+        class Room < PlanRoom
+            attr_accessor :doors, :type, :owner
+            def initialize(type, x1, x2, y1, y2, z, doors=[])
+                @type = type
+                @status = :plan
+                @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z, z
+		@doors = doors
+            end
+
+            def dig
+                super
+                @doors.each { |x, y, z|
+                    if t = df.map_tile_at(x, y, z)
+                        t.dig dig_mode(x, y, z)
+                    end
+                }
+            end
+        end
+
+        class Corridor < PlanRoom
+            def initialize(x1, x2, y1, y2, z)
+                @status = :plan
+                @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z, z
+            end
+        end
+
+        class Stairs < PlanRoom
             def initialize(x, y, z1, z2)
-                @x, @y, @z1, @z2 = x, y, z1, z2
+                @status = :plan
+                @x1, @x2, @y1, @y2, @z1, @z2 = x, x, y, y, z1, z2
             end
-	    alias z z1
         end
     end
 end
