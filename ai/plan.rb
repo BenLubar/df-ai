@@ -3,6 +3,10 @@ class DwarfAI
         attr_accessor :ai
         def initialize(ai)
             @ai = ai
+
+            if w = df.world.buildings.all.grep(DFHack::BuildingWagonst).first
+                df.building_deconstruct(w)
+            end
         end
 
         def update
@@ -85,8 +89,7 @@ class DwarfAI
             end
             cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and t.shape == :FLOOR }
 
-            @fort_entrance = Stairs.new(cx, cy, cz, cz)
-            @fort_entrance.x2 += 1
+            @fort_entrance = Corridor.new(cx, cx+1, cy, cy, cz, cz)
         end
 
         # search how much we need to dig to find a spot for the full fortress body
@@ -131,34 +134,63 @@ class DwarfAI
             # bedrooms
             2.times {
                 fz = @fort_entrance.z1 -= 1
-
-                5.times { |dx|
-                    cx = fx + (dx-2) * 11
-                    11.times { |dy|
-                        next if dy == 5
-                        cy = fy + (dy-5) * 4
-                        @rooms << Room.new(:bedroom, cx-4, cx-2, cy-1, cy+1, fz, [[cx-1, cy, fz]])
-                        @rooms << Room.new(:bedroom, cx+3, cx+5, cy-1, cy+1, fz, [[cx+2, cy, fz]])
-                    }
-                    vc = Corridor.new(cx, cx+1, fy-5*4, fy+5*4, fz)
-                    @rooms[-20, 20].each { |r| r.accesspath = [vc] }
-                    @corridors << vc
-                }
-                mainc = Corridor.new(fx-22, fx+23, fy-1, fy+1, fz)
-                @corridors[-5, 5].each { |c| c.accesspath = [mainc] }
-                mainc.accesspath = [@fort_entrance]
-                @corridors << mainc
+                setup_blueprint_bedrooms(fx, fy, fz)
             }
         end
 
-        class PlanRoom
+        def setup_blueprint_bedrooms(fx, fy, fz)
+            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
+            corridor_center.accesspath = [@fort_entrance]
+            @corridors << corridor_center
+
+            [-1, 1].each { |dirx|
+                prev_corx = corridor_center
+                ocx = fx + dirx*3
+                (1..3).each { |dx|
+                    # segments of the big central horizontal corridor
+                    cx = fx + dirx*(11*dx-4)
+                    cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
+                    cor_x.accesspath = [prev_corx]
+                    @corridors << cor_x
+                    prev_corx = cor_x
+                    ocx = cx+dirx
+
+                    [-1, 1].each { |diry|
+                        prev_cory = cor_x
+                        ocy = fy + diry*2
+                        (1..5).each { |dy|
+                            cy = fy + diry*4*dy
+                            cor_y = Corridor.new(cx, cx-dirx*1, ocy, cy, fz, fz)
+                            cor_y.accesspath = [prev_cory]
+                            @corridors << cor_y
+                            prev_cory = cor_y
+                            ocy = cy+diry
+
+                            @rooms << Room.new(:bedroom, cx-dirx*5, cx-dirx*3, cy-1, cy+1, fz, [[cx-dirx*2, cy, fz]])
+                            @rooms << Room.new(:bedroom, cx+dirx*2, cx+dirx*4, cy-1, cy+1, fz, [[cx+dirx*1, cy, fz]])
+                            @rooms[-2, 2].each { |r| r.accesspath = [cor_y] }
+                        }
+                    }
+                }
+            }
+        end
+
+        class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status
             def x; x1; end
             def y; y1; end
             def z; z1; end
+            def initialize(x1, x2, y1, y2, z1, z2)
+                @status = :plan
+                @accesspath = []
+                x1, x2 = x2, x1 if x1 > x2
+                y1, y2 = y2, y1 if y1 > y2
+                z1, z2 = z2, z1 if z1 > z2
+                @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z1, z2
+            end
 
             def dig
-                return if @status != :plan and @status != :dig
+                return if @status != :plan
                 @status = :dig
                 accesspath.to_a.each { |ap| ap.dig if ap.status == :plan }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
@@ -172,10 +204,10 @@ class DwarfAI
                 wantup = wantdown = false
                 wantup = true if z < z2
                 wantdown = true if z > z1
-                wantup = true if accesspath and accesspath.find { |r|
+                wantup = true if accesspath.find { |r|
                     r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z2 > z
                 }
-                wantdown = true if accesspath and accesspath.find { |r|
+                wantdown = true if accesspath.find { |r|
                     r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z1 < z
                 }
                 if wantup
@@ -186,13 +218,13 @@ class DwarfAI
             end
         end
 
-        class Room < PlanRoom
-            attr_accessor :doors, :type, :owner
+        class Room < Corridor
+            attr_accessor :doors, :type, :owner, :furniture
             def initialize(type, x1, x2, y1, y2, z, doors=[])
+                super(x1, x2, y1, y2, z, z)
                 @type = type
-                @status = :plan
-                @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z, z
 		@doors = doors
+                @furniture = []
             end
 
             def dig
@@ -202,20 +234,6 @@ class DwarfAI
                         t.dig dig_mode(x, y, z)
                     end
                 }
-            end
-        end
-
-        class Corridor < PlanRoom
-            def initialize(x1, x2, y1, y2, z)
-                @status = :plan
-                @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z, z
-            end
-        end
-
-        class Stairs < PlanRoom
-            def initialize(x, y, z1, z2)
-                @status = :plan
-                @x1, @x2, @y1, @y2, @z1, @z2 = x, x, y, y, z1, z2
             end
         end
     end
