@@ -1,8 +1,10 @@
 class DwarfAI
     class Plan
         attr_accessor :ai
+        attr_accessor :tasks
         def initialize(ai)
             @ai = ai
+            @tasks = []
 
             if w = df.world.buildings.all.grep(DFHack::BuildingWagonst).first
                 df.building_deconstruct(w)
@@ -10,6 +12,7 @@ class DwarfAI
         end
 
         def update
+            @tasks.each { |t| }
         end
 
         def new_citizen(c)
@@ -23,6 +26,10 @@ class DwarfAI
 
         def getbedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
+                if r.status == :plan
+                    @tasks << [:dig, r]
+                    # TODO prepare furniture
+                end
                 r.dig
                 r.owner = id
                 df.add_announcement "AI: assigned a bedroom to #{df.unit_find(id).name}"
@@ -72,7 +79,7 @@ class DwarfAI
                     (-1..2).all? { |__x|
                         (-1..1).all? { |__y|
                             t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and
-                            tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and tt.designation.flow_size == 0 and not tt.designation.hidden
+                            tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and tt.designation.flow_size == 0 and not tt.designation.hidden and not df.building_find(tt)
                         }
                     }
                 }
@@ -98,11 +105,11 @@ class DwarfAI
             # use a hardcoded fort layout
             cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
             @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
-                (-26..26).all? { |dx|
+                (-35..35).all? { |dx|
                     (-22..22).all? { |dy|
                         (-5..1).all? { |dz|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or t.tilemat == :SOIL)
+                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or (dz > -2 and t.tilemat == :SOIL))
                         }
                     }
                 }
@@ -122,25 +129,87 @@ class DwarfAI
             fx = @fort_entrance.x1
             fy = @fort_entrance.y1
 
-            # workshops
             fz = @fort_entrance.z1
+            setup_blueprint_workshops(fx, fy, fz, [@fort_entrance])
             
-            # stockpiles
             fz = @fort_entrance.z1 -= 1
+            setup_blueprint_stockpiles(fx, fy, fz, [@fort_entrance])
             
-            # dining/well/infirmary/burial
             fz = @fort_entrance.z1 -= 1
+            setup_blueprint_utilities(fx, fy, fz, [@fort_entrance])
             
-            # bedrooms
             2.times {
                 fz = @fort_entrance.z1 -= 1
-                setup_blueprint_bedrooms(fx, fy, fz)
+                setup_blueprint_bedrooms(fx, fy, fz, [@fort_entrance])
             }
         end
 
-        def setup_blueprint_bedrooms(fx, fy, fz)
+        def setup_blueprint_workshops(fx, fy, fz, entr)
             corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
-            corridor_center.accesspath = [@fort_entrance]
+            corridor_center.accesspath = entr
+            @corridors << corridor_center
+
+            [-1, 1].each { |dirx|
+                prev_corx = corridor_center
+                ocx = fx + dirx*3
+                (1..5).each { |dx|
+                    # segments of the big central horizontal corridor
+                    cx = fx + dirx*(4*dx-1)
+                    cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
+                    cor_x.accesspath = [prev_corx]
+                    @corridors << cor_x
+                    prev_corx = cor_x
+                    ocx = cx+dirx
+
+                    @rooms << Room.new(:workshop, cx-1, cx+1, fy-5, fy-3, fz, [[cx, fy-2, fz]])
+                    @rooms << Room.new(:workshop, cx-1, cx+1, fy+3, fy+5, fz, [[cx, fy+2, fz]])
+                    @rooms[-2, 2].each { |r| r.accesspath = [cor_x] }
+                }
+            }
+        end
+
+        def setup_blueprint_stockpiles(fx, fy, fz, entr)
+            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
+            corridor_center.accesspath = entr
+            @corridors << corridor_center
+
+            # TODO side stairs to workshop level ?
+            [-1, 1].each { |dirx|
+                prev_corx = corridor_center
+                ocx = fx + dirx*3
+                (1..3).each { |dx|
+                    # segments of the big central horizontal corridor
+                    cx = fx + dirx*(8*dx-4)
+                    cor_x = Corridor.new(ocx, cx+dirx, fy-1, fy+1, fz, fz)
+                    cor_x.accesspath = [prev_corx]
+                    @corridors << cor_x
+                    prev_corx = cor_x
+                    ocx = cx+2*dirx
+
+                    @rooms << Room.new(:stockpile, cx-3, cx+3, fy-11, fy-3, fz, [[cx-1, fy-2, fz], [cx+1, fy-2, fz]])
+                    @rooms << Room.new(:stockpile, cx-3, cx+3, fy+3, fy+11, fz, [[cx-1, fy+2, fz], [cx+1, fy+2, fz]])
+                    @rooms[-2, 2].each { |r| r.accesspath = [cor_x] }
+                }
+            }
+        end
+
+        def setup_blueprint_utilities(fx, fy, fz, entr)
+            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
+            corridor_center.accesspath = entr
+            @corridors << corridor_center
+
+            # TODO
+            # dining room
+            # infirmary
+            # cemetary
+            # well
+            # military
+            # farmplots?
+        end
+
+        def setup_blueprint_bedrooms(fx, fy, fz, entr)
+            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
+            corridor_center.accesspath = entr
             @corridors << corridor_center
 
             [-1, 1].each { |dirx|
@@ -180,6 +249,10 @@ class DwarfAI
             def x; x1; end
             def y; y1; end
             def z; z1; end
+            def w; x2-x1; end
+            def h; y2-y1; end
+            def h_z; z2-z1; end
+
             def initialize(x1, x2, y1, y2, z1, z2)
                 @status = :plan
                 @accesspath = []
@@ -223,7 +296,7 @@ class DwarfAI
             def initialize(type, x1, x2, y1, y2, z, doors=[])
                 super(x1, x2, y1, y2, z, z)
                 @type = type
-		@doors = doors
+                @doors = doors
                 @furniture = []
             end
 
