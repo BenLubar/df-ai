@@ -12,7 +12,17 @@ class DwarfAI
         end
 
         def update
-            @tasks.each { |t| }
+            @tasks.delete_if { |t|
+                case t[0]
+                when :digroom
+                    r = t[1]
+                    if r.dug?
+                        # furniture stuff
+                        puts "room dug out for #{r.owner}"
+                        true
+                    end
+                end
+            }
         end
 
         def new_citizen(c)
@@ -27,13 +37,11 @@ class DwarfAI
         def getbedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
                 if r.status == :plan
-                    @tasks << [:dig, r]
-                    # TODO prepare furniture
+                    @tasks << [:digroom, r]
                 end
                 r.dig
                 r.owner = id
-                df.add_announcement "AI: assigned a bedroom to #{df.unit_find(id).name}"
-                df.world.status.reports.last.pos = [r.x+1, r.y+1, r.z]
+                df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
             else
                 puts "AI cant getbedroom(#{id})"
             end
@@ -271,6 +279,15 @@ class DwarfAI
                         t.dig dig_mode(x, y, z)
                     end
                 } } }
+            end
+
+            def dug?
+                (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
+                    if t = df.map_tile_at(x, y, z)
+                        return false if t.shape == :WALL
+                    end
+                } } }
+                true
             end
 
             def dig_mode(x, y, z)
