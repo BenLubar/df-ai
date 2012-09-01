@@ -12,23 +12,30 @@ class DwarfAI
         end
 
         def update
+            # avoid digging a wantdig at the end of the array, after we delete the last :digroom
+            nrdig = @tasks.count { |t| t[0] == :digroom }
             @tasks.delete_if { |t|
                 case t[0]
+                when :wantdig
+                    if nrdig < 2
+                        t[1][:queue] = false
+                        t[1].dig
+                        @tasks << [:digroom, t[1]]
+                        nrdig += 1
+                        true
+                    end
                 when :digroom
-                    r = t[1]
-                    if r.dug?
-                        set_furniture(r)
+                    if t[1].dug?
+                        construct_room(t[1])
+                        true
                     end
                 when :furnish
                     case t[1]
-                    when :bed
-                        furnish_bed(t[2])
-                    when :cab
-                        furnish_cabinet(t[2])
-                    when :throne
-                        furnish_throne(t[2])
-                    when :door
-                        furnish_door(t[2])
+                    when :bed;    furnish_bed(t[2])
+                    when :cab;    furnish_cabinet(t[2])
+                    when :throne; furnish_throne(t[2])
+                    when :door;   furnish_door(t[2])
+                    when :workshop; construct_workshop(t[2])
                     end
                 end
             }
@@ -40,14 +47,14 @@ class DwarfAI
 
         def del_citizen(c)
             freebedroom(c.id)
-            # coffin/memorialslab for dead citizen
+            # TODO coffin/memorialslab for dead citizen
         end
 
         def getbedroom(id)
-            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r[:owner] or _r[:owner] == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
+            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r[:owner] or _r[:owner] == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan and not _r[:queue] }
                 if r.status == :plan
-                    @tasks << [:digroom, r]
-                    r.dig
+                    r[:queue] = true
+                    @tasks << [:wantdig, r]
                 end
                 set_owner(r, id)
                 df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
@@ -67,24 +74,20 @@ class DwarfAI
             # TODO reassign furniture
         end
 
-        def set_furniture(r)
-            r.doors.length.times {
-                furnish_door(r, true)
-            }
+        def construct_room(r)
+            r.doors.length.times { furnish_door(r, true) }
             case r.type
             when :bedroom
                 furnish_bed(r, true)
                 furnish_cabinet(r, true)
-                true
             when :workshop
                 case r[:workshop]
                 when :ManagersOffice
                     furnish_throne(r, true)
-                    true
                 else
-                    build_workshop(r)
+                    @tasks << [:furnish, :workshop, r] if not construct_workshop(r)
                 end
-            else true
+            when :stockpile
             end
         end
 
@@ -164,23 +167,40 @@ class DwarfAI
                 @tasks << [:digroom, ws]
                 ws.dig
                 df.add_announcement("AI: new workshop #{subtype}") { |ann| ann.pos = [ws.x+1, ws.y+1, ws.z] }
+
+                case subtype
+                when :Masons, :Carpenters
+                    y = (ws.doors[0][1] > ws.y1 ? ws.y2+2 : ws.y1-2)
+                    sp = Room.new(:stockpile, ws.x1, ws.x2, y, y, ws.z1)
+                    sp[:workshop] = ws
+                    @rooms << sp
+                    @tasks << [:digroom, sp]
+                    sp.dig
+
+                    sp = @rooms.find { |r| r.type == :stockpile and r.status == :plan and not r[:queue] }
+                    sp[:queue] = true
+                    sp[:type] = {:Masons => :stone, :Carpenters => :wood}[subtype]
+                    @tasks << [:wantdig, sp]
+                end
             end
-            # TODO check tantrumed workshop, check worker labors
+            # TODO check tantrumed workshop
             r
         end
 
-        def build_workshop(r)
+        def construct_workshop(r)
             case r[:workshop]
             when :Well
                 # need special items
             else
-                # one boulder
-                # TODO check economic stone
-                if bould = df.world.items.all.find { |i| i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) }
+                # need only one boulder (TODO check economic stone)
+                if bould = df.map_tile_at(r).mapblock.items.map { |idx| df.world.items.all.binsearch(idx) }.find { |i|
+                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2
+                } || df.world.items.other[:BOULDER].find { |i| i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) }
                     bld = df.building_alloc(:Workshop, r[:workshop])
                     df.building_position(bld, r)
                     df.building_construct(bld, [bould])
                     true
+                # XXX else quarry?
                 end
             end
         end
@@ -205,11 +225,7 @@ class DwarfAI
         end
 
         def check_manager
-            office = check_workshop(:ManagersOffice)
-            if not df.unit_citizens.find { |u| df.unit_entitypositions(u).find { |p| p.responsibilities[:MANAGE_PRODUCTION] } }
-                # TODO assign noble position
-                df.add_announcement("AI: please add a MANAGER unit")
-            end
+            check_workshop(:ManagersOffice)
         end
 
         attr_accessor :fort_entrance, :rooms, :corridors
@@ -450,15 +466,6 @@ class DwarfAI
                 } } }
             end
 
-            def dug?
-                (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
-                    if t = df.map_tile_at(x, y, z)
-                        return false if t.shape == :WALL
-                    end
-                } } }
-                true
-            end
-
             def dig_mode(x, y, z)
                 wantup = wantdown = false
                 wantup = true if z < z2
@@ -474,6 +481,16 @@ class DwarfAI
                 else
                     wantdown ? :DownStair : :Default
                 end
+            end
+
+            def dug?
+                (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
+                    if t = df.map_tile_at(x, y, z)
+                        return false if t.shape == :WALL
+                    end
+                } } }
+                @status = :dug
+                true
             end
         end
 
@@ -493,6 +510,15 @@ class DwarfAI
                         t.dig dig_mode(x, y, z)
                     end
                 }
+            end
+
+            def dug?
+                @doors.each { |x, y, z|
+                    if t = df.map_tile_at(x, y, z)
+                        return false if t.shape == :WALL
+                    end
+                }
+                super
             end
         end
     end
