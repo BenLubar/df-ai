@@ -17,9 +17,16 @@ class DwarfAI
                 when :digroom
                     r = t[1]
                     if r.dug?
-                        # furniture stuff
-                        puts "room dug out for #{r.owner}"
-                        true
+                        set_furniture(r)
+                    end
+                when :furnish
+                    case t[1]
+                    when :bed
+                        furnish_bed(t[2])
+                    when :cab
+                        furnish_cabinet(t[2])
+                    when :throne
+                        furnish_throne(t[2])
                     end
                 end
             }
@@ -35,12 +42,12 @@ class DwarfAI
         end
 
         def getbedroom(id)
-            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
+            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r[:owner] or _r[:owner] == id) } || @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan }
                 if r.status == :plan
                     @tasks << [:digroom, r]
+                    r.dig
                 end
-                r.dig
-                r.owner = id
+                set_owner(r, id)
                 df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
             else
                 puts "AI cant getbedroom(#{id})"
@@ -48,8 +55,139 @@ class DwarfAI
         end
 
         def freebedroom(id)
-            if r = @rooms.find { |_r| r.type == :bedroom and r.owner == id }
-                r.owner = nil
+            if r = @rooms.find { |_r| r.type == :bedroom and r[:owner] == id }
+                set_owner(r, nil)
+            end
+        end
+
+        def set_owner(r, id)
+            r[:owner] = id
+            # TODO reassign furniture
+        end
+
+        def set_furniture(r)
+            case r.type
+            when :bedroom
+                furnish_bed(r, true)
+                furnish_cabinet(r, true)
+                true
+            when :workshop
+                case r[:workshop]
+                when :ManagersOffice
+                    furnish_throne(r, true)
+                    true
+                else
+                    build_workshop(r)
+                end
+            else true
+            end
+        end
+
+        def furnish_bed(r, queuenew=false)
+            if bed = df.world.items.other[:BED].find { |i| i.kind_of?(DFHack::ItemBedst) and df.building_isitemfree(i) }
+                bld = df.building_alloc(:Bed)
+                if r.type == :bedroom
+                    df.building_position(bld, [r.x+1, r.y+1, r.z])
+                    df.building_construct(bld, [bed])
+                    @tasks << [:makeroom, r]
+                end
+                (r[:furniture] ||= []) << bed.id
+                true
+            elsif queuenew
+                check_workshop(:Carpenters)
+                df.cuttrees(:any, 1, true) # need logs
+                add_manager_order(:ConstructBed)
+                @tasks << [:furnish, :bed, r]
+            end
+        end
+
+        def furnish_cabinet(r, queuenew=false)
+            if cab = df.world.items.other[:CABINET].find { |i| i.kind_of?(DFHack::ItemCabinetst) and df.building_isitemfree(i) }
+                bld = df.building_alloc(:Cabinet)
+                if r.type == :bedroom
+                    nx = r.x+1
+                    nx += (r.doors[0][0] > nx ? -1 : 1)
+                    df.building_position(bld, [nx, r.y, r.z])
+                    df.building_construct(bld, [cab])
+                end
+                (r[:furniture] ||= []) << cab.id
+                true
+            elsif queuenew
+                check_workshop(:Masons)
+                add_manager_order(:ConstructCabinet)
+                @tasks << [:furnish, :cab, r]
+            end
+        end
+
+        def furnish_throne(r, queuenew=false)
+            if thr = df.world.items.other[:CHAIR].find { |i| i.kind_of?(DFHack::ItemChairst) and df.building_isitemfree(i) }
+                bld = df.building_alloc(:Chair)
+                if r.type == :workshop
+                    df.building_position(bld, [r.x+1, r.y+1, r.z])
+                    df.building_construct(bld, [thr])
+                    @tasks << [:makeroom, r]
+                end
+                (r[:furniture] ||= []) << thr.id
+                true
+            elsif queuenew
+                check_workshop(:Masons)
+                add_manager_order(:ConstructThrone)
+                @tasks << [:furnish, :throne, r]
+            end
+        end
+
+        def check_workshop(subtype)
+            if not r = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype }
+                ws = @rooms.find { |r| r.type == :workshop and r.status == :plan }
+                ws[:workshop] = subtype
+                @tasks << [:digroom, ws]
+                ws.dig
+                df.add_announcement("AI: new workshop #{subtype}") { |ann| ann.pos = [ws.x+1, ws.y+1, ws.z] }
+            end
+            # TODO check tantrumed workshop, check worker labors
+            r
+        end
+
+        def build_workshop(r)
+            case r[:workshop]
+            when :Well
+                # need special items
+            else
+                # one boulder
+                # TODO check economic stone
+                if bould = df.world.items.all.find { |i| i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) }
+                    bld = df.building_alloc(:Workshop, r[:workshop])
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [bould])
+                    true
+                end
+            end
+        end
+
+        def add_manager_order(order, amount=1)
+            check_manager
+            if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 10 }
+                o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1, :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
+                case order
+                when :ConstructBed  # wood
+                    o.material_category.wood = true
+                when :ConstructTable, :ConstructThrone, :ConstructCabinet  # rock
+                    o.mat_type = 0
+                else
+                    p [:unknown_manager_material, order]
+                end
+                df.world.manager_orders << o
+            else
+                o.amount_total += amount
+                o.amount_left += amount
+            end
+        end
+
+        def check_manager
+            office = check_workshop(:ManagersOffice)
+            if not df.unit_citizens.find { |u| df.unit_entitypositions(u).find { |p| p.responsibilities[:MANAGE_PRODUCTION] } }
+                # TODO assign noble position
+                df.add_announcement("AI: please add a MANAGER unit")
             end
         end
 
@@ -254,6 +392,7 @@ class DwarfAI
 
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status
+            attr_accessor :misc
             def x; x1; end
             def y; y1; end
             def z; z1; end
@@ -261,7 +400,15 @@ class DwarfAI
             def h; y2-y1; end
             def h_z; z2-z1; end
 
+            def [](k)
+                @misc[k]
+            end
+            def []=(k, v)
+                @misc[k] = v
+            end
+
             def initialize(x1, x2, y1, y2, z1, z2)
+                @misc = {}
                 @status = :plan
                 @accesspath = []
                 x1, x2 = x2, x1 if x1 > x2
@@ -276,7 +423,8 @@ class DwarfAI
                 accesspath.to_a.each { |ap| ap.dig if ap.status == :plan }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
-                        t.dig dig_mode(x, y, z)
+                        dm = dig_mode(x, y, z)
+                        t.dig dm if dm == :DownStair or t.shape == :WALL
                     end
                 } } }
             end
@@ -309,7 +457,7 @@ class DwarfAI
         end
 
         class Room < Corridor
-            attr_accessor :doors, :type, :owner, :furniture
+            attr_accessor :doors, :type
             def initialize(type, x1, x2, y1, y2, z, doors=[])
                 super(x1, x2, y1, y2, z, z)
                 @type = type
