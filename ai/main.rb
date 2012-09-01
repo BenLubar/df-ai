@@ -53,6 +53,8 @@ class DwarfAI
             assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'MANAGER' }
             # TODO find a better candidate
             tg = df.unit_citizens.first
+            office = @plan.check_workshop(:ManagersOffice)
+            @plan.set_owner(office, tg.id)
 
             pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
             pos.entity_id = ent.id
@@ -60,9 +62,9 @@ class DwarfAI
             tg.hist_figure_tg.entity_links << pos
             assign.histfig = tg.hist_figure_id
 
-            ent.unknown2.unk6[4] << assign	# XXX wtf?
+            ent.unknown2.unk6[4] << assign      # XXX wtf?
 
-            df.add_announcement("AI: new manager: #{tg.name}") { |ann| ann.pos = tg.pos }
+            df.add_announcement("AI: new manager: #{tg.name.to_s(false)}") { |ann| ann.pos = tg.pos }
         end
     end
 

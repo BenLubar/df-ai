@@ -12,11 +12,13 @@ class DwarfAI
         end
 
         def update
-            # avoid digging a wantdig at the end of the array, after we delete the last :digroom
             nrdig = @tasks.count { |t| t[0] == :digroom }
+
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
+                    # use precomputed nrdig to account for delete_if and
+                    # ensure first :wantdig is dug first
                     if nrdig < 2
                         t[1][:queue] = false
                         t[1].dig
@@ -37,6 +39,8 @@ class DwarfAI
                     when :door;   furnish_door(t[2])
                     when :workshop; construct_workshop(t[2])
                     end
+                when :makeroom
+                    makeroom(t[1])
                 end
             }
         end
@@ -57,7 +61,7 @@ class DwarfAI
                     @tasks << [:wantdig, r]
                 end
                 set_owner(r, id)
-                df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
+                df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name.to_s(false)}") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
             else
                 puts "AI cant getbedroom(#{id})"
             end
@@ -71,7 +75,8 @@ class DwarfAI
 
         def set_owner(r, id)
             r[:owner] = id
-            # TODO reassign furniture
+            u = df.unit_find(id) if id
+            r[:furniture].to_a.each { |bld_id| df.building_setowner(df.building_find(bld_id), u) }
         end
 
         def construct_room(r)
@@ -88,6 +93,11 @@ class DwarfAI
                     @tasks << [:furnish, :workshop, r] if not construct_workshop(r)
                 end
             when :stockpile
+                bld = df.building_alloc(:Stockpile)
+                df.building_position(bld, [r.x1, r.y1, r.z], r.w, r.h)
+                # XXX bld.extents ?
+                df.building_construct_abstract(bld)
+                # TODO set stockpile settings/links
             end
         end
 
@@ -99,7 +109,7 @@ class DwarfAI
                     df.building_construct(bld, [bed])
                     @tasks << [:makeroom, r]
                 end
-                (r[:furniture] ||= []) << bed.id
+                (r[:furniture] ||= []) << bld.id
                 true
             elsif queuenew
                 check_workshop(:Carpenters)
@@ -118,7 +128,7 @@ class DwarfAI
                     df.building_position(bld, [nx, r.y, r.z])
                     df.building_construct(bld, [cab])
                 end
-                (r[:furniture] ||= []) << cab.id
+                (r[:furniture] ||= []) << bld.id
                 true
             elsif queuenew
                 check_workshop(:Masons)
@@ -135,7 +145,7 @@ class DwarfAI
                     df.building_construct(bld, [thr])
                     @tasks << [:makeroom, r]
                 end
-                (r[:furniture] ||= []) << thr.id
+                (r[:furniture] ||= []) << bld.id
                 true
             elsif queuenew
                 check_workshop(:Masons)
@@ -150,7 +160,7 @@ class DwarfAI
                     bld = df.building_alloc(:Door)
                     df.building_position(bld, p)
                     df.building_construct(bld, [dr])
-                    (r[:furniture] ||= []) << dr.id
+                    (r[:furniture] ||= []) << bld.id
                 end
                 true
             elsif queuenew
@@ -193,7 +203,7 @@ class DwarfAI
                 # need special items
             else
                 # need only one boulder (TODO check economic stone)
-                if bould = df.map_tile_at(r).mapblock.items.map { |idx| df.world.items.all.binsearch(idx) }.find { |i|
+                if bould = df.map_tile_at(r).mapblock.items.map { |idx| df.item_find(idx) }.find { |i|
                         i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2
                 } || df.world.items.other[:BOULDER].find { |i| i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) }
                     bld = df.building_alloc(:Workshop, r[:workshop])
@@ -205,10 +215,47 @@ class DwarfAI
             end
         end
 
+        def makeroom(r)
+            # TODO store room plan in r, incl main 'building' to make room from
+            bld = df.building_find(r.x1+1, r.y1+1, r.z)
+            return if bld.getBuildStage < bld.getMaxBuildStage
+
+            bld.room.extents = df.malloc((r.w+2)*(r.h+2))
+            bld.room.x = r.x1-1
+            bld.room.y = r.y1-1
+            bld.room.width = r.w+2
+            bld.room.height = r.h+2
+
+            set_ext = lambda { |x, y, v| bld.room.extents[bld.room.width*(y-bld.room.y)+(x-bld.room.x)] = v }
+            (r.x1-1 .. r.x2+1).each { |rx| (r.y1-1 .. r.y2+1).each { |ry|
+                if df.map_tile_at(rx, ry, r.z).shape == :WALL
+                    set_ext[rx, ry, 2]
+                else
+                    set_ext[rx, ry, 3]
+                end
+            } }
+            r.doors.each { |x, y, z|
+                set_ext[x, y, 0]
+                # tile in front of the door tile is 4   (TODO door in corner...)
+                set_ext[x+1, y, 4] if x < r.x1
+                set_ext[x-1, y, 4] if x > r.x2
+                set_ext[x, y+1, 4] if y < r.y1
+                set_ext[x, y-1, 4] if y > r.y2
+            }
+
+            bld.is_room = 1
+
+            r[:furniture].each { |f_id| df.building_linkrooms(df.building_find(f_id)) if f_id != bld.id }
+
+            set_owner(r, r[:owner])
+
+            true
+        end
+
         def add_manager_order(order, amount=1)
-            check_manager
             if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 10 }
-                o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1, :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
+                o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1,
+                        :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
                 case order
                 when :ConstructBed  # wood
                     o.material_category.wood = true
@@ -222,10 +269,6 @@ class DwarfAI
                 o.amount_total += amount
                 o.amount_left += amount
             end
-        end
-
-        def check_manager
-            check_workshop(:ManagersOffice)
         end
 
         attr_accessor :fort_entrance, :rooms, :corridors
@@ -433,8 +476,8 @@ class DwarfAI
             def x; x1; end
             def y; y1; end
             def z; z1; end
-            def w; x2-x1; end
-            def h; y2-y1; end
+            def w; x2-x1+1; end
+            def h; y2-y1+1; end
             def h_z; z2-z1; end
 
             def [](k)
@@ -500,7 +543,6 @@ class DwarfAI
                 super(x1, x2, y1, y2, z, z)
                 @type = type
                 @doors = doors
-                @furniture = []
             end
 
             def dig
