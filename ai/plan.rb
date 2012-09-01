@@ -27,6 +27,8 @@ class DwarfAI
                         furnish_cabinet(t[2])
                     when :throne
                         furnish_throne(t[2])
+                    when :door
+                        furnish_door(t[2])
                     end
                 end
             }
@@ -66,6 +68,9 @@ class DwarfAI
         end
 
         def set_furniture(r)
+            r.doors.length.times {
+                furnish_door(r, true)
+            }
             case r.type
             when :bedroom
                 furnish_bed(r, true)
@@ -136,6 +141,22 @@ class DwarfAI
             end
         end
 
+        def furnish_door(r, queuenew=false)
+            if dr = df.world.items.other[:DOOR].find { |i| i.kind_of?(DFHack::ItemDoorst) and df.building_isitemfree(i) }
+                if p = r.doors.find { |x, y, z| !df.building_find(x, y, z) }
+                    bld = df.building_alloc(:Door)
+                    df.building_position(bld, p)
+                    df.building_construct(bld, [dr])
+                    (r[:furniture] ||= []) << dr.id
+                end
+                true
+            elsif queuenew
+                check_workshop(:Masons)
+                add_manager_order(:ConstructDoor)
+                @tasks << [:furnish, :door, r]
+            end
+        end
+
         def check_workshop(subtype)
             if not r = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype }
                 ws = @rooms.find { |r| r.type == :workshop and r.status == :plan }
@@ -171,7 +192,7 @@ class DwarfAI
                 case order
                 when :ConstructBed  # wood
                     o.material_category.wood = true
-                when :ConstructTable, :ConstructThrone, :ConstructCabinet  # rock
+                when :ConstructTable, :ConstructThrone, :ConstructCabinet, :ConstructDoor  # rock
                     o.mat_type = 0
                 else
                     p [:unknown_manager_material, order]
