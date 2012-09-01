@@ -17,6 +17,7 @@ class DwarfAI
         @update_counter += 1
         update_citizenlist
         @plan.update
+        update_jobs
     end
 
     def update_citizenlist
@@ -35,6 +36,31 @@ class DwarfAI
         }
     end
 
+    def update_jobs
+        df.world.job_list.each { |j|
+            j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
+            # TODO auto-labor style management
+        }
+        if update_counter % 10 == 0
+            update_nobles
+        end
+    end
+
+    def update_nobles
+        ent = df.ui.main.fortress_entity
+        if not ent.positions.assignments.find { |a| a.histfig != -1 and ent.positions.own.binsearch(a.position_id).responsibilities[:MANAGE_PRODUCTION] }
+            # TODO do not hardcode position name, check population caps, ...
+            assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'MANAGER' }
+            # TODO find a better candidate
+            tg = df.unit_citizens.first
+            pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
+            pos.entity_id = ent.id
+            pos.assignment_id = assign.id
+            tg.hist_figure_tg.entity_links << pos
+            assign.histfig = tg.hist_figure_id
+            df.add_announcement("AI: new manager: #{tg.name}") { |ann| ann.pos = tg.pos }
+        end
+    end
 
     def statechanged(st)
         if st == :PAUSED
