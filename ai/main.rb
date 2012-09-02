@@ -37,10 +37,12 @@ class DwarfAI
     end
 
     def update_jobs
-        df.world.job_list.each { |j|
-            j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
-            # TODO auto-labor style management
-        }
+        if update_counter % 10 == 1
+            df.world.job_list.each { |j|
+                j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
+                # TODO auto-labor style management
+            }
+        end
         if update_counter % 10 == 0
             update_nobles
         end
@@ -53,7 +55,7 @@ class DwarfAI
             assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'MANAGER' }
             # TODO find a better candidate
             tg = df.unit_citizens.first
-            office = @plan.check_workshop(:ManagersOffice)
+            office = @plan.ensure_workshop(:ManagersOffice)
             @plan.set_owner(office, tg.id)
 
             pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
@@ -64,7 +66,25 @@ class DwarfAI
 
             ent.unknown2.unk6[4] << assign      # XXX wtf?
 
-            df.add_announcement("AI: new manager: #{tg.name.to_s(false)}") { |ann| ann.pos = tg.pos }
+            df.add_announcement("AI: new manager: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
+        end
+
+        if not ent.positions.assignments.find { |a| a.histfig != -1 and ent.positions.own.binsearch(a.position_id).responsibilities[:ACCOUNTING] }
+            assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'BOOKKEEPER' }
+            tg = df.unit_citizens.find { |c| df.unit_entitypositions(c).find { |p| p.responsibilities[:MANAGE_PRODUCTION] } }
+            office = @plan.ensure_workshop(:BookkeepersOffice)
+            @plan.set_owner(office, tg.id)
+
+            pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
+            pos.entity_id = ent.id
+            pos.assignment_id = assign.id
+            tg.hist_figure_tg.entity_links << pos
+            assign.histfig = tg.hist_figure_id
+
+            ent.unknown2.unk6[6] << assign      # XXX wtf?
+
+            df.ui.bookkeeper_settings = 4
+            df.add_announcement("AI: new bookkeeper: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
         end
     end
 
