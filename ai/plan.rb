@@ -41,6 +41,8 @@ class DwarfAI
                     end
                 when :makeroom
                     makeroom(t[1])
+                when :checkconstruct
+                    checkconstruct(t[1])
                 end
             }
         end
@@ -103,6 +105,7 @@ class DwarfAI
                 if r.type == :bedroom
                     df.building_position(bld, [r.x+1, r.y+1, r.z])
                     df.building_construct(bld, [bed])
+                    r[:bld_id] = bld.id
                     @tasks << [:makeroom, r]
                 end
                 (r[:furniture] ||= []) << bld.id
@@ -139,6 +142,7 @@ class DwarfAI
                 if r.type == :workshop
                     df.building_position(bld, [r.x+1, r.y+1, r.z])
                     df.building_construct(bld, [thr])
+                    r[:bld_id] = bld.id
                     @tasks << [:makeroom, r]
                 end
                 (r[:furniture] ||= []) << bld.id
@@ -167,8 +171,8 @@ class DwarfAI
         end
 
         def check_workshop(subtype)
-            if not ws = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype }
-                ws = @rooms.find { |r| r.type == :workshop and r.status == :plan }
+            if not ws = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype } or ws.status == :plan
+                ws ||= @rooms.find { |r| r.type == :workshop and not r[:workshop] and r.status == :plan }
                 ws[:workshop] = subtype
                 @tasks << [:digroom, ws]
                 ws.dig
@@ -176,22 +180,28 @@ class DwarfAI
 
                 case subtype
                 when :Masons, :Carpenters
+                    # add minimal stockpile in front of workshop
+                    sptype = {:Masons => :stone, :Carpenters => :wood}[subtype]
+                    # XXX hardcoded fort layout
                     y = (ws.doors[0][1] > ws.y1 ? ws.y2+2 : ws.y1-2)
                     sp = Room.new(:stockpile, ws.x1, ws.x2, y, y, ws.z1)
                     sp[:workshop] = ws
-                    sp[:type] = {:Masons => :stone, :Carpenters => :wood}[subtype]
+                    sp[:type] = sptype
                     @rooms << sp
                     @tasks << [:digroom, sp]
                     sp.dig
 
-                    sp = @rooms.find { |r| r.type == :stockpile and r.status == :plan and not r[:queue] }
-                    sp[:queue] = true
-                    sp[:type] = {:Masons => :stone, :Carpenters => :wood}[subtype]
-                    @tasks << [:wantdig, sp]
+                    check_stockpile(sptype)
                 end
             end
-            # TODO check tantrumed workshop
             ws
+        end
+
+        def check_stockpile(sptype)
+            if sp = @rooms.find { |r| r.type == :stockpile and r[:type] == sptype and r.status == :plan and not r[:queue] }
+                sp[:queue] = true
+                @tasks << [:wantdig, sp]
+            end
         end
 
         def construct_workshop(r)
@@ -206,6 +216,8 @@ class DwarfAI
                     bld = df.building_alloc(:Workshop, r[:workshop])
                     df.building_position(bld, r)
                     df.building_construct(bld, [bould])
+                    r[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
                     true
                 # XXX else quarry?
                 end
@@ -222,21 +234,37 @@ class DwarfAI
             bld.room.height = r.h
             r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
             df.building_construct_abstract(bld)
+            r[:bld_id] = bld.id
+            r.status = :finished
 
             case r[:type]
             when :stone
                 bld.settings.flags.stone = true
                 df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
+                bld.max_wheelbarrows = 1 if r.w > 1 and r.h > 1
             when :wood
                 bld.settings.flags.wood = true
                 df.world.raws.plants.all.length.times { |i| bld.settings.wood[i] = 1 }
             end
-            # TODO link workshop stockpiles to main
+
+            if r[:workshop]
+                if main = @rooms.find { |o| o.type == :stockpile and o[:type] == r[:type] and not o[:workshop] } and mb = main.dfbuilding
+                    mb.give_to << bld
+                    bld.take_from << mb
+                end
+            else
+                @rooms.each { |o|
+                    if o.type == :stockpile and o[:type] == r[:type] and o[:workshop] and sub = o.dfbuilding
+                        bld.give_to << sub
+                        sub.take_from << bld
+                    end
+                }
+            end
         end
 
         def makeroom(r)
-            # TODO store room plan in r, incl main 'building' to make room from
-            bld = df.building_find(r.x1+1, r.y1+1, r.z)
+            bld = r.dfbuilding
+            # TODO if not bld
             return if bld.getBuildStage < bld.getMaxBuildStage
 
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
@@ -244,7 +272,6 @@ class DwarfAI
             bld.room.y = r.y1-1
             bld.room.width = r.w+2
             bld.room.height = r.h+2
-
             set_ext = lambda { |x, y, v| bld.room.extents[bld.room.width*(y-bld.room.y)+(x-bld.room.x)] = v }
             (r.x1-1 .. r.x2+1).each { |rx| (r.y1-1 .. r.y2+1).each { |ry|
                 if df.map_tile_at(rx, ry, r.z).shape == :WALL
@@ -261,18 +288,23 @@ class DwarfAI
                 set_ext[x, y+1, 4] if y < r.y1
                 set_ext[x, y-1, 4] if y > r.y2
             }
-
             bld.is_room = 1
 
             r[:furniture].each { |f_id| df.building_linkrooms(df.building_find(f_id)) if f_id != bld.id }
-
             set_owner(r, r[:owner])
+            r.status = :finished
+            true
+        end
 
+        def checkconstruct(r)
+            bld = r.dfbuilding
+            return if bld and bld.getBuildStage < bld.getMaxBuildStage
+            r.status = :finished
             true
         end
 
         def add_manager_order(order, amount=1)
-            if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 10 }
+            if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 4 }
                 o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1,
                         :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
                 case order
@@ -394,10 +426,17 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
+            # Quern, Millstone, Siege, Custom/soapmaker, Custom/screwpress
+            # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
+            types = [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
+                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,nil]
+            types += [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
+                :Looms,:Clothiers, :Dyers,:Bowyers, nil,nil]
+
             [-1, 1].each { |dirx|
                 prev_corx = corridor_center
                 ocx = fx + dirx*3
-                (1..5).each { |dx|
+                (1..6).each { |dx|
                     # segments of the big central horizontal corridor
                     cx = fx + dirx*(4*dx-1)
                     cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
@@ -408,7 +447,7 @@ class DwarfAI
 
                     @rooms << Room.new(:workshop, cx-1, cx+1, fy-5, fy-3, fz, [[cx, fy-2, fz]])
                     @rooms << Room.new(:workshop, cx-1, cx+1, fy+3, fy+5, fz, [[cx, fy+2, fz]])
-                    @rooms[-2, 2].each { |r| r.accesspath = [cor_x] }
+                    @rooms[-2, 2].each { |r| r[:workshop] = types.shift ; r.accesspath = [cor_x] }
                 }
             }
         end
@@ -418,11 +457,14 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
+            types = [:stone,:wood, :furniture,:goods, :gems,:weapons, :refuse,:corpses]
+            types += [:food,:ammo, :cloth,:leather, :bars,:armor, :animals,:coins]
+
             # TODO side stairs to workshop level ?
             [-1, 1].each { |dirx|
                 prev_corx = corridor_center
                 ocx = fx + dirx*3
-                (1..3).each { |dx|
+                (1..4).each { |dx|
                     # segments of the big central horizontal corridor
                     cx = fx + dirx*(8*dx-4)
                     cor_x = Corridor.new(ocx, cx+dirx, fy-1, fy+1, fz, fz)
@@ -433,7 +475,7 @@ class DwarfAI
 
                     @rooms << Room.new(:stockpile, cx-3, cx+3, fy-11, fy-3, fz, [[cx-1, fy-2, fz], [cx+1, fy-2, fz]])
                     @rooms << Room.new(:stockpile, cx-3, cx+3, fy+3, fy+11, fz, [[cx-1, fy+2, fz], [cx+1, fy+2, fz]])
-                    @rooms[-2, 2].each { |r| r.accesspath = [cor_x] }
+                    @rooms[-2, 2].each { |r| r[:type] = types.shift ; r.accesspath = [cor_x] }
                 }
             }
         end
@@ -580,6 +622,10 @@ class DwarfAI
                     end
                 }
                 super
+            end
+
+            def dfbuilding
+                df.building_find(self[:bld_id]) if self[:bld_id]
             end
         end
     end
