@@ -93,11 +93,7 @@ class DwarfAI
                     @tasks << [:furnish, :workshop, r] if not construct_workshop(r)
                 end
             when :stockpile
-                bld = df.building_alloc(:Stockpile)
-                df.building_position(bld, [r.x1, r.y1, r.z], r.w, r.h)
-                # XXX bld.extents ?
-                df.building_construct_abstract(bld)
-                # TODO set stockpile settings/links
+                construct_stockpile(r)
             end
         end
 
@@ -183,6 +179,7 @@ class DwarfAI
                     y = (ws.doors[0][1] > ws.y1 ? ws.y2+2 : ws.y1-2)
                     sp = Room.new(:stockpile, ws.x1, ws.x2, y, y, ws.z1)
                     sp[:workshop] = ws
+                    sp[:type] = {:Masons => :stone, :Carpenters => :wood}[subtype]
                     @rooms << sp
                     @tasks << [:digroom, sp]
                     sp.dig
@@ -213,6 +210,28 @@ class DwarfAI
                 # XXX else quarry?
                 end
             end
+        end
+
+        def construct_stockpile(r)
+            bld = df.building_alloc(:Stockpile)
+            df.building_position(bld, [r.x1, r.y1, r.z], r.w, r.h)
+            bld.room.extents = df.malloc(r.w*r.h)
+            bld.room.x = r.x1
+            bld.room.y = r.y1
+            bld.room.width = r.w
+            bld.room.height = r.h
+            r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
+            df.building_construct_abstract(bld)
+
+            case r[:type]
+            when :stone
+                bld.settings.flags.stone = true
+                df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
+            when :wood
+                bld.settings.flags.wood = true
+                df.world.raws.plants.all.length.times { |i| bld.settings.wood[i] = 1 }
+            end
+            # TODO link workshop stockpiles to main
         end
 
         def makeroom(r)
