@@ -68,7 +68,7 @@ class DwarfAI
         end
 
         def freebedroom(id)
-            if r = @rooms.find { |_r| r.type == :bedroom and r[:owner] == id }
+            if r = @rooms.find { |_r| _r.type == :bedroom and _r[:owner] == id }
                 set_owner(r, nil)
             end
         end
@@ -167,7 +167,7 @@ class DwarfAI
         end
 
         def check_workshop(subtype)
-            if not r = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype }
+            if not ws = @rooms.find { |r| r.type == :workshop and r[:workshop] == subtype }
                 ws = @rooms.find { |r| r.type == :workshop and r.status == :plan }
                 ws[:workshop] = subtype
                 @tasks << [:digroom, ws]
@@ -191,7 +191,7 @@ class DwarfAI
                 end
             end
             # TODO check tantrumed workshop
-            r
+            ws
         end
 
         def construct_workshop(r)
