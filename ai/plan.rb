@@ -86,7 +86,6 @@ class DwarfAI
             case r.type
             when :bedroom
                 furnish_bed(r, true)
-                furnish_cabinet(r, true)
             when :workshop
                 case r[:workshop]
                 when :ManagersOffice
@@ -292,6 +291,11 @@ class DwarfAI
 
             r[:furniture].each { |f_id| df.building_linkrooms(df.building_find(f_id)) if f_id != bld.id }
             set_owner(r, r[:owner])
+
+            if r.type == :bedroom
+                furnish_cabinet(r, true)
+            end
+
             r.status = :finished
             true
         end
@@ -428,10 +432,10 @@ class DwarfAI
 
             # Quern, Millstone, Siege, Custom/soapmaker, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
-            types = [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,nil]
-            types += [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
+            types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Looms,:Clothiers, :Dyers,:Bowyers, nil,nil]
+            types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
+                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,nil]
 
             [-1, 1].each { |dirx|
                 prev_corx = corridor_center
@@ -439,9 +443,19 @@ class DwarfAI
                 (1..6).each { |dx|
                     # segments of the big central horizontal corridor
                     cx = fx + dirx*(4*dx-1)
-                    cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
-                    cor_x.accesspath = [prev_corx]
-                    @corridors << cor_x
+                    if dx <= 5
+                        cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
+                        cor_x.accesspath = [prev_corx]
+                        @corridors << cor_x
+                    else
+                        # last 2 workshops of the row (offices etc) get only a narrow/direct corridor
+                        cor_x = Corridor.new(fx+dirx*3, cx, fy, fy, fz, fz)
+                        cor_x.accesspath = [corridor_center]
+                        @corridors << cor_x
+                        cor_x = Corridor.new(cx, cx, fy-1, fy+1, fz, fz)
+                        cor_x.accesspath = [@corridors.last]
+                        @corridors << cor_x
+                    end
                     prev_corx = cor_x
                     ocx = cx+dirx
 
@@ -457,7 +471,7 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
-            types = [:stone,:wood, :furniture,:goods, :gems,:weapons, :refuse,:corpses]
+            types = [:wood,:stone, :furniture,:goods, :gems,:weapons, :refuse,:corpses]
             types += [:food,:ammo, :cloth,:leather, :bars,:armor, :animals,:coins]
 
             # TODO side stairs to workshop level ?
