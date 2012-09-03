@@ -5,19 +5,17 @@ class DwarfAI
         def initialize(ai)
             @ai = ai
             @tasks = []
-
-            if w = df.world.buildings.all.grep(DFHack::BuildingWagonst).first
-                df.building_deconstruct(w)
-            end
         end
 
         def update
-            nrdig = @tasks.count { |t| t[0] == :digroom }
+            checkwagons if ai.update_counter % 16 == 4
+            checkidle if ai.update_counter % 6 == 2
 
+            nrdig = @tasks.count { |t| t[0] == :digroom }
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
-                    # use precomputed nrdig to account for delete_if and
+                    # use precomputed nrdig to account for delete_if and still
                     # ensure first :wantdig is dug first
                     if nrdig < 2
                         digroom(t[1])
@@ -41,22 +39,48 @@ class DwarfAI
             }
         end
 
-        def new_citizen(c)
-            getbedroom(c.id)
+        def digging?
+            @tasks.find { |t| t[0] == :wantdig or t[0] == :digroom }
         end
 
-        def del_citizen(c)
-            freebedroom(c.id)
+        def idle?
+            @tasks.empty?
+        end
+
+        def new_citizen(uid)
+            getbedroom(uid)
+            # TODO assign diningroom table
+        end
+
+        def del_citizen(uid)
+            freebedroom(uid)
             # TODO coffin/memorialslab for dead citizen
+        end
+        
+        def checkwagons
+            df.world.buildings.other[:WAGON].each { |w|
+                if w.kind_of?(DFHack::BuildingWagonst) and not w.contained_items.find { |i| i.use_mode == 0 }
+                    df.building_deconstruct(w)
+                end
+            }
+        end
+
+        def checkidle
+            # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
+            if not digging?
+                freebed = 3
+                if r = @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan }
+                    wantdig(r)
+                end
+            end
         end
 
         def getbedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } ||
                    @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan and not _r.misc[:queue_dig] }
-                if r.status == :plan
-                    r.misc[:queue_dig] = true
-                    @tasks << [:wantdig, r]
-                end
+                wantdig(r)
                 set_owner(r, id)
                 df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name.to_s(false)}", 7, false) { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
             else
@@ -76,6 +100,12 @@ class DwarfAI
                 u = df.unit_find(uid) if uid
                 df.building_setowner(df.building_find(r.misc[:bld_id]), u)
             end
+        end
+
+        def wantdig(r)
+            return if r.misc[:queue_dig] or r.status != :plan
+            r.misc[:queue_dig] = true
+            @tasks << [:wantdig, r]
         end
 
         def digroom(r)
@@ -164,9 +194,8 @@ class DwarfAI
         end
 
         def ensure_stockpile(sptype)
-            if sp = @rooms.find { |r| r.type == :stockpile and r.subtype == sptype and r.status == :plan and not r.misc[:queue_dig] }
-                sp.misc[:queue_dig] = true
-                @tasks << [:wantdig, sp]
+            if sp = @rooms.find { |r| r.type == :stockpile and r.subtype == sptype and not r.misc[:workshop] }
+                wantdig(sp)
             end
         end
 
@@ -355,7 +384,7 @@ class DwarfAI
                 when :coins
                     bld.settings.flags.coins = true
                 end
-                df.add_announcement("AI: please manually configure a #{r.subtype} here") { |ann| ann.pos = [r.x+r.w/2, r.y+r.h/2, r.z] }
+                df.add_announcement("AI: please manually configure a #{r.subtype} stockpile here") { |ann| ann.pos = [r.x+r.w/2, r.y+r.h/2, r.z] }
             end
         end
 
@@ -535,7 +564,7 @@ class DwarfAI
             # Quern, Millstone, Siege, Custom/soapmaker, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-                :Looms,:Clothiers, :Dyers,:Bowyers, nil,nil]
+                :Loom,:Clothiers, :Dyers,:Bowyers, nil,nil]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
                 :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:BookkeepersOffice]
 
