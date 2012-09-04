@@ -459,6 +459,9 @@ class DwarfAI
 
             set_owner(r, r.owner)
             furnish_room(r)
+            if r.type == :dininghall
+                bld.table_flags.meeting_hall = true
+            end
             true
         end
 
