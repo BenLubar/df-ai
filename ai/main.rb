@@ -22,11 +22,13 @@ class DwarfAI
         case announce.type
         when :MEGABEAST_ARRIVAL
             puts 'AI: uh oh, megabeast...'
-            df.pause_state = false
+        when :D_MIGRANTS_ARRIVAL
+            puts 'AI: more minions'
         else
             p announce
-            #df.pause_state = false
+            return
         end
+        df.pause_state = false
     end
 
     def statechanged(st)

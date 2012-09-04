@@ -4,26 +4,23 @@ class DwarfAI
         attr_accessor :tasks
         def initialize(ai)
             @ai = ai
+            @nrdig = 0
             @tasks = []
+            df.cuttrees(:any, 3, true)
         end
 
         def update
             checkwagons if ai.update_counter % 16 == 4
             checkidle if ai.update_counter % 6 == 2
 
-            nrdig = @tasks.count { |t| t[0] == :digroom }
+            @nrdig = @tasks.count { |t| t[0] == :digroom }
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
-                    # use precomputed nrdig to account for delete_if and still
-                    # ensure first :wantdig is dug first
-                    if nrdig < 2
-                        digroom(t[1])
-                        nrdig += 1
-                        true
-                    end
+                    digroom(t[1]) if @nrdig < 2
                 when :digroom
                     if t[1].dug?
+                        t[1].status = :dug
                         construct_room(t[1])
                         true
                     end
@@ -49,11 +46,12 @@ class DwarfAI
 
         def new_citizen(uid)
             getbedroom(uid)
-            # TODO assign diningroom table
+            getdiningroom(uid)
         end
 
         def del_citizen(uid)
             freebedroom(uid)
+            freediningroom(uid)
             # TODO coffin/memorialslab for dead citizen
         end
         
@@ -88,9 +86,31 @@ class DwarfAI
             end
         end
 
+        def getdiningroom(id)
+            dwarves_per_table = 3
+            if r = @rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].length < dwarves_per_table } }
+                wantdig(r)
+                table = r.layout.find { |f| f[:item] == :table and f[:users].length < dwarves_per_table }
+                chair = r.layout.find { |f| f[:item] == :chair and f[:users].length < dwarves_per_table }
+                table.delete :ignore
+                chair.delete :ignore
+                table[:users] << id
+                chair[:users] << id
+                if r.status == :finished
+                    furnish_room(r)
+                end
+            end
+        end
+
         def freebedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and _r.owner == id }
                 set_owner(r, nil)
+            end
+        end
+
+        def freediningroom(id)
+            if r = @rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users].include?(id) } }
+                r.layout.each { |f| f[:users].delete(id) if f[:users] }
             end
         end
 
@@ -109,16 +129,22 @@ class DwarfAI
         end
 
         def digroom(r)
+            return if r.status != :plan
             r.misc[:queue_dig] = false
             r.dig
             @tasks << [:digroom, r]
+            r.accesspath.each { |ap| digroom(ap) }
             r.layout.each { |f|
                 build_furniture(f) if f[:makeroom]
             }
+            @nrdig += 1
+            true
         end
 
         def construct_room(r)
             case r.type
+            when :corridor
+                furnish_room(r)
             when :stockpile
                 construct_stockpile(r)
             when :workshop
@@ -128,6 +154,11 @@ class DwarfAI
                     @tasks << [:furnish, r, f] if f[:makeroom]
                 }
             end
+        end
+
+        def furnish_room(r)
+            r.layout.each { |f| @tasks << [:furnish, r, f] }
+            r.status = :finished
         end
 
         FurnitureOtheridx = {}  # :moo => :MOO
@@ -142,6 +173,7 @@ class DwarfAI
 
         def try_furnish(r, f)
             return true if f[:bld_id]
+            return true if f[:ignore]
             build_furniture(f)
             oidx = FurnitureOtheridx[f[:item]] || "#{f[:item]}".upcase.to_sym
             rtti = FurnitureRtti[f[:item]] || "item_#{f[:item]}st".to_sym
@@ -186,8 +218,6 @@ class DwarfAI
                     sp.misc[:workshop] = ws
                     @rooms << sp
                     digroom(sp)
-
-                    ensure_stockpile(sptype)
                 end
             end
             ws
@@ -219,7 +249,7 @@ class DwarfAI
                     false
                 end
             else
-                if bould = df.map_tile_at(r).mapblock.items.map { |idx| df.item_find(idx) }.find { |i|
+                if bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
                         i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and
                         !df.ui.economic_stone[i.mat_index] and
                         i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2
@@ -249,12 +279,12 @@ class DwarfAI
             r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
-            r.status = :finished
-            r.layout.each { |d| @tasks << [:furnish, r, d] }
+            furnish_room(r)
 
             setup_stockpile_settings(r, bld)
 
             if r.misc[:workshop]
+                ensure_stockpile(r.subtype)
                 if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] } and mb = main.dfbuilding
                     mb.give_to << bld
                     bld.take_from << mb
@@ -273,8 +303,7 @@ class DwarfAI
             case r.subtype
             when :stone
                 bld.settings.flags.stone = true
-                case r.misc[:workshop]
-                when :Masons
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
                     df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = (df.ui.economic_stone[i] ? 0 : 1) }
                 else
                     df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
@@ -317,6 +346,7 @@ class DwarfAI
                     s.usable = true
                     s.unusable = true
                 end
+                bld.max_bins = r.w*r.h
                 30.times { |i| s.other_mats[i] = true }    # len = 15
                 df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
                 s.quality_core.map! { true }
@@ -350,6 +380,7 @@ class DwarfAI
             when :food
                 bld.settings.flags.food = true
                 bld.settings.food.prepared_meals = true
+                bld.max_barrels = r.w*r.h
                 t = bld.settings.food.type
                 # meat[11000], *fish, egg, drink_animal, cheese*, powder_creature, glob[1800], glob*, liquid*
                 df.world.raws.plants.all.length.times { |i|
@@ -361,6 +392,7 @@ class DwarfAI
                 }
             when :cloth
                 bld.settings.flags.cloth = true
+                bld.max_bins = r.w*r.h
                 100.times { |i|
                     bld.settings.cloth.thread_silk[i] = true    # 53
                     bld.settings.cloth.cloth_silk[i] = true
@@ -374,12 +406,15 @@ class DwarfAI
                 }
             when :leather
                 bld.settings.flags.leather = true
+                bld.max_bins = r.w*r.h
                 df.world.raws.creatures.all.length.times { |i| bld.settings.leather[i] = true }
             when :gems, :bars, :coins
                 case r.subtype
                 when :gems
-                    bld.settings.flags.gems = true
+                    #bld.settings.flags.gems = true
+                    # set flag only => segfault when viewing settings ingame
                 when :bars
+                    bld.max_bins = r.w*r.h
                     bld.settings.flags.bars = true
                 when :coins
                     bld.settings.flags.coins = true
@@ -423,18 +458,14 @@ class DwarfAI
             bld.is_room = 1
 
             set_owner(r, r.owner)
-
-            r.layout.each { |f| @tasks << [:furnish, r, f] }
-
-            r.status = :finished
+            furnish_room(r)
             true
         end
 
         def try_endconstruct(r)
             bld = r.dfbuilding
             return if bld and bld.getBuildStage < bld.getMaxBuildStage
-            r.layout.each { |d| @tasks << [:furnish, r, d] }
-            r.status = :finished
+            furnish_room(r)
             true
         end
 
@@ -644,13 +675,31 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
+            w = 7   # keep parity
+            h = 9
+            dinner = Room.new(:dininghall, nil, fx+4, fx+4+w-1, fy-h/2, fy-h/2+h-1, fz)
+            dinner.layout << {:item => :door, :x => -1, :y => h/2-1}
+            dinner.layout << {:item => :door, :x => -1, :y => h/2+1}
+            (1..h/2-1).each { |dy|
+                [-1, 1].each { |sy|
+                    [-1, 1].each { |dx|
+                        dinner.layout << {:item => :table, :x => w/2+dx, :y => h/2+sy*dy, :ignore => true, :users => []}
+                        dinner.layout << {:item => :chair, :x => w/2+2*dx, :y => h/2+sy*dy, :ignore => true, :users => []}
+                    }
+                }
+            }
+            t0 = dinner.layout.find { |f| f[:item] == :table }
+            t0.delete :ignore
+            t0[:makeroom] = true
+            dinner.accesspath = [corridor_center]
+            @rooms << dinner
+
             # TODO
-            # dining room
             # infirmary
             # cemetary
+            # barracks
             # well
-            # military
-            # farmplots?
+            # farmplots
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
@@ -696,7 +745,7 @@ class DwarfAI
         end
 
         class Corridor
-            attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status
+            attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
             attr_accessor :misc
             def x; x1; end
             def y; y1; end
@@ -709,6 +758,8 @@ class DwarfAI
                 @misc = {}
                 @status = :plan
                 @accesspath = []
+                @layout = []
+                @type = :corridor
                 x1, x2 = x2, x1 if x1 > x2
                 y1, y2 = y2, y1 if y1 > y2
                 z1, z2 = z2, z1 if z1 > z2
@@ -718,13 +769,19 @@ class DwarfAI
             def dig
                 return if @status != :plan
                 @status = :dig
-                accesspath.to_a.each { |ap| ap.dig if ap.status == :plan }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
+                    # XXX allow holes in the room ? (eg layout->pillar)
                     if t = df.map_tile_at(x, y, z)
                         dm = dig_mode(t.x, t.y, t.z)
                         t.dig dm if dm == :DownStair or t.shape == :WALL
                     end
                 } } }
+                @layout.each { |d|
+                    if t = df.map_tile_at(x1+d[:x].to_i, y1+d[:y].to_i, z1+d[:z].to_i)
+                        dm = dig_mode(t.x, t.y, t.z)
+                        t.dig dm if dm == :DownStair or t.shape == :WALL
+                    end
+                }
             end
 
             def dig_mode(x, y, z)
@@ -745,42 +802,26 @@ class DwarfAI
             end
 
             def dug?
+                @layout.each { |d|
+                    if t = df.map_tile_at(x1+d[:x].to_i, y1+d[:y].to_i, z1+d[:z].to_i)
+                        return false if t.shape == :WALL
+                    end
+                }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
                         return false if t.shape == :WALL
                     end
                 } } }
-                @status = :dug
                 true
             end
         end
 
         class Room < Corridor
-            attr_accessor :layout, :owner, :type, :subtype
+            attr_accessor :owner, :subtype
             def initialize(type, subtype, x1, x2, y1, y2, z)
                 super(x1, x2, y1, y2, z, z)
                 @type = type
                 @subtype = subtype
-                @layout = []
-            end
-
-            def dig
-                super
-                @layout.each { |d|
-                    if t = df.map_tile_at(x1+d[:x], y1+d[:y], z)
-                        dm = dig_mode(t.x, t.y, t.z)
-                        t.dig dm if dm == :DownStair or t.shape == :WALL
-                    end
-                }
-            end
-
-            def dug?
-                @layout.each { |d|
-                    if t = df.map_tile_at(x1+d[:x], y1+d[:y], z)
-                        return false if t.shape == :WALL
-                    end
-                }
-                super
             end
 
             def dfbuilding
