@@ -122,10 +122,16 @@ class DwarfAI
             end
         end
 
-        def wantdig(r)
+        # queue a room for digging when other dig jobs are finished
+        # with faster=true, this job is inserted in front of existing similar room jobs
+        def wantdig(r, faster=false)
             return if r.misc[:queue_dig] or r.status != :plan
             r.misc[:queue_dig] = true
-            @tasks << [:wantdig, r]
+            if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
+                @tasks.insert(idx, [:wantdig, r])
+            else
+                @tasks << [:wantdig, r]
+            end
         end
 
         def digroom(r)
@@ -137,6 +143,17 @@ class DwarfAI
             r.layout.each { |f|
                 build_furniture(f) if f[:makeroom]
             }
+            if r.type == :workshop
+                case r.subtype
+                when :Dyers
+                    add_manager_order(:MakeBarrel, 1)
+                    add_manager_order(:MakeBucket, 1)
+                when :Ashery
+                    add_manager_order(:ConstructBlocks, 1)
+                    add_manager_order(:MakeBarrel, 1)
+                    add_manager_order(:MakeBucket, 1)
+                end
+            end
             @nrdig += 1
             true
         end
@@ -197,7 +214,6 @@ class DwarfAI
             mod = FurnitureOrder[f[:item]] || "Construct#{f[:item].to_s.capitalize}".to_sym
             ensure_workshop(ws)
             add_manager_order(mod)
-            df.cuttrees(:any, 1, true) if ws == :Carpenters    # TODO generic work input
             f[:queue_build] = true
         end
 
@@ -223,9 +239,9 @@ class DwarfAI
             ws
         end
 
-        def ensure_stockpile(sptype)
+        def ensure_stockpile(sptype, faster=false)
             if sp = @rooms.find { |r| r.type == :stockpile and r.subtype == sptype and not r.misc[:workshop] }
-                wantdig(sp)
+                wantdig(sp, faster)
             end
         end
 
@@ -236,17 +252,61 @@ class DwarfAI
                     @tasks << [:furnish, r, f] if f[:makeroom]
                 }
                 true
-            when :Dyers, :Ashery, :MetalsmithsForge, :WoodFurnace, :Smelter
-                # need special items
-                if bld = df.building_find(r) and (bld.getSubtype == (bld.getType == :Workshop ? DFHack::WorkshopType : DFHack::FurnaceType).int(r.subtype))
+            when :Dyers
+                # barrel, bucket
+                if barrel = df.world.items.other[:BARREL].find { |i|
+                        i.kind_of?(DFHack::ItemBarrelst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                } and bucket = df.world.items.other[:BUCKET].find { |i|
+                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                }
+                    bld = df.building_alloc(:Workshop, r.subtype)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [barrel, bucket])
                     r.misc[:bld_id] = bld.id
                     @tasks << [:checkconstruct, r]
-                    df.add_announcement("AI: thank you for #{r.subtype}", 7, false) { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
                     true
-                elsif !r.misc[:ask_player]
-                    df.add_announcement("AI: please manually build a #{r.subtype} here") { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
-                    r.misc[:ask_player] = true
-                    false
+                end
+            when :Ashery
+                # block, barrel, bucket
+                if block = df.world.items.other[:BLOCKS].find { |i|
+                        i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
+                } and barrel = df.world.items.other[:BARREL].find { |i|
+                        i.kind_of?(DFHack::ItemBarrelst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                } and bucket = df.world.items.other[:BUCKET].find { |i|
+                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                }
+                    bld = df.building_alloc(:Workshop, r.subtype)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [block, barrel, bucket])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
+            when :MetalsmithsForge
+                # anvil, boulder
+                if anvil = df.world.items.other[:ANVIL].find { |i|
+                        i.kind_of?(DFHack::ItemAnvilst) and df.building_isitemfree(i) and i.isTemperatureSafe(11640)
+                } and bould = df.world.items.other[:BOULDER].find { |i|
+                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                }
+                    bld = df.building_alloc(:Workshop, r.subtype)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [anvil, bould])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
+            when :WoodFurnace, :Smelter
+                # firesafe boulder
+                if bould = df.world.items.other[:BOULDER].find { |i|
+                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                }
+                    bld = df.building_alloc(:Furnace, r.subtype)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [bould])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
                 end
             else
                 if bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
@@ -282,6 +342,13 @@ class DwarfAI
             furnish_room(r)
 
             setup_stockpile_settings(r, bld)
+
+            if bld.max_bins > 8
+                add_manager_order(:ConstructBin, 8)
+            end
+            if bld.max_barrels > 8
+                add_manager_order(:MakeBarrel, 8)
+            end
 
             if r.misc[:workshop]
                 ensure_stockpile(r.subtype)
@@ -461,6 +528,7 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
+                ensure_stockpile(:food, true)
             end
             true
         end
@@ -476,18 +544,20 @@ class DwarfAI
             if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 4 }
                 o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1,
                         :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
-                case order
-                when :ConstructBed  # wood
-                    o.material_category.wood = true
-                when :ConstructTable, :ConstructThrone, :ConstructCabinet, :ConstructDoor  # rock
-                    o.mat_type = 0
-                else
-                    p [:unknown_manager_material, order]
-                end
                 df.world.manager_orders << o
             else
                 o.amount_total += amount
                 o.amount_left += amount
+            end
+
+            case order
+            when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
+                o.material_category.wood = true
+                df.cuttrees(:any, amount, true)     # TODO generic work input
+            when :ConstructTable, :ConstructThrone, :ConstructCabinet, :ConstructDoor, :ConstructBlocks  # rock
+                o.mat_type = 0
+            else
+                p [:unknown_manager_material, order]
             end
         end
 
@@ -554,8 +624,9 @@ class DwarfAI
                 (-35..35).all? { |dx|
                     (-22..22).all? { |dy|
                         (-5..1).all? { |dz|
+                            # ensure at least stockpiles are in rock layer for the masons
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or (dz > -2 and t.tilemat == :SOIL))
+                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or (dz > -1 and t.tilemat == :SOIL))
                         }
                     }
                 }
@@ -617,7 +688,7 @@ class DwarfAI
                         cor_x = Corridor.new(fx+dirx*3, cx, fy, fy, fz, fz)
                         cor_x.accesspath = [corridor_center]
                         @corridors << cor_x
-                        cor_x = Corridor.new(cx, cx, fy-1, fy+1, fz, fz)
+                        cor_x = Corridor.new(cx-dirx*3, cx, fy-1, fy+1, fz, fz)
                         cor_x.accesspath = [@corridors.last]
                         @corridors << cor_x
                     end
