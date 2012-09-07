@@ -11,7 +11,7 @@ class DwarfAI
 
         def update
             checkwagons if ai.update_counter % 16 == 4
-            checkidle if ai.update_counter % 6 == 2
+            @cache_nofurnish = {}
 
             @nrdig = @tasks.count { |t| t[0] == :digroom }
             @tasks.delete_if { |t|
@@ -125,7 +125,7 @@ class DwarfAI
         # queue a room for digging when other dig jobs are finished
         # with faster=true, this job is inserted in front of existing similar room jobs
         def wantdig(r, faster=false)
-            return if r.misc[:queue_dig] or r.status != :plan
+            return true if r.misc[:queue_dig] or r.status != :plan
             r.misc[:queue_dig] = true
             if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
                 @tasks.insert(idx, [:wantdig, r])
@@ -135,8 +135,9 @@ class DwarfAI
         end
 
         def digroom(r)
-            return if r.status != :plan
+            return true if r.status != :plan
             r.misc[:queue_dig] = false
+            r.status = :dig
             r.dig
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
@@ -192,6 +193,7 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             build_furniture(f)
+            return if @cache_nofurnish[f[:item]]
             oidx = FurnitureOtheridx[f[:item]] || "#{f[:item]}".upcase.to_sym
             rtti = FurnitureRtti[f[:item]] || "item_#{f[:item]}st".to_sym
             if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
@@ -205,6 +207,8 @@ class DwarfAI
                 end
                 f[:bld_id] = bld.id
                 true
+            else
+                @cache_nofurnish[f[:item]] = true
             end
         end
 
@@ -841,8 +845,6 @@ class DwarfAI
             end
 
             def dig
-                return if @status != :plan
-                @status = :dig
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     # XXX allow holes in the room ? (eg layout->pillar)
                     if t = df.map_tile_at(x, y, z)
