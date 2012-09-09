@@ -214,7 +214,7 @@ class DwarfAI
             if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
                 bldn = FurnitureBuilding[f[:item]] || "#{f[:item]}".capitalize.to_sym
                 bld = df.building_alloc(bldn)
-                df.building_position(bld, [r.x+f[:x], r.y+f[:y], r.z])
+                df.building_position(bld, [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z])
                 df.building_construct(bld, [itm])
                 if f[:makeroom]
                     r.misc[:bld_id] = bld.id
@@ -580,8 +580,8 @@ class DwarfAI
             } }
             r.layout.each { |d|
                 next if d[:item] != :door
-                x = r.x1 + d[:x]
-                y = r.y1 + d[:y]
+                x = r.x1 + d[:x].to_i
+                y = r.y1 + d[:y].to_i
                 set_ext[x, y, 0]
                 # tile in front of the door tile is 4   (TODO door in corner...)
                 set_ext[x+1, y, 4] if x < r.x1
