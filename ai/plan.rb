@@ -11,8 +11,8 @@ class DwarfAI
 
         def update
             checkwagons if ai.update_counter % 16 == 4
+            checkidle if ai.update_counter % 6 == 2
             @cache_nofurnish = {}
-
             @nrdig = @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor }
             @tasks.delete_if { |t|
                 case t[0]
