@@ -180,7 +180,7 @@ class DwarfAI
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
                 end
-	    elsif r.type == :well and r.subtype == 0
+            elsif r.type == :well and r.subtype == 0
                 ensure_workshop(:Masons)
                 ensure_workshop(:Mechanics)
                 ensure_workshop(:Carpenters)
@@ -273,10 +273,11 @@ class DwarfAI
                     df.add_announcement("AI: new workshop #{subtype}", 7, false) { |ann| ann.pos = [ws.x+1, ws.y+1, ws.z] }
                 end
 
-                case subtype
-                when :Masons, :Carpenters
-                    # add minimal stockpile in front of workshop
-                    sptype = {:Masons => :stone, :Carpenters => :wood}[subtype]
+                # add minimal stockpile in front of workshop
+                if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
+                        :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
+                        :Clothiers => :cloth,
+                }[subtype]
                     # XXX hardcoded fort layout
                     y = (ws.layout[0][:y] > 0 ? ws.y2+2 : ws.y1-2)  # check door position
                     sp = Room.new(:stockpile, sptype, ws.x1, ws.x2, y, y, ws.z1)
@@ -407,13 +408,6 @@ class DwarfAI
                     mb.give_to << bld
                     bld.take_from << mb
                 end
-
-                if r.misc[:workshop].type == :farmplot and r.subtype == :food
-                    bld.settings.food.type.plants.clear
-                    bld.settings.food.type.drink_plant.clear
-                    bld.settings.food.type.leaves.clear
-                    bld.settings.food.type.powder_plant.clear
-                end
             else
                 @rooms.each { |o|
                     if o.type == :stockpile and o.subtype == r.subtype and o.misc[:workshop] and sub = o.dfbuilding
@@ -443,36 +437,36 @@ class DwarfAI
                     bld.settings.flags.furniture = true
                     s = bld.settings.furniture
                     s.sand_bags = true
-                    60.times { |i| s.type[i] = true }   # len = 33
+                    60.times { |i| s.type[i] = true }   # 33
                 when :goods
                     bld.settings.flags.goods = true
                     s = bld.settings.finished_goods
-                    60.times { |i| s.type[i] = true }
+                    150.times { |i| s.type[i] = true }  # 112 (== refuse)
                 when :ammo
                     bld.settings.flags.ammo = true
                     s = bld.settings.ammo
-                    60.times { |i| s.type[i] = true }
+                    10.times { |i| s.type[i] = true }   # 3
                 when :weapons
                     bld.settings.flags.weapons = true
                     s = bld.settings.weapons
-                    60.times { |i| s.weapon_type[i] = true }
-                    60.times { |i| s.trapcomp_type[i] = true }
+                    40.times { |i| s.weapon_type[i] = true }    # 24
+                    20.times { |i| s.trapcomp_type[i] = true }  # 5
                     s.usable = true
                     s.unusable = true
                 when :armor
                     bld.settings.flags.armor = true
                     s = bld.settings.armor
-                    60.times { |i| s.body[i] = true }
-                    60.times { |i| s.head[i] = true }
-                    60.times { |i| s.feet[i] = true }
-                    60.times { |i| s.hands[i] = true }
-                    60.times { |i| s.legs[i] = true }
-                    60.times { |i| s.shield[i] = true }
+                    20.times { |i| s.body[i] = true }   # 12
+                    20.times { |i| s.head[i] = true }   # 8
+                    20.times { |i| s.feet[i] = true }   # 6
+                    20.times { |i| s.hands[i] = true }  # 3
+                    20.times { |i| s.legs[i] = true }   # 9
+                    20.times { |i| s.shield[i] = true } # 9
                     s.usable = true
                     s.unusable = true
                 end
                 bld.max_bins = r.w*r.h
-                30.times { |i| s.other_mats[i] = true }    # len = 15
+                30.times { |i| s.other_mats[i] = true }    # 10
                 df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
                 s.quality_core.map! { true }
                 s.quality_total.map! { true }
@@ -482,69 +476,105 @@ class DwarfAI
                 bld.settings.animals.animals_empty_traps = true
                 df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
             when :refuse, :corpses
-                if r.subtype == :corpses
-                    c = true
-                    bld.settings.flags.corpses = true
-                else
-                    bld.settings.flags.refuse = true
-                    bld.settings.refuse.fresh_raw_hide = false
-                    bld.settings.refuse.rotten_raw_hide = true
-                end
+                bld.settings.flags.refuse = true
+                bld.settings.refuse.fresh_raw_hide = false
+                bld.settings.refuse.rotten_raw_hide = true
                 t = bld.settings.refuse.type
-                200.times { |i| t.type[i] = true }
-                df.world.raws.creatures.all.length.times { |i|
-                    t.corpses[i] = c
-                    t.body_parts[i] = !c
-                    t.skulls[i] = !c
-                    t.bones[i] = !c
-                    t.hair[i] = !c
-                    t.shells[i] = !c
-                    t.teeth[i] = !c
-                    t.horns[i] = !c
-                }
+                150.times { |i| t.type[i] = true }  # 112, ItemType enum + other stuff
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
+                    df.world.raws.creatures.all.length.times { |i|
+                        t.corpses[i] = t.body_parts = t.hair[i] = false
+                        t.skulls[i] = t.bones[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
+                    }
+                elsif r.subtype == :corpses
+                    df.world.raws.creatures.all.length.times { |i|
+                        t.corpses[i] = true
+                        t.body_parts[i] = t.skulls[i] = t.bones[i] = t.hair[i] =
+                            t.shells[i] = t.teeth[i] = t.horns[i] = false
+                    }
+                else
+                    df.world.raws.creatures.all.length.times { |i|
+                        t.corpses[i] = false
+                        t.body_parts[i] = t.skulls[i] = t.bones[i] = t.hair[i] =
+                            t.shells[i] = t.teeth[i] = t.horns[i] = true
+                    }
+                end
             when :food
                 bld.settings.flags.food = true
                 bld.settings.food.prepared_meals = true
                 bld.max_barrels = r.w*r.h
                 t = bld.settings.food.type
-                # meat[11000], *fish, egg, drink_animal, cheese*, powder_creature, glob[1800], glob*, liquid*
-                df.world.raws.plants.all.length.times { |i|
-                    t.plants[i] = true
-                    t.drink_plant[i] = true
-                    t.seeds[i] = true
-                    t.leaves[i] = true
-                    t.powder_plant[i] = true
-                }
+                if r.misc[:workshop] and r.misc[:workshop].type == :farmplot and r.subtype == :food
+                    df.world.raws.mat_table.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
+                elsif r.misc[:workshop] and r.misc[:workshop].type == :Farmers
+                    df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
+                    df.world.raws.mat_table.organic_types[:Leaf].length.times { |i| t.leaves[i] = true }
+                elsif r.misc[:workshop] and r.misc[:workshop].type == :Fishery
+                    df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
+                else
+                    df.world.raws.mat_table.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
+                    df.world.raws.mat_table.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
+                    df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
+                    df.world.raws.mat_table.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
+                    df.world.raws.mat_table.organic_types[:Plants        ].length.times { |i| t.plants[i]          = true }
+                    df.world.raws.mat_table.organic_types[:PlantDrink    ].length.times { |i| t.drink_plant[i]     = true }
+                    df.world.raws.mat_table.organic_types[:CreatureDrink ].length.times { |i| t.drink_animal[i]    = true }
+                    df.world.raws.mat_table.organic_types[:PlantCheese   ].length.times { |i| t.cheese_plant[i]    = true }
+                    df.world.raws.mat_table.organic_types[:CreatureCheese].length.times { |i| t.cheese_animal[i]   = true }
+                    df.world.raws.mat_table.organic_types[:Seed          ].length.times { |i| t.seeds[i]           = true }
+                    df.world.raws.mat_table.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
+                    df.world.raws.mat_table.organic_types[:PlantPowder   ].length.times { |i| t.powder_plant[i]    = true }
+                    df.world.raws.mat_table.organic_types[:CreaturePowder].length.times { |i| t.powder_creature[i] = true }
+                    df.world.raws.mat_table.organic_types[:Glob          ].length.times { |i| t.glob[i]            = true }
+                    df.world.raws.mat_table.organic_types[:Paste         ].length.times { |i| t.glob_paste[i]      = true }
+                    df.world.raws.mat_table.organic_types[:Pressed       ].length.times { |i| t.glob_pressed[i]    = true }
+                    df.world.raws.mat_table.organic_types[:PlantLiquid   ].length.times { |i| t.liquid_plant[i]    = true }
+                    df.world.raws.mat_table.organic_types[:CreatureLiquid].length.times { |i| t.liquid_animal[i]   = true }
+                    df.world.raws.mat_table.organic_types[:MiscLiquid    ].length.times { |i| t.liquid_misc[i]     = true }
+                end
             when :cloth
                 bld.settings.flags.cloth = true
                 bld.max_bins = r.w*r.h
-                100.times { |i|
-                    bld.settings.cloth.thread_silk[i] = true    # 53
-                    bld.settings.cloth.cloth_silk[i] = true
-                    next if i > 10
-                    bld.settings.cloth.thread_plant[i] = true   # 2
-                    bld.settings.cloth.cloth_plant[i] = true
-                    bld.settings.cloth.thread_yarn[i] = true    # 4
-                    bld.settings.cloth.cloth_yarn[i] = true
-                    bld.settings.cloth.thread_metal[i] = true   # 1
-                    bld.settings.cloth.cloth_metal[i] = true
-                }
+                t = bld.settings.cloth
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :Loom
+                    df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = true ; t.cloth_silk[i]  = false }
+                    df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = true ; t.cloth_plant[i] = false }
+                    df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = true ; t.cloth_yarn[i]  = false }
+                    df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = false; t.cloth_metal[i] = false }
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Clothiers
+                    df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = false ; t.cloth_silk[i]  = true }
+                    df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = false ; t.cloth_plant[i] = true }
+                    df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = false ; t.cloth_yarn[i]  = true }
+                    df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = false ; t.cloth_metal[i] = true }
+                else
+                    df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = t.cloth_silk[i]  = true }
+                    df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = t.cloth_plant[i] = true }
+                    df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = t.cloth_yarn[i]  = true }
+                    df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = t.cloth_metal[i] = true }
+                end
             when :leather
                 bld.settings.flags.leather = true
                 bld.max_bins = r.w*r.h
-                df.world.raws.creatures.all.length.times { |i| bld.settings.leather[i] = true }
-            when :gems, :bars, :coins
-                case r.subtype
-                when :gems
-                    #bld.settings.flags.gems = true
-                    # set flag only => segfault when viewing settings ingame
-                when :bars
-                    bld.max_bins = r.w*r.h
-                    bld.settings.flags.bars = true
-                when :coins
-                    bld.settings.flags.coins = true
+                df.world.raws.mat_table.organic_types[:Leather].length.times { |i| bld.settings.leather[i] = true }
+            when :gems
+                bld.settings.flags.gems = true
+                t = bld.settings.gems
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :Jewelers
+                    df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = false }
+                    df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = true ; t.cut_mats[i] = false }
+                else
+                    df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = true }
+                    df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = t.cut_mats[i] = true }
                 end
-                df.add_announcement("AI: please manually configure a #{r.subtype} stockpile here") { |ann| ann.pos = [r.x+r.w/2, r.y+r.h/2, r.z] }
+            when :bars
+                bld.settings.flags.bars = true
+                bld.max_bins = r.w*r.h
+                df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = bld.settings.blocks_mats[i] = true }
+                10.times { |i| bld.settings.bars_other_mats[i] = bld.settings.blocks_other_mats[i] = true }
+                # bars_other = 5 (coal/potash/ash/pearlash/soap)     blocks_other = 4 (greenglass/clearglass/crystalglass/wood)
+            when :coins
+                bld.settings.flags.coins = true
+                df.world.raws.inorganics.length.times { |i| bld.settings.coins[i] = true }
             end
         end
 
@@ -622,7 +652,6 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                ensure_stockpile(:food, true)
             end
             true
         end
@@ -861,25 +890,25 @@ class DwarfAI
             dinner.accesspath = [cor]
             @rooms << dinner
 
-	    # well
-	    # in the hole from bedrooms
+            # well
+            # in the hole from bedrooms
             # top room (actual well)
-	    cx = fx-32
-	    well0 = Room.new(:well, 0, cx-4, cx+4, fy-4, fy+4, fz)
+            cx = fx-32
+            well0 = Room.new(:well, 0, cx-4, cx+4, fy-4, fy+4, fz)
             well0.layout << {:item => :door, :x => 9, :y => 3}
             well0.layout << {:item => :door, :x => 9, :y => 5}
             well0.accesspath = [cor]
-	    @rooms << well0
+            @rooms << well0
             # cistern
             cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-2, fz)
             # TODO cuttree / drain poll there
             cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
-	    well1 = Room.new(:well, 1, cx-7, cx+1, fy-1, fy+1, fz-1)
+            well1 = Room.new(:well, 1, cx-7, cx+1, fy-1, fy+1, fz-1)
             well1.accesspath = [cist_corr]
-	    @rooms << well1
-	    well1 = Room.new(:well, 2, cx-7, cx+1, fy-1, fy+1, fz-2)
+            @rooms << well1
+            well1 = Room.new(:well, 2, cx-7, cx+1, fy-1, fy+1, fz-2)
             well1.accesspath = [cist_corr]
-	    @rooms << well1
+            @rooms << well1
 
 
             # farm plots
