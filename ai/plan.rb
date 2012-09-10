@@ -6,7 +6,12 @@ class DwarfAI
             @ai = ai
             @nrdig = 0
             @tasks = []
-            df.cuttrees(:any, 3, true)
+            df.cuttrees(:any, 6, true)
+            add_manager_order(:ConstructTable, 2)
+            add_manager_order(:ConstructThrone, 2)
+            add_manager_order(:ConstructBed, 2)
+            add_manager_order(:ConstructDoor, 2)
+            add_manager_order(:ConstructCabinet, 2)
         end
 
         def debug(str)
@@ -216,11 +221,11 @@ class DwarfAI
             return true if f[:item] == :pillar
             build_furniture(f)
             return if @cache_nofurnish[f[:item]]
-            oidx = FurnitureOtheridx[f[:item]] || "#{f[:item]}".upcase.to_sym
-            rtti = FurnitureRtti[f[:item]] || "item_#{f[:item]}st".to_sym
+            oidx = FurnitureOtheridx[f[:item]] ||= "#{f[:item]}".upcase.to_sym
+            rtti = FurnitureRtti[f[:item]] ||= "item_#{f[:item]}st".to_sym
             if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
-                bldn = FurnitureBuilding[f[:item]] || "#{f[:item]}".capitalize.to_sym
+                bldn = FurnitureBuilding[f[:item]] ||= "#{f[:item]}".capitalize.to_sym
                 bld = df.building_alloc(bldn)
                 df.building_position(bld, [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z])
                 df.building_construct(bld, [itm])
@@ -238,8 +243,8 @@ class DwarfAI
 
         def build_furniture(f)
             return if f[:queue_build]
-            ws = FurnitureWorkshop[f[:item]] || :Masons
-            mod = FurnitureOrder[f[:item]] || "Construct#{f[:item].to_s.capitalize}".to_sym
+            ws = FurnitureWorkshop[f[:item]] ||= :Masons
+            mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
             ensure_workshop(ws)
             add_manager_order(mod)
             f[:queue_build] = true
