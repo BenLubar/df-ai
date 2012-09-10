@@ -9,6 +9,10 @@ class DwarfAI
             df.cuttrees(:any, 3, true)
         end
 
+        def debug(str)
+            puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+        end
+
         def update
             checkwagons if ai.update_counter % 16 == 4
             checkidle if ai.update_counter % 6 == 2
@@ -138,6 +142,7 @@ class DwarfAI
         # with faster=true, this job is inserted in front of existing similar room jobs
         def wantdig(r, faster=false)
             return true if r.misc[:queue_dig] or r.status != :plan
+            debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
             if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
                 @tasks.insert(idx, [:wantdig, r])
@@ -148,6 +153,7 @@ class DwarfAI
 
         def digroom(r)
             return true if r.status != :plan
+            debug "digroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc.delete :queue_dig
             r.status = :dig
             r.dig
@@ -172,6 +178,7 @@ class DwarfAI
         end
 
         def construct_room(r)
+            debug "construct #{@rooms.index(r)} #{r.type} #{r.subtype}"
             case r.type
             when :corridor
                 furnish_room(r)
@@ -212,6 +219,7 @@ class DwarfAI
             oidx = FurnitureOtheridx[f[:item]] || "#{f[:item]}".upcase.to_sym
             rtti = FurnitureRtti[f[:item]] || "item_#{f[:item]}st".to_sym
             if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
+                debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]] || "#{f[:item]}".capitalize.to_sym
                 bld = df.building_alloc(bldn)
                 df.building_position(bld, [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z])
@@ -224,6 +232,7 @@ class DwarfAI
                 true
             else
                 @cache_nofurnish[f[:item]] = true
+                false
             end
         end
 
@@ -564,7 +573,9 @@ class DwarfAI
                 return true
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
+            debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
 
+            df.free(bld.room.extents._getp) if bld.room.extents
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
             bld.room.x = r.x1-1
             bld.room.y = r.y1-1
@@ -608,6 +619,7 @@ class DwarfAI
         end
 
         def add_manager_order(order, amount=1)
+            debug "add_manager #{order} #{amount}"
             if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 4 }
                 o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1,
                         :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
@@ -633,11 +645,11 @@ class DwarfAI
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
             puts 'AI: setting up fort blueprint'
             scan_fort_entrance
-            puts 'AI: blueprint found entrance'
+            debug 'blueprint found entrance'
             scan_fort_body
-            puts 'AI: blueprint found body'
+            debug 'blueprint found body'
             setup_blueprint_rooms
-            puts 'AI: blueprint found rooms'
+            debug 'blueprint found rooms'
         end
 
         # search a valid tile for fortress entrance
@@ -838,12 +850,15 @@ class DwarfAI
 
             # farm plots
             nrfarms = 4
-            cx = fx+6*4+1       # end of workshop corridor
+            cx = fx+4*6-1       # end of workshop corridor (last ws door)
             cy = fy
             cz = @rooms.find { |r| r.type == :workshop }.z1
-            farm_stairs = Corridor.new(cx-1, cx-1, cy, cy, cz, cz)
-            farm_stairs.accesspath = [@corridors.find { |_c| _c.x1 < cx-2 and _c.x2 >= cx-2 and _c.y1 <= cy and _c.y2 >= cy and _c.z1 <= cz and _c.z2 >= cz }]
+            farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
+            ws_cor = @corridors.find { |_c| _c.x1 < cx and _c.x2 >= cx and _c.y1 <= cy and _c.y2 >= cy and _c.z1 <= cz and _c.z2 >= cz }
+            raise "cannot connect farm to workshop corridor" if not ws_cor
+            farm_stairs.accesspath = [ws_cor]
             farm_stairs.layout << {:item => :door, :x => -1}
+            cx += 3
             cz2 = (cz...fort_entrance.z2).find { |z|
                 (-1..(nrfarms*3)).all? { |dx|
                     (-6..6).all? { |dy|
@@ -853,7 +868,7 @@ class DwarfAI
             }
             cz2 ||= cz  # TODO irrigation
             farm_stairs.z2 = cz2
-            cor = Corridor.new(cx-1, cx+1, cy, cy, cz2, cz2)
+            cor = Corridor.new(cx, cx+1, cy, cy, cz2, cz2)
             cor.accesspath = [farm_stairs]
             types = [:food, :cloth]
             [-1, 1].each { |dy|
@@ -929,6 +944,7 @@ class DwarfAI
 
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
+            attr_accessor :owner, :subtype
             attr_accessor :misc
             def x; x1; end
             def y; y1; end
@@ -1000,7 +1016,6 @@ class DwarfAI
         end
 
         class Room < Corridor
-            attr_accessor :owner, :subtype
             def initialize(type, subtype, x1, x2, y1, y2, z)
                 super(x1, x2, y1, y2, z, z)
                 @type = type
