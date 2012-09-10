@@ -26,6 +26,7 @@ class DwarfAI
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
+                    @nrdig += 1 if t[1].w*t[1].h >= 10
                     digroom(t[1]) if @nrdig < 2
                 when :digroom
                     if t[1].dug?
@@ -43,6 +44,8 @@ class DwarfAI
                     try_makeroom(t[1])
                 when :checkconstruct
                     try_endconstruct(t[1])
+                when :makewell
+                    try_makewell(t[1])
                 end
             }
         end
@@ -204,6 +207,8 @@ class DwarfAI
                 @tasks << [:construct_workshop, r]
             when :farmplot
                 construct_farmplot(r)
+            when :well
+                construct_well(r)
             else
                 r.layout.each { |f|
                     @tasks << [:furnish, r, f] if f[:makeroom]
@@ -590,6 +595,36 @@ class DwarfAI
             @tasks << [:setup_farmplot, r]
         end
 
+        def construct_well(r)
+            @rooms.each { |_r| digroom(r) if r.type == :well }
+            @tasks << [:makewell, r]
+        end
+
+        def try_makewell(r)
+            t = df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1)
+            if t.shape_basic == :Open
+                if block = df.world.items.other[:BLOCKS].find { |i|
+                    i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
+                } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
+                    i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+                } and bucket = df.world.items.other[:BUCKET].find { |i|
+                    i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                } and chain = df.world.items.other[:CHAIN].find { |i|
+                    i.kind_of?(DFHack::ItemChainst) and df.building_isitemfree(i)
+                }
+                    bld = df.building_alloc(:Well)
+                    df.building_position(bld, t)
+                    df.building_construct(bld, [block, mecha, bucket, chain])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:makeroom, r]
+                    true
+                end
+            else
+                t.dig(:Channel) if df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1-1).shape_basic != :Wall
+                false
+            end
+        end
+
         def try_setup_farmplot(r)
             bld = r.dfbuilding
             if not bld
@@ -606,7 +641,7 @@ class DwarfAI
                 bld.plant_id[2] = pid
                 bld.plant_id[3] = pid
             else
-                puts "MUU"
+                puts "MUU farm settings"
             end
 
             true
@@ -652,6 +687,8 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
+                ensure_sockpile(:food, true)
+                wantdig(@rooms.find { |r| r.type == :well })
             end
             true
         end
@@ -871,37 +908,54 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
-            cor = Corridor.new(fx-2, fx-26, fy-1, fy+1, fz, fz)
-            cor.accesspath = [corridor_center]
-            @corridors << cor
-
             # dining halls
-            dinner = Room.new(:dininghall, nil, fx-24, fx-16, fy-9, fy-3, fz)
-            dinner.layout << {:item => :door, :x => 6, :y => 7}
-            (1..7).each { |dx|
-                [-1, 1].each { |sy|
-                    dinner.layout << {:item => :table, :x => 8-dx, :y => 3+sy*1, :ignore => true, :users => []}
-                    dinner.layout << {:item => :chair, :x => 8-dx, :y => 3+sy*2, :ignore => true, :users => []}
+            # TODO start with a 1/4 dining hall, expand it afterwards
+            ocx = fx-2
+            old_cor = corridor_center
+
+            [0, 1].each { |ax|
+                cor = Corridor.new(ocx-1, fx-ax*12-6, fy-1, fy+1, fz, fz)
+                cor.accesspath = [old_cor]
+                @corridors << cor
+                ocx = fx-ax*12-6
+                old_cor = cor
+
+                [-1, 1].each { |dy|
+                    dinner = Room.new(:dininghall, nil, fx-ax*12-4-8, fx-ax*12-4, fy+dy*9, fy+dy*3, fz)
+                    dinner.layout << {:item => :door, :x => 6, :y => (dy>0 ? -1 : 7)}
+                    dinner.layout << {:item => :pillar, :x => 2, :y => 3}
+                    dinner.layout << {:item => :pillar, :x => 6, :y => 3}
+                    [4,3,5,2,6,1,7].each { |dx|
+                        [-1, 1].each { |sy|
+                            dinner.layout << {:item => :table, :x => dx, :y => 3+dy*sy*1, :ignore => true, :users => []}
+                            dinner.layout << {:item => :chair, :x => dx, :y => 3+dy*sy*2, :ignore => true, :users => []}
+                        }
+                    }
+                    t0 = dinner.layout.find { |f| f[:item] == :table }
+                    t0.delete :ignore
+                    t0[:makeroom] = true
+                    dinner.accesspath = [cor]
+                    @rooms << dinner
                 }
             }
-            t0 = dinner.layout.find { |f| f[:item] == :table }
-            t0.delete :ignore
-            t0[:makeroom] = true
-            dinner.accesspath = [cor]
-            @rooms << dinner
 
             # well
             # in the hole from bedrooms
             # top room (actual well)
+            cor = Corridor.new(ocx-1, fx-26, fy-1, fy+1, fz, fz)
+            cor.accesspath = [old_cor]
+            @corridors << cor
+            
             cx = fx-32
             well0 = Room.new(:well, 0, cx-4, cx+4, fy-4, fy+4, fz)
             well0.layout << {:item => :door, :x => 9, :y => 3}
             well0.layout << {:item => :door, :x => 9, :y => 5}
             well0.accesspath = [cor]
             @rooms << well0
+
             # cistern
             cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-2, fz)
-            # TODO cuttree / drain poll there
+            # TODO cuttree / drain pool there
             cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
             well1 = Room.new(:well, 1, cx-7, cx+1, fy-1, fy+1, fz-1)
             well1.accesspath = [cist_corr]
@@ -1045,8 +1099,8 @@ class DwarfAI
 
             def dig_mode(x, y, z)
                 wantup = wantdown = false
-                wantup = true if z < z2
-                wantdown = true if z > z1
+                wantup = true if z < z2 and x >= x1 and x <= x2 and y >= y1 and y <= y2
+                wantdown = true if z > z1 and x >= x1 and x <= x2 and y >= y1 and y <= y2
                 wantup = true if accesspath.find { |r|
                     r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z2 > z
                 }
