@@ -170,13 +170,24 @@ class DwarfAI
             if r.type == :workshop
                 case r.subtype
                 when :Dyers
-                    add_manager_order(:MakeBarrel, 1)
-                    add_manager_order(:MakeBucket, 1)
+                    ensure_workshop(:Carpenters)
+                    add_manager_order(:MakeBarrel)
+                    add_manager_order(:MakeBucket)
                 when :Ashery
-                    add_manager_order(:ConstructBlocks, 1)
-                    add_manager_order(:MakeBarrel, 1)
-                    add_manager_order(:MakeBucket, 1)
+                    ensure_workshop(:Masons)
+                    ensure_workshop(:Carpenters)
+                    add_manager_order(:ConstructBlocks)
+                    add_manager_order(:MakeBarrel)
+                    add_manager_order(:MakeBucket)
                 end
+	    elsif r.type == :well and r.subtype == 0
+                ensure_workshop(:Masons)
+                ensure_workshop(:Mechanics)
+                ensure_workshop(:Carpenters)
+                add_manager_order(:ConstructBlocks)
+                add_manager_order(:ConstructMechanisms)
+                add_manager_order(:MakeBucket)
+                #add_manager_order(:MakeChain)
             end
             @nrdig += 1
             true
@@ -638,10 +649,8 @@ class DwarfAI
             when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
                 o.material_category.wood = true
                 df.cuttrees(:any, amount, true)     # TODO generic work input
-            when :ConstructTable, :ConstructThrone, :ConstructCabinet, :ConstructDoor, :ConstructBlocks  # rock
-                o.mat_type = 0
             else
-                p [:unknown_manager_material, order]
+                o.mat_type = 0
             end
         end
 
@@ -833,25 +842,45 @@ class DwarfAI
             corridor_center.accesspath = entr
             @corridors << corridor_center
 
+            cor = Corridor.new(fx-2, fx-26, fy-1, fy+1, fz, fz)
+            cor.accesspath = [corridor_center]
+            @corridors << cor
+
             # dining halls
-            w = 7   # keep parity
-            h = 9
-            dinner = Room.new(:dininghall, nil, fx+4, fx+4+w-1, fy-h/2, fy-h/2+h-1, fz)
-            dinner.layout << {:item => :door, :x => -1, :y => h/2-1}
-            dinner.layout << {:item => :door, :x => -1, :y => h/2+1}
-            (1..h/2-1).each { |dy|
+            dinner = Room.new(:dininghall, nil, fx-24, fx-16, fy-9, fy-3, fz)
+            dinner.layout << {:item => :door, :x => 6, :y => 7}
+            (1..7).each { |dx|
                 [-1, 1].each { |sy|
-                    [-1, 1].each { |dx|
-                        dinner.layout << {:item => :table, :x => w/2+dx, :y => h/2+sy*dy, :ignore => true, :users => []}
-                        dinner.layout << {:item => :chair, :x => w/2+2*dx, :y => h/2+sy*dy, :ignore => true, :users => []}
-                    }
+                    dinner.layout << {:item => :table, :x => 8-dx, :y => 3+sy*1, :ignore => true, :users => []}
+                    dinner.layout << {:item => :chair, :x => 8-dx, :y => 3+sy*2, :ignore => true, :users => []}
                 }
             }
             t0 = dinner.layout.find { |f| f[:item] == :table }
             t0.delete :ignore
             t0[:makeroom] = true
-            dinner.accesspath = [corridor_center]
+            dinner.accesspath = [cor]
             @rooms << dinner
+
+	    # well
+	    # in the hole from bedrooms
+            # top room (actual well)
+	    cx = fx-32
+	    well0 = Room.new(:well, 0, cx-4, cx+4, fy-4, fy+4, fz)
+            well0.layout << {:item => :door, :x => 9, :y => 3}
+            well0.layout << {:item => :door, :x => 9, :y => 5}
+            well0.accesspath = [cor]
+	    @rooms << well0
+            # cistern
+            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-2, fz)
+            # TODO cuttree / drain poll there
+            cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
+	    well1 = Room.new(:well, 1, cx-7, cx+1, fy-1, fy+1, fz-1)
+            well1.accesspath = [cist_corr]
+	    @rooms << well1
+	    well1 = Room.new(:well, 2, cx-7, cx+1, fy-1, fy+1, fz-2)
+            well1.accesspath = [cist_corr]
+	    @rooms << well1
+
 
             # farm plots
             nrfarms = 4
@@ -901,7 +930,6 @@ class DwarfAI
             # infirmary
             # cemetary
             # barracks
-            # well
             # pastures
         end
 
