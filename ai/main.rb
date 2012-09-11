@@ -24,6 +24,8 @@ class DwarfAI
             puts 'AI: uh oh, megabeast...'
         when :D_MIGRANTS_ARRIVAL
             puts 'AI: more minions'
+        when :LIAISON_ARRIVAL, :CARAVAN_ARRIVAL
+            puts 'AI: visitors'
         else
             p announce
             return
@@ -33,7 +35,7 @@ class DwarfAI
 
     def statechanged(st)
         if st == :PAUSED
-            la = df.world.status.announcements.last
+            la = df.world.status.announcements.to_a.reverse.find { |a| df.announcements.flags[a].PAUSE rescue nil }
             if la.year == df.cur_year and la.time == df.cur_year_tick
                 handle_pause_event(la)
             end
