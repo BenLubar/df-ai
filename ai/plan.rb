@@ -596,7 +596,7 @@ class DwarfAI
         end
 
         def construct_well(r)
-            @rooms.each { |_r| digroom(r) if r.type == :well }
+            @rooms.each { |_r| digroom(_r) if _r.type == :well }
             @tasks << [:makewell, r]
         end
 
@@ -687,7 +687,7 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                ensure_sockpile(:food, true)
+                ensure_stockpile(:food, true)
                 wantdig(@rooms.find { |r| r.type == :well })
             end
             true
