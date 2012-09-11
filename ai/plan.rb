@@ -183,6 +183,19 @@ class DwarfAI
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
                 end
+
+                # add minimal stockpile in front of workshop
+                if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
+                        :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
+                        :Clothiers => :cloth, :Still => :food
+                }[r.subtype]
+                    # XXX hardcoded fort layout
+                    y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
+                    sp = Room.new(:stockpile, sptype, r.x1, r.x2, y, y, r.z1)
+                    sp.misc[:workshop] = r
+                    @rooms << sp
+                    digroom(sp)
+                end
             elsif r.type == :well and r.subtype == 0
                 ensure_workshop(:Masons)
                 ensure_workshop(:Mechanics)
@@ -276,19 +289,6 @@ class DwarfAI
                 else
                     digroom(ws)
                     df.add_announcement("AI: new workshop #{subtype}", 7, false) { |ann| ann.pos = [ws.x+1, ws.y+1, ws.z] }
-                end
-
-                # add minimal stockpile in front of workshop
-                if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
-                        :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
-                        :Clothiers => :cloth,
-                }[subtype]
-                    # XXX hardcoded fort layout
-                    y = (ws.layout[0][:y] > 0 ? ws.y2+2 : ws.y1-2)  # check door position
-                    sp = Room.new(:stockpile, sptype, ws.x1, ws.x2, y, y, ws.z1)
-                    sp.misc[:workshop] = ws
-                    @rooms << sp
-                    digroom(sp)
                 end
             end
             ws
@@ -488,7 +488,7 @@ class DwarfAI
                 150.times { |i| t.type[i] = true }  # 112, ItemType enum + other stuff
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
                     df.world.raws.creatures.all.length.times { |i|
-                        t.corpses[i] = t.body_parts = t.hair[i] = false
+                        t.corpses[i] = t.body_parts[i] = t.hair[i] = false
                         t.skulls[i] = t.bones[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
                     }
                 elsif r.subtype == :corpses
@@ -514,6 +514,8 @@ class DwarfAI
                 elsif r.misc[:workshop] and r.misc[:workshop].type == :Farmers
                     df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
                     df.world.raws.mat_table.organic_types[:Leaf].length.times { |i| t.leaves[i] = true }
+                elsif r.misc[:workshop] and r.misc[:workshop].type == :Still
+                    df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
                 elsif r.misc[:workshop] and r.misc[:workshop].type == :Fishery
                     df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
