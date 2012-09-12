@@ -6,6 +6,7 @@ class DwarfAI
             @ai = ai
             @nrdig = 0
             @tasks = []
+            @tasks << [:checkrooms]
             df.cuttrees(:any, 6, true)
             add_manager_order(:ConstructTable, 2)
             add_manager_order(:ConstructThrone, 2)
@@ -19,8 +20,6 @@ class DwarfAI
         end
 
         def update
-            checkwagons if ai.update_counter % 16 == 4
-            checkidle if ai.update_counter % 6 == 2
             @cache_nofurnish = {}
             @nrdig = @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor }
             @tasks.delete_if { |t|
@@ -44,8 +43,14 @@ class DwarfAI
                     try_makeroom(t[1])
                 when :checkconstruct
                     try_endconstruct(t[1])
-                when :makewell
-                    try_makewell(t[1])
+                when :dig_cistern
+                    try_digcistern(t[1])
+                when :checkidle
+                    checkidle
+                when :checkwagons
+                    checkwagons
+                when :checkrooms
+                    checkrooms
                 end
             }
         end
@@ -59,6 +64,7 @@ class DwarfAI
         end
 
         def new_citizen(uid)
+            @tasks << [:checkidle] unless @tasks.find { |t| t[0] == :checkidle }
             getbedroom(uid)
             getdiningroom(uid)
         end
@@ -70,21 +76,76 @@ class DwarfAI
         end
         
         def checkwagons
+            ret = true
             df.world.buildings.other[:WAGON].each { |w|
                 if w.kind_of?(DFHack::BuildingWagonst) and not w.contained_items.find { |i| i.use_mode == 0 }
                     df.building_deconstruct(w)
+                else
+                    ret = false
                 end
             }
+            ret
         end
 
         def checkidle
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             if not digging?
                 freebed = 3
-                if r = @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan }
+                if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
+                    false
+                else
+                    true
+                end
+            end
+        end
+
+        def checkrooms
+            @checkroom_idx ||= 0
+            # approx 300 rooms + update is called every 4s at 30fps -> should check everything every 5mn
+            ncheck = 4
+
+            @rooms[@checkroom_idx % @rooms.length, ncheck].each { |r|
+                checkroom(r)
+            }
+
+            @corridors[@checkroom_idx % @corridors.length, ncheck].each { |r|
+                checkroom(r)
+            }
+
+            @checkroom_idx += ncheck
+            @checkroom_idx = 0 if @checkroom_idx >= @rooms.length and @checkroom_idx >= @corridors.length
+            false
+        end
+
+        # ensure room was not tantrumed etc
+        def checkroom(r)
+            case r.status
+            when :plan
+                # moot
+            when :dig
+                # designation cancelled: damp stone etc
+                r.dig
+            when :dug, :finished
+                # cavein / tree
+                r.dig
+                # tantrumed furniture
+                r.layout.each { |f|
+                    next if f[:ignore]
+                    if f[:bld_id] and not df.building_find(f[:bld_id])
+                        df.add_announcement("AI: fix furniture #{f[:item]} for #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z+f[:z].to_i] }
+                        f.delete :bld_id
+                        f.delete :queue_build
+                        @tasks << [:furnish, r, f]
+                    end
+                }
+                # tantrumed building
+                if r.misc[:bld_id] and not r.dfbuilding
+                    r.misc.delete :bld_id
+                    construct_room(r)
                 end
             end
         end
@@ -196,7 +257,7 @@ class DwarfAI
                     @rooms << sp
                     digroom(sp)
                 end
-            elsif r.type == :well and r.subtype == 0
+            elsif r.type == :well and r.subtype == :well
                 ensure_workshop(:Masons)
                 ensure_workshop(:Mechanics)
                 ensure_workshop(:Carpenters)
@@ -221,7 +282,11 @@ class DwarfAI
             when :farmplot
                 construct_farmplot(r)
             when :well
-                construct_well(r)
+                if r.subtype == :well
+                    furnish_room(r)
+                else
+                    @tasks << [:dig_cistern, r]
+                end
             else
                 r.layout.each { |f|
                     @tasks << [:furnish, r, f] if f[:makeroom]
@@ -248,6 +313,7 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             return true if f[:item] == :pillar
+            return try_furnish_well(r, f) if f[:item] == :well
             build_furniture(f)
             return if @cache_nofurnish[f[:item]]
             oidx = FurnitureOtheridx[f[:item]] ||= "#{f[:item]}".upcase.to_sym
@@ -267,6 +333,27 @@ class DwarfAI
             else
                 @cache_nofurnish[f[:item]] = true
                 false
+            end
+        end
+
+        def try_furnish_well(r, f)
+            # XXX build furniture?
+            if block = df.world.items.other[:BLOCKS].find { |i|
+                i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
+            } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
+                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+            } and bucket = df.world.items.other[:BUCKET].find { |i|
+                i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+            } and chain = df.world.items.other[:CHAIN].find { |i|
+                i.kind_of?(DFHack::ItemChainst) and df.building_isitemfree(i)
+            }
+                bld = df.building_alloc(:Well)
+                t = df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1)
+                df.building_position(bld, t)
+                df.building_construct(bld, [block, mecha, bucket, chain])
+                r.misc[:bld_id] = bld.id
+                @tasks << [:makeroom, r]
+                true
             end
         end
 
@@ -408,15 +495,17 @@ class DwarfAI
                 add_manager_order(:MakeBarrel, 8)
             end
 
-            if r.misc[:workshop]
+            if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
-                if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] } and mb = main.dfbuilding
+                if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
+                    bld, mb = mb, bld if r.misc[:secondary]
                     mb.give_to << bld
                     bld.take_from << mb
                 end
             else
                 @rooms.each { |o|
-                    if o.type == :stockpile and o.subtype == r.subtype and o.misc[:workshop] and sub = o.dfbuilding
+                    if o.type == :stockpile and o.subtype == r.subtype and (o.misc[:workshop] or o.misc[:secondary]) and sub = o.dfbuilding
+                        bld, sub = sub, bld if o.misc[:secondary]
                         bld.give_to << sub
                         sub.take_from << bld
                     end
@@ -599,73 +688,61 @@ class DwarfAI
         end
 
         def construct_well(r)
-            @rooms.each { |_r| digroom(_r) if _r.type == :well }
-            @tasks << [:makewell, r]
         end
 
-        def try_makewell(r)
-            case r.subtype
-            when :well
-                t = df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1)
-                if t.shape_basic == :Open
-                    if block = df.world.items.other[:BLOCKS].find { |i|
-                        i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
-                    } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
-                        i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
-                    } and bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
-                    } and chain = df.world.items.other[:CHAIN].find { |i|
-                        i.kind_of?(DFHack::ItemChainst) and df.building_isitemfree(i)
-                    }
-                        bld = df.building_alloc(:Well)
-                        df.building_position(bld, t)
-                        df.building_construct(bld, [block, mecha, bucket, chain])
-                        r.misc[:bld_id] = bld.id
-                        @tasks << [:makeroom, r]
-                        true
-                    end
-                else
-                    t.dig(:Channel) if df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1-1).shape_basic != :Wall
-                    false
-                end
-            when :cistern
-                cnt = 0
+        def try_digcistern(r)
+            ((r.x1-1)..(r.x2+1)).each { |x|
+                ((r.y1-1)..(r.y2+1)).each { |y|
+                    z = r.z1
+                    next unless t = df.map_tile_at(x, y, z)
+                }
+            }
+
+            issmooth = lambda { |t|
+                next true if t.shape_basic == :Open
+                next true if t.tilemat == :SOIL
+                next true if t.shape_basic == :Wall and t.caption =~ /pillar|smooth/i
+            }
+
+            cnt = 0
+            acc_y = r.accesspath[0].y   # XXX hardcoded layout..
+            (r.z1..r.z2).each { |z|
                 ((r.x1-1)..(r.x2+1)).each { |x|
                     ((r.y1-1)..(r.y2+1)).each { |y|
-                        (r.z1..r.z2).each { |z|
-                            next unless t = df.map_tile_at(x, y, z)
-                            case t.shape_basic
-                            when :Wall
-                                t.dig :Smooth
-                            when :Floor
-                                next unless nt = df.map_tile_at(x+1, y, z)
-                                if (nt.shape_basic == :Wall and (nt.caption =~ /pillar|smooth/i or nt.tilemat == :SOIL)) or
-                                        nt.shape_basic == :Open
-                                    next unless pt = df.map_tile_at(x-1, y, z)
-                                    if pt.shape_basic == :Floor
-                                        t.dig :Channel
-                                    end
-                                    # TODO last column, dig from right, ...
-                                end
-                            when :Open
-                                cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
+                        next unless t = df.map_tile_at(x, y, z)
+                        case t.shape_basic
+                        when :Wall
+                            t.dig :Smooth
+                        when :Floor
+                            if z == r.z1
+                                t.dig :Smooth if t.shape_basic == :Wall or t.shape_basic == :Floor
+                                next
                             end
-                        }
+
+                            next unless nt20 = df.map_tile_at(x+1, y-1, z)
+                            next unless nt21 = df.map_tile_at(x+1, y, z)
+                            next unless nt22 = df.map_tile_at(x+1, y+1, z)
+                            if issmooth[nt20] and issmooth[nt21] and issmooth[nt22]
+                                next unless nt01 = df.map_tile_at(x-1, y, z)
+                                if nt01.shape_basic == :Floor
+                                    t.dig :Channel
+                                else
+                                    next unless nt10 = df.map_tile_at(x, y-1, z)
+                                    next unless nt12 = df.map_tile_at(x, y+1, z)
+                                    t.dig :Channel if (y > acc_y ? issmooth[nt12] : issmooth[nt10])
+                                end
+                            end
+                        when :Open
+                            cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
+                        end
                     }
                 }
-                cnt == (r.w-1)*r.h*r.h_z    # TODO remove that -1
-            when :cisternfloor
-                ((r.x1-1)..(r.x2+1)).each { |x|
-                    ((r.y1-1)..(r.y2+1)).each { |y|
-                        (r.z1..r.z2).each { |z|
-                            next unless t = df.map_tile_at(x, y, z)
-                            t.dig :Smooth if t.shape_basic == :Wall or t.shape_basic == :Floor
-                        }
-                    }
-                }
-                # TODO remove items, fill with water
-                true
-            end
+            }
+
+            dug = (cnt == r.w*r.h*(r.h_z-1))
+            # TODO remove items, fill with water
+
+            dug
         end
 
         def try_setup_farmplot(r)
@@ -730,7 +807,7 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                wantdig(@rooms.find { |r| r.type == :well })
+                @rooms.each { |r| wantdig(r) if r.type == :well }
             end
             true
         end
@@ -851,10 +928,10 @@ class DwarfAI
             setup_blueprint_workshops(fx, fy, fz, [@fort_entrance])
             
             fz = @fort_entrance.z1 -= 1
-            setup_blueprint_stockpiles(fx, fy, fz, [@fort_entrance])
+            setup_blueprint_utilities(fx, fy, fz, [@fort_entrance])
             
             fz = @fort_entrance.z1 -= 1
-            setup_blueprint_utilities(fx, fy, fz, [@fort_entrance])
+            setup_blueprint_stockpiles(fx, fy, fz, [@fort_entrance])
             
             2.times {
                 fz = @fort_entrance.z1 -= 1
@@ -934,13 +1011,17 @@ class DwarfAI
                     prev_corx = cor_x
                     ocx = cx+2*dirx
 
-                    @rooms << Room.new(:stockpile, types.shift, cx-3, cx+3, fy-11, fy-3, fz)
-                    @rooms << Room.new(:stockpile, types.shift, cx-3, cx+3, fy+3, fy+11, fz)
+                    t0, t1 = types.shift, types.shift
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-3, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+3, fy+5, fz)
                     @rooms[-2, 2].each { |r|
                         r.accesspath = [cor_x]
-                        r.layout << {:item => :door, :x => 2, :y => 4-5*(r.y<=>fy)}
-                        r.layout << {:item => :door, :x => 4, :y => 4-5*(r.y<=>fy)}
+                        r.layout << {:item => :door, :x => 2, :y => 1-2*(r.y<=>fy)}
+                        r.layout << {:item => :door, :x => 4, :y => 1-2*(r.y<=>fy)}
                     }
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-11, fy-5, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
+                    @rooms[-2, 2].each { |r| r.misc[:secondary] = true }
                 }
             }
         end
@@ -990,21 +1071,22 @@ class DwarfAI
             
             cx = fx-32
             well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
+            well.layout << {:item => :well, :x => 4, :y => 4}
             well.layout << {:item => :door, :x => 9, :y => 3}
             well.layout << {:item => :door, :x => 9, :y => 5}
             well.accesspath = [cor]
             @rooms << well
 
             # cistern
-            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-2, fz)
+            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-3, fz)
             # TODO cuttree / drain pool there
+            # TODO path to water source
             cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
-            well = Room.new(:well, :cistern, cx-7, cx+1, fy-1, fy+1, fz-1)
-            well.accesspath = [cist_corr]
-            @rooms << well
-            well = Room.new(:well, :cisternfloor, cx-7, cx+1, fy-1, fy+1, fz-2)
-            well.accesspath = [cist_corr]
-            @rooms << well
+
+            cist = Room.new(:well, :cistern, cx-7, cx+1, fy-1, fy+1, fz-1)
+            cist.z1 -= 2
+            cist.accesspath = [cist_corr]
+            @rooms << cist
 
 
             # farm plots
@@ -1127,22 +1209,26 @@ class DwarfAI
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
                         dm = dig_mode(t.x, t.y, t.z)
-                        t.dig dm if dm == :DownStair or t.shape == :WALL
+                        t.dig dm if dm == :DownStair or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|
                     if t = df.map_tile_at(x1+d[:x].to_i, y1+d[:y].to_i, z1+d[:z].to_i)
                         dm = dig_mode(t.x, t.y, t.z)
-			if d[:item] == :pillar
+                        case d[:item]
+                        when :pillar
                             t.dig :Smooth
+                        when :well
+                            t.dig :Channel if t.shape_basic != :Open
                         else
-                            t.dig dm if dm == :DownStair or t.shape == :WALL
+                            t.dig dm if dm == :DownStair or t.shape == :WALL or t.shape == :TREE
                         end
                     end
                 }
             end
 
             def dig_mode(x, y, z)
+                return :Default if @type != :corridor
                 wantup = wantdown = false
                 wantup = true if z < z2 and x >= x1 and x <= x2 and y >= y1 and y <= y2
                 wantdown = true if z > z1 and x >= x1 and x <= x2 and y >= y1 and y <= y2
