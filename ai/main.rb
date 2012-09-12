@@ -34,11 +34,11 @@ class DwarfAI
     end
 
     def statechanged(st)
-        if st == :PAUSED
-            la = df.world.status.announcements.to_a.reverse.find { |a| df.announcements.flags[a].PAUSE rescue nil }
-            if la.year == df.cur_year and la.time == df.cur_year_tick
-                handle_pause_event(la)
-            end
+        if st == :PAUSED and
+                la = df.world.status.announcements.to_a.reverse.find { |a|
+                    df.announcements.flags[a.type].PAUSE rescue nil
+                } and la.year == df.cur_year and la.time == df.cur_year_tick
+            handle_pause_event(la)
         end
     end
 
