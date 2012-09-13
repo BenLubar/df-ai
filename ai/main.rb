@@ -9,7 +9,7 @@ class DwarfAI
         @pop = Population.new(self)
         @plan = Plan.new(self)
 
-        @plan.setup_blueprint
+        @plan.startup
     end
 
     def update
@@ -50,5 +50,9 @@ class DwarfAI
 
     def onupdate_unregister
         df.onupdate_unregister(@onupdate_handle)
+    end
+
+    def status
+        ["Plan: #{plan.status}", "Pop: #{pop.status}"]
     end
 end

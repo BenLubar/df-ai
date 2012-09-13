@@ -15,5 +15,9 @@ when 'patch', 'update'
     Dir['hack/scripts/ai/*.rb'].each { |f| load f }
 
 else
-    $dwarfAI.info_status
+    if $dwarfAI
+        puts $dwarfAI.status
+    else
+        puts "AI not started"
+    end
 end

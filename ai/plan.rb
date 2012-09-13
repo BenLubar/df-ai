@@ -7,16 +7,24 @@ class DwarfAI
             @nrdig = 0
             @tasks = []
             @tasks << [:checkrooms]
-            df.cuttrees(:any, 6, true)
+            @rooms = []
+            @corridors = []
+        end
+
+        def debug(str)
+            puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+        end
+
+        def startup
+	    setup_blueprint
             add_manager_order(:ConstructTable, 2)
             add_manager_order(:ConstructThrone, 2)
             add_manager_order(:ConstructBed, 2)
             add_manager_order(:ConstructDoor, 2)
             add_manager_order(:ConstructCabinet, 2)
-        end
-
-        def debug(str)
-            puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+            ensure_workshop(:Masons)
+            ensure_workshop(:Carpenters)
+            df.cuttrees(:any, 6, true)
         end
 
         def update
@@ -47,8 +55,6 @@ class DwarfAI
                     try_digcistern(t[1])
                 when :checkidle
                     checkidle
-                when :checkwagons
-                    checkwagons
                 when :checkrooms
                     checkrooms
                 end
@@ -56,7 +62,7 @@ class DwarfAI
         end
 
         def digging?
-            @tasks.find { |t| t[0] == :wantdig or t[0] == :digroom }
+            @tasks.find { |t| (t[0] == :wantdig or t[0] == :digroom) and t[1].type != :corridor }
         end
 
         def idle?
@@ -65,29 +71,23 @@ class DwarfAI
 
         def new_citizen(uid)
             @tasks << [:checkidle] unless @tasks.find { |t| t[0] == :checkidle }
-            getbedroom(uid)
             getdiningroom(uid)
+            getbedroom(uid)
         end
 
         def del_citizen(uid)
-            freebedroom(uid)
             freediningroom(uid)
+            freebedroom(uid)
             # TODO coffin/memorialslab for dead citizen
         end
         
-        def checkwagons
-            ret = true
+        def checkidle
             df.world.buildings.other[:WAGON].each { |w|
                 if w.kind_of?(DFHack::BuildingWagonst) and not w.contained_items.find { |i| i.use_mode == 0 }
                     df.building_deconstruct(w)
-                else
-                    ret = false
                 end
             }
-            ret
-        end
 
-        def checkidle
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             if not digging?
                 freebed = 3
@@ -136,7 +136,7 @@ class DwarfAI
                 r.layout.each { |f|
                     next if f[:ignore]
                     if f[:bld_id] and not df.building_find(f[:bld_id])
-                        df.add_announcement("AI: fix furniture #{f[:item]} for #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z+f[:z].to_i] }
+                        df.add_announcement("AI: fix furniture #{f[:item]} in #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = [r.x+f[:x].to_i, r.y+f[:y].to_i, r.z+f[:z].to_i] }
                         f.delete :bld_id
                         f.delete :queue_build
                         @tasks << [:furnish, r, f]
@@ -144,6 +144,7 @@ class DwarfAI
                 }
                 # tantrumed building
                 if r.misc[:bld_id] and not r.dfbuilding
+                    df.add_announcement("AI: rebuild #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
                     r.misc.delete :bld_id
                     construct_room(r)
                 end
@@ -192,7 +193,15 @@ class DwarfAI
         def freediningroom(id)
             @rooms.each { |r|
                 if r.type == :dininghall
-                    r.layout.each { |f| f[:users].delete(id) if f[:users] }
+                    r.layout.each { |f|
+                        next unless f[:users]
+                        f[:users].delete(id)
+                        if f[:users].empty? and f[:bld_id] and bld = df.building_find(f[:bld_id])
+                            df.building_deconstruct(bld)
+                            f.delete :bld_id
+                            f[:ignore] = true
+                        end
+                    }
                 elsif r.type == :farmplot
                     r.misc[:users].delete id
                 end
@@ -234,12 +243,9 @@ class DwarfAI
             if r.type == :workshop
                 case r.subtype
                 when :Dyers
-                    ensure_workshop(:Carpenters)
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
                 when :Ashery
-                    ensure_workshop(:Masons)
-                    ensure_workshop(:Carpenters)
                     add_manager_order(:ConstructBlocks)
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
@@ -257,14 +263,6 @@ class DwarfAI
                     @rooms << sp
                     digroom(sp)
                 end
-            elsif r.type == :well and r.subtype == :well
-                ensure_workshop(:Masons)
-                ensure_workshop(:Mechanics)
-                ensure_workshop(:Carpenters)
-                add_manager_order(:ConstructBlocks)
-                add_manager_order(:ConstructMechanisms)
-                add_manager_order(:MakeBucket)
-                #add_manager_order(:MakeChain)
             end
             @nrdig += 1
             true
@@ -281,12 +279,8 @@ class DwarfAI
                 @tasks << [:construct_workshop, r]
             when :farmplot
                 construct_farmplot(r)
-            when :well
-                if r.subtype == :well
-                    furnish_room(r)
-                else
-                    @tasks << [:dig_cistern, r]
-                end
+            when :cistern
+                @tasks << [:dig_cistern, r]
             else
                 r.layout.each { |f|
                     @tasks << [:furnish, r, f] if f[:makeroom]
@@ -313,8 +307,8 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             return true if f[:item] == :pillar
-            return try_furnish_well(r, f) if f[:item] == :well
             build_furniture(f)
+            return try_furnish_well(r, f) if f[:item] == :well
             return if @cache_nofurnish[f[:item]]
             oidx = FurnitureOtheridx[f[:item]] ||= "#{f[:item]}".upcase.to_sym
             rtti = FurnitureRtti[f[:item]] ||= "item_#{f[:item]}st".to_sym
@@ -337,7 +331,6 @@ class DwarfAI
         end
 
         def try_furnish_well(r, f)
-            # XXX build furniture?
             if block = df.world.items.other[:BLOCKS].find { |i|
                 i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
             } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
@@ -351,7 +344,7 @@ class DwarfAI
                 t = df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1)
                 df.building_position(bld, t)
                 df.building_construct(bld, [block, mecha, bucket, chain])
-                r.misc[:bld_id] = bld.id
+                r.misc[:bld_id] = f[:bld_id] = bld.id
                 @tasks << [:makeroom, r]
                 true
             end
@@ -359,10 +352,18 @@ class DwarfAI
 
         def build_furniture(f)
             return if f[:queue_build]
-            ws = FurnitureWorkshop[f[:item]] ||= :Masons
-            mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
-            ensure_workshop(ws)
-            add_manager_order(mod)
+            if f[:item] == :well
+                ensure_workshop(:Mechanics)
+                add_manager_order(:ConstructBlocks)
+                add_manager_order(:ConstructMechanisms)
+                add_manager_order(:MakeBucket)
+                #add_manager_order(:MakeChain)
+            else
+                ws = FurnitureWorkshop[f[:item]] ||= :Masons
+                mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
+                ensure_workshop(ws)
+                add_manager_order(mod)
+            end
             f[:queue_build] = true
         end
 
@@ -508,6 +509,7 @@ class DwarfAI
                         bld, sub = sub, bld if o.misc[:secondary]
                         bld.give_to << sub
                         sub.take_from << bld
+                        bld, sub = sub, bld if o.misc[:secondary]
                     end
                 }
             end
@@ -687,9 +689,6 @@ class DwarfAI
             @tasks << [:setup_farmplot, r]
         end
 
-        def construct_well(r)
-        end
-
         def try_digcistern(r)
             ((r.x1-1)..(r.x2+1)).each { |x|
                 ((r.y1-1)..(r.y2+1)).each { |y|
@@ -807,7 +806,30 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                @rooms.each { |r| wantdig(r) if r.type == :well }
+                @rooms.each { |_r| wantdig(_r) if _r.type == :well or _r.type == :cistern }
+
+                if r.misc[:temporary]
+                    # if we set up the temporary hall, queue the real one
+                    if p = @rooms.find { |_r| _r.type == :dininghall and not _r.misc[:temporary] }
+                        wantdig p
+                    end
+
+                elsif t = @rooms.find { |_r| _r.type == :dininghall and _r.misc[:temporary] }
+                    # if we dug a real hall, get rid of the temporary one
+                    t.layout.each { |f|
+                        if of = r.layout.find { |_f| _f[:item] == f[:item] and _f[:ignore] }
+                            of[:users] = f[:users]
+                            of[:queue_build] = f[:queue_build]
+                            of.delete :ignore unless f[:ignore]
+                            if f[:bld_id] and bld = df.building_find(f[:bld_id])
+                                df.building_deconstruct(bld)
+                            end
+                        end
+                    }
+                    @rooms.delete t
+                    furnish_room(r)
+                end
+
             end
             true
         end
@@ -915,9 +937,6 @@ class DwarfAI
 
         # assign rooms in the space found by scan_fort_*
         def setup_blueprint_rooms
-            @rooms = []
-            @corridors = []
-
             # hardcoded layout
             @corridors << @fort_entrance
 
@@ -1032,9 +1051,19 @@ class DwarfAI
             @corridors << corridor_center
 
             # dining halls
-            # TODO start with a 1/4 dining hall, expand it afterwards
             ocx = fx-2
             old_cor = corridor_center
+
+            # temporary dininghall, for fort start
+            tmp = Room.new(:dininghall, nil, fx-3, fx-2, fy-1, fy+1, fz)
+            tmp.misc[:temporary] = true
+            [0, 1, 2].each { |dy|
+                tmp.layout << {:item => :table, :x => 0, :y => dy, :users => []}
+                tmp.layout << {:item => :chair, :x => 1, :y => dy, :users => []}
+            }
+            tmp.layout[0][:makeroom] = true
+            tmp.accesspath = [old_cor]
+            @rooms << tmp
 
             [0, 1].each { |ax|
                 cor = Corridor.new(ocx-1, fx-ax*12-6, fy-1, fy+1, fz, fz)
@@ -1071,7 +1100,7 @@ class DwarfAI
             
             cx = fx-32
             well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
-            well.layout << {:item => :well, :x => 4, :y => 4}
+            well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
             well.layout << {:item => :door, :x => 9, :y => 3}
             well.layout << {:item => :door, :x => 9, :y => 5}
             well.accesspath = [cor]
@@ -1083,7 +1112,7 @@ class DwarfAI
             # TODO path to water source
             cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
 
-            cist = Room.new(:well, :cistern, cx-7, cx+1, fy-1, fy+1, fz-1)
+            cist = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
             cist.z1 -= 2
             cist.accesspath = [cist_corr]
             @rooms << cist
@@ -1182,6 +1211,10 @@ class DwarfAI
             }
         end
 
+        def status
+            @tasks.inject(Hash.new(0)) { |h, t| h.update t[0] => h[t[0]]+1 }.inspect
+        end
+
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
             attr_accessor :owner, :subtype
@@ -1209,7 +1242,7 @@ class DwarfAI
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
                         dm = dig_mode(t.x, t.y, t.z)
-                        t.dig dm if dm == :DownStair or t.shape == :WALL or t.shape == :TREE
+                        t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|
@@ -1217,11 +1250,12 @@ class DwarfAI
                         dm = dig_mode(t.x, t.y, t.z)
                         case d[:item]
                         when :pillar
+                            t.dig :No
                             t.dig :Smooth
                         when :well
                             t.dig :Channel if t.shape_basic != :Open
                         else
-                            t.dig dm if dm == :DownStair or t.shape == :WALL or t.shape == :TREE
+                            t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                         end
                     end
                 }

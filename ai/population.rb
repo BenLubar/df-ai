@@ -108,5 +108,9 @@ class DwarfAI
                 df.add_announcement("AI: new bookkeeper: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
             end
         end
+
+        def status
+            "#{@citizen.length} citizen"
+        end
     end
 end
