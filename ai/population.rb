@@ -85,7 +85,7 @@ class DwarfAI
                 tg.hist_figure_tg.entity_links << pos
                 assign.histfig = tg.hist_figure_id
 
-                ent.unknown2.unk6[4] << assign      # XXX wtf?
+                ent.assignments_by_type[:MANAGE_PRODUCTION] << assign
 
                 df.add_announcement("AI: new manager: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
             end
@@ -102,7 +102,7 @@ class DwarfAI
                 tg.hist_figure_tg.entity_links << pos
                 assign.histfig = tg.hist_figure_id
 
-                ent.unknown2.unk6[6] << assign      # XXX wtf?
+                ent.assignments_by_type[:ACCOUNTING] << assign
 
                 df.ui.bookkeeper_settings = 4
                 df.add_announcement("AI: new bookkeeper: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
