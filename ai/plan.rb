@@ -16,7 +16,7 @@ class DwarfAI
         end
 
         def startup
-	    setup_blueprint
+            setup_blueprint
             add_manager_order(:ConstructTable, 2)
             add_manager_order(:ConstructThrone, 2)
             add_manager_order(:ConstructBed, 2)
@@ -817,9 +817,9 @@ class DwarfAI
                 elsif t = @rooms.find { |_r| _r.type == :dininghall and _r.misc[:temporary] }
                     # if we dug a real hall, get rid of the temporary one
                     t.layout.each { |f|
-                        if of = r.layout.find { |_f| _f[:item] == f[:item] and _f[:ignore] }
+                        if of = r.layout.find { |_f| _f[:item] == f[:item] and _f[:users] == [] }
                             of[:users] = f[:users]
-                            of[:queue_build] = f[:queue_build]
+                            of[:queue_build] = true if f[:queue_build]
                             of.delete :ignore unless f[:ignore]
                             if f[:bld_id] and bld = df.building_find(f[:bld_id])
                                 df.building_deconstruct(bld)
@@ -1018,6 +1018,7 @@ class DwarfAI
             types += [:food,:ammo, :cloth,:leather, :bars,:armor, :animals,:coins]
 
             # TODO side stairs to workshop level ?
+            tmp = []
             [-1, 1].each { |dirx|
                 prev_corx = corridor_center
                 ocx = fx + dirx*3
@@ -1038,11 +1039,15 @@ class DwarfAI
                         r.layout << {:item => :door, :x => 2, :y => 1-2*(r.y<=>fy)}
                         r.layout << {:item => :door, :x => 4, :y => 1-2*(r.y<=>fy)}
                     }
-                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-11, fy-5, fz)
-                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-11, fy-6, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+6, fy+11, fz)
                     @rooms[-2, 2].each { |r| r.misc[:secondary] = true }
+                    tmp << Room.new(:stockpile, t0, cx-3, cx+3, fy-18, fy-12, fz)
+                    tmp << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+18, fz)
                 }
             }
+            # tweak the order of 2nd stockpiles in @rooms
+            tmp.each { |r| r.misc[:secondary] = true ; @rooms << r }
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
