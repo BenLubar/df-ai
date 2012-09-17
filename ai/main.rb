@@ -26,6 +26,7 @@ class DwarfAI
             puts 'AI: more minions'
         when :LIAISON_ARRIVAL, :CARAVAN_ARRIVAL
             puts 'AI: visitors'
+        when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
         else
             p announce
             return
