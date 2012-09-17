@@ -40,6 +40,11 @@ class DwarfAI
                     df.announcements.flags[a.type].PAUSE rescue nil
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
+        else
+            cvname = df.curview._raw_rtti_classname
+            @seen_cvname ||= { 'viewscreen_dwarfmodest' => true }
+            puts "AI: paused, curview=#{df.curview._raw_rtti_classname}" if not @seen_cvname[cvname]
+            @seen_cvname[cvname] = true
         end
     end
 

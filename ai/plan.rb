@@ -47,8 +47,8 @@ class DwarfAI
                     try_setup_farmplot(t[1])
                 when :furnish
                     try_furnish(t[1], t[2])
-                when :makeroom
-                    try_makeroom(t[1])
+                when :checkfurnish
+                    try_endfurnish(t[1], t[2])
                 when :checkconstruct
                     try_endconstruct(t[1])
                 when :dig_cistern
@@ -78,7 +78,7 @@ class DwarfAI
         def del_citizen(uid)
             freediningroom(uid)
             freebedroom(uid)
-            # TODO coffin/memorialslab for dead citizen
+            getcoffin(uid) if u = df.unit_find(uid) and u.flags1.dead
         end
         
         def checkidle
@@ -184,8 +184,21 @@ class DwarfAI
             end
         end
 
+        def getcoffin(id)
+            if r = @rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].length < 1 } }
+                wantdig(r)
+                coffin = r.layout.find { |f| f[:item] == :coffin and f[:users].length < 1 }
+                coffin.delete :ignore
+                coffin[:users] << id
+                if r.status == :finished
+                    furnish_room(r)
+                end
+            end
+        end
+
         def freebedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and _r.owner == id }
+                df.add_announcement("AI: freed bedroom of #{df.unit_find(id).name.to_s(false)}", 7, false) { |ann| ann.pos = [r.x+1, r.y+1, r.z] }
                 set_owner(r, nil)
             end
         end
@@ -281,6 +294,8 @@ class DwarfAI
                 construct_farmplot(r)
             when :cistern
                 @tasks << [:dig_cistern, r]
+            when :cemetary, :infirmary
+                furnish_room(r)
             else
                 r.layout.each { |f|
                     @tasks << [:furnish, r, f] if f[:makeroom]
@@ -293,14 +308,15 @@ class DwarfAI
             r.status = :finished
         end
 
-        FurnitureOtheridx = {}  # :moo => :MOO
         FurnitureRtti = {}      # :moo => :item_moost
         FurnitureBuilding = {}  # :moo => :Moo
         FurnitureWorkshop = {   # :moo => :Masons
             :bed => :Carpenters,
+            :tractionbench => :Mechanics,
         }
         FurnitureOrder = {      # :moo => :ConstructMoo
             :chair => :ConstructThrone,
+            :tractionbench => :ConstructTractionBench,
         }
 
         def try_furnish(r, f)
@@ -310,7 +326,8 @@ class DwarfAI
             build_furniture(f)
             return try_furnish_well(r, f) if f[:item] == :well
             return if @cache_nofurnish[f[:item]]
-            oidx = FurnitureOtheridx[f[:item]] ||= "#{f[:item]}".upcase.to_sym
+            mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
+            oidx = DFHack::JobType::Item[mod]
             rtti = FurnitureRtti[f[:item]] ||= "item_#{f[:item]}st".to_sym
             if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
@@ -320,9 +337,9 @@ class DwarfAI
                 df.building_construct(bld, [itm])
                 if f[:makeroom]
                     r.misc[:bld_id] = bld.id
-                    @tasks << [:makeroom, r]
                 end
                 f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
                 true
             else
                 @cache_nofurnish[f[:item]] = true
@@ -345,7 +362,7 @@ class DwarfAI
                 df.building_position(bld, t)
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
-                @tasks << [:makeroom, r]
+                @tasks << [:checkfurnish, r, f]
                 true
             end
         end
@@ -766,13 +783,22 @@ class DwarfAI
             true
         end
 
-        def try_makeroom(r)
-            bld = r.dfbuilding
+        def try_endfurnish(r, f)
+            bld = df.building_find(f[:bld_id])
             if not bld
-                puts "AI: destroyed building ? #{r.inspect}"
+                puts "AI: destroyed building ? #{r.inspect} #{f.inspect}"
                 return true
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
+
+            if f[:item] == :coffin
+                bld.burial_mode.allow_burial = true
+                bld.burial_mode.no_citizens = false
+                bld.burial_mode.no_pets = true
+            end
+
+            return true unless f[:makeroom]
+
             debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
 
             df.free(bld.room.extents._getp) if bld.room.extents
@@ -855,7 +881,11 @@ class DwarfAI
             case order
             when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
                 o.material_category.wood = true
-                df.cuttrees(:any, amount, true)     # TODO generic work input
+                df.cuttrees(:any, amount, true)
+            when :ConstructTractionBench
+                add_manager_order(:ConstructTable, amount)
+                add_manager_order(:ConstructMechanisms, amount)
+                # keep mat_type -1
             else
                 o.mat_type = 0
             end
@@ -1167,10 +1197,61 @@ class DwarfAI
             @rooms << r
 
 
-            # TODO
             # infirmary
-            # cemetary
+            old_cor = corridor_center
+            cor = Corridor.new(fx+1, fx+6, fy-1, fy+1, fz, fz)
+            cor.accesspath = [old_cor]
+            @corridors << cor
+            old_cor = cor
+
+            infirmary = Room.new(:infirmary, nil, fx+4, fx+8, fy-3, fy-7, fz)
+            infirmary.layout << {:item => :door, :x => 1, :y => 5}
+            infirmary.layout << {:item => :bed, :x => 0, :y => 1}
+            infirmary.layout << {:item => :table, :x => 1, :y => 1}
+            infirmary.layout << {:item => :bed, :x => 2, :y => 1}
+            infirmary.layout << {:item => :tractionbench, :x => 0, :y => 2}
+            infirmary.layout << {:item => :tractionbench, :x => 2, :y => 2}
+            infirmary.layout << {:item => :bed, :x => 0, :y => 3}
+            infirmary.layout << {:item => :table, :x => 1, :y => 3}
+            infirmary.layout << {:item => :bed, :x => 2, :y => 3}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 1}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 2}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 3}
+            infirmary.accesspath = [cor]
+            @rooms << infirmary
+
             # barracks
+            barracks = Room.new(:barracks, nil, fx+4, fx+8, fy-3, fy-7, fz)
+            barracks.layout << {:item => :door, :x => 1, :y => -1}
+            5.times { |dy|
+                barracks.layout << {:item => :weaponrack, :x => 2, :y => dy, :ignore => true, :users => []}
+                barracks.layout << {:item => :armorstand, :x => 3, :y => dy, :ignore => true, :users => []}
+                barracks.layout << {:item => :bed, :x => 4, :y => dy, :ignore => true, :users => []}
+            }
+            w0 = barracks.layout.find { |f| f[:item] == :weaponrack }
+            w0.delete :ignore
+            w0[:makeroom] = true
+            barracks.accesspath = [cor]
+            @rooms << barracks
+
+            # cemetary
+            cor = Corridor.new(fx+7, fx+13, fy-1, fy+1, fz, fz)
+            cor.accesspath = [old_cor]
+            @corridors << cor
+            old_cor = cor
+
+            cemetary = Room.new(:cemetary, nil, fx+12, fx+16, fy+3, fy+9, fz)
+            cemetary.layout << {:item => :door, :x => 1, :y => -1}
+            3.times { |dx|
+                4.times { |dy|
+                    cemetary.layout << {:item => :coffin, :x => dx+1, :y =>dy+1+(dy > 1 ? 1 : 0), :ignore => true, :users => []}
+                }
+            }
+            cemetary.accesspath = [cor]
+            @rooms << cemetary
+
+
+            # TODO
             # pastures
         end
 
