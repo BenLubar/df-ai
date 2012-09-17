@@ -500,15 +500,15 @@ class DwarfAI
                 ensure_stockpile(r.subtype)
                 if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
                     bld, mb = mb, bld if r.misc[:secondary]
-                    mb.give_to << bld
-                    bld.take_from << mb
+                    mb.links.give_to_pile << bld
+                    bld.links.take_from_pile << mb
                 end
             else
                 @rooms.each { |o|
                     if o.type == :stockpile and o.subtype == r.subtype and (o.misc[:workshop] or o.misc[:secondary]) and sub = o.dfbuilding
                         bld, sub = sub, bld if o.misc[:secondary]
-                        bld.give_to << sub
-                        sub.take_from << bld
+                        bld.links.give_to_pile << sub
+                        sub.links.take_from_pile << bld
                         bld, sub = sub, bld if o.misc[:secondary]
                     end
                 }
