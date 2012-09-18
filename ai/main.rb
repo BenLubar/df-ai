@@ -1,6 +1,5 @@
 class DwarfAI
-    attr_accessor :onupdate_handle
-    attr_accessor :update_counter
+    attr_accessor :onupdate_handle_plan, :onupdate_handle_pop
 
     attr_accessor :plan
     attr_accessor :pop
@@ -10,12 +9,6 @@ class DwarfAI
         @plan = Plan.new(self)
 
         @plan.startup
-    end
-
-    def update
-        @update_counter += 1
-        @pop.update
-        @plan.update
     end
 
     def handle_pause_event(announce)
@@ -28,7 +21,7 @@ class DwarfAI
             puts 'AI: visitors'
         when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
         else
-            p announce
+            puts "unhandled pausing announce #{announce.inspect}"
             return
         end
         df.pause_state = false
@@ -43,19 +36,21 @@ class DwarfAI
         else
             cvname = df.curview._raw_rtti_classname
             @seen_cvname ||= { 'viewscreen_dwarfmodest' => true }
-            puts "AI: paused, curview=#{df.curview._raw_rtti_classname}" if not @seen_cvname[cvname]
+            puts "AI: paused, curview=#{cvname}" if not @seen_cvname[cvname]
             @seen_cvname[cvname] = true
         end
     end
 
     def onupdate_register
         @update_counter = 0
-        @onupdate_handle = df.onupdate_register(120) { update }
+        @onupdate_handle_plan = df.onupdate_register(120) { @plan.update }
+        @onupdate_handle_pop = df.onupdate_register(180, 60) { @pop.update }
         df.onstatechange_register { |st| statechanged(st) }
     end
 
     def onupdate_unregister
-        df.onupdate_unregister(@onupdate_handle)
+        df.onupdate_unregister(@onupdate_handle_plan)
+        df.onupdate_unregister(@onupdate_handle_pop)
     end
 
     def status

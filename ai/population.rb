@@ -16,10 +16,12 @@ class DwarfAI
         def initialize(ai)
             @ai = ai
             @citizen = {}
+            @update_counter = 0
         end
 
         def update
-            case ai.update_counter % 10
+            @update_counter += 1
+            case @update_counter % 10
             when 0; update_nobles
             when 1; update_citizenlist
             when 2; update_jobs
@@ -87,7 +89,7 @@ class DwarfAI
 
                 ent.assignments_by_type[:MANAGE_PRODUCTION] << assign
 
-                df.add_announcement("AI: new manager: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
+                df.add_announcement("AI: new manager: #{tg.name}", 7, false) { |ann| ann.pos = tg.pos }
             end
 
             if not ent.positions.assignments.find { |a| a.histfig != -1 and ent.positions.own.binsearch(a.position_id).responsibilities[:ACCOUNTING] }
@@ -105,7 +107,7 @@ class DwarfAI
                 ent.assignments_by_type[:ACCOUNTING] << assign
 
                 df.ui.bookkeeper_settings = 4
-                df.add_announcement("AI: new bookkeeper: #{tg.name.to_s(false)}", 7, false) { |ann| ann.pos = tg.pos }
+                df.add_announcement("AI: new bookkeeper: #{tg.name}", 7, false) { |ann| ann.pos = tg.pos }
             end
         end
 
