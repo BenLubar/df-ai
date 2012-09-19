@@ -47,7 +47,7 @@ class DwarfAI
         else
             case cvname = df.curview._raw_rtti_classname
             when 'viewscreen_textviewerst'
-                text = df.curview.text_display.map { |t| t.text.to_s }.join("\n")
+                text = df.curview.text_display.map { |t| t.text.to_s.strip.gsub(/\s+/, ' ') }.join("\n")
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\./
                     df.curview.feed_keys(:LEAVESCREEN)
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"

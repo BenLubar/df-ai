@@ -50,7 +50,7 @@ class DwarfAI
             @nrdig += @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor and t[1].w*t[1].h*t[1].h_z >= 10 }
 
             # avoid too much manager backlog
-            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left == @manager_taskmax }.length
+            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left >= @manager_taskmax }.length
             want_reupdate = false
             @tasks.delete_if { |t|
                 case t[0]
@@ -113,7 +113,7 @@ class DwarfAI
             }
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
-            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left == @manager_taskmax }.length
+            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left >= @manager_taskmax }.length
             if not digging? and manager_backlog < 8
                 freebed = @spare_bedroom
                 if r =
@@ -353,8 +353,10 @@ class DwarfAI
             r.status = :finished
         end
 
-        FurnitureRtti = {}      # :moo => :item_moost
-        FurnitureBuilding = {}  # :moo => :Moo
+        FurnitureBuilding = {   # :moo => :Moo
+            :chest => :Box,
+            :tractionbench => :TractionBench,
+        }
         FurnitureWorkshop = {   # :moo => :Masons
             :bed => :Carpenters,
             :tractionbench => :Mechanics,
@@ -365,6 +367,10 @@ class DwarfAI
             :weaponrack => :ConstructWeaponRack,
 	    :armorstand => :ConstructArmorStand,
         }
+        FurnitureFind = {
+            :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
+            :tractionbench => lambda { |o| o._rtti_classname == :item_traction_benchst },
+        }
 
         def try_furnish(r, f)
             return true if f[:bld_id]
@@ -374,9 +380,9 @@ class DwarfAI
             return try_furnish_well(r, f) if f[:item] == :well
             return if @cache_nofurnish[f[:item]]
             mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
+            find = FurnitureFind[f[:item]] ||= lambda { |o| o._rtti_classname == "item_#{f[:item]}st".to_sym }
             oidx = DFHack::JobType::Item[mod]
-            rtti = FurnitureRtti[f[:item]] ||= "item_#{f[:item]}st".to_sym
-            if itm = df.world.items.other[oidx].find { |i| i._rtti_classname == rtti and df.building_isitemfree(i) rescue next }
+            if itm = df.world.items.other[oidx].find { |i| find[i] and df.building_isitemfree(i) }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]] ||= "#{f[:item]}".capitalize.to_sym
                 bld = df.building_alloc(bldn)
@@ -1127,7 +1133,7 @@ class DwarfAI
 
                     if dirx == 1 and dx == 3
                         # stuff a quern near the farmers'
-                        @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy-1, fy-1, fz)
+                        @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy+1, fy+1, fz)
                         @rooms.last.accesspath = [cor_x]
                     end
 
