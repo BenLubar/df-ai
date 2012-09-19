@@ -130,7 +130,7 @@ class DwarfAI
                     true
                 end
             elsif manager_backlog >= 8 and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
-                r.subtype = (@rooms.find_all { |_r| _r.type == :workshop and _r.subtype == :Masons }.length >= 2 ? :Masons : :Carpenters)
+                r.subtype = (@rooms.find_all { |_r| _r.type == :workshop and _r.subtype == :Masons }.length >= 2 ? :Carpenters : :Masons)
                 digroom(r)
                 false
             end
@@ -365,7 +365,7 @@ class DwarfAI
             :chair => :ConstructThrone,
             :tractionbench => :ConstructTractionBench,
             :weaponrack => :ConstructWeaponRack,
-	    :armorstand => :ConstructArmorStand,
+            :armorstand => :ConstructArmorStand,
         }
         FurnitureFind = {
             :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
@@ -563,6 +563,7 @@ class DwarfAI
             bld.room.width = r.w
             bld.room.height = r.h
             r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
+            bld.is_room = 1
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
             furnish_room(r)
@@ -601,13 +602,13 @@ class DwarfAI
             case r.type
             when :infirmary
                 bld.zone_flags.hospital = true
-		bld.hospital.max_splints = 5
-		bld.hospital.max_thread = 75000
-		bld.hospital.max_cloth = 50000
-		bld.hospital.max_crutches = 5
-		bld.hospital.max_plaster = 750
-		bld.hospital.max_buckets = 2
-		bld.hospital.max_soap = 750
+                bld.hospital.max_splints = 5
+                bld.hospital.max_thread = 75000
+                bld.hospital.max_cloth = 50000
+                bld.hospital.max_crutches = 5
+                bld.hospital.max_plaster = 750
+                bld.hospital.max_buckets = 2
+                bld.hospital.max_soap = 750
             end
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -616,6 +617,7 @@ class DwarfAI
             bld.room.width = r.w
             bld.room.height = r.h
             r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
+            bld.is_room = 1
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
             furnish_room(r)
@@ -932,6 +934,7 @@ class DwarfAI
                 set_ext[x, y-1, 4] if y > r.y2
             }
             bld.is_room = 1
+            df.building_linkrooms(bld)
 
             set_owner(r, r.owner)
             furnish_room(r)
