@@ -116,15 +116,23 @@ class DwarfAI
             manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left == @manager_taskmax }.length
             if not digging? and manager_backlog < 8
                 freebed = @spare_bedroom
-                if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                if r =
+                       @rooms.find { |_r| _r.type == :barracks and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :cemetary and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
                     false
                 else
                     true
                 end
+            elsif manager_backlog >= 8 and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
+                r.subtype = (@rooms.find_all { |_r| _r.type == :workshop and _r.subtype == :Masons }.length >= 2 ? :Masons : :Carpenters)
+                digroom(r)
+                false
             end
         end
 
@@ -289,6 +297,8 @@ class DwarfAI
                     add_manager_order(:ConstructBlocks)
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
+                when :Quern
+                    add_manager_order(:ConstructQuern)
                 end
 
                 # add minimal stockpile in front of workshop
@@ -323,9 +333,14 @@ class DwarfAI
             when :farmplot
                 construct_farmplot(r)
             when :cistern
+                ensure_workshop(:Mechanics)
+                add_manager_order(:ConstructMechanisms, 6)
+                add_manager_order(:ConstructFloodgate, 2)
                 @tasks << [:dig_cistern, r]
-            when :cemetary, :infirmary
+            when :cemetary
                 furnish_room(r)
+            when :infirmary
+                construct_activityzone(r)
             else
                 r.layout.each { |f|
                     @tasks << [:furnish, r, f] if f[:makeroom]
@@ -347,6 +362,8 @@ class DwarfAI
         FurnitureOrder = {      # :moo => :ConstructMoo
             :chair => :ConstructThrone,
             :tractionbench => :ConstructTractionBench,
+            :weaponrack => :ConstructWeaponRack,
+	    :armorstand => :ConstructArmorStand,
         }
 
         def try_furnish(r, f)
@@ -498,6 +515,17 @@ class DwarfAI
                     @tasks << [:checkconstruct, r]
                     true
                 end
+            when :Quern
+                if quern = df.world.items.other[:QUERN].find { |i|
+                        i.kind_of?(DFHack::ItemQuernst) and df.building_isitemfree(i)
+                }
+                    bld = df.building_alloc(:Workshop, r.subtype)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [quern])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
             else
                 # any non-eco boulder
                 if bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
@@ -559,6 +587,32 @@ class DwarfAI
                     end
                 }
             end
+        end
+
+        def construct_activityzone(r)
+            bld = df.building_alloc(:Civzone, :ActivityZone)
+            bld.zone_flags.active = true
+            case r.type
+            when :infirmary
+                bld.zone_flags.hospital = true
+		bld.hospital.max_splints = 5
+		bld.hospital.max_thread = 75000
+		bld.hospital.max_cloth = 50000
+		bld.hospital.max_crutches = 5
+		bld.hospital.max_plaster = 750
+		bld.hospital.max_buckets = 2
+		bld.hospital.max_soap = 750
+            end
+            df.building_position(bld, r)
+            bld.room.extents = df.malloc(r.w*r.h)
+            bld.room.x = r.x1
+            bld.room.y = r.y1
+            bld.room.width = r.w
+            bld.room.height = r.h
+            r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
+            df.building_construct_abstract(bld)
+            r.misc[:bld_id] = bld.id
+            furnish_room(r)
         end
 
         def setup_stockpile_settings(r, bld)
@@ -741,6 +795,7 @@ class DwarfAI
                 ensure_workshop(:Loom, false)
                 ensure_workshop(:Clothiers, false)
                 ensure_workshop(:Dyers, false)
+                ensure_workshop(:Quern, false)
             end
             @tasks << [:setup_farmplot, r]
         end
@@ -812,12 +867,16 @@ class DwarfAI
             if r.subtype == :food
                 pid = df.world.raws.plants.all.index { |p| p.id == 'MUSHROOM_HELMET_PLUMP' }
 
-                bld.plant_id[0] = pid
-                bld.plant_id[1] = pid
-                bld.plant_id[2] = pid
-                bld.plant_id[3] = pid
+                4.times { |season|
+                    bld.plant_id[season] = pid
+                }
             else
-                puts "MUU farm settings"
+                pid1 = df.world.raws.plants.all.index { |p| p.id == 'GRASS_TAIL_PIG' }
+                pid2 = df.world.raws.plants.all.index { |p| p.id == 'MUSHROOM_CUP_DIMPLE' }
+
+                4.times { |season|
+                    bld.plant_id[season] = (df.world.raws.plants.all[pid1].flags[season] ? pid1 : pid2)
+                }
             end
 
             true
@@ -923,6 +982,7 @@ class DwarfAI
                 o.material_category.wood = true
                 df.cuttrees(:any, amount, true)
             when :ConstructTractionBench
+                ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructTable, amount)
                 add_manager_order(:ConstructMechanisms, amount)
                 # keep mat_type -1
@@ -1065,6 +1125,12 @@ class DwarfAI
                     prev_corx = cor_x
                     ocx = cx+dirx
 
+                    if dirx == 1 and dx == 3
+                        # stuff a quern near the farmers'
+                        @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy-1, fy-1, fz)
+                        @rooms.last.accesspath = [cor_x]
+                    end
+
                     @rooms << Room.new(:workshop, types.shift, cx-1, cx+1, fy-5, fy-3, fz)
                     @rooms << Room.new(:workshop, types.shift, cx-1, cx+1, fy+3, fy+5, fz)
                     @rooms[-2, 2].each { |r|
@@ -1186,8 +1252,6 @@ class DwarfAI
 
             # cistern
             cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-3, fz)
-            # TODO cuttree / drain pool there
-            # TODO path to water source
             cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
             @corridors << cist_corr
 
@@ -1199,7 +1263,7 @@ class DwarfAI
 
             # farm plots
             nrfarms = 4
-            cx = fx+4*6-1       # end of workshop corridor (last ws door)
+            cx = fx+(4*6-1)       # end of workshop corridor (last ws door)
             cy = fy
             cz = @rooms.find { |r| r.type == :workshop }.z1
             farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
@@ -1267,7 +1331,7 @@ class DwarfAI
             @rooms << infirmary
 
             # barracks
-            barracks = Room.new(:barracks, nil, fx+4, fx+8, fy-3, fy-7, fz)
+            barracks = Room.new(:barracks, nil, fx+4, fx+8, fy+3, fy+7, fz)
             barracks.layout << {:item => :door, :x => 1, :y => -1}
             5.times { |dy|
                 barracks.layout << {:item => :weaponrack, :x => 2, :y => dy, :ignore => true, :users => []}
@@ -1299,6 +1363,8 @@ class DwarfAI
 
             # TODO
             # pastures
+            # garbage dump
+            # cistern approvisionment
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
