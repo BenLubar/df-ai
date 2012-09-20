@@ -38,6 +38,7 @@ class DwarfAI
             # start on that spare right away
             ensure_workshop(:Masons)
             ensure_workshop(:Carpenters)
+            dig_garbagedump
 
             # logs get lost sometimes ? have some margin
             df.cuttrees(:any, 6, true)
@@ -75,6 +76,8 @@ class DwarfAI
                     try_endconstruct(t[1])
                 when :dig_cistern
                     try_digcistern(t[1])
+                when :dig_garbage
+                    try_diggarbage(t[1])
                 when :checkidle
                     checkidle
                 when :checkrooms
@@ -333,10 +336,7 @@ class DwarfAI
             when :farmplot
                 construct_farmplot(r)
             when :cistern
-                ensure_workshop(:Mechanics)
-                add_manager_order(:ConstructMechanisms, 6)
-                add_manager_order(:ConstructFloodgate, 2)
-                @tasks << [:dig_cistern, r]
+                construct_cistern(r)
             when :cemetary
                 furnish_room(r)
             when :infirmary
@@ -609,6 +609,8 @@ class DwarfAI
                 bld.hospital.max_plaster = 750
                 bld.hospital.max_buckets = 2
                 bld.hospital.max_soap = 750
+            when :garbagedump
+                bld.zone_flags.garbage_dump = true
             end
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -808,22 +810,8 @@ class DwarfAI
             @tasks << [:setup_farmplot, r]
         end
 
-        def try_digcistern(r)
-            ((r.x1-1)..(r.x2+1)).each { |x|
-                ((r.y1-1)..(r.y2+1)).each { |y|
-                    z = r.z1
-                    next unless t = df.map_tile_at(x, y, z)
-                }
-            }
-
-            issmooth = lambda { |t|
-                next true if t.shape_basic == :Open
-                next true if t.tilemat == :SOIL
-                next true if t.shape_basic == :Wall and t.caption =~ /pillar|smooth/i
-            }
-
-            cnt = 0
-            acc_y = r.accesspath[0].y1   # XXX hardcoded layout..
+        def construct_cistern(r)
+            # mark for smoothing
             (r.z1..r.z2).each { |z|
                 ((r.x1-2)..(r.x2+1)).each { |x|
                     ((r.y1-1)..(r.y2+1)).each { |y|
@@ -835,21 +823,67 @@ class DwarfAI
                         when :Floor
                             if z == r.z1
                                 t.dig :Smooth if t.shape_basic == :Wall or t.shape_basic == :Floor
-                                next
                             end
+                        end
+                    }
+                }
+            }
 
-                            next unless nt20 = df.map_tile_at(x+1, y-1, z)
-                            next unless nt21 = df.map_tile_at(x+1, y, z)
-                            next unless nt22 = df.map_tile_at(x+1, y+1, z)
-                            if issmooth[nt20] and issmooth[nt21] and issmooth[nt22]
-                                next unless nt01 = df.map_tile_at(x-1, y, z)
-                                if nt01.shape_basic == :Floor
-                                    t.dig :Channel
-                                else
-                                    next unless nt10 = df.map_tile_at(x, y-1, z)
-                                    next unless nt12 = df.map_tile_at(x, y+1, z)
-                                    t.dig :Channel if (y > acc_y ? issmooth[nt12] : issmooth[nt10])
-                                end
+            # prepare material for controlling water level
+            ensure_workshop(:Mechanics)
+            add_manager_order(:ConstructMechanisms, 6)  # 2x (levers + link to floodgate)
+            add_manager_order(:ConstructFloodgate, 2)
+
+            # remove boulders
+            room_items(r) { |i| i.flags.dump = true }
+            room_items(r.accesspath[0]) { |i| i.flags.dump = true }
+
+            # check smoothing progress, channel intermediate levels
+            @tasks << [:dig_cistern, r]
+        end
+
+        # yield every on_ground items in the room
+        def room_items(r)
+            (r.z1..r.z2).each { |z|
+                ((r.x1 & -16)..r.x2).step(16) { |x|
+                    ((r.y1 & -16)..r.y2).step(16) { |y|
+                        df.map_tile_at(x, y, z).mapblock.items_tg.each { |i|
+                            yield i if i.flags.on_ground and i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2 and i.pos.z == z
+                        }
+                    }
+                }
+            }
+        end
+            
+        # check smoothing progress, channel intermediate floors when done
+        def try_digcistern(r)
+            issmooth = lambda { |t|
+                next if not t
+                next true if t.shape_basic == :Open
+                next true if t.tilemat == :SOIL
+                next true if t.shape_basic == :Wall and t.caption =~ /pillar|smooth/i
+            }
+
+            # XXX hardcoded layout..
+            cnt = 0
+            acc_y = r.accesspath[0].y1
+            ((r.z1+1)..r.z2).each { |z|
+                (r.x1..r.x2).each { |x|
+                    (r.y1..r.y2).each { |y|
+                        next unless t = df.map_tile_at(x, y, z)
+                        case t.shape_basic
+                        when :Floor
+                            next unless issmooth[df.map_tile_at(x+1, y-1, z)]
+                            next unless issmooth[df.map_tile_at(x+1, y, z)]
+                            next unless issmooth[df.map_tile_at(x+1, y+1, z)]
+                            next unless nt01 = df.map_tile_at(x-1, y, z)
+                            if nt01.shape_basic == :Floor
+                                t.dig :Channel
+                            else
+                                # last column before stairs
+                                next unless nt10 = df.map_tile_at(x, y-1, z)
+                                next unless nt12 = df.map_tile_at(x, y+1, z)
+                                t.dig :Channel if (y > acc_y ? issmooth[nt12] : issmooth[nt10])
                             end
                         when :Open
                             cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
@@ -859,9 +893,33 @@ class DwarfAI
             }
 
             dug = (cnt == r.w*r.h*(r.h_z-1))
-            # TODO remove items, fill with water
+            # TODO fill with water
 
             dug
+        end
+
+        def dig_garbagedump
+            @rooms.each { |r|
+                if r.type == :garbagepit and r.status == :plan
+                    r.status = :dig
+                    r.dig(:Channel)
+                    @tasks << [:dig_garbage, r]
+                end
+            }
+        end
+
+        def try_diggarbage(r)
+            if r.dug?(:Open)
+                r.status = :dug
+                # XXX ugly as usual
+                t = df.map_tile_at(r.x1, r.y1, r.z1-1)
+                t.dig(:Default) if t.shape_basic == :Ramp
+                @rooms.each { |r|
+                    if r.type == :garbagedump and r.status == :plan
+                        construct_activityzone(r)
+                    end
+                }
+            end
         end
 
         def try_setup_farmplot(r)
@@ -962,6 +1020,7 @@ class DwarfAI
                     }
                     @rooms.delete t
                     furnish_room(r)
+                    ensure_stockpile(:furniture)
                 end
 
             end
@@ -994,10 +1053,15 @@ class DwarfAI
                 ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructTable, amount)
                 add_manager_order(:ConstructMechanisms, amount)
-                # keep mat_type -1
+                add_manager_order(:MakeChain, amount)
+                # mat_type -1
             when :MakeChain
                 wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
                 o.material_category.cloth = true
+                add_manager_order(:ProcessPlants, amount)
+            when :ProcessPlants
+                ensure_workshop(:Farmers)
+                # mat_type -1
             else
                 o.mat_type = 0
             end
@@ -1101,9 +1165,16 @@ class DwarfAI
         end
 
         def setup_blueprint_workshops(fx, fy, fz, entr)
-            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
-            corridor_center.accesspath = entr
-            @corridors << corridor_center
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
+            corridor_center0.accesspath = entr
+            @corridors << corridor_center0
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
+            corridor_center2.accesspath = entr
+            @corridors << corridor_center2
 
             # Quern, Millstone, Siege, Custom/soapmaker, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
@@ -1113,11 +1184,11 @@ class DwarfAI
                 :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:BookkeepersOffice]
 
             [-1, 1].each { |dirx|
-                prev_corx = corridor_center
+                prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
                 ocx = fx + dirx*3
                 (1..6).each { |dx|
                     # segments of the big central horizontal corridor
-                    cx = fx + dirx*(4*dx-1)
+                    cx = fx + dirx*4*dx
                     if dx <= 5
                         cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
                         cor_x.accesspath = [prev_corx]
@@ -1125,7 +1196,7 @@ class DwarfAI
                     else
                         # last 2 workshops of the row (offices etc) get only a narrow/direct corridor
                         cor_x = Corridor.new(fx+dirx*3, cx, fy, fy, fz, fz)
-                        cor_x.accesspath = [corridor_center]
+                        cor_x.accesspath = [(dirx < 0 ? corridor_center0 : corridor_center2)]
                         @corridors << cor_x
                         cor_x = Corridor.new(cx-dirx*3, cx, fy-1, fy+1, fz, fz)
                         cor_x.accesspath = [@corridors.last]
@@ -1148,6 +1219,7 @@ class DwarfAI
                     }
                 }
             }
+
             @rooms.each { |r|
                 next if r.type != :workshop
                 case r.subtype
@@ -1158,9 +1230,16 @@ class DwarfAI
         end
 
         def setup_blueprint_stockpiles(fx, fy, fz, entr)
-            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
-            corridor_center.accesspath = entr
-            @corridors << corridor_center
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
+            corridor_center0.accesspath = entr
+            @corridors << corridor_center0
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
+            corridor_center2.accesspath = entr
+            @corridors << corridor_center2
 
             types = [:wood,:stone, :furniture,:goods, :gems,:weapons, :refuse,:corpses]
             types += [:food,:ammo, :cloth,:leather, :bars,:armor, :animals,:coins]
@@ -1168,7 +1247,7 @@ class DwarfAI
             # TODO side stairs to workshop level ?
             tmp = []
             [-1, 1].each { |dirx|
-                prev_corx = corridor_center
+                prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
                 ocx = fx + dirx*3
                 (1..4).each { |dx|
                     # segments of the big central horizontal corridor
@@ -1180,35 +1259,43 @@ class DwarfAI
                     ocx = cx+2*dirx
 
                     t0, t1 = types.shift, types.shift
-                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-3, fz)
-                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+3, fy+5, fz)
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-3, fy-4, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+3, fy+4, fz)
                     @rooms[-2, 2].each { |r|
                         r.accesspath = [cor_x]
-                        r.layout << {:item => :door, :x => 2, :y => 1-2*(r.y<=>fy)}
-                        r.layout << {:item => :door, :x => 4, :y => 1-2*(r.y<=>fy)}
+                        r.layout << {:item => :door, :x => 2, :y => (r.y < fy ? 2 : -1)}
+                        r.layout << {:item => :door, :x => 4, :y => (r.y < fy ? 2 : -1)}
                     }
-                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-11, fy-6, fz)
-                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+6, fy+11, fz)
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-11, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
                     @rooms[-2, 2].each { |r| r.misc[:secondary] = true }
-                    tmp << Room.new(:stockpile, t0, cx-3, cx+3, fy-18, fy-12, fz)
-                    tmp << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+18, fz)
+                    tmp << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
+                    tmp << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
+                    tmp[-2, 2].each { |r| r.misc[:secondary] = true }
                 }
             }
-            # tweak the order of 2nd stockpiles in @rooms
-            tmp.each { |r| r.misc[:secondary] = true ; @rooms << r }
+            # tweak the order of 2nd secondary stockpiles in @rooms (they are dug in order)
+            @rooms.concat tmp
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
-            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
-            corridor_center.accesspath = entr
-            @corridors << corridor_center
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
+            corridor_center0.accesspath = entr
+            @corridors << corridor_center0
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
+            corridor_center2.accesspath = entr
+            @corridors << corridor_center2
 
             # dining halls
             ocx = fx-2
-            old_cor = corridor_center
+            old_cor = corridor_center0
 
             # temporary dininghall, for fort start
-            tmp = Room.new(:dininghall, nil, fx-3, fx-2, fy-1, fy+1, fz)
+            tmp = Room.new(:dininghall, nil, fx-4, fx-3, fy-1, fy+1, fz)
             tmp.misc[:temporary] = true
             [0, 1, 2].each { |dy|
                 tmp.layout << {:item => :table, :x => 0, :y => dy, :users => []}
@@ -1272,7 +1359,7 @@ class DwarfAI
 
             # farm plots
             nrfarms = 4
-            cx = fx+(4*6-1)       # end of workshop corridor (last ws door)
+            cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
             cz = @rooms.find { |r| r.type == :workshop }.z1
             farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
@@ -1315,9 +1402,16 @@ class DwarfAI
             r.accesspath = [cor]
             @rooms << r
 
+            # garbage dump
+            # TODO ensure flat space, no pools/tree, ...
+            r = Room.new(:garbagedump, nil, cx+5, cx+5, cy, cy, cz)
+            r.z2 = r.z1 += 1 until df.map_tile_at(r).shape_basic != :Wall
+            @rooms << r
+            r = Room.new(:garbagepit, nil, cx+6, cx+7, cy, cy, @rooms.last.z)
+            @rooms << r
 
             # infirmary
-            old_cor = corridor_center
+            old_cor = corridor_center2
             cor = Corridor.new(fx+1, fx+6, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
@@ -1377,12 +1471,19 @@ class DwarfAI
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
-            corridor_center = Corridor.new(fx-2, fx+2, fy-1, fy+1, fz, fz) 
-            corridor_center.accesspath = entr
-            @corridors << corridor_center
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
+            corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
+            corridor_center0.accesspath = entr
+            @corridors << corridor_center0
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
+            corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
+            corridor_center2.accesspath = entr
+            @corridors << corridor_center2
 
             [-1, 1].each { |dirx|
-                prev_corx = corridor_center
+                prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
                 ocx = fx + dirx*3
                 (1..3).each { |dx|
                     # segments of the big central horizontal corridor
@@ -1445,11 +1546,11 @@ class DwarfAI
                 @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z1, z2
             end
 
-            def dig
+            def dig(mode=nil)
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
-                        dm = dig_mode(t.x, t.y, t.z)
-                        t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
+                        dm = mode || dig_mode(t.x, t.y, t.z)
+                        t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|
@@ -1486,7 +1587,7 @@ class DwarfAI
                 end
             end
 
-            def dug?
+            def dug?(want=nil)
                 holes = []
                 @layout.each { |d|
                     if t = df.map_tile_at(x1+d[:x].to_i, y1+d[:y].to_i, z1+d[:z].to_i)
@@ -1496,7 +1597,7 @@ class DwarfAI
                 }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
-                        return false if t.shape == :WALL and not holes.find { |h| h.x == t.x and h.y == t.y and h.z == t.z }
+                        return false if (t.shape == :WALL or (want and t.shape_basic != want)) and not holes.find { |h| h.x == t.x and h.y == t.y and h.z == t.z }
                     end
                 } } }
                 true
