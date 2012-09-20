@@ -300,6 +300,8 @@ class DwarfAI
                     add_manager_order(:ConstructBlocks)
                     add_manager_order(:MakeBarrel)
                     add_manager_order(:MakeBucket)
+                when :SoapMaker
+                    add_manager_order(:MakeBucket)
                 when :Quern
                     add_manager_order(:ConstructQuern)
                 end
@@ -353,24 +355,28 @@ class DwarfAI
             r.status = :finished
         end
 
-        FurnitureBuilding = {   # :moo => :Moo
-            :chest => :Box,
-            :tractionbench => :TractionBench,
-        }
-        FurnitureWorkshop = {   # :moo => :Masons
-            :bed => :Carpenters,
-            :tractionbench => :Mechanics,
-        }
-        FurnitureOrder = {      # :moo => :ConstructMoo
-            :chair => :ConstructThrone,
-            :tractionbench => :ConstructTractionBench,
+        FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
+            :traction_bench => :TractionBench
+
+        FurnitureWorkshop = Hash.new(:Masons).update :bed => :Carpenters,
+            :traction_bench => :Mechanics
+
+        FurnitureOrder = Hash.new { |h, k|
+            h[k] = "Construct#{k.to_s.capitalize}".to_sym
+        }.update :chair => :ConstructThrone,
+            :traction_bench => :ConstructTractionBench,
             :weaponrack => :ConstructWeaponRack,
             :armorstand => :ConstructArmorStand,
-        }
-        FurnitureFind = {
-            :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
-            :tractionbench => lambda { |o| o._rtti_classname == :item_traction_benchst },
-        }
+            :bucket => :MakeBucket,
+            :barrel => :MakeBarrel,
+            :bin => :ConstructBin,
+            :drink => :BrewDrink,
+            :bag => :MakeBag,
+            :soap => :MakeSoap
+
+        FurnitureFind = Hash.new { |h, k|
+            h[k] = lambda { |o| o._rtti_classname == "item_#{k}st".to_sym }
+        }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 }
 
         def try_furnish(r, f)
             return true if f[:bld_id]
@@ -379,12 +385,12 @@ class DwarfAI
             build_furniture(f)
             return try_furnish_well(r, f) if f[:item] == :well
             return if @cache_nofurnish[f[:item]]
-            mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
-            find = FurnitureFind[f[:item]] ||= lambda { |o| o._rtti_classname == "item_#{f[:item]}st".to_sym }
+            mod = FurnitureOrder[f[:item]]
+            find = FurnitureFind[f[:item]]
             oidx = DFHack::JobType::Item[mod]
             if itm = df.world.items.other[oidx].find { |i| find[i] and df.building_isitemfree(i) }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
-                bldn = FurnitureBuilding[f[:item]] ||= "#{f[:item]}".capitalize.to_sym
+                bldn = FurnitureBuilding[f[:item]]
                 bld = df.building_alloc(bldn)
                 df.building_position(bld, [r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1])
                 df.building_construct(bld, [itm])
@@ -427,7 +433,7 @@ class DwarfAI
                 add_manager_order(:ConstructBlocks)
                 add_manager_order(:ConstructMechanisms)
                 add_manager_order(:MakeBucket)
-                add_manager_order(:MakeChain)
+                add_manager_order(:MakeRope)
             else
                 ws = FurnitureWorkshop[f[:item]] ||= :Masons
                 mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
@@ -491,6 +497,21 @@ class DwarfAI
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
                     df.building_construct(bld, [block, barrel, bucket])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
+            when :SoapMaker
+                # bucket, boulder
+                if bucket = df.world.items.other[:BUCKET].find { |i|
+                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                } and bould = df.world.items.other[:BOULDER].find { |i|
+                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                }
+                    custom = df.world.raws.buildings.all.find { |b| b.code == 'SOAP_MAKER' }.id
+                    bld = df.building_alloc(:Workshop, :Custom, custom)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, [bucket, bould])
                     r.misc[:bld_id] = bld.id
                     @tasks << [:checkconstruct, r]
                     true
@@ -569,13 +590,6 @@ class DwarfAI
             furnish_room(r)
 
             setup_stockpile_settings(r, bld)
-
-            if bld.max_bins > 8
-                add_manager_order(:ConstructBin, 8)
-            end
-            if bld.max_barrels > 8
-                add_manager_order(:MakeBarrel, 8)
-            end
 
             if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
@@ -708,19 +722,19 @@ class DwarfAI
                 end
             when :food
                 bld.settings.flags.food = true
-                bld.settings.food.prepared_meals = true
                 bld.max_barrels = r.w*r.h
                 t = bld.settings.food.type
-                if r.misc[:workshop] and r.misc[:workshop].type == :farmplot and r.subtype == :food
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :farmplot and r.subtype == :food
                     df.world.raws.mat_table.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
-                elsif r.misc[:workshop] and r.misc[:workshop].type == :Farmers
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
                     df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
                     df.world.raws.mat_table.organic_types[:Leaf].length.times { |i| t.leaves[i] = true }
-                elsif r.misc[:workshop] and r.misc[:workshop].type == :Still
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
-                elsif r.misc[:workshop] and r.misc[:workshop].type == :Fishery
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
                     df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
+                    bld.settings.food.prepared_meals = true
                     df.world.raws.mat_table.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
                     df.world.raws.mat_table.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
                     df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
@@ -1034,11 +1048,39 @@ class DwarfAI
             true
         end
 
+        def find_manager_orders(order)
+            case order
+            when :MakeSoap
+                order = :CustomReaction
+                custom = 'MAKE_SOAP_FROM_TALLOW'
+            when :MakeBag
+                order = :ConstructChest
+                type = :cloth
+            end
+
+            df.world.manager_orders.find_all { |_o| _o.job_type == order and (not custom or custom == _o.reaction_name) and (not type or (_o.mat_type == -1 and _o.material_category.send(type))) }
+        end
+
         def add_manager_order(order, amount=1)
             debug "add_manager #{order} #{amount}"
-            if not o = df.world.manager_orders.find { |_o| _o.job_type == order and _o.amount_total < 4 }
-                o = DFHack::ManagerOrder.cpp_new(:job_type => order, :unk_2 => -1, :item_subtype => -1,
+            case order
+            when :MakeSoap
+                _order = :CustomReaction
+                custom = 'MAKE_SOAP_FROM_TALLOW'
+            when :MakeBag
+                _order = :ConstructChest
+                type = :cloth
+            when :MakeRope
+                _order = :MakeChain
+                type = :cloth
+            else
+                _order = order
+            end
+
+            if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= 4 }
+                o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => -1,
                         :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
+                o.reaction_name = custom if custom
                 df.world.manager_orders << o
             else
                 o.amount_total += amount
@@ -1054,15 +1096,32 @@ class DwarfAI
                 add_manager_order(:ConstructTable, amount)
                 add_manager_order(:ConstructMechanisms, amount)
                 add_manager_order(:MakeChain, amount)
-                # mat_type -1
-            when :MakeChain
+            when :MakeRope, :MakeBag
+                # plant cloth ropes only
                 wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
+                ensure_workshop(:Clothiers)
                 o.material_category.cloth = true
+                # assume auto loom is on
                 add_manager_order(:ProcessPlants, amount)
             when :ProcessPlants
                 ensure_workshop(:Farmers)
-                # mat_type -1
+            when :BrewDrink
+                ensure_workshop(:Still)
+            when :MakeSoap
+                ensure_workshop(:SoapMaker)
+                # also need tallow
+                add_manager_order(:MakeLye, amount+1)
+            when :MakeBag
+                o.material_category.cloth = true
+            when :MakeLye
+                ensure_workshop(:Ashery)
+                # also need free buckets
+                add_manager_order(:MakeAsh, amount+1)
+            when :MakeAsh
+                ensure_workshop(:WoodFurnace)
+                df.cuttrees(:any, amount+1, true)
             else
+                # make generic stuff from rock
                 o.mat_type = 0
             end
         end
@@ -1176,10 +1235,10 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            # Quern, Millstone, Siege, Custom/soapmaker, Custom/screwpress
+            # Millstone, Siege, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-                :Loom,:Clothiers, :Dyers,:Bowyers, nil,nil]
+                :Loom,:Clothiers, :Dyers,:Bowyers, :SoapMaker,nil]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
                 :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:BookkeepersOffice]
 
@@ -1412,7 +1471,7 @@ class DwarfAI
 
             # infirmary
             old_cor = corridor_center2
-            cor = Corridor.new(fx+1, fx+6, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+2, fx+6, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
@@ -1422,8 +1481,8 @@ class DwarfAI
             infirmary.layout << {:item => :bed, :x => 0, :y => 1}
             infirmary.layout << {:item => :table, :x => 1, :y => 1}
             infirmary.layout << {:item => :bed, :x => 2, :y => 1}
-            infirmary.layout << {:item => :tractionbench, :x => 0, :y => 2}
-            infirmary.layout << {:item => :tractionbench, :x => 2, :y => 2}
+            infirmary.layout << {:item => :traction_bench, :x => 0, :y => 2}
+            infirmary.layout << {:item => :traction_bench, :x => 2, :y => 2}
             infirmary.layout << {:item => :bed, :x => 0, :y => 3}
             infirmary.layout << {:item => :table, :x => 1, :y => 3}
             infirmary.layout << {:item => :bed, :x => 2, :y => 3}
@@ -1463,10 +1522,8 @@ class DwarfAI
             cemetary.accesspath = [cor]
             @rooms << cemetary
 
-
             # TODO
             # pastures
-            # garbage dump
             # cistern approvisionment
         end
 
