@@ -958,19 +958,50 @@ class DwarfAI
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
 
-            if r.subtype == :food
-                pid = df.world.raws.plants.all.index { |p| p.id == 'MUSHROOM_HELMET_PLUMP' }
-                # TODO randomize crops for later plots (whose layout empty)
+            may = {}
+            df.world.raws.plants.all.each_with_index { |p, i|
+                next if not p.flags[:BIOME_SUBTERRANEAN_WATER]
+                may[i] = p
+            }
 
+            # XXX 1st plot = the one with a door
+            isfirst = !r.layout.empty?
+            if r.subtype == :food
                 4.times { |season|
-                    bld.plant_id[season] = pid
+                    pids = may.keys.find_all { |i|
+                        p = may[i]
+
+                        # season numbers are also the 1st 4 flags
+                        next if not p.flags[season]
+
+                        if isfirst
+                            p.material[0].flags[:EDIBLE_RAW] and p.flags[:DRINK]
+                        else
+                            p.material[0].flags[:EDIBLE_RAW] or p.material[0].flags[:EDIBLE_COOKED] or p.flags[:DRINK] or p.flags[:LEAVES]
+                        end
+                    }
+
+                    bld.plant_id[season] = pids[rand(pids.length)]
                 }
             else
-                pid1 = df.world.raws.plants.all.index { |p| p.id == 'GRASS_TAIL_PIG' }
-                pid2 = df.world.raws.plants.all.index { |p| p.id == 'MUSHROOM_CUP_DIMPLE' }
+                threads = may.keys.find_all { |i|
+                    may[i].flags[:THREAD]
+                }
+                dyes = may.keys.find_all { |i|
+                    may[i].flags[:MILL] and df.decode_mat(may[i].material_defs.type_mill, may[i].material_defs.idx_mill).material.flags[:IS_DYE]
+                }
 
                 4.times { |season|
-                    bld.plant_id[season] = (df.world.raws.plants.all[pid1].flags[season] ? pid1 : pid2)
+                    pids = threads.find_all { |i|
+                        may[i].flags[season]
+                    }
+                    pids |= dyes.find_all { |i|
+                        # 1st plot gets a maximum of threads, others may have dyes
+                        next if isfirst and !pids.empty?
+                        may[i].flags[season]
+                    }
+
+                    bld.plant_id[season] = pids[rand(pids.length)]
                 }
             end
 
@@ -1066,14 +1097,28 @@ class DwarfAI
         def find_manager_orders(order)
             case order
             when :MakeSoap
-                order = :CustomReaction
+                _order = :CustomReaction
                 custom = 'MAKE_SOAP_FROM_TALLOW'
             when :MakeBag
-                order = :ConstructChest
+                _order = :ConstructChest
                 type = :cloth
+            when :MakeRope
+                _order = :MakeChain
+                type = :cloth
+            when :ConstructChest
+                # should not return existing MakeBag orders
+                type = :rock
+            else
+                _order = order
             end
 
-            df.world.manager_orders.find_all { |_o| _o.job_type == order and (not custom or custom == _o.reaction_name) and (not type or (_o.mat_type == -1 and _o.material_category.send(type))) }
+            df.world.manager_orders.find_all { |_o|
+                _o.job_type == _order and
+                (not custom or custom == _o.reaction_name) and
+                (not type or
+                 (type != :rock and _o.mat_type == -1 and _o.material_category.send(type)) or
+                 (type == :rock and _o.mat_type == 0))
+            }
         end
 
         def add_manager_order(order, amount=1)
