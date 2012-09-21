@@ -31,47 +31,47 @@ class DwarfAI
         end
 
         def count_stocks
-            # TODO exclude merchant-owned stuff
             @count = {}
 
             (@needed.keys | @watch_stock.keys).each { |k|
                 @count[k] = case k
                 when :bin
                     df.world.items.other[:BIN].find_all { |i|
-                        i.stockpile.id == -1 and i.itemrefs.empty?
+                        i.stockpile.id == -1 and !i.flags.trader and i.itemrefs.empty?
                     }.length
                 when :barrel
                     df.world.items.other[:BARREL].find_all { |i|
-                        i.stockpile.id == -1 and i.itemrefs.empty?
+                        i.stockpile.id == -1 and !i.flags.trader and i.itemrefs.empty?
                     }.length
                 when :bag
                     df.world.items.other[:BOX].find_all { |i|
-                        df.decode_mat(i).plant and i.itemrefs.reject { |r|
+                        !i.flags.trader and df.decode_mat(i).plant and i.itemrefs.reject { |r|
                             r.kind_of?(DFHack::GeneralRefContainedInItemst)
                         }.empty?
                     }.length
                 when :bucket
                     df.world.items.other[:BUCKET].find_all { |i|
-                        i.itemrefs.empty?
+                        !i.flags.trader and i.itemrefs.empty?
                     }.length
                 when :food
                     df.world.items.other[:ANY_GOOD_FOOD].reject { |i|
+                        i.flags.trader or
                         case i
                         when DFHack::ItemSeedsst, DFHack::ItemBoxst, DFHack::ItemFishRawst
                             true
                         end
                     }.inject(0) { |s, i| s + i.stack_size }
                 when :drink
-                    df.world.items.other[:DRINK].inject(0) { |s, i| s + i.stack_size }
+                    df.world.items.other[:DRINK].inject(0) { |s, i| s + (i.flags.trader ? 0 : i.stack_size) }
                 when :soap
                     df.world.items.other[:BAR].find_all { |i|
                         # bars are stocked in bins, ignore that (infirmary stocks have BuildingHolder)
-                        mat = df.decode_mat(i) and mat.material and mat.material.id == 'SOAP' and i.itemrefs.reject { |r| r.kind_of?(DFHack::GeneralRefContainedInItemst) }.empty?
+                        !i.flags.trader and mat = df.decode_mat(i) and mat.material and mat.material.id == 'SOAP' and i.itemrefs.reject { |r| r.kind_of?(DFHack::GeneralRefContainedInItemst) }.empty?
                     }.length
                 when :logs
-                    df.world.items.other[:WOOD].find_all { |i| i.itemrefs.empty? }.length
+                    df.world.items.other[:WOOD].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
                 when :roughgem
-                    df.world.items.other[:ROUGH].find_all { |i| i.itemrefs.empty? }.length
+                    df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
                 else
                     @needed[k] ? 1000000 : -1
                 end
