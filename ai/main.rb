@@ -35,7 +35,17 @@ class DwarfAI
                 return
             end
         end
-        puts " #{df.cur_year}:#{df.cur_year_tick} #{announce.text.inspect}"
+
+        # unsplit announce text
+        fulltext = announce.text
+        idx = df.world.status.announcements.index(announce)
+        while announce.flags.continuation
+            announce = df.world.status.announcements[idx -= 1]
+            break if not announce
+            fulltext = announce.text + ' ' + fulltext
+        end
+        puts " #{df.cur_year}:#{df.cur_year_tick} #{fulltext.inspect}"
+
         df.pause_state = false
     end
 
@@ -49,19 +59,22 @@ class DwarfAI
         else
             case cvname = df.curview._raw_rtti_classname
             when 'viewscreen_textviewerst'
-                text = df.curview.text_display.map { |t| t.text.to_s.strip.gsub(/\s+/, ' ') }.join("\n")
+                text = df.curview.text_display.map { |t|
+                    t.text.to_s.strip.gsub(/\s+/, ' ')
+                }.join("\n")
+
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\./
-                    df.curview.feed_keys(:LEAVESCREEN)
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"
+                    df.curview.feed_keys(:LEAVESCREEN)
                 else
                     puts "AI: paused in unknown textviewerst #{text.inspect}" if $DEBUG
                 end
             when 'viewscreen_topicmeetingst'
                 df.curview.feed_keys(:OPTION1)
-                puts "AI: exit diplomat topicmeetingst"
+                #puts "AI: exit diplomat topicmeetingst"
             when 'viewscreen_topicmeeting_takerequestsst', 'viewscreen_requestagreementst'
-                df.curview.feed_keys(:LEAVESCREEN)
                 puts "AI: exit diplomat #{cvname}"
+                df.curview.feed_keys(:LEAVESCREEN)
 
             else
                 @seen_cvname ||= { 'viewscreen_dwarfmodest' => true }

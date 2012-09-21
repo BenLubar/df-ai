@@ -130,6 +130,7 @@ class DwarfAI
                     wantdig(r)
                     false
                 else
+                    idleidle
                     true
                 end
             elsif manager_backlog >= 8 and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
@@ -137,6 +138,19 @@ class DwarfAI
                 digroom(r)
                 false
             end
+        end
+
+        def idleidle
+            @rooms.each { |r|
+                next if r.status != :finished
+
+                case r.type
+                when :bedroom, :well, :dininghall
+                    ((r.x1-1)..(r.x2+1)).each { |x| ((r.y1-1)..(r.y2+1)).each { |y|
+                        df.map_tile_at(x, y, r.z).dig(:Smooth)
+                    } }
+                end
+            }
         end
 
         def checkrooms
@@ -868,7 +882,7 @@ class DwarfAI
                 }
             }
         end
-            
+
         # check smoothing progress, channel intermediate floors when done
         def try_digcistern(r)
             issmooth = lambda { |t|
@@ -946,6 +960,7 @@ class DwarfAI
 
             if r.subtype == :food
                 pid = df.world.raws.plants.all.index { |p| p.id == 'MUSHROOM_HELMET_PLUMP' }
+                # TODO randomize crops for later plots (whose layout empty)
 
                 4.times { |season|
                     bld.plant_id[season] = pid
@@ -1471,7 +1486,7 @@ class DwarfAI
 
             # infirmary
             old_cor = corridor_center2
-            cor = Corridor.new(fx+2, fx+6, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+3, fx+6, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
