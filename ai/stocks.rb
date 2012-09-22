@@ -6,7 +6,7 @@ class DwarfAI
             @needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
                 :food => 20, :drink => 20, :soap => 5, :logs => 10 }
             @needed_perdwarf = { :food => 1, :drink => 2 }
-            @watch_stock = { :roughgem => 6, :pigtails => 10, :thread => 10 }
+            @watch_stock = { :roughgem => 6, :pigtail => 10, :dimplecup => 5, :thread => 10 }
         end
 
         def update
@@ -72,6 +72,16 @@ class DwarfAI
                     df.world.items.other[:WOOD].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
                 when :roughgem
                     df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
+                when :pigtail, :dimplecup
+                    # TODO generic handling, same as farm crops selection
+                    mat = {:pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
+                        :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL'}[k]
+                    mi = df.decode_mat(mat)
+                    df.world.items.other[:PLANT].find_all { |i|
+                        !i.flags.trader and i.itemrefs.reject { |r|
+                            r.kind_of?(DFHack::GeneralRefContainedInItemst)
+                        }.empty? and i.mat_index == mi.mat_index and i.mat_type == mi.mat_type
+                    }.length
                 else
                     @needed[k] ? 1000000 : -1
                 end
@@ -96,8 +106,10 @@ class DwarfAI
                 amount = 5 if amount < 5
                 amount /= 5     # accounts for brewer yield, but not for input stack size
             when :logs
+                # this check is expensive, so cut a few more to avoid doing it too often
+                amount += 5
                 ai.plan.tree_list.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
-                ai.plan.cuttrees(amount+5) if amount > 0
+                ai.plan.cuttrees(amount) if amount > 0
                 return
             end
 
@@ -112,6 +124,35 @@ class DwarfAI
         end
 
         def queue_use(what, amount)
+            case what
+            when :roughgem
+                free = df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and i.itemrefs.empty? }
+                df.world.manager_orders.each { |o|
+                    next if o.job_type != :CutGems
+                    o.amount_left.times {
+                        if idx = free.index { |g| g.mat_index == o.mat_index and g.mat_type == o.mat_type }
+                            free.delete_at idx
+                        end
+                    }
+                }
+                @watch_stock[:roughgem].times { free.pop }
+                return if free.empty?
+                ai.plan.ensure_workshop(:Jewelers, false)
+                gem = free.first
+                count = free.find_all { |i| i.mat_index == gem.mat_index and i.mat_type == gem.mat_type }.length
+                amount = count if amount > count
+                amount = 30 if amount > 30
+                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :unk_2 => -1, :item_subtype => -1,
+                     :mat_type => gem.mat_type, :mat_index => gem.mat_index, :hist_figure_id => -1,
+                     :amount_left => amount, :amount_total => amount)
+
+            when :pigtail, :dimplecup
+                reaction = {:pigtail => :ProcessPlants, :dimplecup => :MillPlants}[what]
+                ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+                return if amount <= 2
+                ai.plan.add_manager_order(reaction, amount)
+
+            end
         end
 
         def status

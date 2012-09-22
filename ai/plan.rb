@@ -752,7 +752,7 @@ class DwarfAI
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i] = plant.flags[:DRINK] if plant
+                        t.plants[i] = (plant.flags[:DRINK] and not plant.flags[:THREAD]) if plant
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
@@ -1197,6 +1197,8 @@ class DwarfAI
                 add_manager_order(:ProcessPlants, amount)
             when :ProcessPlants
                 ensure_workshop(:Farmers)
+            when :MillPlants
+                ensure_workshop(:Quern)
             when :BrewDrink
                 ensure_workshop(:Still)
             when :MakeSoap
@@ -1359,7 +1361,7 @@ class DwarfAI
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Loom,:Clothiers, :Dyers,:Bowyers, :BookkeepersOffice,nil]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:SoapMaker]
+                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :SoapMaker,:ManagersOffice]
 
             [-1, 1].each { |dirx|
                 prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
