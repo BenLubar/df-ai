@@ -4,16 +4,22 @@ case $script_args[0]
 when 'start'
     Dir['hack/scripts/ai/*.rb'].each { |f| load f }
 
-    $dwarfAI = DwarfAI.new
-    $dwarfAI.onupdate_register
-
-    # unpause if a map was just loaded
-    if df.pause_state and df.cur_year_tick <= 1
-        u = df.onupdate_register {
-            df.onupdate_unregister u
-            df.curview.feed_keys(:D_PAUSE) if df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest'
-        }
+    if df.curview._raw_rtti_classname == 'viewscreen_titlest'
+        df.curview.feed_keys(:SELECT)
+        df.curview.feed_keys(:SELECT)
     end
+
+    $dwarfAI = DwarfAI.new
+
+    df.onupdate_register_once {
+        if df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest'
+            $dwarfAI.onupdate_register
+            $dwarfAI.plan.startup
+            df.curview.feed_keys(:D_PAUSE) if df.pause_state
+            true
+        end
+    }
+
 when 'end', 'stop'
     $dwarfAI.onupdate_unregister
     puts "removed onupdate"
@@ -25,6 +31,6 @@ else
     if $dwarfAI
         puts $dwarfAI.status
     else
-        puts "AI not started"
+        puts "AI not started (hint: ai start)"
     end
 end

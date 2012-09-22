@@ -1189,13 +1189,14 @@ class DwarfAI
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
-            puts 'AI: setting up fort blueprint'
+            puts 'AI: setting up fort blueprint...'
             scan_fort_entrance
             debug 'blueprint found entrance'
             scan_fort_body
             debug 'blueprint found body'
             setup_blueprint_rooms
             debug 'blueprint found rooms'
+            puts 'AI: ready'
         end
 
         # search a valid tile for fortress entrance

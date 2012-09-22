@@ -9,8 +9,6 @@ class DwarfAI
         @pop = Population.new(self)
         @plan = Plan.new(self)
         @stocks = Stocks.new(self)
-
-        @plan.startup
     end
 
     def handle_pause_event(announce)
