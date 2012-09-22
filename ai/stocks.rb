@@ -6,7 +6,7 @@ class DwarfAI
             @needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
                 :food => 20, :drink => 20, :soap => 5, :logs => 10 }
             @needed_perdwarf = { :food => 1, :drink => 2 }
-            @watch_stock = { :roughgem => 4, :pigtails => 10, :thread => 10 }
+            @watch_stock = { :roughgem => 6, :pigtails => 10, :thread => 10 }
         end
 
         def update
@@ -96,12 +96,8 @@ class DwarfAI
                 amount = 5 if amount < 5
                 amount /= 5     # accounts for brewer yield, but not for input stack size
             when :logs
-                # XXX check reachability
-                queued = 0
-                df.each_tree(:any) { |t| queued += 1 if df.map_tile_at(t).designation.dig == :Default }
-                amount -= queued
-                # XXX cuttrees 'near entrance' ?
-                df.cuttrees(:any, amount, true) if amount > 0
+                ai.plan.tree_list.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
+                ai.plan.cuttrees(amount+5) if amount > 0
                 return
             end
 

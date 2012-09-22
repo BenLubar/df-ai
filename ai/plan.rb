@@ -14,7 +14,7 @@ class DwarfAI
             @rooms = []
             @corridors = []
             @manager_taskmax = 4    # when stacking manager jobs, do not stack more than this
-            @manager_maxbacklog = 8 # allow wantdig only with less than that number of pending orders
+            @manager_maxbacklog = 16 # allow wantdig only with less than that number of pending orders
             @dwarves_per_table = 3  # number of dwarves per dininghall table/chair
             @dwarves_per_farmtile = 2   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
@@ -29,19 +29,17 @@ class DwarfAI
             setup_blueprint
 
             # some spare furniture, to speed up room setup
-            add_manager_order(:ConstructTable, 2)
-            add_manager_order(:ConstructThrone, 2)
-            add_manager_order(:ConstructBed, 2)
             add_manager_order(:ConstructDoor, 2)
-            add_manager_order(:ConstructCabinet, 2)
+            add_manager_order(:ConstructTable, 1)
+            add_manager_order(:ConstructThrone, 1)
+            add_manager_order(:ConstructBed, 1)
 
-            # start on that spare right away
+            # start on that spare asap
             ensure_workshop(:Masons)
             ensure_workshop(:Carpenters)
+            
             dig_garbagedump
-
-            # logs get lost sometimes ? have some margin
-            df.cuttrees(:any, 6, true)
+            cuttrees(6)
         end
 
         def update
@@ -51,7 +49,7 @@ class DwarfAI
             @nrdig += @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor and t[1].w*t[1].h*t[1].h_z >= 10 }
 
             # avoid too much manager backlog
-            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left >= @manager_taskmax }.length
+            manager_backlog = df.world.manager_orders.length
             want_reupdate = false
             @tasks.delete_if { |t|
                 case t[0]
@@ -116,15 +114,15 @@ class DwarfAI
             }
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
-            manager_backlog = df.world.manager_orders.find_all { |o| o.amount_left >= @manager_taskmax }.length
-            if not digging? and manager_backlog < 8
+            manager_backlog = df.world.manager_orders.length
+            if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
                 if r =
-                       @rooms.find { |_r| _r.type == :barracks and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :barracks and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :cemetary and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
@@ -133,8 +131,9 @@ class DwarfAI
                     idleidle
                     true
                 end
-            elsif manager_backlog >= 8 and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
-                r.subtype = (@rooms.find_all { |_r| _r.type == :workshop and _r.subtype == :Masons }.length >= 2 ? :Carpenters : :Masons)
+            elsif manager_backlog >= @manager_maxbacklog and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
+                r.misc[:spare] = true
+                r.subtype = :Masons
                 digroom(r)
                 false
             end
@@ -142,7 +141,7 @@ class DwarfAI
 
         def idleidle
             @rooms.each { |r|
-                next if r.status != :finished
+                next if r.status == :plan or r.status == :dig
 
                 case r.type
                 when :bedroom, :well, :dininghall
@@ -218,6 +217,10 @@ class DwarfAI
 
         def getdiningroom(id)
             if r = @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :food and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+                wantdig(r)
+                r.misc[:users] << id
+            end
+            if r = @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
                 wantdig(r)
                 r.misc[:users] << id
             end
@@ -323,7 +326,7 @@ class DwarfAI
                 # add minimal stockpile in front of workshop
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
-                        :Clothiers => :cloth, :Still => :food
+                        :Clothiers => :cloth, :Still => :food, :WoodFurnace => :wood,
                 }[r.subtype]
                     # XXX hardcoded fort layout
                     y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
@@ -738,36 +741,42 @@ class DwarfAI
                 bld.settings.flags.food = true
                 bld.max_barrels = r.w*r.h
                 t = bld.settings.food.type
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :farmplot and r.subtype == :food
-                    df.world.raws.mat_table.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
+                mt = df.world.raws.mat_table
+                   if r.misc[:workshop] and r.misc[:workshop].subtype == :farmplot
+                    mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
-                    df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
-                    df.world.raws.mat_table.organic_types[:Leaf].length.times { |i| t.leaves[i] = true }
+                    mt.organic_types[:Plants].length.times { |i|
+                        plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
+                        t.plants[i] = (plant.flags[:THREAD] or plant.flags[:LEAVES]) if plant
+                    }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
-                    df.world.raws.mat_table.organic_types[:Plants].length.times { |i| t.plants[i] = true }
+                    mt.organic_types[:Plants].length.times { |i|
+                        plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
+                        t.plants[i] = plant.flags[:DRINK] if plant
+                    }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
-                    df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
+                    mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
                     bld.settings.food.prepared_meals = true
-                    df.world.raws.mat_table.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
-                    df.world.raws.mat_table.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
-                    df.world.raws.mat_table.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
-                    df.world.raws.mat_table.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
-                    df.world.raws.mat_table.organic_types[:Plants        ].length.times { |i| t.plants[i]          = true }
-                    df.world.raws.mat_table.organic_types[:PlantDrink    ].length.times { |i| t.drink_plant[i]     = true }
-                    df.world.raws.mat_table.organic_types[:CreatureDrink ].length.times { |i| t.drink_animal[i]    = true }
-                    df.world.raws.mat_table.organic_types[:PlantCheese   ].length.times { |i| t.cheese_plant[i]    = true }
-                    df.world.raws.mat_table.organic_types[:CreatureCheese].length.times { |i| t.cheese_animal[i]   = true }
-                    df.world.raws.mat_table.organic_types[:Seed          ].length.times { |i| t.seeds[i]           = true }
-                    df.world.raws.mat_table.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
-                    df.world.raws.mat_table.organic_types[:PlantPowder   ].length.times { |i| t.powder_plant[i]    = true }
-                    df.world.raws.mat_table.organic_types[:CreaturePowder].length.times { |i| t.powder_creature[i] = true }
-                    df.world.raws.mat_table.organic_types[:Glob          ].length.times { |i| t.glob[i]            = true }
-                    df.world.raws.mat_table.organic_types[:Paste         ].length.times { |i| t.glob_paste[i]      = true }
-                    df.world.raws.mat_table.organic_types[:Pressed       ].length.times { |i| t.glob_pressed[i]    = true }
-                    df.world.raws.mat_table.organic_types[:PlantLiquid   ].length.times { |i| t.liquid_plant[i]    = true }
-                    df.world.raws.mat_table.organic_types[:CreatureLiquid].length.times { |i| t.liquid_animal[i]   = true }
-                    df.world.raws.mat_table.organic_types[:MiscLiquid    ].length.times { |i| t.liquid_misc[i]     = true }
+                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
+                    mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
+                    mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
+                    mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
+                    mt.organic_types[:Plants        ].length.times { |i| t.plants[i]          = true }
+                    mt.organic_types[:PlantDrink    ].length.times { |i| t.drink_plant[i]     = true }
+                    mt.organic_types[:CreatureDrink ].length.times { |i| t.drink_animal[i]    = true }
+                    mt.organic_types[:PlantCheese   ].length.times { |i| t.cheese_plant[i]    = true }
+                    mt.organic_types[:CreatureCheese].length.times { |i| t.cheese_animal[i]   = true }
+                    mt.organic_types[:Seed          ].length.times { |i| t.seeds[i]           = true }
+                    mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
+                    mt.organic_types[:PlantPowder   ].length.times { |i| t.powder_plant[i]    = true }
+                    mt.organic_types[:CreaturePowder].length.times { |i| t.powder_creature[i] = true }
+                    mt.organic_types[:Glob          ].length.times { |i| t.glob[i]            = true }
+                    mt.organic_types[:Paste         ].length.times { |i| t.glob_paste[i]      = true }
+                    mt.organic_types[:Pressed       ].length.times { |i| t.glob_pressed[i]    = true }
+                    mt.organic_types[:PlantLiquid   ].length.times { |i| t.liquid_plant[i]    = true }
+                    mt.organic_types[:CreatureLiquid].length.times { |i| t.liquid_animal[i]   = true }
+                    mt.organic_types[:MiscLiquid    ].length.times { |i| t.liquid_misc[i]     = true }
                 end
             when :cloth
                 bld.settings.flags.cloth = true
@@ -816,6 +825,24 @@ class DwarfAI
         end
 
         def construct_farmplot(r)
+            if df.map_tile_at(r).tilemat != :SOIL
+                puts "AI: cheat: mud invocation"
+                (r.x1..r.x2).each { |x| (r.y1..r.y2).each { |y|
+                    t = df.map_tile_at(x, y, r.z)
+                    if t.tilemat != :SOIL
+                        if not e = t.mapblock.block_events.find { |_e|
+                            _e.kind_of?(DFHack::BlockSquareEventMaterialSpatterst) and df.decode_mat(_e).to_s == 'MUD'
+                        }
+                            mud = df.decode_mat('MUD')
+                            e = DFHack::BlockSquareEventMaterialSpatterst.cpp_new(:mat_type => mud.mat_type, :mat_index => mud.mat_index)
+                            e.min_temperature = e.max_temperature = 60001
+                            t.mapblock.block_events << e
+                        end
+                        e.amount[t.dx][t.dy] = 50   # small pile of mud
+                    end
+                } }
+            end
+
             bld = df.building_alloc(:FarmPlot)
             df.building_position(bld, r)
             df.building_construct(bld, [])
@@ -826,7 +853,7 @@ class DwarfAI
             end
             case r.subtype
             when :food
-                ensure_workshop(:Still, false)
+                ensure_workshop(:Still)
                 ensure_workshop(:Farmers, false)
                 ensure_workshop(:Kitchen, false)
             when :cloth
@@ -958,18 +985,19 @@ class DwarfAI
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
 
-            may = {}
-            df.world.raws.plants.all.each_with_index { |p, i|
+            may = []
+            df.world.raws.plants.all.length.times { |i|
+                p = df.world.raws.plants.all[i]
                 next if not p.flags[:BIOME_SUBTERRANEAN_WATER]
-                may[i] = p
+                may << i
             }
 
             # XXX 1st plot = the one with a door
             isfirst = !r.layout.empty?
             if r.subtype == :food
                 4.times { |season|
-                    pids = may.keys.find_all { |i|
-                        p = may[i]
+                    pids = may.find_all { |i|
+                        p = df.world.raws.plants.all[i]
 
                         # season numbers are also the 1st 4 flags
                         next if not p.flags[season]
@@ -984,21 +1012,25 @@ class DwarfAI
                     bld.plant_id[season] = pids[rand(pids.length)]
                 }
             else
-                threads = may.keys.find_all { |i|
-                    may[i].flags[:THREAD]
+                threads = may.find_all { |i|
+                    p = df.world.raws.plants.all[i]
+                    p.flags[:THREAD]
                 }
-                dyes = may.keys.find_all { |i|
-                    may[i].flags[:MILL] and df.decode_mat(may[i].material_defs.type_mill, may[i].material_defs.idx_mill).material.flags[:IS_DYE]
+                dyes = may.find_all { |i|
+                    p = df.world.raws.plants.all[i]
+                    p.flags[:MILL] and df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material.flags[:IS_DYE]
                 }
 
                 4.times { |season|
                     pids = threads.find_all { |i|
-                        may[i].flags[season]
+                        p = df.world.raws.plants.all[i]
+                        p.flags[season]
                     }
                     pids |= dyes.find_all { |i|
-                        # 1st plot gets a maximum of threads, others may have dyes
+                        # 1st plot gets dyes only if no thread candidate exists
                         next if isfirst and !pids.empty?
-                        may[i].flags[season]
+                        p = df.world.raws.plants.all[i]
+                        p.flags[season]
                     }
 
                     bld.plant_id[season] = pids[rand(pids.length)]
@@ -1150,12 +1182,12 @@ class DwarfAI
             case order
             when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
                 o.material_category.wood = true
-                df.cuttrees(:any, amount, true)
+                cuttrees(amount)
             when :ConstructTractionBench
                 ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructTable, amount)
                 add_manager_order(:ConstructMechanisms, amount)
-                add_manager_order(:MakeChain, amount)
+                add_manager_order(:MakeRope, amount)
             when :MakeRope, :MakeBag
                 # plant cloth ropes only
                 wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
@@ -1169,7 +1201,8 @@ class DwarfAI
                 ensure_workshop(:Still)
             when :MakeSoap
                 ensure_workshop(:SoapMaker)
-                # also need tallow
+                ensure_workshop(:Kitchen)   # tallow
+                ensure_workshop(:Butchers)
                 add_manager_order(:MakeLye, amount+1)
             when :MakeBag
                 o.material_category.cloth = true
@@ -1179,11 +1212,35 @@ class DwarfAI
                 add_manager_order(:MakeAsh, amount+1)
             when :MakeAsh
                 ensure_workshop(:WoodFurnace)
-                df.cuttrees(:any, amount+1, true)
+                cuttrees(amount)
             else
                 # make generic stuff from rock
                 o.mat_type = 0
             end
+        end
+
+        # designate some trees to cut
+        def cuttrees(amount)
+            tree_list.each { |tree|
+                t = df.map_tile_at(tree)
+                next if t.shape != :TREE
+                next if t.designation.dig == :Default
+                t.dig(:Default)
+                amount -= 1
+                break if amount <= 0
+            }
+        end
+
+        # return a list of trees on the map
+        # lists only visible trees, sorted by distance from the fort entrance
+        def tree_list
+            (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
+                t = df.map_tile_at(p) and
+                  t.shape == :TREE and
+                  not t.designation.hidden
+            }.sort_by { |p|
+                (p.pos.x-@fort_entrance.x)**2 + (p.pos.y-@fort_entrance.y)**2 + ((p.pos.z-@fort_entrance.z2)*4)**2
+            }
         end
 
         attr_accessor :fort_entrance, :rooms, :corridors
@@ -1221,7 +1278,8 @@ class DwarfAI
                     (-1..1).all? { |__x|
                         (-2..2).all? { |__y|
                             t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and
-                            tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and tt.designation.flow_size == 0 and not tt.designation.hidden and not df.building_find(tt)
+                            tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and
+                              tt.designation.flow_size == 0 and not tt.designation.hidden and not df.building_find(tt)
                         }
                     }
                 }
@@ -1299,9 +1357,9 @@ class DwarfAI
             # Millstone, Siege, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-                :Loom,:Clothiers, :Dyers,:Bowyers, :SoapMaker,nil]
+                :Loom,:Clothiers, :Dyers,:Bowyers, :BookkeepersOffice,nil]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:BookkeepersOffice]
+                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :ManagersOffice,:SoapMaker]
 
             [-1, 1].each { |dirx|
                 prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
@@ -1482,11 +1540,13 @@ class DwarfAI
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
             cz = @rooms.find { |r| r.type == :workshop }.z1
-            farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
             ws_cor = @corridors.find { |_c| _c.x1 < cx and _c.x2 >= cx and _c.y1 <= cy and _c.y2 >= cy and _c.z1 <= cz and _c.z2 >= cz }
             raise "cannot connect farm to workshop corridor" if not ws_cor
-            farm_stairs.accesspath = [ws_cor]
-            farm_stairs.layout << {:item => :door, :x => -1}
+            moo = Corridor.new(cx+1, cx+1, cy, cy, cz, cz)
+            moo.accesspath = [ws_cor]
+            @corridors << moo
+            farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
+            farm_stairs.accesspath = [moo]
             @corridors << farm_stairs
             cx += 3
             cz2 = (cz...fort_entrance.z2).find { |z|
@@ -1496,7 +1556,10 @@ class DwarfAI
                     }
                 }
             }
-            cz2 ||= cz  # TODO irrigation
+            if !cz2
+                puts "AI: no soil, farms will need manual irrigation"
+                cz2 = cz
+            end
             farm_stairs.z2 = cz2
             cor = Corridor.new(cx, cx+1, cy, cy, cz2, cz2)
             cor.accesspath = [farm_stairs]
@@ -1554,26 +1617,24 @@ class DwarfAI
             @rooms << infirmary
 
             # barracks
-            barracks = Room.new(:barracks, nil, fx+4, fx+8, fy+3, fy+7, fz)
+            barracks = Room.new(:barracks, nil, fx+4, fx+10, fy+3, fy+10, fz)
             barracks.layout << {:item => :door, :x => 1, :y => -1}
             5.times { |dy|
-                barracks.layout << {:item => :weaponrack, :x => 2, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :armorstand, :x => 3, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :bed, :x => 4, :y => dy, :ignore => true, :users => []}
+                barracks.layout << {:item => :weaponrack, :x => 4, :y => dy, :ignore => true, :users => []}
+                barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
+                barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
             }
-            w0 = barracks.layout.find { |f| f[:item] == :weaponrack }
-            w0.delete :ignore
-            w0[:makeroom] = true
+            barracks.layout.find { |f| f[:item] == :weaponrack }[:makeroom] = true
             barracks.accesspath = [cor]
             @rooms << barracks
 
             # cemetary
-            cor = Corridor.new(fx+7, fx+13, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+7, fx+15, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
 
-            cemetary = Room.new(:cemetary, nil, fx+12, fx+16, fy+3, fy+9, fz)
+            cemetary = Room.new(:cemetary, nil, fx+14, fx+18, fy+3, fy+9, fz)
             cemetary.layout << {:item => :door, :x => 1, :y => -1}
             3.times { |dx|
                 4.times { |dy|
