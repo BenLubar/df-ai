@@ -71,7 +71,12 @@ class DwarfAI
                 when :logs
                     df.world.items.other[:WOOD].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
                 when :roughgem
-                    df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
+                    df.world.items.other[:ROUGH].find_all { |i|
+                        !i.flags.trader and
+                        i.itemrefs.reject { |r|
+                            r.kind_of?(DFHack::GeneralRefContainedInItemst)
+                        }.empty?
+                    }.length
                 when :pigtail, :dimplecup
                     # TODO generic handling, same as farm crops selection
                     mat = {:pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
@@ -126,7 +131,11 @@ class DwarfAI
         def queue_use(what, amount)
             case what
             when :roughgem
-                free = df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and i.itemrefs.empty? }
+                free = df.world.items.other[:ROUGH].find_all { |i| !i.flags.trader and
+                    i.itemrefs.reject { |r|
+                        r.kind_of?(DFHack::GeneralRefContainedInItemst)
+                    }.empty?
+                }
                 df.world.manager_orders.each { |o|
                     next if o.job_type != :CutGems
                     o.amount_left.times {

@@ -804,6 +804,7 @@ class DwarfAI
                 df.world.raws.mat_table.organic_types[:Leather].length.times { |i| bld.settings.leather[i] = true }
             when :gems
                 bld.settings.flags.gems = true
+                bld.max_bins = r.w*r.h
                 t = bld.settings.gems
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :Jewelers
                     df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = false }
@@ -865,7 +866,7 @@ class DwarfAI
             @tasks << [:setup_farmplot, r]
         end
 
-        def construct_cistern(r)
+        def smooth_cistern(r)
             # mark for smoothing
             (r.z1..r.z2).each { |z|
                 ((r.x1-2)..(r.x2+1)).each { |x|
@@ -883,6 +884,10 @@ class DwarfAI
                     }
                 }
             }
+        end
+
+        def construct_cistern(r)
+            smooth_cistern(r)
 
             # prepare material for controlling water level
             ensure_workshop(:Mechanics)
@@ -946,6 +951,10 @@ class DwarfAI
                     }
                 }
             }
+
+            @trycistern_count ||= 0
+            @trycistern_count += 1
+            smooth_cistern(r) if @trycistern_count % 12 == 0
 
             dug = (cnt == r.w*r.h*(r.h_z-1))
             # TODO fill with water
