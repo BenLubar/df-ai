@@ -13,9 +13,13 @@ when 'start'
 
     df.onupdate_register_once {
         if df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest'
-            $dwarfAI.onupdate_register
-            $dwarfAI.plan.startup
-            df.curview.feed_keys(:D_PAUSE) if df.pause_state
+            begin
+                $dwarfAI.onupdate_register
+                $dwarfAI.plan.startup
+                df.curview.feed_keys(:D_PAUSE) if df.pause_state
+            rescue Exception
+                puts $!, $!.backtrace
+            end
             true
         end
     }
