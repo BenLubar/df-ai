@@ -740,7 +740,7 @@ class DwarfAI
                 bld.max_barrels = r.w*r.h
                 t = bld.settings.food.type
                 mt = df.world.raws.mat_table
-                   if r.misc[:workshop] and r.misc[:workshop].subtype == :farmplot
+                   if r.misc[:workshop] and r.misc[:workshop].type == :farmplot
                     mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
                     mt.organic_types[:Plants].length.times { |i|
