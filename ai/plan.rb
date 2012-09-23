@@ -14,7 +14,7 @@ class DwarfAI
             @rooms = []
             @corridors = []
             @manager_taskmax = 4    # when stacking manager jobs, do not stack more than this
-            @manager_maxbacklog = 16 # allow wantdig only with less than that number of pending orders
+            @manager_maxbacklog = 10 # allow wantdig only with less than that number of pending masons orders
             @dwarves_per_table = 3  # number of dwarves per dininghall table/chair
             @dwarves_per_farmtile = 2   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
@@ -49,7 +49,7 @@ class DwarfAI
             @nrdig += @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor and t[1].w*t[1].h*t[1].h_z >= 10 }
 
             # avoid too much manager backlog
-            manager_backlog = df.world.manager_orders.length
+            manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             want_reupdate = false
             @tasks.delete_if { |t|
                 case t[0]
@@ -114,7 +114,7 @@ class DwarfAI
             }
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
-            manager_backlog = df.world.manager_orders.length
+            manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
                 if r =
@@ -1368,7 +1368,7 @@ class DwarfAI
             # Millstone, Siege, Custom/screwpress
             # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-                :Loom,:Clothiers, :Dyers,:Bowyers, :BookkeepersOffice,nil]
+                :Loom,:Clothiers, :Dyers,:Bowyers, nil,:BookkeepersOffice]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
                 :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :SoapMaker,:ManagersOffice]
 
