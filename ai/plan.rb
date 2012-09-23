@@ -83,7 +83,7 @@ class DwarfAI
                 end
             }
 
-            update if want_reupdate
+            df.onupdate_register_once(12) { update ; true } if want_reupdate
         end
 
         def digging?
@@ -887,6 +887,8 @@ class DwarfAI
         end
 
         def construct_cistern(r)
+            @rooms.each { |_r| wantdig(_r) if _r.type == :well }
+
             smooth_cistern(r)
 
             # prepare material for controlling water level
@@ -1099,7 +1101,7 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                @rooms.each { |_r| wantdig(_r) if _r.type == :well or _r.type == :cistern }
+                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
 
                 if r.misc[:temporary]
                     # if we set up the temporary hall, queue the real one
@@ -1180,7 +1182,7 @@ class DwarfAI
 
             if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= 4 }
                 o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => -1,
-                        :mat_type => -1, :mat_index => -1, :hist_figure_id => -1, :amount_left => amount, :amount_total => amount)
+                        :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount)
                 o.reaction_name = custom if custom
                 df.world.manager_orders << o
             else
