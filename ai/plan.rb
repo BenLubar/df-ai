@@ -855,13 +855,7 @@ class DwarfAI
             case r.subtype
             when :food
                 ensure_workshop(:Still)
-                ensure_workshop(:Farmers, false)
-                ensure_workshop(:Kitchen, false)
             when :cloth
-                ensure_workshop(:Loom, false)
-                ensure_workshop(:Clothiers, false)
-                ensure_workshop(:Dyers, false)
-                ensure_workshop(:Quern, false)
             end
             @tasks << [:setup_farmplot, r]
         end
@@ -1194,40 +1188,37 @@ class DwarfAI
             when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
                 o.material_category.wood = true
                 cuttrees(amount)
+            when :MakeRope, :MakeBag    # cloth
+                wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
+                o.material_category.cloth = true
+                # wait ai.stocks -> ProcessPlants when pigtails are available
+                # to avoids job cancellation spam
+            when :ProcessPlants
+                ensure_workshop(:Farmers)
+                ensure_workshop(:Loom, false)
+                ensure_workshop(:Clothiers, false)
+            when :MillPlants
+                ensure_workshop(:Quern)
+                ensure_workshop(:Dyers, false)
             when :ConstructTractionBench
                 ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructTable, amount)
                 add_manager_order(:ConstructMechanisms, amount)
                 add_manager_order(:MakeRope, amount)
-            when :MakeRope, :MakeBag
-                # plant cloth ropes only
-                wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
-                ensure_workshop(:Clothiers)
-                o.material_category.cloth = true
-                # assume auto loom is on
-                add_manager_order(:ProcessPlants, amount)
-            when :ProcessPlants
-                ensure_workshop(:Farmers)
-            when :MillPlants
-                ensure_workshop(:Quern)
             when :BrewDrink
                 ensure_workshop(:Still)
             when :MakeSoap
-                ensure_workshop(:SoapMaker)
-                ensure_workshop(:Kitchen)   # tallow
-                ensure_workshop(:Butchers)
+                ensure_workshop(:Kitchen, false)   # tallow
+                ensure_workshop(:Butchers, false)
                 add_manager_order(:MakeLye, amount+1)
-            when :MakeBag
-                o.material_category.cloth = true
+                ensure_workshop(:SoapMaker, false)
             when :MakeLye
-                ensure_workshop(:Ashery)
-                # also need free buckets
                 add_manager_order(:MakeAsh, amount+1)
+                ensure_workshop(:Ashery, false)
             when :MakeAsh
-                ensure_workshop(:WoodFurnace)
-                cuttrees(amount)
+                ensure_workshop(:WoodFurnace, false)
             else
-                # make generic stuff from rock
+                # make other stuff from generic rock
                 o.mat_type = 0
             end
         end
