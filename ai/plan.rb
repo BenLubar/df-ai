@@ -361,9 +361,7 @@ class DwarfAI
             when :infirmary
                 construct_activityzone(r)
             else
-                r.layout.each { |f|
-                    @tasks << [:furnish, r, f] if f[:makeroom]
-                }
+                furnish_room(r)
             end
         end
 
@@ -1158,7 +1156,7 @@ class DwarfAI
             }
         end
 
-        def add_manager_order(order, amount=1)
+        def add_manager_order(order, amount=1, maxmerge=@manager_taskmax)
             debug "add_manager #{order} #{amount}"
             case order
             when :MakeSoap
@@ -1174,7 +1172,7 @@ class DwarfAI
                 _order = order
             end
 
-            if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= 4 }
+            if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= maxmerge }
                 o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => -1,
                         :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount)
                 o.reaction_name = custom if custom

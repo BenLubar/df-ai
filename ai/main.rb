@@ -59,7 +59,7 @@ class DwarfAI
             when 'viewscreen_textviewerst'
                 text = df.curview.text_display.map { |t|
                     t.text.to_s.strip.gsub(/\s+/, ' ')
-                }.join("\n")
+                }.join(' ')
 
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\./
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"

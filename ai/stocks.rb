@@ -6,7 +6,8 @@ class DwarfAI
             @needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
                 :food => 20, :drink => 20, :soap => 5, :logs => 10 }
             @needed_perdwarf = { :food => 1, :drink => 2 }
-            @watch_stock = { :roughgem => 6, :pigtail => 10, :dimplecup => 5, :thread => 10 }
+            # XXX 'play now' embark has only 5 dimplecup/pigtail seeds
+            @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2, :thread => 10 }
             @updating = []
             @count = {}
         end
@@ -138,7 +139,7 @@ class DwarfAI
             return if amount <= 2
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            ai.plan.add_manager_order(reaction, amount)
+            ai.plan.add_manager_order(reaction, amount, 30)
         end
 
         def queue_use(what, amount)
@@ -183,7 +184,7 @@ class DwarfAI
                 ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
                 return if amount <= 2
                 puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-                ai.plan.add_manager_order(reaction, amount)
+                ai.plan.add_manager_order(reaction, amount, 30)
 
             end
         end
