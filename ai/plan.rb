@@ -398,7 +398,12 @@ class DwarfAI
             return true if f[:ignore]
             return true if f[:item] == :pillar
             build_furniture(f)
-            return try_furnish_well(r, f) if f[:item] == :well
+            case f[:item]
+            when :well
+                return try_furnish_well(r, f)
+            when :lever
+                return try_furnish_lever(r, f)
+            end
             return if @cache_nofurnish[f[:item]]
             mod = FurnitureOrder[f[:item]]
             find = FurnitureFind[f[:item]]
@@ -432,7 +437,7 @@ class DwarfAI
                 i.kind_of?(DFHack::ItemChainst) and df.building_isitemfree(i)
             }
                 bld = df.building_alloc(:Well)
-                t = df.map_tile_at((r.x1+r.x2)/2, (r.y1+r.y2)/2, r.z1)
+                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
                 df.building_position(bld, t)
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
@@ -441,14 +446,32 @@ class DwarfAI
             end
         end
 
+        def try_furnish_lever(r, f)
+            if mecha = df.world.items.other[:TRAPPARTS].find { |i|
+                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+            }
+                bld = df.building_alloc(:Trap, :Lever)
+                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
+                df.building_position(bld, t)
+                df.building_construct(bld, [mecha])
+                r.misc[:bld_id] = f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
         def build_furniture(f)
             return if f[:queue_build]
-            if f[:item] == :well
+            case f[:item]
+            when :well
                 ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructBlocks)
                 add_manager_order(:ConstructMechanisms)
                 add_manager_order(:MakeBucket)
                 add_manager_order(:MakeRope)
+            when :lever
+                ensure_workshop(:Mechanics)
+                add_manager_order(:ConstructMechanisms, 3)  # 1 for lever, +2 to link
             else
                 ws = FurnitureWorkshop[f[:item]] ||= :Masons
                 mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
@@ -883,11 +906,6 @@ class DwarfAI
 
             smooth_cistern(r)
 
-            # prepare material for controlling water level
-            ensure_workshop(:Mechanics)
-            add_manager_order(:ConstructMechanisms, 6)  # 2x (levers + link to floodgate)
-            add_manager_order(:ConstructFloodgate, 2)
-
             # remove boulders
             room_items(r) { |i| i.flags.dump = true }
             room_items(r.accesspath[0]) { |i| i.flags.dump = true }
@@ -1051,10 +1069,13 @@ class DwarfAI
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
 
-            if f[:item] == :coffin
+            case f[:item]
+            when :coffin
                 bld.burial_mode.allow_burial = true
                 bld.burial_mode.no_citizens = false
                 bld.burial_mode.no_pets = true
+            when :lever
+                return setup_lever(r, f)
             end
 
             return true unless f[:makeroom]
@@ -1120,6 +1141,18 @@ class DwarfAI
 
             end
             true
+        end
+
+        def setup_lever(r, f)
+            case r.type
+            when :well
+                way = f[:way]
+                f[:target] ||= @rooms.find { |_r| _r.type == :cistern and _r.subtype == :reserve }.layout.find { |_f| _f[:item] == :floodgate and _f[:way] == f[:way] }
+                if f[:target].bld_id and tbld = df.building_find(f[:bld_id]) and tbld.getBuildStage >= tbld.getMaxBuildStage
+                    puts "AI: TODO linklever"
+                    true
+                end
+            end
         end
 
         def try_endconstruct(r)
@@ -1243,6 +1276,31 @@ class DwarfAI
             }.sort_by { |p|
                 (p.pos.x-@fort_entrance.x)**2 + (p.pos.y-@fort_entrance.y)**2 + ((p.pos.z-@fort_entrance.z2)*4)**2
             }
+        end
+
+        # returns one tile of an outdoor river (if one exists)
+        def scan_river
+            ifeat = df.world.cur_savegame.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }
+            return if not ifeat
+            feat = ifeat.feature
+
+            feat.embark_pos.x.length.times { |i|
+                x = 48*(feat.embark_pos.x[i] - df.world.map.region_x)
+                y = 48*(feat.embark_pos.y[i] - df.world.map.region_y)
+                next if x < 0 or x >= df.world.map.x_count or y < 0 or y >= df.world.map.y_count
+                z1, z2 = feat.min_map_z[i], feat.max_map_z[i]
+                zhalf = (z1+z2)/2 - 1   # the river is most probably here, try it first
+                [zhalf, *(z1..z2)].each { |z|
+                    48.times { |dx|
+                        48.times { |dy|
+                            t = df.map_tile_at(x+dx, y+dy, z)
+                            return t if t and t.designation.feature_local
+                        }
+                    }
+                }
+            }
+
+            nil
         end
 
         attr_accessor :fort_entrance, :rooms, :corridors
@@ -1511,30 +1569,13 @@ class DwarfAI
                 }
             }
 
-            # well
-            # in the hole from bedrooms
-            # top room (actual well)
-            cor = Corridor.new(ocx-1, fx-26, fy-1, fy+1, fz, fz)
-            cor.accesspath = [old_cor]
-            @corridors << cor
-            
-            cx = fx-32
-            well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
-            well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
-            well.layout << {:item => :door, :x => 9, :y => 3}
-            well.layout << {:item => :door, :x => 9, :y => 5}
-            well.accesspath = [cor]
-            @rooms << well
 
-            # cistern
-            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-3, fz)
-            cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
-            @corridors << cist_corr
-
-            cist = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
-            cist.z1 -= 2
-            cist.accesspath = [cist_corr]
-            @rooms << cist
+            if river = scan_river
+                setup_blueprint_cistern_fromsource(river, fx, fy, fz)
+            else
+                # TODO pool, pumps, etc
+                puts "AI: no river, no well"
+            end
 
 
             # farm plots
@@ -1648,7 +1689,104 @@ class DwarfAI
 
             # TODO
             # pastures
-            # cistern approvisionment
+        end
+
+        def setup_blueprint_cistern_fromsource(src, fx, fy, fz)
+            # TODO dynamic layout, at least move the well/cistern on the side of the river
+            # TODO scan for solid ground for all this
+
+            # well
+            cor = Corridor.new(fx-18, fx-26, fy-1, fy+1, fz, fz)
+            cor.accesspath = [@corridors.last]
+            @corridors << cor
+            
+            cx = fx-32
+            well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
+            well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
+            well.layout << {:item => :door, :x => 9, :y => 3}
+            well.layout << {:item => :door, :x => 9, :y => 5}
+            well.layout << {:item => :lever, :x => 0, :y => 0, :way => :in}
+            well.layout << {:item => :lever, :x => 1, :y => 0, :way => :out}
+            well.accesspath = [cor]
+            @rooms << well
+
+            # well reservoir (in the hole of bedroom blueprint)
+            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-3, fz)
+            cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
+            @corridors << cist_corr
+
+            cist = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
+            cist.z1 -= 2
+            cist.accesspath = [cist_corr]
+            @rooms << cist
+
+            # the staging reservoir to fill cistern, one z-level at a time
+            # should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
+            # cistern is 3x9 + 1 (stairs)
+            # reserve is 7x5 (can fill cistern 7/7 + itself 1/7 + 14 spare
+            cistern_one = Room.new(:cistern, :reserve, cx-10, cx-16, fy-2, fy+2, fz)
+            cistern_one.layout << {:item => :floodgate, :x => -1, :y => 2, :way => :in}
+            cistern_one.layout << {:item => :floodgate, :x => 7, :y => 2, :way => :out}
+            cistern_one.accesspath = [cist_corr]
+            @rooms << cistern_one
+
+            # link the cistern reservoir to the water source
+            # the tunnel should walk around other blueprint rooms
+            p1 = df.map_tile_at(cx-18, fy, fz)
+            p2 = p1
+
+            2.times {
+                loop do
+                    # trivial walking of the river tiles to find a closer spot
+                    dx = (p2.x <=> src.x)
+                    dy = (p2.y <=> src.y)
+                       if dx != 0 and nsrc = src.offset(dx, dy) and nsrc.designation.feature_local
+                    elsif dx != 0 and nsrc = src.offset(dx,  0) and nsrc.designation.feature_local
+                    elsif dy != 0 and nsrc = src.offset( 0, dy) and nsrc.designation.feature_local
+                    else break
+                    end
+                    src = nsrc
+                end
+                p2 = p1.offset(0, (p1.x > src.x ? 0 : (p1.y > src.y ? -26 : 26)))
+            }
+
+            dx = (p2.x <=> src.x)
+            dy = (p2.y <=> src.y)
+
+            channel = src.offset(dx, dy)
+
+            stair = channel.offset(dx, dy)
+            if (-1..1).all? { |ux| (-1..1).all? { |uy|
+                ut = stair.offset(ux, uy) and ut.shape == :WALL and tm = ut.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+            } }
+                # ok
+            else
+                # TODO scan around for a better spot
+                puts "AI: fail cistern<->river"
+            end
+
+            # surface to well level, 1 tile away from river
+            stair = Corridor.new(stair.x, stair.x, stair.y, stair.y, fz, stair.z+1)
+            @corridors << stair
+
+            # link stair to cistern_one
+            if stair.x < p2.x
+                cor1 = Corridor.new(stair.x, p1.x, stair.y, stair.y, p1.z, p1.z)
+                cor1.accesspath = [stair]
+                cor2 = Corridor.new(p1.x, p1.x, stair.y, p1.y, p1.z, p1.z)
+                cor2.accesspath = [cor1]
+                cistern_one.accesspath << cor2
+                @corridors << cor1 << cor2
+            else
+                cor1 = Corridor.new(stair.x, stair.x, stair.y, p2.y, p2.z, p2.z)
+                cor1.accesspath = [stair]
+                cor2 = Corridor.new(stair.x, p2.x, p2.y, p2.y, p2.z, p2.z)
+                cor2.accesspath = [cor1]
+                cor3 = Corridor.new(p2.x, p2.x, p2.y, p1.y, p2.z, p2.z)
+                cor3.accesspath = [cor2]
+                cistern_one.accesspath << cor3
+                @corridors << cor1 << cor2 << cor3
+            end
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)

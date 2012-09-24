@@ -61,7 +61,7 @@ class DwarfAI
                     t.text.to_s.strip.gsub(/\s+/, ' ')
                 }.join(' ')
 
-                if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\./
+                if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"
                     df.curview.feed_keys(:LEAVESCREEN)
                 else
