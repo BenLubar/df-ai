@@ -145,9 +145,7 @@ class DwarfAI
 
                 case r.type
                 when :bedroom, :well, :dininghall
-                    ((r.x1-1)..(r.x2+1)).each { |x| ((r.y1-1)..(r.y2+1)).each { |y|
-                        df.map_tile_at(x, y, r.z).dig(:Smooth)
-                    } }
+                    smooth_room(r)
                 end
             }
         end
@@ -881,30 +879,45 @@ class DwarfAI
             @tasks << [:setup_farmplot, r]
         end
 
-        def smooth_cistern(r)
-            # mark for smoothing
+        def smooth_room(r)
             (r.z1..r.z2).each { |z|
-                ((r.x1-2)..(r.x2+1)).each { |x|
+                ((r.x1-1)..(r.x2+1)).each { |x|
                     ((r.y1-1)..(r.y2+1)).each { |y|
                         next unless t = df.map_tile_at(x, y, z)
                         next if t.designation.hidden
                         case t.shape_basic
-                        when :Wall
+                        when :Wall, :Floor
                             t.dig :Smooth
-                        when :Floor
-                            if z == r.z1
-                                t.dig :Smooth if t.shape_basic == :Wall or t.shape_basic == :Floor
-                            end
                         end
                     }
                 }
             }
         end
 
+        def smooth_cistern(r)
+            smooth_room(r)
+
+            ((r.z1+1)..r.z2).each { |z|
+                (r.x1..r.x2).each { |x|
+                    (r.y1..r.y2).each { |y|
+                        next unless t = df.map_tile_at(x, y, z)
+                        t.designation.smooth = 0
+                    }
+                }
+            }
+
+            todo = r.accesspath.dup
+            while a = todo.pop
+                smooth_room(a)
+                todo.concat a.accesspath
+            end
+        end
+
         def construct_cistern(r)
             @rooms.each { |_r| wantdig(_r) if _r.type == :well }
 
             smooth_cistern(r)
+            furnish_room(r)
 
             # remove boulders
             room_items(r) { |i| i.flags.dump = true }
@@ -1148,10 +1161,30 @@ class DwarfAI
             when :well
                 way = f[:way]
                 f[:target] ||= @rooms.find { |_r| _r.type == :cistern and _r.subtype == :reserve }.layout.find { |_f| _f[:item] == :floodgate and _f[:way] == f[:way] }
-                if f[:target].bld_id and tbld = df.building_find(f[:bld_id]) and tbld.getBuildStage >= tbld.getMaxBuildStage
-                    puts "AI: TODO linklever"
-                    true
-                end
+                return if not f[:target][:bld_id]
+                tbld = df.building_find(f[:target][:bld_id])
+                return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
+                mechas = df.world.items.other[:TRAPPARTS].find_all { |i|
+                    i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+                }[0, 2]
+                return if mechas.length < 2
+
+                bld = df.building_find(f[:bld_id])
+                reflink = DFHack::GeneralRefBuildingTriggertargetst.cpp_new
+                reflink.building_id = tbld.id
+                refhold = DFHack::GeneralRefBuildingHolderst.cpp_new
+                refhold.building_id = bld.id
+                job = DFHack::Job.cpp_new
+                job.job_type = :LinkBuildingToTrigger
+                job.references << reflink << refhold
+                bld.jobs << job
+                df.job_link job
+                df.job_attachitem(job, mechas[0], :LinkToTarget)
+                df.job_attachitem(job, mechas[1], :LinkToTrigger)
+
+                #TODO @tasks << [:checkcisternlevel]
+                # also dig channel
+                true
             end
         end
 
@@ -1754,6 +1787,7 @@ class DwarfAI
             dy = (p2.y <=> src.y)
 
             channel = src.offset(dx, dy)
+            cistern_one.misc[:channel_enable] = [channel.x, channel.y, channel.z+1]
 
             stair = channel.offset(dx, dy)
             if (-1..1).all? { |ux| (-1..1).all? { |uy|
