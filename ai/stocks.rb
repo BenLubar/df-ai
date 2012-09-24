@@ -82,7 +82,7 @@ class DwarfAI
                     df.world.items.other[:BAR].find_all { |i|
                         # bars are stocked in bins, ignore that (infirmary stocks have BuildingHolder)
                         !i.flags.trader and mat = df.decode_mat(i) and mat.material and mat.material.id == 'SOAP' and i.itemrefs.reject { |r| r.kind_of?(DFHack::GeneralRefContainedInItemst) }.empty?
-                    }.length
+                    }.inject(0) { |s, i| s + i.stack_size }
                 when :logs
                     df.world.items.other[:WOOD].find_all { |i| !i.flags.trader and i.itemrefs.empty? }.length
                 when :roughgem
@@ -92,16 +92,19 @@ class DwarfAI
                             r.kind_of?(DFHack::GeneralRefContainedInItemst)
                         }.empty?
                     }.length
+
                 when :pigtail, :dimplecup
                     # TODO generic handling, same as farm crops selection
                     mat = {:pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
                         :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL'}[k]
                     mi = df.decode_mat(mat)
+
                     df.world.items.other[:PLANT].find_all { |i|
                         !i.flags.trader and i.itemrefs.reject { |r|
                             r.kind_of?(DFHack::GeneralRefContainedInItemst)
                         }.empty? and i.mat_index == mi.mat_index and i.mat_type == mi.mat_type
-                    }.length
+                    }.inject(0) { |s, i| s + i.stack_size }
+
                 else
                     @needed[k] ? 1000000 : -1
                 end
