@@ -120,7 +120,11 @@ class DwarfAI
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
-                if r =
+                if r = @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] and _r.layout.find { |f| f.delete :ignore } }
+                    r.misc[:furnished] = true if not r.layout.find { |f| f.delete :ignore }
+                    furnish_room(r)
+                    false
+                elsif r =
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
@@ -143,14 +147,20 @@ class DwarfAI
         end
 
         def idleidle
+            debug 'AI: smooth fort'
             @rooms.each { |r|
                 next if r.status == :plan or r.status == :dig
 
                 case r.type
                 when :bedroom, :well, :dininghall, :cemetary, :infirmary, :barracks
                     smooth_room_access(r)
+                    r.layout.each { |f| build_furniture(f, true) }
                 end
             }
+
+            debug 'AI: unforbid dumped items'
+            gpit = @rooms.find { |r| r.type == :garbagepit }
+            room_items(gpit) { |i| i.flags.forbid = false }
         end
 
         def checkrooms
@@ -481,7 +491,7 @@ class DwarfAI
                 ws = FurnitureWorkshop[f[:item]]
                 mod = FurnitureOrder[f[:item]]
                 ensure_workshop(ws)
-                add_manager_order(mod)
+                add_manager_order(mod, 1, @manager_taskmax)
             end
             f[:queue_build] = true
         end
@@ -1338,6 +1348,9 @@ class DwarfAI
             when :MakeRope
                 _order = :MakeChain
                 type = :cloth
+            when :MakeBoneBolt
+                _order = :MakeAmmo
+                type = :bone
             when :ConstructChest
                 # should not return existing MakeBag orders
                 type = :rock
@@ -1354,7 +1367,7 @@ class DwarfAI
             }
         end
 
-        def add_manager_order(order, amount=1, maxmerge=@manager_taskmax)
+        def add_manager_order(order, amount=1, maxmerge=30)
             debug "add_manager #{order} #{amount}"
             case order
             when :MakeSoap
@@ -1366,6 +1379,9 @@ class DwarfAI
             when :MakeRope
                 _order = :MakeChain
                 type = :cloth
+            when :MakeBoneBolt
+                _order = :MakeAmmo
+                type = :bone
             else
                 _order = order
             end
@@ -1398,22 +1414,28 @@ class DwarfAI
                 ensure_workshop(:Dyers, false)
             when :ConstructTractionBench
                 ensure_workshop(:Mechanics)
-                add_manager_order(:ConstructTable, amount)
-                add_manager_order(:ConstructMechanisms, amount)
-                add_manager_order(:MakeRope, amount)
+                add_manager_order(:ConstructTable, amount, maxmerge)
+                add_manager_order(:ConstructMechanisms, amount, maxmerge)
+                add_manager_order(:MakeRope, amount, maxmerge)
             when :BrewDrink
                 ensure_workshop(:Still)
             when :MakeSoap
                 ensure_workshop(:Kitchen, false)   # tallow
                 ensure_workshop(:Butchers, false)
-                add_manager_order(:MakeLye, amount+1)
+                add_manager_order(:MakeLye, amount+1, maxmerge)
                 ensure_workshop(:SoapMaker, false)
                 ensure_workshop(:Craftsdwarfs, false)   # offtopic, just dont build it too late
             when :MakeLye
-                add_manager_order(:MakeAsh, amount+1)
+                add_manager_order(:MakeAsh, amount+1, maxmerge)
                 ensure_workshop(:Ashery, false)
             when :MakeAsh
                 ensure_workshop(:WoodFurnace, false)
+            when :MakeTotem
+                ensure_workshop(:Craftsdwarfs, false)
+            when :MakeBoneBolt
+                o.material_category.bone = true
+                o.item_subtype = DFHack::AmmoType.int(:Bolt)
+                ensure_workshop(:Craftsdwarfs, false)
             else
                 # make other stuff from generic rock
                 o.mat_type = 0
@@ -1996,7 +2018,7 @@ class DwarfAI
                             @rooms[-2, 2].each { |r|
                                 r.accesspath = [cor_y]
                                 r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
-                                r.layout << {:item => :cabinet, :x => 1+(r.x<=>cx), :y => 1+diry}
+                                r.layout << {:item => :cabinet, :x => 1+(r.x<=>cx), :y => 1+diry, :ignore => true}
                                 r.layout << {:item => :door, :x => 1-2*(r.x<=>cx), :y => 1}
                             }
                         }

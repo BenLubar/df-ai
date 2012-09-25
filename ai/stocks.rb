@@ -7,7 +7,8 @@ class DwarfAI
                 :food => 20, :drink => 20, :soap => 5, :logs => 10 }
             @needed_perdwarf = { :food => 1, :drink => 2 }
             # XXX 'play now' embark has only 5 dimplecup/pigtail seeds
-            @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2, :thread => 10 }
+            @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2,
+                :thread => 10, :skull => 2, :bone => 8 }
             @updating = []
             @count = {}
         end
@@ -105,6 +106,20 @@ class DwarfAI
                         }.empty? and i.mat_index == mi.mat_index and i.mat_type == mi.mat_type
                     }.inject(0) { |s, i| s + i.stack_size }
 
+                when :skull
+                    df.world.items.other[:CORPSEPIECE].find_all { |i|
+                        !i.flags.trader and i.itemrefs.reject { |r|
+                            r.kind_of?(DFHack::GeneralRefContainedInItemst)
+                        }.empty? and i.corpse_flags.skull
+                    }.length
+
+                when :bone
+                    df.world.items.other[:CORPSEPIECE].find_all { |i|
+                        !i.flags.trader and i.itemrefs.reject { |r|
+                            r.kind_of?(DFHack::GeneralRefContainedInItemst)
+                        }.empty? and i.corpse_flags.bone
+                    }.inject(0) { |s, i| s + i.material_amount[:Bone] }
+
                 else
                     @needed[k] ? 1000000 : -1
                 end
@@ -187,8 +202,12 @@ class DwarfAI
                 ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
                 return if amount <= 2
                 puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-                ai.plan.add_manager_order(reaction, amount, 30)
+                ai.plan.add_manager_order(reaction, amount)
 
+            else
+                # bone consume 1 material_amount unit and produce 5 bolts
+                reaction = {:skull => :MakeTotem, :bone => :MakeBoneBolt}[what]
+                ai.plan.add_manager_order(reaction, amount)
             end
         end
 
