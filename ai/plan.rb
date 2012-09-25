@@ -80,6 +80,9 @@ class DwarfAI
                     checkidle
                 when :checkrooms
                     checkrooms
+                when :monitor_cistern
+                    monitor_cistern
+                    false
                 end
             }
 
@@ -144,8 +147,8 @@ class DwarfAI
                 next if r.status == :plan or r.status == :dig
 
                 case r.type
-                when :bedroom, :well, :dininghall
-                    smooth_room(r)
+                when :bedroom, :well, :dininghall, :cemetary, :infirmary, :barracks
+                    smooth_room_access(r)
                 end
             }
         end
@@ -304,7 +307,7 @@ class DwarfAI
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
             r.layout.each { |f|
-                build_furniture(f) if f[:makeroom]
+                build_furniture(f)
             }
             if r.type == :workshop
                 case r.subtype
@@ -394,13 +397,15 @@ class DwarfAI
         def try_furnish(r, f)
             return true if f[:bld_id]
             return true if f[:ignore]
-            return true if f[:item] == :pillar
             build_furniture(f)
             case f[:item]
             when :well
                 return try_furnish_well(r, f)
             when :lever
                 return try_furnish_lever(r, f)
+            when :pillar
+                df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i).dig(:Smooth)
+                return true
             end
             return if @cache_nofurnish[f[:item]]
             mod = FurnitureOrder[f[:item]]
@@ -458,8 +463,9 @@ class DwarfAI
             end
         end
 
-        def build_furniture(f)
+        def build_furniture(f, build_ignored = false)
             return if f[:queue_build]
+            return if f[:ignore] and not build_ignored
             case f[:item]
             when :well
                 ensure_workshop(:Mechanics)
@@ -470,9 +476,10 @@ class DwarfAI
             when :lever
                 ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructMechanisms, 3)  # 1 for lever, +2 to link
+            when :pillar
             else
-                ws = FurnitureWorkshop[f[:item]] ||= :Masons
-                mod = FurnitureOrder[f[:item]] ||= "Construct#{f[:item].to_s.capitalize}".to_sym
+                ws = FurnitureWorkshop[f[:item]]
+                mod = FurnitureOrder[f[:item]]
                 ensure_workshop(ws)
                 add_manager_order(mod)
             end
@@ -480,10 +487,9 @@ class DwarfAI
         end
 
         def ensure_workshop(subtype, dignow=(subtype.to_s !~ /Office/))
-            if not ws = @rooms.find { |r| r.type == :workshop and r.subtype == subtype } or ws.status == :plan
-                ws ||= @rooms.find { |r| r.type == :workshop and not r.subtype and r.status == :plan }
-                ws.subtype = subtype
-
+            ws = @rooms.find { |r| r.type == :workshop and r.subtype == subtype }
+            raise "unknown workshop #{subtype}" if not ws
+            if ws.status == :plan
                 if dignow
                     digroom(ws)
                 else
@@ -894,8 +900,14 @@ class DwarfAI
             }
         end
 
-        def smooth_cistern(r)
+        # smooth a room and its accesspath corridors (recursive)
+        def smooth_room_access(r)
             smooth_room(r)
+            r.accesspath.each { |a| smooth_room_access(a) }
+        end
+
+        def smooth_cistern(r)
+            smooth_room_access(r)
 
             ((r.z1+1)..r.z2).each { |z|
                 (r.x1..r.x2).each { |x|
@@ -905,26 +917,25 @@ class DwarfAI
                     }
                 }
             }
-
-            todo = r.accesspath.dup
-            while a = todo.pop
-                smooth_room(a)
-                todo.concat a.accesspath
-            end
         end
 
         def construct_cistern(r)
             @rooms.each { |_r| wantdig(_r) if _r.type == :well }
 
-            smooth_cistern(r)
             furnish_room(r)
 
             # remove boulders
-            room_items(r) { |i| i.flags.dump = true }
-            room_items(r.accesspath[0]) { |i| i.flags.dump = true }
+            todo = [r]
+            while _r = todo.shift
+                room_items(_r) { |i| i.flags.dump = true }
+                todo.concat _r.accesspath
+            end
 
             # check smoothing progress, channel intermediate levels
-            @tasks << [:dig_cistern, r]
+            if r.subtype == :well
+                smooth_cistern(r)
+                @tasks << [:dig_cistern, r]
+            end
         end
 
         # yield every on_ground items in the room
@@ -1160,31 +1171,152 @@ class DwarfAI
             case r.type
             when :well
                 way = f[:way]
-                f[:target] ||= @rooms.find { |_r| _r.type == :cistern and _r.subtype == :reserve }.layout.find { |_f| _f[:item] == :floodgate and _f[:way] == f[:way] }
-                return if not f[:target][:bld_id]
-                tbld = df.building_find(f[:target][:bld_id])
-                return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
-                mechas = df.world.items.other[:TRAPPARTS].find_all { |i|
-                    i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
-                }[0, 2]
-                return if mechas.length < 2
+                f[:target] ||= @rooms.find { |_r|
+                    _r.type == :cistern and _r.subtype == :reserve
+                }.layout.find { |_f|
+                    _f[:item] == :floodgate and _f[:way] == f[:way]
+                }
 
-                bld = df.building_find(f[:bld_id])
-                reflink = DFHack::GeneralRefBuildingTriggertargetst.cpp_new
-                reflink.building_id = tbld.id
-                refhold = DFHack::GeneralRefBuildingHolderst.cpp_new
-                refhold.building_id = bld.id
-                job = DFHack::Job.cpp_new
-                job.job_type = :LinkBuildingToTrigger
-                job.references << reflink << refhold
-                bld.jobs << job
-                df.job_link job
-                df.job_attachitem(job, mechas[0], :LinkToTarget)
-                df.job_attachitem(job, mechas[1], :LinkToTrigger)
+                if link_lever(f, f[:target])
+                    pull_lever(f)
+                    @tasks << [:monitor_cistern] if way == :in
 
-                #TODO @tasks << [:checkcisternlevel]
-                # also dig channel
-                true
+                    true
+                end
+            end
+        end
+
+        def link_lever(src, dst)
+            return if not src[:bld_id] or not dst[:bld_id]
+            bld = df.building_find(src[:bld_id])
+            return if not bld or bld.getBuildStage < bld.getMaxBuildStage
+            tbld = df.building_find(dst[:bld_id])
+            return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
+
+            mechas = df.world.items.other[:TRAPPARTS].find_all { |i|
+                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+            }[0, 2]
+            return if mechas.length < 2
+
+            reflink = DFHack::GeneralRefBuildingTriggertargetst.cpp_new
+            reflink.building_id = tbld.id
+            refhold = DFHack::GeneralRefBuildingHolderst.cpp_new
+            refhold.building_id = bld.id
+
+            job = DFHack::Job.cpp_new
+            job.job_type = :LinkBuildingToTrigger
+            job.references << reflink << refhold
+            bld.jobs << job
+            df.job_link job
+
+            df.job_attachitem(job, mechas[0], :LinkToTarget)
+            df.job_attachitem(job, mechas[1], :LinkToTrigger)
+        end
+
+        def pull_lever(f)
+            bld = df.building_find(f[:bld_id])
+            return if not bld
+            debug "AI: pull lever #{f[:way]}"
+
+            ref = DFHack::GeneralRefBuildingHolderst.cpp_new
+            ref.building_id = bld.id
+
+            job = DFHack::Job.cpp_new
+            job.job_type = :PullLever
+            job.pos = [bld.x1, bld.y1, bld.z]
+            job.references << ref
+            bld.jobs << job
+            df.job_link job
+        end
+
+        def monitor_cistern
+            if not @m_c_lever_in
+                well = @rooms.find { |r| r.type == :well }
+                @m_c_lever_in = well.layout.find { |f| f[:item] == :lever and f[:way] == :in }
+                @m_c_lever_out = well.layout.find { |f| f[:item] == :lever and f[:way] == :out }
+                @m_c_cistern = @rooms.find { |r| r.type == :cistern and r.subtype == :well }
+                @m_c_reserve = @rooms.find { |r| r.type == :cistern and r.subtype == :reserve }
+                @m_c_testgate_delay = 2
+            end
+
+            l_in = df.building_find(@m_c_lever_in[:bld_id]) if @m_c_lever_in[:bld_id]
+            f_in = df.building_find(@m_c_lever_in[:target][:bld_id]) if @m_c_lever_in[:target][:bld_id]
+            l_out = df.building_find(@m_c_lever_out[:bld_id]) if @m_c_lever_out[:bld_id]
+            f_out = df.building_find(@m_c_lever_out[:target][:bld_id]) if @m_c_lever_out[:target][:bld_id]
+            return unless l_in and f_in and l_out and f_out
+            return unless l_in.jobs.empty? and l_out.jobs.empty?
+
+            f_in_closed = true if f_in.gate_flags.closed or f_in.gate_flags.closing
+            f_in_closed = false if f_in.gate_flags.opening
+            f_out_closed = true if f_out.gate_flags.closed or f_out.gate_flags.closing
+            f_out_closed = false if f_out.gate_flags.opening
+
+            if @m_c_testgate_delay
+                # expensive, dont check too often
+                @m_c_testgate_delay -= 1
+                return if @m_c_testgate_delay > 0
+
+                well = @rooms.find { |r| r.type == :well }
+                return if df.map_tile_at(well).offset(0, 0, -1).shape_basic != :Open
+
+                smooth_room_access(@m_c_reserve)
+
+                gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
+                if gate.shape_basic == :Wall
+                    debug "AI: cistern: test channel"
+                    empty = true
+                    todo = [@m_c_reserve]
+                    while empty and r = todo.shift
+                        todo.concat r.accesspath
+                        empty = false if (r.x1..r.x2).find { |x| (r.y1..r.y2).find { |y| (r.z1..r.z2).find { |z|
+                            t = df.map_tile_at(x, y, z) and (t.designation.smooth == 1 or t.occupancy.unit)
+                        } } }
+                    end
+
+                    if empty
+                        debug "AI: cistern: do channel"
+                        gate.offset(0, 0, 1).dig(:Channel)
+                        pull_lever(@m_c_lever_out) if not f_out_closed
+                    else
+                        @m_c_testgate_delay = 16
+                    end
+                else
+                    @m_c_testgate_delay = nil
+                end
+                return
+            end
+
+            # cistlvl = water level for the next-to-top floor
+            cistlvl = df.map_tile_at(@m_c_cistern).designation.flow_size
+            resvlvl = df.map_tile_at(@m_c_reserve).designation.flow_size
+
+            if resvlvl <= 1
+                # reserve empty, fill it
+                if not f_out_closed
+                    pull_lever(@m_c_lever_out)
+                elsif f_in_closed
+                    pull_lever(@m_c_lever_in)
+                end
+            elsif resvlvl == 7
+                # reserve full, empty into cistern if needed
+                if not f_in_closed
+                    pull_lever(@m_c_lever_in)
+                else
+                    if cistlvl < 7
+                        if f_out_closed
+                            pull_lever(@m_c_lever_out)
+                        end
+                    else
+                        if not f_out_closed
+                            pull_lever(@m_c_lever_out)
+                        end
+                    end
+                end
+            else
+                # ensure it's either filling up or emptying
+                if f_in_closed and f_out_closed
+                    pull_lever(@m_c_lever_in)
+                end
             end
         end
 
@@ -1276,6 +1408,7 @@ class DwarfAI
                 ensure_workshop(:Butchers, false)
                 add_manager_order(:MakeLye, amount+1)
                 ensure_workshop(:SoapMaker, false)
+                ensure_workshop(:Craftsdwarfs, false)   # offtopic, just dont build it too late
             when :MakeLye
                 add_manager_order(:MakeAsh, amount+1)
                 ensure_workshop(:Ashery, false)
@@ -1738,8 +1871,8 @@ class DwarfAI
             well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
             well.layout << {:item => :door, :x => 9, :y => 3}
             well.layout << {:item => :door, :x => 9, :y => 5}
-            well.layout << {:item => :lever, :x => 0, :y => 0, :way => :in}
             well.layout << {:item => :lever, :x => 1, :y => 0, :way => :out}
+            well.layout << {:item => :lever, :x => 0, :y => 0, :way => :in}
             well.accesspath = [cor]
             @rooms << well
 
@@ -1787,7 +1920,7 @@ class DwarfAI
             dy = (p2.y <=> src.y)
 
             channel = src.offset(dx, dy)
-            cistern_one.misc[:channel_enable] = [channel.x, channel.y, channel.z+1]
+            cistern_one.misc[:channel_enable] = [channel.x, channel.y, channel.z]
 
             stair = channel.offset(dx, dy)
             if (-1..1).all? { |ux| (-1..1).all? { |uy|
