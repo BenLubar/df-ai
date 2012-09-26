@@ -28,18 +28,10 @@ class DwarfAI
         def startup
             setup_blueprint
 
-            # some spare furniture, to speed up room setup
-            add_manager_order(:ConstructDoor, 2)
-            add_manager_order(:ConstructTable, 1)
-            add_manager_order(:ConstructThrone, 1)
-            add_manager_order(:ConstructBed, 1)
-
-            # start on that spare asap
             ensure_workshop(:Masons)
             ensure_workshop(:Carpenters)
             
             dig_garbagedump
-            cuttrees(6)
         end
 
         def update
@@ -160,7 +152,7 @@ class DwarfAI
 
             debug 'AI: unforbid dumped items'
             gpit = @rooms.find { |r| r.type == :garbagepit }
-            room_items(gpit) { |i| i.flags.forbid = false }
+            df.map_tile_at(gpit.x, gpit.y, gpit.z-1).mapblock.items_tg.each { |i| i.flags.forbid = false }
         end
 
         def checkrooms
@@ -301,6 +293,7 @@ class DwarfAI
             return true if r.misc[:queue_dig] or r.status != :plan
             debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
+            r.layout.each { |f| build_furniture(f) if f[:makeroom] }
             if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
                 @tasks.insert(idx, [:wantdig, r])
             else
@@ -455,6 +448,7 @@ class DwarfAI
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
                 @tasks << [:checkfurnish, r, f]
+                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
                 true
             end
         end
@@ -478,13 +472,11 @@ class DwarfAI
             return if f[:ignore] and not build_ignored
             case f[:item]
             when :well
-                ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructBlocks)
                 add_manager_order(:ConstructMechanisms)
                 add_manager_order(:MakeBucket)
                 add_manager_order(:MakeRope)
             when :lever
-                ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructMechanisms, 3)  # 1 for lever, +2 to link
             when :pillar
             else
@@ -781,8 +773,9 @@ class DwarfAI
                     mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
                     mt.organic_types[:Plants].length.times { |i|
+                        # include MILL because the quern is near
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i] = (plant.flags[:THREAD] or plant.flags[:LEAVES]) if plant
+                        t.plants[i] = (plant.flags[:THREAD] or plant.flags[:LEAVES] or plant.flags[:MILL]) if plant
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
@@ -1148,7 +1141,7 @@ class DwarfAI
             furnish_room(r)
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
+                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern and _r.subtype == :well }
 
                 if r.misc[:temporary]
                     # if we set up the temporary hall, queue the real one
@@ -1337,74 +1330,78 @@ class DwarfAI
             true
         end
 
+        ManagerRealOrder = {
+            :MakeSoap => :CustomReaction,
+            :MakeBag => :ConstructChest,
+            :MakeRope => :MakeChain,
+            :MakeBoneBolt => :MakeAmmo,
+            :MakeBoneCrossbow => :MakeWeapon,
+        }
+        ManagerMatCategory = {
+            :MakeRope => :cloth, :MakeBag => :cloth,
+            :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
+            :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
+        }
+        ManagerNoType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
+            :ProcessPlants => true, :MillPlants => true, :ConstructTractionBench => true, :BrewDrink => true,
+            :MakeSoap => true, :MakeLye => true, :MakeAsh => true, :MakeTotem => true,
+        }
+        ManagerSubtype = {
+            :MakeBoneBolt => DFHack::AmmoType.int(:Bolt),
+            :MakeBoneCrossbow => DFHack::WeaponType.int(:Crossbow),
+        }
+        ManagerCustom = {
+            :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
+        }
+
         def find_manager_orders(order)
-            case order
-            when :MakeSoap
-                _order = :CustomReaction
-                custom = 'MAKE_SOAP_FROM_TALLOW'
-            when :MakeBag
-                _order = :ConstructChest
-                type = :cloth
-            when :MakeRope
-                _order = :MakeChain
-                type = :cloth
-            when :MakeBoneBolt
-                _order = :MakeAmmo
-                type = :bone
-            when :ConstructChest
-                # should not return existing MakeBag orders
-                type = :rock
-            else
-                _order = order
-            end
+            _order = ManagerRealOrder[order] || order
+            matcat = ManagerMatCategory[order]
+            notype = ManagerNoType[order]
+            subtype = ManagerSubtype[order]
+            custom = ManagerCustom[order]
 
             df.world.manager_orders.find_all { |_o|
                 _o.job_type == _order and
-                (not custom or custom == _o.reaction_name) and
-                (not type or
-                 (type != :rock and _o.mat_type == -1 and _o.material_category.send(type)) or
-                 (type == :rock and _o.mat_type == 0))
+                _o.mat_type == (notype || matcat ? -1 : 0) and
+                (matcat ? _o.material_category.send(matcat) : _o.material_category._whole == 0) and
+                (not subtype or subtype == _o.item_subtype) and
+                (not custom or custom == _o.reaction_name)
             }
         end
 
         def add_manager_order(order, amount=1, maxmerge=30)
             debug "add_manager #{order} #{amount}"
-            case order
-            when :MakeSoap
-                _order = :CustomReaction
-                custom = 'MAKE_SOAP_FROM_TALLOW'
-            when :MakeBag
-                _order = :ConstructChest
-                type = :cloth
-            when :MakeRope
-                _order = :MakeChain
-                type = :cloth
-            when :MakeBoneBolt
-                _order = :MakeAmmo
-                type = :bone
-            else
-                _order = order
-            end
+            _order = ManagerRealOrder[order] || order
+            matcat = ManagerMatCategory[order]
+            notype = ManagerNoType[order]
+            subtype = ManagerSubtype[order]
+            custom = ManagerCustom[order]
 
             if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= maxmerge }
-                o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => -1,
-                        :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount)
-                o.reaction_name = custom if custom
-                df.world.manager_orders << o
+                # try to merge with last manager_order, bypassing maxmerge
+                o = df.world.manager_orders.last
+                if o and o.job_type == _order and
+                        o.amount_total + amount < 30 and
+                        o.mat_type == (notype || matcat ? -1 : 0) and
+                        (matcat ? o.material_category.send(matcat) : o.material_category._whole == 0) and
+                        (not subtype or subtype == o.item_subtype) and
+                        (not custom or custom == o.reaction_name)
+                    o.amount_total += amount
+                    o.amount_left += amount
+                else
+                    o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => (subtype || -1),
+                            :mat_type => (matcat || notype ? -1 : 0), :mat_index => -1, :amount_left => amount, :amount_total => amount)
+                    o.material_category.send("#{matcat}=", true) if matcat
+                    o.reaction_name = custom if custom
+                    df.world.manager_orders << o
+                end
             else
                 o.amount_total += amount
                 o.amount_left += amount
             end
 
             case order
-            when :ConstructBed, :MakeBarrel, :MakeBucket, :ConstructBin  # wood
-                o.material_category.wood = true
-                cuttrees(amount)
-            when :MakeRope, :MakeBag    # cloth
-                wantdig @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth }
-                o.material_category.cloth = true
-                # wait ai.stocks -> ProcessPlants when pigtails are available
-                # to avoids job cancellation spam
             when :ProcessPlants
                 ensure_workshop(:Farmers)
                 ensure_workshop(:Loom, false)
@@ -1413,7 +1410,6 @@ class DwarfAI
                 ensure_workshop(:Quern)
                 ensure_workshop(:Dyers, false)
             when :ConstructTractionBench
-                ensure_workshop(:Mechanics)
                 add_manager_order(:ConstructTable, amount, maxmerge)
                 add_manager_order(:ConstructMechanisms, amount, maxmerge)
                 add_manager_order(:MakeRope, amount, maxmerge)
@@ -1433,37 +1429,12 @@ class DwarfAI
             when :MakeTotem
                 ensure_workshop(:Craftsdwarfs, false)
             when :MakeBoneBolt
-                o.material_category.bone = true
-                o.item_subtype = DFHack::AmmoType.int(:Bolt)
                 ensure_workshop(:Craftsdwarfs, false)
-            else
-                # make other stuff from generic rock
-                o.mat_type = 0
+            when :MakeBoneCrossbow
+                ensure_workshop(:Bowyers, false)
+            when :ConstructMechanisms
+                ensure_workshop(:Mechanics)
             end
-        end
-
-        # designate some trees to cut
-        def cuttrees(amount)
-            tree_list.each { |tree|
-                t = df.map_tile_at(tree)
-                next if t.shape != :TREE
-                next if t.designation.dig == :Default
-                t.dig(:Default)
-                amount -= 1
-                break if amount <= 0
-            }
-        end
-
-        # return a list of trees on the map
-        # lists only visible trees, sorted by distance from the fort entrance
-        def tree_list
-            (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
-                t = df.map_tile_at(p) and
-                  t.shape == :TREE and
-                  not t.designation.hidden
-            }.sort_by { |p|
-                (p.pos.x-@fort_entrance.x)**2 + (p.pos.y-@fort_entrance.y)**2 + ((p.pos.z-@fort_entrance.z2)*4)**2
-            }
         end
 
         # returns one tile of an outdoor river (if one exists)
@@ -1525,7 +1496,7 @@ class DwarfAI
                     next if not cz
                     (-1..1).all? { |__x|
                         (-2..2).all? { |__y|
-                            t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and
+                            t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
                             tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and
                               tt.designation.flow_size == 0 and not tt.designation.hidden and not df.building_find(tt)
                         }
