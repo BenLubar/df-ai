@@ -635,6 +635,8 @@ class DwarfAI
 
             setup_stockpile_settings(r, bld)
 
+            room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop]
+
             if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
                 if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
