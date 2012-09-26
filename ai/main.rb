@@ -54,7 +54,7 @@ class DwarfAI
                     df.announcements.flags[a.type].PAUSE rescue nil
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
-        else
+        elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._raw_rtti_classname
             when 'viewscreen_textviewerst'
                 text = df.curview.text_display.map { |t|
@@ -89,11 +89,22 @@ class DwarfAI
             df.onupdate_register(2400, 30) { @stocks.update }
         ]
 
-        df.onstatechange_register { |st| statechanged(st) }
+        df.onstatechange_register_once { |st|
+            case st
+            when :WORLD_UNLOADED
+                puts 'AI: world unloaded, disabling self'
+                onupdate_unregister
+                true
+            else
+                statechanged(st)
+                false
+            end
+        }
     end
 
     def onupdate_unregister
         @onupdate_handles.each { |h| df.onupdate_unregister(h) }
+        @onupdate_handles.clear
     end
 
     def status

@@ -1346,13 +1346,29 @@ class DwarfAI
             :ProcessPlants => true, :MillPlants => true, :ConstructTractionBench => true, :BrewDrink => true,
             :MakeSoap => true, :MakeLye => true, :MakeAsh => true, :MakeTotem => true,
         }
-        ManagerSubtype = {
-            :MakeBoneBolt => DFHack::AmmoType.int(:Bolt),
-            :MakeBoneCrossbow => DFHack::WeaponType.int(:Crossbow),
-        }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
         }
+        ManagerSubtype = {
+        }
+
+        if df.world.raws.itemdefs.ammo.empty?
+            df.onstatechange_register_once { |st|
+                if st == :WORLD_LOADED
+                    init_manager_subtype
+                    true
+                end
+            }
+        else
+            init_manager_subtype
+        end
+
+        def self.init_manager_subtype
+            ManagerSubtype.update \
+                :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
+                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
+        end
+
 
         def find_manager_orders(order)
             _order = ManagerRealOrder[order] || order
