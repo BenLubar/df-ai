@@ -137,25 +137,25 @@ class DwarfAI
             case what
             when :roughgem
                 queue_use_gems(amount)
+                return
 
             when :pigtail, :dimplecup
                 reaction = {:pigtail => :ProcessPlants, :dimplecup => :MillPlants}[what]
-                ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
-                return if amount <= 2
-                puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-                ai.plan.add_manager_order(reaction, amount)
-
-            else
-                # bone consume 1 material_amount unit and produce 5 bolts
-                reaction = {:skull => :MakeTotem, :bone => :MakeBoneBolt}[what]
-
-                if what == :bone and count_stocks(:crossbow) < 1
+            when :skull
+                reaction = :MakeTotem
+            when :bone
+                if count_stocks(:crossbow) < 1
                     reaction = :MakeBoneCrossbow
                     amount = 1
-                    return if ai.plan.find_manager_orders(reaction).first
+                else
+                    reaction = :MakeBoneBolt
                 end
-                ai.plan.add_manager_order(reaction, amount)
             end
+
+            ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            return if amount <= 0
+            puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
+            ai.plan.add_manager_order(reaction, amount)
         end
 
         def queue_use_gems(amount)
