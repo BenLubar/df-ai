@@ -77,7 +77,14 @@ class DwarfAI
         end
 
 
-        Laborlist = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
+        LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
+        LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
+        LaborMin = {
+            :FISH => 0,
+        }
+        LaborMax = {
+            :FISH => 0,
+        }
 
         def autolabors
             workers = []
@@ -91,22 +98,77 @@ class DwarfAI
                 end
             }
 
+            # free non-workers
             nonworkers.each { |c|
                 u = c.dfunit
-                l = u.status.labors
-                if l[:MINE] or l[:HUNT] or l[:CUTWOOD]
-                    # free pick/axe/crossbow  XXX does it work?
-                    #l[:MINE] = l[:HUNT] = l[:CUTWOOD] = false
-                    #u.military.pickup_flags.update = true
+                ul = u.status.labors
+                LaborList.each { |lb|
+                    if ul[lb]
+                        # disable everything (may wait meeting)
+                        ul[lb] = false
+                        # free pick/axe/crossbow  XXX does it work?
+                        u.military.pickup_flags.update = true if LaborTool[lb]
+                    end
+                }
+            }
+
+            # count active labors
+            labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
+            worker_labor = workers.inject({}) { |h, c| h.update c.id => [] }
+            workers.each { |c|
+                ul = c.dfunit.status.labors
+                LaborList.each { |lb|
+                    if ul[lb]
+                        labor_worker[lb] << c
+                        worker_labor[c.id] << lb
+                    end
+                }
+            }
+
+            # autolabor!
+            # TODO use skill ranking for decisions
+            # TODO rebalance when 7 dwarves all fulfill the labors requirements and 40 are idling around
+            # TODO handle team = 1 dwarf (mine/cuttree), and other LaborTool conflicts
+            # TODO handle nobility
+            LaborList.each { |lb|
+                min = LaborMin[lb] || 2
+                max = LaborMax[lb] || 8
+                min = max if min > max
+                min = workers.length if min > workers.length
+
+                cnt = labor_worker[lb].length
+                if cnt > max
+                    (cnt-max).times {
+                        c = labor_worker[lb].delete_at(rand(labor_worker[lb].length))
+                        worker_labor[c.id].delete lb
+                        u = c.dfunit
+                        u.status.labors[lb] = false
+                        u.military.pickup_flags.update = true if LaborTool[lb]
+                    }
+
+                elsif cnt < min
+                    (min-cnt).times {
+                        c = workers.sort_by {
+                            [worker_labor[c.id].to_a.length, rand]
+                        }.find { |_c|
+                            not worker_labor[_c.id].include? lb
+                        }
+
+                        labor_worker[lb] << c
+                        worker_labor[c.id] << lb
+                        u = c.dfunit
+                        if LaborTool[lb]
+                            LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
+                            u.military.pickup_flags.update = true
+                        end
+                        u.status.labors[lb] = true
+                    }
+
+                else
+                    # TODO allocate more workers if needed, from job_list
                 end
             }
-
-            workers.each { |c|
-                u = c.dfunit
-                l = u.status.labors
-            }
         end
-
 
         def unit_totalxp(u)
             u.status.current_soul.skills.inject(0) { |t, sk|

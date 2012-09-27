@@ -410,7 +410,7 @@ class DwarfAI
             :drink => :BrewDrink,
             :bag => :MakeBag,
             :soap => :MakeSoap,
-            :coke => :MakeCharcoal
+            :coal => :MakeCharcoal
 
         FurnitureFind = Hash.new { |h, k|
             h[k] = lambda { |o| o._rtti_classname == "item_#{k}st".to_sym }
@@ -688,6 +688,7 @@ class DwarfAI
                 bld.hospital.max_plaster = 750
                 bld.hospital.max_buckets = 2
                 bld.hospital.max_soap = 750
+                setup_infirmary_supplies(r)
             when :garbagedump
                 bld.zone_flags.garbage_dump = true
             end
@@ -702,6 +703,32 @@ class DwarfAI
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
             furnish_room(r)
+        end
+
+        def setup_infirmary_supplies(r)
+            return unless df.world.items.other[:BOULDER].find { |i|
+                m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
+            }
+
+            # XXX ugly
+            wr = Room.new(nil, nil, r.x1, r.x1+2, r.y2+2, r.y2+4, r.z)
+            wr.dig
+            if bould = df.world.items.other[:BOULDER].find { |i|
+                i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+            }
+                bld = df.building_alloc(:Furnace, :Kiln)
+                df.building_position(bld, wr)
+                df.building_construct(bld, [bould])
+
+                add_manager_order(:MakePlasterPowder, 15)
+
+                df.onupdate_register_once(2400, 8) {
+                    if find_manager_orders(:MakePlasterPowder).empty?
+                        df.building_deconstruct(bld)
+                        true
+                    end
+                }
+            end
         end
 
         def setup_stockpile_settings(r, bld)
@@ -1352,6 +1379,7 @@ class DwarfAI
 
         ManagerRealOrder = {
             :MakeSoap => :CustomReaction,
+            :MakePlasterPowder => :CustomReaction,
             :MakeBag => :ConstructChest,
             :MakeRope => :MakeChain,
             :MakeBoneBolt => :MakeAmmo,
@@ -1365,9 +1393,11 @@ class DwarfAI
         ManagerNoType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
             :ProcessPlants => true, :MillPlants => true, :ConstructTractionBench => true, :BrewDrink => true,
             :MakeSoap => true, :MakeLye => true, :MakeAsh => true, :MakeTotem => true, :MakeCharcoal => true,
+            :MakePlasterPowder => true,
         }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
+            :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
         }
         ManagerSubtype = {
         }
