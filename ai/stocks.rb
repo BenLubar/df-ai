@@ -72,7 +72,7 @@ class DwarfAI
                 when :roughgem
                     df.world.items.other[:ROUGH]
                 when :crossbow
-                    df.world.items.other[:WEAPON].find_all { |i| i.subtype.subtype == DFHack::WeaponType.int(:Crossbow) }
+                    df.world.items.other[:WEAPON].find_all { |i| i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow] }
                 when :pigtail, :dimplecup
                     # TODO generic handling, same as farm crops selection
                     mat = {:pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
@@ -94,7 +94,7 @@ class DwarfAI
                 end
 
             list.find_all { |i|
-                !i.flags.trader and
+                !i.flags.trader and !i.flags.forbid and
                 i.itemrefs.reject { |r| r.kind_of?(DFHack::GeneralRefContainedInItemst) }.empty?
             }.inject(0) { |s, i| s + i.stack_size }
         end
