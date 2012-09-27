@@ -91,7 +91,7 @@ class DwarfAI
             nonworkers = []
             citizen.each_value { |c|
                 next if not u = c.dfunit
-                if df.unit_maywork(u)
+                if df.unit_isworker(u) and not u.specific_refs.find { |sr| sr.type == :ACTIVITY } and u.military.squad_index == -1 and not u.status.misc_traits.find { |mt| mt.id == :OnBreak }
                     workers << c
                 else
                     nonworkers << c
@@ -119,16 +119,35 @@ class DwarfAI
                 ul = c.dfunit.status.labors
                 LaborList.each { |lb|
                     if ul[lb]
-                        labor_worker[lb] << c
+                        labor_worker[lb] << c.id
                         worker_labor[c.id] << lb
                     end
                 }
             }
 
+            # if one has too many labors, free him up (one per round)
+            if cid = worker_labor.keys.find { |id|
+                lim = 4*LaborList.length/workers.length
+                lim = 4 if lim < 4
+                worker_labor[id].length > lim
+            }
+                c = citizen[cid]
+                u = c.dfunit
+                ul = u.status.labors
+
+                LaborList.each { |lb|
+                    if ul[lb]
+                        worker_labor[c.id].delete lb
+                        labor_worker[lb].delete c.id
+                        ul[lb] = false
+                        u.military.pickup_flags.update = true if LaborTool[lb]
+                    end
+                }
+            end
+
             # autolabor!
             # TODO use skill ranking for decisions
-            # TODO rebalance when 7 dwarves all fulfill the labors requirements and 40 are idling around
-            # TODO handle team = 1 dwarf (mine/cuttree), and other LaborTool conflicts
+            # TODO handle team = 1 dwarf (balance mine/cuttree), and other LaborTool conflicts
             # TODO handle nobility
             LaborList.each { |lb|
                 min = LaborMin[lb] || 2
@@ -139,22 +158,22 @@ class DwarfAI
                 cnt = labor_worker[lb].length
                 if cnt > max
                     (cnt-max).times {
-                        c = labor_worker[lb].delete_at(rand(labor_worker[lb].length))
-                        worker_labor[c.id].delete lb
-                        u = c.dfunit
+                        cid = labor_worker[lb].delete_at(rand(labor_worker[lb].length))
+                        worker_labor[cid].delete lb
+                        u = citizen[cid].dfunit
                         u.status.labors[lb] = false
                         u.military.pickup_flags.update = true if LaborTool[lb]
                     }
 
                 elsif cnt < min
                     (min-cnt).times {
-                        c = workers.sort_by {
-                            [worker_labor[c.id].to_a.length, rand]
+                        c = workers.sort_by { |_c|
+                            [worker_labor[_c.id].length, rand]
                         }.find { |_c|
                             not worker_labor[_c.id].include? lb
                         }
 
-                        labor_worker[lb] << c
+                        labor_worker[lb] << c.id
                         worker_labor[c.id] << lb
                         u = c.dfunit
                         if LaborTool[lb]
