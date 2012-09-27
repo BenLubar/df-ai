@@ -13,18 +13,31 @@ class DwarfAI
         end
 
         attr_accessor :ai, :citizen
+        attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
             @citizen = {}
             @update_counter = 0
         end
 
+        def startup
+            df.standing_orders_forbid_used_ammo = 0
+        end
+
+        def onupdate_register
+            @onupdate_handle = df.onupdate_register(360, 10) { update }
+        end
+
+        def onupdate_unregister
+            df.onupdate_unregister(@onupdate_handle)
+        end
+
         def update
             @update_counter += 1
             case @update_counter % 10
-            when 0; update_nobles
             when 1; update_citizenlist
-            when 2; update_jobs
+            when 2; update_nobles
+            when 3; update_jobs
             end
         end
 
@@ -38,7 +51,6 @@ class DwarfAI
         def del_citizen(id)
             @citizen.delete id
             ai.plan.del_citizen(id)
-            # TODO reassign jobs (noble/labors)
         end
 
         def update_citizenlist
@@ -60,9 +72,41 @@ class DwarfAI
         def update_jobs
             df.world.job_list.each { |j|
                 j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
-                # TODO auto-labor style management
+            }
+            autolabors
+        end
+
+
+        Laborlist = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
+
+        def autolabors
+            workers = []
+            nonworkers = []
+            citizen.each_value { |c|
+                next if not u = c.dfunit
+                if df.unit_maywork(u)
+                    workers << c
+                else
+                    nonworkers << c
+                end
+            }
+
+            nonworkers.each { |c|
+                u = c.dfunit
+                l = u.status.labors
+                if l[:MINE] or l[:HUNT] or l[:CUTWOOD]
+                    # free pick/axe/crossbow  XXX does it work?
+                    #l[:MINE] = l[:HUNT] = l[:CUTWOOD] = false
+                    #u.military.pickup_flags.update = true
+                end
+            }
+
+            workers.each { |c|
+                u = c.dfunit
+                l = u.status.labors
             }
         end
+
 
         def unit_totalxp(u)
             u.status.current_soul.skills.inject(0) { |t, sk|

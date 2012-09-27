@@ -1,6 +1,4 @@
 class DwarfAI
-    attr_accessor :onupdate_handles
-
     attr_accessor :plan
     attr_accessor :pop
     attr_accessor :stocks
@@ -9,6 +7,12 @@ class DwarfAI
         @pop = Population.new(self)
         @plan = Plan.new(self)
         @stocks = Stocks.new(self)
+    end
+
+    def startup
+        @pop.startup
+        @plan.startup
+        @stocks.startup
     end
 
     def handle_pause_event(announce)
@@ -83,11 +87,9 @@ class DwarfAI
     end
 
     def onupdate_register
-        @onupdate_handles = [
-            df.onupdate_register(360, 10) { @pop.update },
-            df.onupdate_register(240, 20) { @plan.update },
-            df.onupdate_register(2400, 30) { @stocks.update }
-        ]
+        @pop.onupdate_register
+        @plan.onupdate_register
+        @stocks.onupdate_register
 
         df.onstatechange_register_once { |st|
             case st
@@ -103,8 +105,9 @@ class DwarfAI
     end
 
     def onupdate_unregister
-        @onupdate_handles.each { |h| df.onupdate_unregister(h) }
-        @onupdate_handles.clear
+        @stocks.onupdate_unregister
+        @plan.onupdate_unregister
+        @pop.onupdate_unregister
     end
 
     def status

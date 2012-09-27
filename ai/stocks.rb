@@ -1,16 +1,28 @@
 class DwarfAI
     class Stocks
         attr_accessor :ai, :needed, :needed_perdwarf, :watch_stock, :count
+        attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
             @needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
-                :food => 20, :drink => 20, :soap => 5, :logs => 10 }
+                :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5 }
             @needed_perdwarf = { :food => 1, :drink => 2 }
             # XXX 'play now' embark has only 5 dimplecup/pigtail seeds
             @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2,
                 :skull => 2, :bone => 8 }
             @updating = []
             @count = {}
+        end
+
+        def startup
+        end
+
+        def onupdate_register
+            @onupdate_handle = df.onupdate_register(2400, 30) { update }
+        end
+
+        def onupdate_unregister
+            df.onupdate_unregister(@onupdate_handle)
         end
 
         def update
@@ -65,8 +77,9 @@ class DwarfAI
                     }
                 when :drink
                     df.world.items.other[:DRINK]
-                when :soap
-                    df.world.items.other[:BAR].find_all { |i| mat = df.decode_mat(i) and mat.material and mat.material.id == 'SOAP' }
+                when :soap, :coal
+                    mat_id = {:soap => 'SOAP', :coal => 'COAL'}[k]
+                    df.world.items.other[:BAR].find_all { |i| mat = df.decode_mat(i) and mat.material and mat.material.id == mat_id }
                 when :logs
                     df.world.items.other[:WOOD]
                 when :roughgem
@@ -101,7 +114,7 @@ class DwarfAI
 
         def queue_need(what, amount)
             case what
-            when :soap
+            when :soap, :coal
                 return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
 
             when :food
@@ -130,7 +143,7 @@ class DwarfAI
             return if amount <= 0
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            ai.plan.add_manager_order(reaction, amount, 30)
+            ai.plan.add_manager_order(reaction, amount)
         end
 
         def queue_use(what, amount)
