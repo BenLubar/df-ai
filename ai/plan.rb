@@ -80,6 +80,7 @@ class DwarfAI
                     checkidle
                 when :checkrooms
                     checkrooms
+                    false
                 when :monitor_cistern
                     monitor_cistern
                     false
@@ -125,6 +126,7 @@ class DwarfAI
                     furnish_room(r)
                     false
                 elsif r =
+                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
@@ -147,7 +149,7 @@ class DwarfAI
         end
 
         def idleidle
-            debug 'AI: smooth fort'
+            debug 'smooth fort'
             @rooms.each { |r|
                 next if r.status == :plan or r.status == :dig
 
@@ -163,31 +165,22 @@ class DwarfAI
             }
 
 
-            debug 'AI: unforbid dumped items'
+            debug 'unforbid dumped items'
             gpit = @rooms.find { |r| r.type == :garbagepit }
             df.map_tile_at(gpit.x, gpit.y, gpit.z-1).mapblock.items_tg.each { |i| i.flags.forbid = false }
         end
 
         def checkrooms
             @checkroom_idx ||= 0
-            # approx 300 rooms + update is called every 4s at 30fps -> should check everything every 5mn
             ncheck = 4
-
-            @rooms[@checkroom_idx % @rooms.length, ncheck].each { |r|
-                checkroom(r)
-            }
-
-            @corridors[@checkroom_idx % @corridors.length, ncheck].each { |r|
-                checkroom(r)
-            }
+            rl = @rooms.find_all { |r| r.status != :plan } + @corridors.find_all { |r| r.status != :plan }
+            rl[@checkroom_idx % rl.length, ncheck].each { |r| checkroom(r) }
 
             @checkroom_idx += ncheck
-            if @checkroom_idx >= @rooms.length and @checkroom_idx >= @corridors.length
+            if @checkroom_idx >= rl.length
                 debug 'checkrooms rollover'
                 @checkroom_idx = 0
             end
-
-            false
         end
 
         # ensure room was not tantrumed etc
@@ -1205,7 +1198,6 @@ class DwarfAI
 
             if r.type == :dininghall
                 bld.table_flags.meeting_hall = true
-                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern and _r.subtype == :well }
 
                 # if we set up the temporary hall, queue the real one
                 if r.misc[:temporary] and p = @rooms.find { |_r| _r.type == :dininghall and not _r.misc[:temporary] }
@@ -1265,7 +1257,7 @@ class DwarfAI
         def pull_lever(f)
             bld = df.building_find(f[:bld_id])
             return if not bld
-            debug "AI: pull lever #{f[:way]}"
+            debug "pull lever #{f[:way]}"
 
             ref = DFHack::GeneralRefBuildingHolderst.cpp_new
             ref.building_id = bld.id
@@ -1285,7 +1277,7 @@ class DwarfAI
                 @m_c_lever_out = well.layout.find { |f| f[:item] == :lever and f[:way] == :out }
                 @m_c_cistern = @rooms.find { |r| r.type == :cistern and r.subtype == :well }
                 @m_c_reserve = @rooms.find { |r| r.type == :cistern and r.subtype == :reserve }
-                @m_c_testgate_delay = 2
+                @m_c_testgate_delay = 2 if @m_c_reserve.misc[:channel_enable]
             end
 
             l_in = df.building_find(@m_c_lever_in[:bld_id]) if @m_c_lever_in[:bld_id]
@@ -1313,7 +1305,7 @@ class DwarfAI
 
                 gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
                 if gate.shape_basic == :Wall
-                    debug "AI: cistern: test channel"
+                    debug 'cistern: test channel'
                     empty = true
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
@@ -1324,7 +1316,7 @@ class DwarfAI
                     end
 
                     if empty
-                        debug "AI: cistern: do channel"
+                        debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
                         pull_lever(@m_c_lever_out) if not f_out_closed
                     else
@@ -1528,10 +1520,31 @@ class DwarfAI
             nil
         end
 
+        def spiral_search(origin, maxradius=100, minradius=0, step=1)
+            return if not origin
+
+            if minradius == 0
+                return origin if yield origin
+                minradius += step
+            end
+
+            (minradius..maxradius).step(step) { |r|
+                [[0, 1], [1, 0], [0, -1], [-1, 0]].each { |dx, dy|
+                    (-r...r).step(step) { |v|
+                        t = origin.offset(dx*v, dy*v)
+                        return t if t and yield t
+                    }
+                }
+            }
+            nil
+        end
+
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
+            # TODO connect all parts of the map (eg river splitting north/south)
             puts 'AI: setting up fort blueprint...'
+            # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
             debug 'blueprint found entrance'
             scan_fort_body
@@ -1544,44 +1557,31 @@ class DwarfAI
         # search a valid tile for fortress entrance
         def scan_fort_entrance
             # map center
-            cx = df.world.map.x_count / 2
-            cy = df.world.map.y_count / 2
-            rangex = (-cx..cx).sort_by { |_x| _x.abs }
-            rangey = (-cy..cy).sort_by { |_y| _y.abs }
+            center = df.map_tile_at(df.world.map.x_count / 2, df.world.map.y_count / 2, 0)
             rangez = (0...df.world.map.z_count).to_a.reverse
 
-            bestdist = 100000
-            off = rangex.map { |_x|
+            ent0 = spiral_search(center) { |t0|
                 # test the whole map for 3x5 clear spots
-                dy = rangey.find { |_y|
-                    # can break because rangey is sorted by dist
-                    break if _x.abs + _y.abs > bestdist
-                    cz = rangez.find { |z|
-                        t = df.map_tile_at(cx+_x, cy+_y, z) and t.shape == :FLOOR
-                    }
-                    next if not cz
-                    (-1..1).all? { |__x|
-                        (-2..2).all? { |__y|
-                            t = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz-1) and t.shape == :WALL and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
-                            tt = df.map_tile_at(cx+_x+__x, cy+_y+__y, cz) and tt.shape == :FLOOR and
-                              tt.designation.flow_size == 0 and not tt.designation.hidden and not df.building_find(tt)
-                        }
+                t = nil
+                next unless rangez.find { |z| t = t0.offset(0, 0, z) and t.shape == :FLOOR }
+                (-1..1).all? { |_x|
+                    (-2..2).all? { |_y|
+                        tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
+                        ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
+                         not ttt.designation.hidden and not df.building_find(ttt)
                     }
                 }
-                bestdist = [_x.abs + dy.abs, bestdist].min if dy
-                [_x, dy] if dy
-                # find the closest to the center of the map
-            }.compact.sort_by { |dx, dy| dx.abs + dy.abs }.first
+            }
 
-            if off
-                cx += off[0]
-                cy += off[1]
-            else
+            if not ent0
                 puts 'AI: cant find fortress entrance spot'
+                ent = ent0
+            else
+                ent = nil
+                rangez.find { |z| ent = ent0.offset(0, 0, z) and ent.shape == :FLOOR }
             end
-            cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and t.shape == :FLOOR }
 
-            @fort_entrance = Corridor.new(cx, cx, cy-1, cy+1, cz, cz)
+            @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
         end
 
         # search how much we need to dig to find a spot for the full fortress body
@@ -1589,19 +1589,35 @@ class DwarfAI
         def scan_fort_body
             # use a hardcoded fort layout
             cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
+            sz_x, sz_y, sz_z = 35, 22, 5
             @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
-                (-35..35).all? { |dx|
-                    (-22..22).all? { |dy|
-                        (-5..1).all? { |dz|
-                            # ensure at least stockpiles are in rock layer, for the masons
+                (-sz_z..1).all? { |dz|
+                    # scan perimeter first to quickly eliminate caverns / bad rock layers
+                    (-sz_x..sz_x).all? { |dx|
+                        [-sz_y, sz_y].all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and (t.tilemat == :STONE or t.tilemat == :MINERAL or (dz > -1 and t.tilemat == :SOIL))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
+                        }
+                    } and
+                    [-sz_x, sz_x].all? { |dx|
+                        (-sz_y..sz_y).all? { |dy|
+                            t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
+                        }
+                    }
+                }  and
+                # perimeter ok, full scan
+                (-sz_z..1).all? { |dz|
+                    (-(sz_x-1)..(sz_x-1)).all? { |dx|
+                        (-(sz_y-1)..(sz_y-1)).all? { |dy|
+                            t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
                         }
                     }
                 }
             }
 
-            raise 'we need more minerals' if not @fort_entrance.z1
+            raise 'Too many caverns, cant find room for fort. We need more minerals !' if not @fort_entrance.z1
         end
 
         # assign rooms in the space found by scan_fort_*
@@ -1948,36 +1964,33 @@ class DwarfAI
             well.accesspath = [cor]
             @rooms << well
 
-            # well reservoir (in the hole of bedroom blueprint)
-            cist_corr = Corridor.new(cx-8, cx-8, fy, fy, fz-3, fz)
-            cist_corr.z2 += 1 until df.map_tile_at(cx-8, fy, cist_corr.z2).shape_basic != :Wall
-            @corridors << cist_corr
+            # water cistern under the well (in the hole of bedroom blueprint)
+            cist_cors = find_corridor_tosurface(df.map_tile_at(cx-8, fy, fz))
+            cist_cors[0].z1 -= 3
 
-            cist = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
-            cist.z1 -= 2
-            cist.accesspath = [cist_corr]
-            @rooms << cist
+            cistern = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
+            cistern.z1 -= 2
+            cistern.accesspath = [cist_cors[0]]
+            @rooms << cistern
 
-            # the staging reservoir to fill cistern, one z-level at a time
+            # staging reservoir to fill the cistern, one z-level at a time
             # should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
-            # cistern is 3x9 + 1 (stairs)
-            # reserve is 7x5 (can fill cistern 7/7 + itself 1/7 + 14 spare
-            cistern_one = Room.new(:cistern, :reserve, cx-10, cx-16, fy-2, fy+2, fz)
-            cistern_one.layout << {:item => :floodgate, :x => -1, :y => 2, :way => :in}
-            cistern_one.layout << {:item => :floodgate, :x => 7, :y => 2, :way => :out}
-            cistern_one.accesspath = [cist_corr]
-            @rooms << cistern_one
+            #  cistern is 9x3 + 1 (stairs)
+            #  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
+            reserve = Room.new(:cistern, :reserve, cx-10, cx-14, fy-3, fy+3, fz)
+            reserve.layout << {:item => :floodgate, :x => -1, :y => 3, :way => :in}
+            reserve.layout << {:item => :floodgate, :x =>  5, :y => 3, :way => :out}
+            reserve.accesspath = [cist_cors[0]]
+            @rooms << reserve
 
-            # link the cistern reservoir to the water source
-            # the tunnel should walk around other blueprint rooms
-            p1 = df.map_tile_at(cx-18, fy, fz)
-            p2 = p1
 
-            2.times {
+            # link the cistern reserve to the water source
+
+            # trivial walk of the river tiles to find a spot closer to dst
+            move_river = lambda { |dst|
                 loop do
-                    # trivial walking of the river tiles to find a closer spot
-                    dx = (p2.x <=> src.x)
-                    dy = (p2.y <=> src.y)
+                    dx = (dst.x <=> src.x)
+                    dy = (dst.y <=> src.y)
                        if dx != 0 and nsrc = src.offset(dx, dy) and nsrc.designation.feature_local
                     elsif dx != 0 and nsrc = src.offset(dx,  0) and nsrc.designation.feature_local
                     elsif dy != 0 and nsrc = src.offset( 0, dy) and nsrc.designation.feature_local
@@ -1985,47 +1998,65 @@ class DwarfAI
                     end
                     src = nsrc
                 end
-                p2 = p1.offset(0, (p1.x > src.x ? 0 : (p1.y > src.y ? -26 : 26)))
             }
 
-            dx = (p2.x <=> src.x)
-            dy = (p2.y <=> src.y)
+            # 1st end: reservoir input
+            p1 = df.map_tile_at(cx-16, fy, fz)
+            move_river[p1]
+            debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
 
-            channel = src.offset(dx, dy)
-            cistern_one.misc[:channel_enable] = [channel.x, channel.y, channel.z]
-
-            stair = channel.offset(dx, dy)
-            if (-1..1).all? { |ux| (-1..1).all? { |uy|
-                ut = stair.offset(ux, uy) and ut.shape == :WALL and tm = ut.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
-            } }
-                # ok
+            # XXX hardcoded layout again
+            if src.x <= p1.x+16
+                p = p1
+                r = reserve
             else
-                # TODO scan around for a better spot
-                puts "AI: fail cistern<->river"
+                # the tunnel should walk around other blueprint rooms
+                p2 = p1.offset(0, (src.y >= p1.y ? 26 : -26))
+                cor = Corridor.new(p1.x, p2.x, p1.y, p2.y, p1.z, p2.z)
+                @corridors << cor
+                reserve.accesspath << cor
+                move_river[p2]
+                p = p2
+                r = cor
             end
 
-            # surface to well level, 1 tile away from river
-            stair = Corridor.new(stair.x, stair.x, stair.y, stair.y, fz, stair.z+1)
-            @corridors << stair
+            up = find_corridor_tosurface(p)
+            r.accesspath << up[0]
 
-            # link stair to cistern_one
-            if stair.x < p2.x
-                cor1 = Corridor.new(stair.x, p1.x, stair.y, stair.y, p1.z, p1.z)
-                cor1.accesspath = [stair]
-                cor2 = Corridor.new(p1.x, p1.x, stair.y, p1.y, p1.z, p1.z)
-                cor2.accesspath = [cor1]
-                cistern_one.accesspath << cor2
-                @corridors << cor1 << cor2
-            else
-                cor1 = Corridor.new(stair.x, stair.x, stair.y, p2.y, p2.z, p2.z)
-                cor1.accesspath = [stair]
-                cor2 = Corridor.new(stair.x, p2.x, p2.y, p2.y, p2.z, p2.z)
-                cor2.accesspath = [cor1]
-                cor3 = Corridor.new(p2.x, p2.x, p2.y, p1.y, p2.z, p2.z)
-                cor3.accesspath = [cor2]
-                cistern_one.accesspath << cor3
-                @corridors << cor1 << cor2 << cor3
+            dst = up[-1].maptile2.offset(0, 0, -1)
+            move_river[dst]
+
+            # find safe tile near the river
+            out = [[-2, 0], [2, 0], [0, -2], [0, 2]].map { |dx, dy|
+                src.offset(dx, dy)
+            }.sort_by { |t| (dst.x-t.x)**2 + (dst.y-t.y)**2 }.find { |t|
+                map_tile_in_rock t
+            } || spiral_search(src) { |t|
+                map_tile_in_rock t
+            }
+
+            # find tile to channel to start water flow
+            channel = spiral_search(out, 1, 1) { |t|
+                spiral_search(t, 1, 1) { |tt| tt.designation.feature_local }
+            } || spiral_search(out, 1, 1) { |t|
+                spiral_search(t, 1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
+            }
+            debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
+
+            if (dst.x - out.x).abs > 1
+                cor = Corridor.new(dst.x, out.x, dst.y, dst.y, dst.z, dst.z)
+                @corridors << cor
+                r.accesspath << cor
+                r = cor
             end
+
+            if (dst.y - out.y).abs > 1
+                cor = Corridor.new(out.x, out.x, dst.y, out.y, dst.z, dst.z)
+                @corridors << cor
+                r.accesspath << cor
+            end
+
+            reserve.misc[:channel_enable] = [channel.x, channel.y, channel.z] if channel
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
@@ -2077,6 +2108,59 @@ class DwarfAI
             }
         end
 
+        # check that tile is surrounded by solid rock/soil walls
+        def map_tile_in_rock(tile)
+            (-1..1).all? { |dx| (-1..1).all? { |dy|
+                t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+            } }
+        end
+
+        # create a new Corridor from origin to surface, through rock
+        # may create multiple chunks to avoid obstacles, all parts are added to @corridors
+        # returns an array of Corridors, 1st = origin, last = surface
+        def find_corridor_tosurface(origin)
+            cor1 = Corridor.new(origin.x, origin.x, origin.y, origin.y, origin.z, origin.z)
+            @corridors << cor1
+
+            cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2)
+
+            if out = cor1.maptile2 and (out.shape_basic != :Floor or out.designation.flow_size != 0)
+                out2 = spiral_search(out) { |t| map_tile_in_rock t }
+
+                if out.designation.flow_size > 0
+                    # damp stone located
+                    cor1.z2 -= 2
+                    out2 = out2.offset(0, 0, -2)
+                else
+                    cor1.z2 -= 1
+                    out2 = out2.offset(0, 0, -1)
+                end
+
+                cors2 = find_corridor_tosurface(out2)
+
+                if (out2.x - cor1.x).abs > 1 or (out2.y - cor1.y).abs > 1
+                    # TODO safe L shape
+                    dx = (cor1.x <=> out2.x)
+                    dx = 0 if (out2.x - cor1.x).abs <= 1
+                    dy = (cor1.y <=> out2.y)
+                    dy = 0 if (out2.y - cor1.y).abs <= 1
+                    cort = Corridor.new(cor1.x+dx, out2.x-dx, cor1.y+dy, out2.y-dy, cor1.z2, cor1.z2)
+                    @corridors << cort
+                    cor1.accesspath = [cort]
+                    cort.accesspath = [cors2[0]]
+
+                    [cor1, cort, *cors2]
+                else
+                    cor1.accesspath = [cors2[0]]
+
+                    [cor1, *cors2]
+                end
+            else
+                [cor1]
+            end
+
+        end
+
         def status
             @tasks.inject(Hash.new(0)) { |h, t| h.update t[0] => h[t[0]]+1 }.inspect
         end
@@ -2091,6 +2175,9 @@ class DwarfAI
             def x; x1+w/2; end
             def y; y1+h/2; end
             def z; z1+h_z/2; end
+            def maptile;  df.map_tile_at(x,  y,  z);  end
+            def maptile1; df.map_tile_at(x1, y1, z1); end
+            def maptile2; df.map_tile_at(x2, y2, z2); end
 
             def initialize(x1, x2, y1, y2, z1, z2)
                 @misc = {}

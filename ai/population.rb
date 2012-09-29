@@ -145,13 +145,41 @@ class DwarfAI
                 }
             end
 
+            labmin = Hash.new(2).update LaborMin
+            labmax = Hash.new(8).update LaborMax
+            # handle low-number of workers + tool labors
+            if workers.length < 6
+                case workers.length
+                when 0
+                    # meh
+                when 1
+                    # switch mine or cutwood based on time (1/2 dwarf month each)
+                    labmax[:MINE] = labmax[:CUTWOOD] = labmax[:HUNT] = 0
+                    if (df.cur_year_tick / (1200*28/2)) % 2 == 0
+                        labmax[:MINE] = 1
+                    else
+                        labmax[:CUTWOOD] = 1
+                    end
+                when 2
+                    labmax[:MINE] = labmax[:CUTWOOD] = 1
+                    labmax[:HUNT] = 0
+                when 3
+                    labmax[:MINE] = labmax[:CUTWOOD] = labmax[:HUNT] = 1
+                when 4
+                    labmax[:MINE] = 2
+                    labmax[:CUTWOOD] = labmax[:HUNT] = 1
+                when 5
+                    labmax[:MINE] = labmax[:CUTWOOD] = 2
+                    labmax[:HUNT] = 1
+                end
+            end
+
             # autolabor!
             # TODO use skill ranking for decisions
-            # TODO handle team = 1 dwarf (balance mine/cuttree), and other LaborTool conflicts
             # TODO handle nobility
             LaborList.each { |lb|
-                min = LaborMin[lb] || 2
-                max = LaborMax[lb] || 8
+                min = labmin[lb]
+                max = labmax[lb]
                 min = max if min > max
                 min = workers.length if min > workers.length
 
@@ -170,8 +198,9 @@ class DwarfAI
                         c = workers.sort_by { |_c|
                             [worker_labor[_c.id].length, rand]
                         }.find { |_c|
+                            next if LaborTool[lb] and worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
                             not worker_labor[_c.id].include? lb
-                        }
+                        } || workers.find { |_c| not worker_labor[_c.id].include? lb }
 
                         labor_worker[lb] << c.id
                         worker_labor[c.id] << lb
