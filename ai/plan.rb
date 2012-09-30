@@ -1394,6 +1394,12 @@ class DwarfAI
         ManagerSubtype = {
         }
 
+        def self.init_manager_subtype
+            ManagerSubtype.update \
+                :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
+                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
+        end
+
         if df.world.raws.itemdefs.ammo.empty?
             df.onstatechange_register_once { |st|
                 if st == :WORLD_LOADED
@@ -1403,12 +1409,6 @@ class DwarfAI
             }
         else
             init_manager_subtype
-        end
-
-        def self.init_manager_subtype
-            ManagerSubtype.update \
-                :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
-                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
         end
 
 
