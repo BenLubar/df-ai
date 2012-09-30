@@ -1557,13 +1557,16 @@ class DwarfAI
         # search a valid tile for fortress entrance
         def scan_fort_entrance
             # map center
-            center = df.map_tile_at(df.world.map.x_count / 2, df.world.map.y_count / 2, 0)
+            cx = df.world.map.x_count / 2
+            cy = df.world.map.y_count / 2
             rangez = (0...df.world.map.z_count).to_a.reverse
+            cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
+            center = df.map_tile_at(cx, cy, cz)
 
             ent0 = spiral_search(center) { |t0|
                 # test the whole map for 3x5 clear spots
-                t = nil
-                next unless rangez.find { |z| t = t0.offset(0, 0, z) and t.shape == :FLOOR }
+                next unless tz = rangez.find { |z| t = df.map_tile_at(t0.x, t0.y, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
+                t = df.map_tile_at(t0.x, t0.y, tz)
                 (-1..1).all? { |_x|
                     (-2..2).all? { |_y|
                         tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
