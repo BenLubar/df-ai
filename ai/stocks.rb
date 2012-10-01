@@ -107,8 +107,10 @@ class DwarfAI
                 end
 
             list.find_all { |i|
-                !i.flags.trader and !i.flags.forbid and
-                i.itemrefs.reject { |r| r.kind_of?(DFHack::GeneralRefContainedInItemst) }.empty?
+                !i.flags.trader and
+                !i.flags.in_job and
+                !i.flags.removed and
+                !i.flags.forbid
             }.inject(0) { |s, i| s + i.stack_size }
         end
 

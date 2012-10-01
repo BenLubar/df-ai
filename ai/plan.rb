@@ -647,7 +647,7 @@ class DwarfAI
 
             setup_stockpile_settings(r, bld)
 
-            room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop]
+            room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop] and r.subtype != :stone
 
             if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
@@ -733,7 +733,8 @@ class DwarfAI
                 else
                     df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
                 end
-                bld.max_wheelbarrows = 1 if r.w > 1 and r.h > 1
+                bld.max_wheelbarrows = 1
+                add_manager_order(:MakeWoodenWheelbarrow)
             when :wood
                 bld.settings.flags.wood = true
                 df.world.raws.plants.all.length.times { |i| bld.settings.wood[i] = 1 }
@@ -1374,12 +1375,14 @@ class DwarfAI
             :MakePlasterPowder => :CustomReaction,
             :MakeBag => :ConstructChest,
             :MakeRope => :MakeChain,
+            :MakeWoodenWheelbarrow => :MakeTool,
             :MakeBoneBolt => :MakeAmmo,
             :MakeBoneCrossbow => :MakeWeapon,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
             :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
+            :MakeWoodenWheelbarrow => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
         }
         ManagerNoType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
@@ -1396,6 +1399,7 @@ class DwarfAI
 
         def self.init_manager_subtype
             ManagerSubtype.update \
+                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
                 :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
                 :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
         end
@@ -1680,7 +1684,7 @@ class DwarfAI
                         cor_x = Corridor.new(fx+dirx*3, cx, fy, fy, fz, fz)
                         cor_x.accesspath = [(dirx < 0 ? corridor_center0 : corridor_center2)]
                         @corridors << cor_x
-                        cor_x = Corridor.new(cx-dirx*3, cx, fy-1, fy+1, fz, fz)
+                        cor_x = Corridor.new(cx-dirx*3, cx+dirx, fy-1, fy+1, fz, fz)
                         cor_x.accesspath = [@corridors.last]
                         @corridors << cor_x
                     end
