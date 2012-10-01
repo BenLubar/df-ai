@@ -91,7 +91,7 @@ class DwarfAI
             nonworkers = []
             citizen.each_value { |c|
                 next if not u = c.dfunit
-                if df.unit_isworker(u) and not u.specific_refs.find { |sr| sr.type == :ACTIVITY } and u.military.squad_index == -1 and not u.status.misc_traits.find { |mt| mt.id == :OnBreak }
+                if df.unit_isworker(u) and not u.specific_refs.find { |sr| sr.type == :ACTIVITY } and u.military.squad_index == -1 and not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and (!u.job.current_job or u.job.current_job.job_type != :AttendParty)
                     workers << c
                 else
                     nonworkers << c

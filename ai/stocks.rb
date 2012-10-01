@@ -110,7 +110,8 @@ class DwarfAI
                 !i.flags.trader and
                 !i.flags.in_job and
                 !i.flags.removed and
-                !i.flags.forbid
+                !i.flags.forbid and
+                (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) })
             }.inject(0) { |s, i| s + i.stack_size }
         end
 
