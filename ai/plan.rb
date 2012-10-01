@@ -389,6 +389,7 @@ class DwarfAI
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
                         :Clothiers => :cloth, :Still => :food, :WoodFurnace => :wood,
+                        :Smelter => :stone,
                 }[r.subtype]
                     # XXX hardcoded fort layout
                     y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
@@ -781,7 +782,13 @@ class DwarfAI
             when :stone
                 bld.settings.flags.stone = true
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
-                    df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = (df.ui.economic_stone[i] ? 0 : 1) }
+                    df.world.raws.inorganics.length.times { |i|
+                        bld.settings.stone[i] = (df.ui.economic_stone[i] ? 0 : 1)
+                    }
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
+                    df.world.raws.inorganics.length.times { |i|
+                        bld.settings.stone[i] = (df.world.raws.inorganics[i].metal_ore.mat_index.empty? ? 0 : 1)
+                    }
                 else
                     df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
                 end

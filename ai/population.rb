@@ -52,6 +52,7 @@ class DwarfAI
 
         def del_citizen(id)
             @citizen.delete id
+            @military.delete id
             ai.plan.del_citizen(id)
         end
 
