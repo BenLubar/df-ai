@@ -12,11 +12,12 @@ class DwarfAI
             end
         end
 
-        attr_accessor :ai, :citizen
+        attr_accessor :ai, :citizen, :military
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
             @citizen = {}
+            @military = {}
             @update_counter = 0
         end
 
@@ -38,6 +39,7 @@ class DwarfAI
             when 1; update_citizenlist
             when 2; update_nobles
             when 3; update_jobs
+            when 4; update_military
             end
         end
 
@@ -57,7 +59,6 @@ class DwarfAI
             old = @citizen.dup
 
             # add new fort citizen to our list
-            # TODO check berserk ?
             df.unit_citizens.each { |u|
                 @citizen[u.id] ||= new_citizen(u.id)
                 old.delete u.id
@@ -76,11 +77,36 @@ class DwarfAI
             autolabors
         end
 
+        def update_military
+            # check for new soldiers, allocate barracks
+            # TODO assign new dwarves to the military
+
+            newsoldiers = []
+
+            df.unit_citizens.each { |u|
+                if u.military.squad_index == -1
+                    if @military.delete u.id
+                        ai.plan.freesoldierbarrack(u.id)
+                    end
+                else
+                    if not @military[u.id]
+                        @military[u.id] = u.military.squad_index
+                        newsoldiers << u.id
+                    end
+                end
+            }
+
+            newsoldiers.each { |uid|
+                ai.plan.getsoldierbarrack(uid)
+            }
+        end
+
 
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborMin = {
-            :FISH => 0,
+            :DETAIL => 4,
+            :PLANT => 4,
         }
         LaborMax = {
             :FISH => 0,
@@ -91,7 +117,11 @@ class DwarfAI
             nonworkers = []
             citizen.each_value { |c|
                 next if not u = c.dfunit
-                if df.unit_isworker(u) and not u.specific_refs.find { |sr| sr.type == :ACTIVITY } and u.military.squad_index == -1 and not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and (!u.job.current_job or u.job.current_job.job_type != :AttendParty)
+                if df.unit_isworker(u) and
+                        u.military.squad_index == -1 and
+                        (!u.job.current_job or u.job.current_job.job_type != :AttendParty) and
+                        not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
+                        not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
                     workers << c
                 else
                     nonworkers << c

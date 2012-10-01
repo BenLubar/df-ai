@@ -107,6 +107,7 @@ class DwarfAI
         def del_citizen(uid)
             freediningroom(uid)
             freebedroom(uid)
+            freesoldierbarrack(uid)
             getcoffin(uid) if u = df.unit_find(uid) and u.flags1.dead
         end
         
@@ -248,6 +249,47 @@ class DwarfAI
             end
         end
 
+        def getsoldierbarrack(id)
+            u = df.unit_find(id)
+            return if not u
+            sid = u.military.squad_index
+            return if sid == -1
+
+            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_index] == sid }
+                r = @rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }
+                if not r
+                    puts "AI: no free barracks"
+                    return
+                end
+
+                r.misc[:squad_index] = sid
+                df.add_announcement("AI: new barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
+                digroom(r)
+                if r.misc[:bld_id] and bld = r.dfbuilding
+                    su = bld.squads.find { |su| su.squad_id == sid }
+                    if not su
+                        su = DFHack::BuildingSquadUse.cpp_new(:squad_id => sid)
+                        bld.squads << su
+                    end
+                    su.mode.sleep = true
+                    su.mode.train = true
+                    su.mode.indiv_eq = true
+                    su.mode.squad_eq = true
+                end
+            end
+
+            [:weaponrack, :armorstand, :bed].map { |it|
+                r.layout.find { |f| f[:item] == it and f[:users].include?(id) } ||
+                r.layout.find { |f| f[:item] == it and f[:users].empty? }
+            }.compact.each { |f|
+                f[:users] << id unless f[:users].include?(id)
+                f.delete :ignore
+            }
+            if r.status == :finished
+                furnish_room(r)
+            end
+        end
+
         def getcoffin(id)
             if r = @rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].length < 1 } }
                 wantdig(r)
@@ -283,6 +325,16 @@ class DwarfAI
                     r.misc[:users].delete id
                 end
             }
+        end
+
+        def freesoldierbarrack(id)
+            if r = @rooms.find { |_r| _r.type == :barrack and _r.layout.find { |f| f[:users].to_a.include?(id) } }
+                r.layout.each { |f| f[:users].delete id }
+                if not r.layout.find { |f| not f[:users].to_a.empty? }
+                    df.add_announcement("AI: freed barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
+                    r.misc.delete :squad_index
+                end
+            end
         end
 
         def set_owner(r, uid)
@@ -1197,13 +1249,29 @@ class DwarfAI
             set_owner(r, r.owner)
             furnish_room(r)
 
-            if r.type == :dininghall
+            case r.type
+            when :dininghall
                 bld.table_flags.meeting_hall = true
 
                 # if we set up the temporary hall, queue the real one
                 if r.misc[:temporary] and p = @rooms.find { |_r| _r.type == :dininghall and not _r.misc[:temporary] }
                     wantdig p
                 end
+
+            when :barracks
+                if sid = r.misc[:squad_index]
+                    # set squad usage
+                    su = bld.squads.find { |su| su.squad_id == sid }
+                    if not su
+                        su = DFHack::BuildingSquadUse.cpp_new(:squad_id => sid)
+                        bld.squads << su
+                    end
+                    su.mode.sleep = true
+                    su.mode.train = true
+                    su.mode.indiv_eq = true
+                    su.mode.squad_eq = true
+                end
+
             end
 
             true
@@ -1912,7 +1980,7 @@ class DwarfAI
             # barracks
             barracks = Room.new(:barracks, nil, fx+4, fx+10, fy+3, fy+10, fz)
             barracks.layout << {:item => :door, :x => 1, :y => -1}
-            5.times { |dy|
+            8.times { |dy|
                 barracks.layout << {:item => :weaponrack, :x => 4, :y => dy, :ignore => true, :users => []}
                 barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
                 barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
