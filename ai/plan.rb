@@ -479,7 +479,7 @@ class DwarfAI
             mod = FurnitureOrder[f[:item]]
             find = FurnitureFind[f[:item]]
             oidx = DFHack::JobType::Item[mod]
-            if itm = df.world.items.other[oidx].find { |i| find[i] and df.building_isitemfree(i) }
+            if itm = df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 bld = df.building_alloc(bldn)
@@ -499,13 +499,13 @@ class DwarfAI
 
         def try_furnish_well(r, f)
             if block = df.world.items.other[:BLOCKS].find { |i|
-                i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
+                i.kind_of?(DFHack::ItemBlocksst) and df.item_isfree(i)
             } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
-                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+                i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
             } and bucket = df.world.items.other[:BUCKET].find { |i|
-                i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
             } and chain = df.world.items.other[:CHAIN].find { |i|
-                i.kind_of?(DFHack::ItemChainst) and df.building_isitemfree(i)
+                i.kind_of?(DFHack::ItemChainst) and df.item_isfree(i)
             }
                 bld = df.building_alloc(:Well)
                 t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
@@ -520,7 +520,7 @@ class DwarfAI
 
         def try_furnish_lever(r, f)
             if mecha = df.world.items.other[:TRAPPARTS].find { |i|
-                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+                i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
             }
                 bld = df.building_alloc(:Trap, :Lever)
                 t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
@@ -583,9 +583,9 @@ class DwarfAI
             when :Dyers
                 # barrel, bucket
                 if barrel = df.world.items.other[:BARREL].find { |i|
-                        i.kind_of?(DFHack::ItemBarrelst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -597,11 +597,11 @@ class DwarfAI
             when :Ashery
                 # block, barrel, bucket
                 if block = df.world.items.other[:BLOCKS].find { |i|
-                        i.kind_of?(DFHack::ItemBlocksst) and df.building_isitemfree(i)
+                        i.kind_of?(DFHack::ItemBlocksst) and df.item_isfree(i)
                 } and barrel = df.world.items.other[:BARREL].find { |i|
-                        i.kind_of?(DFHack::ItemBarrelst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -613,9 +613,9 @@ class DwarfAI
             when :SoapMaker
                 # bucket, boulder
                 if bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.building_isitemfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bould = df.world.items.other[:BOULDER].find { |i|
-                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                        i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                 }
                     custom = df.world.raws.buildings.all.find { |b| b.code == 'SOAP_MAKER' }.id
                     bld = df.building_alloc(:Workshop, :Custom, custom)
@@ -628,9 +628,9 @@ class DwarfAI
             when :MetalsmithsForge
                 # anvil, boulder
                 if anvil = df.world.items.other[:ANVIL].find { |i|
-                        i.kind_of?(DFHack::ItemAnvilst) and df.building_isitemfree(i) and i.isTemperatureSafe(11640)
+                        i.kind_of?(DFHack::ItemAnvilst) and df.item_isfree(i) and i.isTemperatureSafe(11640)
                 } and bould = df.world.items.other[:BOULDER].find { |i|
-                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                        i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -642,7 +642,7 @@ class DwarfAI
             when :WoodFurnace, :Smelter
                 # firesafe boulder
                 if bould = df.world.items.other[:BOULDER].find { |i|
-                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                        i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                 }
                     bld = df.building_alloc(:Furnace, r.subtype)
                     df.building_position(bld, r)
@@ -653,7 +653,7 @@ class DwarfAI
                 end
             when :Quern
                 if quern = df.world.items.other[:QUERN].find { |i|
-                        i.kind_of?(DFHack::ItemQuernst) and df.building_isitemfree(i)
+                        i.kind_of?(DFHack::ItemQuernst) and df.item_isfree(i)
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -666,11 +666,11 @@ class DwarfAI
                 # any non-eco boulder
                 if bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
                         # check map_block.items first
-                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and
+                        i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and
                         !df.ui.economic_stone[i.mat_index] and
                         i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2
                 } || df.world.items.other[:BOULDER].find { |i|
-                        i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and
+                        i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and
                         !df.ui.economic_stone[i.mat_index]
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
@@ -760,7 +760,7 @@ class DwarfAI
             wr = Room.new(nil, nil, r.x1, r.x1+2, r.y2+2, r.y2+4, r.z)
             wr.dig
             if bould = df.world.items.other[:BOULDER].find { |i|
-                i.kind_of?(DFHack::ItemBoulderst) and df.building_isitemfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+                i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
             }
                 bld = df.building_alloc(:Furnace, :Kiln)
                 df.building_position(bld, wr)
@@ -1311,7 +1311,7 @@ class DwarfAI
             return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
 
             mechas = df.world.items.other[:TRAPPARTS].find_all { |i|
-                i.kind_of?(DFHack::ItemTrappartsst) and df.building_isitemfree(i)
+                i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
             }[0, 2]
             return if mechas.length < 2
 
