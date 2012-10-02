@@ -252,29 +252,21 @@ class DwarfAI
         def getsoldierbarrack(id)
             u = df.unit_find(id)
             return if not u
-            sid = u.military.squad_index
-            return if sid == -1
+            squad_id = u.military.squad_index
+            return if squad_id == -1
 
-            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_index] == sid }
+            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_index] == squad_id }
                 r = @rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }
                 if not r
                     puts "AI: no free barracks"
                     return
                 end
 
-                r.misc[:squad_index] = sid
+                r.misc[:squad_index] = squad_id
                 df.add_announcement("AI: new barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
                 digroom(r)
-                if r.misc[:bld_id] and bld = r.dfbuilding
-                    su = bld.squads.find { |su| su.squad_id == sid }
-                    if not su
-                        su = DFHack::BuildingSquadUse.cpp_new(:squad_id => sid)
-                        bld.squads << su
-                    end
-                    su.mode.sleep = true
-                    su.mode.train = true
-                    su.mode.indiv_eq = true
-                    su.mode.squad_eq = true
+                if r.misc[:bld_id]
+                    assign_barrack_squad(r, squad_id)
                 end
             end
 
@@ -288,6 +280,31 @@ class DwarfAI
             if r.status == :finished
                 furnish_room(r)
             end
+        end
+        
+        def assign_barrack_squad(barrack, squad_id)
+            return if not bld = barrack.dfbuilding
+
+            su = bld.squads.find { |_su| _su.squad_id == squad_id }
+            if not su
+                su = DFHack::BuildingSquadUse.cpp_new(:squad_id => squad_id)
+                bld.squads << su
+            end
+            su.mode.sleep = true
+            su.mode.train = true
+            su.mode.indiv_eq = true
+            su.mode.squad_eq = true
+
+            squad = df.world.squads.all[squad_id]
+            sr = squad.rooms.find { |_sr| _sr.building_id == bld.id }
+            if not sr
+                sr = DFHack::Squad_TRooms.cpp_new(:building_id => bld.id)
+                squad.rooms << sr
+            end
+            sr.mode.sleep = true
+            sr.mode.train = true
+            sr.mode.indiv_eq = true
+            sr.mode.squad_eq = true
         end
 
         def getcoffin(id)
@@ -1266,17 +1283,8 @@ class DwarfAI
                 end
 
             when :barracks
-                if sid = r.misc[:squad_index]
-                    # set squad usage
-                    su = bld.squads.find { |su| su.squad_id == sid }
-                    if not su
-                        su = DFHack::BuildingSquadUse.cpp_new(:squad_id => sid)
-                        bld.squads << su
-                    end
-                    su.mode.sleep = true
-                    su.mode.train = true
-                    su.mode.indiv_eq = true
-                    su.mode.squad_eq = true
+                if squad_id = r.misc[:squad_index]
+                    assign_barrack_squad(r, squad_id)
                 end
 
             end
