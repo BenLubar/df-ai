@@ -787,7 +787,7 @@ class DwarfAI
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
                     df.world.raws.inorganics.length.times { |i|
-                        bld.settings.stone[i] = (df.world.raws.inorganics[i].metal_ore.mat_index.empty? ? 0 : 1)
+                        bld.settings.stone[i] = (df.world.raws.inorganics[i].flags[:METAL_ORE] ? 1 : 0)
                     }
                 else
                     df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
