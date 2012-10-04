@@ -1243,7 +1243,7 @@ class DwarfAI
         end
 
         def try_endfurnish(r, f)
-            bld = df.building_find(f[:bld_id])
+            bld = df.building_find(f[:bld_id]) if f[:bld_id]
             if not bld
                 puts "AI: destroyed building ? #{r.inspect} #{f.inspect}"
                 return true
