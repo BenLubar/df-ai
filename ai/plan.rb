@@ -16,7 +16,7 @@ class DwarfAI
             @manager_taskmax = 4    # when stacking manager jobs, do not stack more than this
             @manager_maxbacklog = 10 # allow wantdig only with less than that number of pending masons orders
             @dwarves_per_table = 3  # number of dwarves per dininghall table/chair
-            @dwarves_per_farmtile = 2   # number of dwarves per farmplot tile
+            @dwarves_per_farmtile = 1.5   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
             @spare_bedroom = 3  # dig this much free bedroom in advance when idle
         end
@@ -87,7 +87,7 @@ class DwarfAI
                 end
             }
 
-            df.onupdate_register_once(12) { update ; true } if want_reupdate
+            df.onupdate_register_once(12, 12) { update ; true } if want_reupdate
         end
 
         def digging?
@@ -1427,6 +1427,9 @@ class DwarfAI
                         debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
                         pull_lever(@m_c_lever_out) if not f_out_closed
+                    elsif well.maptile1.offset(-2, well.h/2).designation.flow_size == 7
+                        # something went not as planned, but we have a water source
+                        @m_c_testgate_delay = nil
                     else
                         @m_c_testgate_delay = 16
                     end
@@ -2009,8 +2012,8 @@ class DwarfAI
             @corridors << cor
             old_cor = cor
 
-            infirmary = Room.new(:infirmary, nil, fx+4, fx+8, fy-3, fy-7, fz)
-            infirmary.layout << {:item => :door, :x => 1, :y => 5}
+            infirmary = Room.new(:infirmary, nil, fx+2, fx+5, fy-3, fy-7, fz)
+            infirmary.layout << {:item => :door, :x => 3, :y => 5}
             infirmary.layout << {:item => :bed, :x => 0, :y => 1}
             infirmary.layout << {:item => :table, :x => 1, :y => 1}
             infirmary.layout << {:item => :bed, :x => 2, :y => 1}
@@ -2019,24 +2022,11 @@ class DwarfAI
             infirmary.layout << {:item => :bed, :x => 0, :y => 3}
             infirmary.layout << {:item => :table, :x => 1, :y => 3}
             infirmary.layout << {:item => :bed, :x => 2, :y => 3}
-            infirmary.layout << {:item => :chest, :x => 4, :y => 1}
-            infirmary.layout << {:item => :chest, :x => 4, :y => 2}
-            infirmary.layout << {:item => :chest, :x => 4, :y => 3}
+            infirmary.layout << {:item => :chest, :x => 3, :y => 1}
+            infirmary.layout << {:item => :chest, :x => 3, :y => 2}
+            infirmary.layout << {:item => :chest, :x => 3, :y => 3}
             infirmary.accesspath = [cor]
             @rooms << infirmary
-
-            # barracks
-            barracks = Room.new(:barracks, nil, fx+4, fx+10, fy+3, fy+10, fz)
-            barracks.layout << {:item => :door, :x => 1, :y => -1}
-            8.times { |dy|
-                barracks.layout << {:item => :weaponrack, :x => 4, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
-            }
-            barracks.layout.find { |f| f[:item] == :weaponrack }[:makeroom] = true
-            barracks.accesspath = [cor]
-            @rooms << barracks
-
 
             # cemetary lots (160 spots)
             cor = Corridor.new(fx+7, fx+15, fy-1, fy+1, fz, fz)
@@ -2047,20 +2037,46 @@ class DwarfAI
             2.times { |rrx|
                 5.times { |ry|
                     2.times { |rx|
-                        ox = fx+14+5*rx + 10*rrx
-                        oy = fy+3+3*ry
-                        cemetary = Room.new(:cemetary, nil, ox, ox+4, oy, oy+3, fz)
+                        ox = fx+9+5*rx + 10*rrx
+                        oy = fy-3-3*ry
+                        cemetary = Room.new(:cemetary, nil, ox, ox+4, oy, oy-3, fz)
                         4.times { |dx|
                             2.times { |dy|
                                 cemetary.layout << {:item => :coffin, :x => dx+1-rx, :y =>dy+1, :ignore => true, :users => []}
                             }
                         }
                         if rx == 0 and ry == 0 and rrx == 0
-                            cemetary.layout << {:item => :door, :x => 1, :y => -1}
+                            cemetary.layout << {:item => :door, :x => 4, :y => 4}
                             cemetary.accesspath = [cor]
                         end
                         @rooms << cemetary
                     }
+                }
+            }
+
+            # barracks
+            # 8 dwarf per squad, 20% pop => 40 soldiers for 200 dwarves => 5 barracks
+            old_cor = corridor_center2
+            4.times { |rx|
+                cor = Corridor.new(old_cor.x2+1, fx+5+10*rx, fy-1, fy+1, fz, fz)
+                cor.accesspath = [old_cor]
+                @corridors << cor
+                old_cor = cor
+
+                [1, -1].each { |ry|
+                    next if ry == -1 and rx < 3 # infirmary/cemetary
+
+                    barracks = Room.new(:barracks, nil, fx+2+10*rx, fx+2+10*rx+6, fy+3*ry, fy+10*ry, fz)
+                    barracks.layout << {:item => :door, :x => 3, :y => (ry > 0 ? -1 : 8)}
+                    8.times { |dy|
+                        dy = 7-dy if ry < 0
+                        barracks.layout << {:item => :weaponrack, :x => 4, :y => dy, :ignore => true, :users => []}
+                        barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
+                        barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
+                    }
+                    barracks.layout.find { |f| f[:item] == :weaponrack }[:makeroom] = true
+                    barracks.accesspath = [cor]
+                    @rooms << barracks
                 }
             }
 
