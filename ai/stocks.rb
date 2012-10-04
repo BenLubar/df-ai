@@ -9,7 +9,7 @@ class DwarfAI
             @needed_perdwarf = { :food => 1, :drink => 2 }
             # XXX 'play now' embark has only 5 dimplecup/pigtail seeds
             @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2,
-                :skull => 2, :bone => 8 }
+                :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5 }
             @updating = []
             @count = {}
         end
@@ -86,12 +86,17 @@ class DwarfAI
                     df.world.items.other[:ROUGH]
                 when :crossbow
                     df.world.items.other[:WEAPON].find_all { |i| i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow] }
-                when :pigtail, :dimplecup
+                when :pigtail, :dimplecup, :quarrybush
                     # TODO generic handling, same as farm crops selection
-                    mat = {:pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
-                        :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL'}[k]
+                    mat = {
+                        :pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
+                        :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL',
+                        :quarrybush => 'PLANT:BUSH_QUARRY:STRUCTURAL',
+                    }[k]
                     mi = df.decode_mat(mat)
                     df.world.items.other[:PLANT].find_all { |i| i.mat_index == mi.mat_index and i.mat_type == mi.mat_type }
+                when :leaves
+                    df.world.items.other[:LEAVES]
                 when :skull
                     # XXX exclude dwarf skulls ?
                     df.world.items.other[:CORPSEPIECE].find_all { |i| i.corpse_flags.skull }
@@ -135,8 +140,7 @@ class DwarfAI
                 return
 
             when :drink
-                amount = 5 if amount < 5
-                amount /= 5     # accounts for brewer yield, but not for input stack size
+                amount = (amount / 5.0).ceil  # accounts for brewer yield, but not for input stack size
             end
 
             amount = 30 if amount > 30
@@ -155,8 +159,17 @@ class DwarfAI
                 queue_use_gems(amount)
                 return
 
-            when :pigtail, :dimplecup
-                reaction = {:pigtail => :ProcessPlants, :dimplecup => :MillPlants}[what]
+            when :pigtail, :dimplecup, :quarrybush
+                reaction = {
+                    :pigtail => :ProcessPlants,
+                    :dimplecup => :MillPlants,
+                    :quarrybush => :ProcessPlantsBag,
+                }[what]
+                # stuff may rot before we can process it
+                amount = 20 if amount > 20
+            when :leaves
+                reaction = :PrepareMeal
+                amount = (amount / 5.0).ceil
             when :skull
                 reaction = :MakeTotem
             when :bone
@@ -165,6 +178,8 @@ class DwarfAI
                     amount = 1
                 else
                     reaction = :MakeBoneBolt
+                    # seems like we consume more than we think..
+                    amount = (amount * 0.8).ceil
                 end
             end
 
@@ -212,10 +227,12 @@ class DwarfAI
 
         # designate some trees to cut
         def cuttrees(amount)
-            tree_list.each { |tree|
+            list = tree_list
+            list.each { |tree|
                 t = df.map_tile_at(tree)
                 next if t.shape != :TREE
                 next if t.designation.dig == :Default
+                next if list.length > 4*amount and rand(4) != 0
                 t.dig(:Default)
                 amount -= 1
                 break if amount <= 0

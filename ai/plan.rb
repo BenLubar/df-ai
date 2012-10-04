@@ -118,12 +118,26 @@ class DwarfAI
                 end
             }
 
+            @important_workshops ||= [:Farmers, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Quern, :Bowyers, :WoodFurnace, :Smelter]
+            if @important_workshops.first and not digging?
+                while ws = @important_workshops.shift
+                    if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype == ws }
+                        wantdig(r)
+                    end
+                end
+                return if digging?
+            end
+
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
+
+            ifplan = lambda { |_r| _r if _r and _r.status == :plan }
+
             if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
-                if r = @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] and _r.layout.find { |f| f.delete :ignore } }
-                    r.misc[:furnished] = true if not r.layout.find { |f| f.delete :ignore }
+                if r = @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] and _r.layout.find { |f| f[:ignore] } }
+                    r.misc[:furnished] = true
+                    r.layout.each { |f| f.delete :ignore }
                     furnish_room(r)
                     false
                 elsif r =
@@ -131,9 +145,9 @@ class DwarfAI
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :barracks and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
-                       [@rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].empty? } }].compact.find { |_r| _r.status == :plan } ||
+                       ifplan[@rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       ifplan[@rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }] ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
                     false
@@ -143,7 +157,7 @@ class DwarfAI
                 end
             elsif manager_backlog >= @manager_maxbacklog and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
                 r.misc[:spare] = true
-                r.subtype = :Masons
+                r.subtype = :Masons # TODO repurpose by parsing manager_orders
                 digroom(r)
                 false
             end
@@ -405,8 +419,8 @@ class DwarfAI
                 # add minimal stockpile in front of workshop
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
-                        :Clothiers => :cloth, :Still => :food, :WoodFurnace => :wood,
-                        :Smelter => :stone,
+                        :Clothiers => :cloth, :Still => :food, :Kitchen => :food, :WoodFurnace => :wood,
+                        :Smelter => :stone, :MetalsmithsForge => :bars,
                 }[r.subtype]
                     # XXX hardcoded fort layout
                     y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
@@ -900,6 +914,8 @@ class DwarfAI
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
                         t.plants[i] = (plant.flags[:DRINK] and not plant.flags[:THREAD]) if plant
                     }
+                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
+                    mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
@@ -962,9 +978,14 @@ class DwarfAI
             when :bars
                 bld.settings.flags.bars = true
                 bld.max_bins = r.w*r.h
-                df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = bld.settings.blocks_mats[i] = true }
-                10.times { |i| bld.settings.bars_other_mats[i] = bld.settings.blocks_other_mats[i] = true }
+                if r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
+                    df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
+                    bld.settings.bars_other_mats[0] = true  # coal
+                else
+                    df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = bld.settings.blocks_mats[i] = true }
+                    10.times { |i| bld.settings.bars_other_mats[i] = bld.settings.blocks_other_mats[i] = true }
                 # bars_other = 5 (coal/potash/ash/pearlash/soap)     blocks_other = 4 (greenglass/clearglass/crystalglass/wood)
+                end
             when :coins
                 bld.settings.flags.coins = true
                 df.world.raws.inorganics.length.times { |i| bld.settings.coins[i] = true }
@@ -1283,6 +1304,9 @@ class DwarfAI
                 end
 
             when :barracks
+                add_manager_order(:MakeTrainingAxe, 4)
+                add_manager_order(:MakeTrainingShortSword, 4)
+                add_manager_order(:MakeTrainingSpear, 4)
                 if squad_id = r.misc[:squad_index]
                     assign_barrack_squad(r, squad_id)
                 end
@@ -1461,17 +1485,21 @@ class DwarfAI
             :MakeWoodenWheelbarrow => :MakeTool,
             :MakeBoneBolt => :MakeAmmo,
             :MakeBoneCrossbow => :MakeWeapon,
+            :MakeTrainingAxe => :MakeWeapon,
+            :MakeTrainingShortSword => :MakeWeapon,
+            :MakeTrainingSpear => :MakeWeapon,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
             :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
-            :MakeWoodenWheelbarrow => :wood,
+            :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
+            :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
         }
-        ManagerNoType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
-            :ProcessPlants => true, :MillPlants => true, :ConstructTractionBench => true, :BrewDrink => true,
-            :MakeSoap => true, :MakeLye => true, :MakeAsh => true, :MakeTotem => true, :MakeCharcoal => true,
-            :MakePlasterPowder => true,
+        ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
+            :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
+            :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
+            :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
         }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
@@ -1483,6 +1511,9 @@ class DwarfAI
         def self.init_manager_subtype
             ManagerSubtype.update \
                 :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
+                :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
+                :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
+                :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
                 :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
                 :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
         end
@@ -1502,13 +1533,13 @@ class DwarfAI
         def find_manager_orders(order)
             _order = ManagerRealOrder[order] || order
             matcat = ManagerMatCategory[order]
-            notype = ManagerNoType[order]
+            type = ManagerType[order]
             subtype = ManagerSubtype[order]
             custom = ManagerCustom[order]
 
             df.world.manager_orders.find_all { |_o|
                 _o.job_type == _order and
-                _o.mat_type == (notype || matcat ? -1 : 0) and
+                _o.mat_type == (type || (matcat ? -1 : 0)) and
                 (matcat ? _o.material_category.send(matcat) : _o.material_category._whole == 0) and
                 (not subtype or subtype == _o.item_subtype) and
                 (not custom or custom == _o.reaction_name)
@@ -1519,7 +1550,7 @@ class DwarfAI
             debug "add_manager #{order} #{amount}"
             _order = ManagerRealOrder[order] || order
             matcat = ManagerMatCategory[order]
-            notype = ManagerNoType[order]
+            type = ManagerType[order]
             subtype = ManagerSubtype[order]
             custom = ManagerCustom[order]
 
@@ -1528,7 +1559,7 @@ class DwarfAI
                 o = df.world.manager_orders.last
                 if o and o.job_type == _order and
                         o.amount_total + amount < 30 and
-                        o.mat_type == (notype || matcat ? -1 : 0) and
+                        o.mat_type == (type || (matcat ? -1 : 0)) and
                         (matcat ? o.material_category.send(matcat) : o.material_category._whole == 0) and
                         (not subtype or subtype == o.item_subtype) and
                         (not custom or custom == o.reaction_name)
@@ -1536,7 +1567,7 @@ class DwarfAI
                     o.amount_left += amount
                 else
                     o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => (subtype || -1),
-                            :mat_type => (matcat || notype ? -1 : 0), :mat_index => -1, :amount_left => amount, :amount_total => amount)
+                            :mat_type => (type || (matcat ? -1 : 0)), :mat_index => -1, :amount_left => amount, :amount_total => amount)
                     o.material_category.send("#{matcat}=", true) if matcat
                     o.reaction_name = custom if custom
                     df.world.manager_orders << o
@@ -1750,7 +1781,7 @@ class DwarfAI
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Loom,:Clothiers, :Dyers,:Bowyers, nil,:BookkeepersOffice]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-                :Ashery,:MetalsmithsForge, :WoodFurnace,:Smelter, :SoapMaker,:ManagersOffice]
+                :Smelter,:MetalsmithsForge, :Ashery,:WoodFurnace, :SoapMaker,:ManagersOffice]
 
             [-1, 1].each { |dirx|
                 prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
@@ -1910,8 +1941,10 @@ class DwarfAI
 
 
             # farm plots
-            dpf = @dwarves_per_farmtile * 4*3
-            nrfarms = (200+dpf-1)/dpf   # 8
+            farm_h = 6
+            farm_w = 3
+            dpf = (@dwarves_per_farmtile * farm_h * farm_w).to_i
+            nrfarms = (200+dpf-1)/dpf
 
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
@@ -1926,8 +1959,8 @@ class DwarfAI
             @corridors << farm_stairs
             cx += 3
             cz2 = (cz...fort_entrance.z2).find { |z|
-                (-1..(nrfarms*3)).all? { |dx|
-                    (-6..6).all? { |dy|
+                (-1..(nrfarms*farm_w)).all? { |dx|
+                    (-(farm_h+2)..(farm_h+2)).all? { |dy|
                         t = df.map_tile_at(cx+dx, cy+dy, z) and t.shape == :WALL and t.tilemat == :SOIL
                     }
                 }
@@ -1944,10 +1977,10 @@ class DwarfAI
             [-1, 1].each { |dy|
                 st = types.shift
                 nrfarms.times { |dx|
-                    r = Room.new(:farmplot, st, cx+3*dx, cx+3*dx+2, cy+dy*2, cy+dy*5, cz2)
+                    r = Room.new(:farmplot, st, cx+farm_w*dx, cx+farm_w*dx+farm_w-1, cy+dy*2, cy+dy*(2+farm_h-1), cz2)
                     r.misc[:users] = []
                     if dx == 0
-                        r.layout << {:item => :door, :x => 1, :y => (dy>0 ? -1 : 4)}
+                        r.layout << {:item => :door, :x => 1, :y => (dy>0 ? -1 : farm_h)}
                         r.accesspath = [cor]
                     else
                         r.accesspath = [@rooms.last]
@@ -2134,14 +2167,14 @@ class DwarfAI
             debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
 
             if (dst.x - out.x).abs > 1
-                cor = Corridor.new(dst.x, out.x, dst.y, dst.y, dst.z, dst.z)
+                cor = Corridor.new(dst.x+(out.x<=>dst.x), out.x, dst.y, dst.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
                 r = cor
             end
 
             if (dst.y - out.y).abs > 1
-                cor = Corridor.new(out.x, out.x, dst.y, out.y, dst.z, dst.z)
+                cor = Corridor.new(out.x, out.x, dst.y+(out.y<=>dst.y), out.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
             end
@@ -2234,7 +2267,7 @@ class DwarfAI
                     dx = 0 if (out2.x - cor1.x).abs <= 1
                     dy = (cor1.y <=> out2.y)
                     dy = 0 if (out2.y - cor1.y).abs <= 1
-                    cort = Corridor.new(cor1.x+dx, out2.x-dx, cor1.y+dy, out2.y-dy, cor1.z2, cor1.z2)
+                    cort = Corridor.new(cor1.x-dx, out2.x+dx, cor1.y-dy, out2.y+dy, cor1.z2, cor1.z2)
                     @corridors << cort
                     cor1.accesspath = [cort]
                     cort.accesspath = [cors2[0]]
