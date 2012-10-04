@@ -2057,11 +2057,13 @@ class DwarfAI
             # barracks
             # 8 dwarf per squad, 20% pop => 40 soldiers for 200 dwarves => 5 barracks
             old_cor = corridor_center2
+            oldcx = old_cor.x2+2     # door
             4.times { |rx|
-                cor = Corridor.new(old_cor.x2+1, fx+5+10*rx, fy-1, fy+1, fz, fz)
+                cor = Corridor.new(oldcx, fx+5+10*rx, fy-1, fy+1, fz, fz)
                 cor.accesspath = [old_cor]
                 @corridors << cor
                 old_cor = cor
+                oldcx = cor.x2+1
 
                 [1, -1].each { |ry|
                     next if ry == -1 and rx < 3 # infirmary/cemetary
