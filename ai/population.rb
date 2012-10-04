@@ -119,7 +119,7 @@ class DwarfAI
             citizen.each_value { |c|
                 next if not u = c.dfunit
                 if df.unit_isworker(u) and
-                        u.military.squad_index == -1 and
+                        !unit_hasmilitaryduty(u) and
                         (!u.job.current_job or u.job.current_job.job_type != :AttendParty) and
                         not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
                         not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
@@ -247,6 +247,13 @@ class DwarfAI
                     # TODO allocate more workers if needed, from job_list
                 end
             }
+        end
+
+        def unit_hasmilitaryduty(u)
+            return if u.military.squad_index == -1
+            squad = df.world.squads.all.binsearch(u.military.squad_index)
+            curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
+            !curmonth.orders.empty?
         end
 
         def unit_totalxp(u)
