@@ -2114,6 +2114,11 @@ class DwarfAI
             cistern.accesspath = [cist_cors[0]]
             @rooms << cistern
 
+            # handle low rivers / high mountain forts
+            fz = src.z if fz > src.z
+            # should be fine with cistern auto-fill checks
+            cistern.z1 = fz if cistern.z1 > fz
+
             # staging reservoir to fill the cistern, one z-level at a time
             # should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
             #  cistern is 9x3 + 1 (stairs)
@@ -2129,15 +2134,14 @@ class DwarfAI
 
             # trivial walk of the river tiles to find a spot closer to dst
             move_river = lambda { |dst|
-                loop do
-                    dx = (dst.x <=> src.x)
-                    dy = (dst.y <=> src.y)
-                       if dx != 0 and nsrc = src.offset(dx, dy) and nsrc.designation.feature_local
-                    elsif dx != 0 and nsrc = src.offset(dx,  0) and nsrc.designation.feature_local
-                    elsif dy != 0 and nsrc = src.offset( 0, dy) and nsrc.designation.feature_local
-                    else break
-                    end
+                nsrc = src
+                while nsrc
                     src = nsrc
+                    dist = (src.x-dst.x)**2 + (src.y-dst.y)**2
+                    nsrc = spiral_search(src, 1, 1) { |t|
+                        next if (t.x-dst.x)**2 + (t.y-dst.y)**2 >= dist
+                        t.designation.feature_local
+                    }
                 end
             }
 
@@ -2165,6 +2169,7 @@ class DwarfAI
             r.accesspath << up[0]
 
             dst = up[-1].maptile2.offset(0, 0, -1)
+            dst = df.map_tile_at(dst.x, dst.y, src.z) if src.z < dst.z
             move_river[dst]
 
             # find safe tile near the river
@@ -2183,6 +2188,8 @@ class DwarfAI
                 spiral_search(t, 1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
             }
             debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
+
+            # TODO check that 'channel' is easily channelable (eg river in a hole)
 
             if (dst.x - out.x).abs > 1
                 cor = Corridor.new(dst.x+(out.x<=>dst.x), out.x, dst.y, dst.y, dst.z, dst.z)
