@@ -54,7 +54,7 @@ class DwarfAI
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
-                    digroom(t[1]) if @nrdig<@wantdig_max and (manager_backlog<@manager_maxbacklog or t[1].layout.empty?)
+                    digroom(t[1]) if t[1].dug? or (@nrdig<@wantdig_max and (manager_backlog<@manager_maxbacklog or t[1].layout.empty?))
                 when :digroom
                     if t[1].dug?
                         t[1].status = :dug
@@ -383,6 +383,7 @@ class DwarfAI
             debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
             r.layout.each { |f| build_furniture(f) if f[:makeroom] }
+            r.dig(:plan)
             if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
                 @tasks.insert(idx, [:wantdig, r])
             else
@@ -2330,6 +2331,10 @@ class DwarfAI
             end
 
             def dig(mode=nil)
+                if mode == :plan
+                    plandig = true
+                    mode = nil
+                end
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
                         dm = mode || dig_mode(t.x, t.y, t.z)
@@ -2346,6 +2351,7 @@ class DwarfAI
                         when :well
                             t.dig :Channel if t.shape_basic != :Open
                         else
+                            next if plandig
                             t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                         end
                     end
