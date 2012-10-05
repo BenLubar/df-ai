@@ -1641,25 +1641,6 @@ class DwarfAI
             nil
         end
 
-        def spiral_search(origin, maxradius=100, minradius=0, step=1)
-            return if not origin
-
-            if minradius == 0
-                return origin if yield origin
-                minradius += step
-            end
-
-            (minradius..maxradius).step(step) { |r|
-                [[0, 1], [1, 0], [0, -1], [-1, 0]].each { |dx, dy|
-                    (-r...r).step(step) { |v|
-                        t = origin.offset(dx*v, dy*v)
-                        return t if t and yield t
-                    }
-                }
-            }
-            nil
-        end
-
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
@@ -1684,7 +1665,7 @@ class DwarfAI
             cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
             center = df.map_tile_at(cx, cy, cz)
 
-            ent0 = spiral_search(center) { |t0|
+            ent0 = center.spiral_search { |t0|
                 # test the whole map for 3x5 clear spots
                 next unless tz = rangez.find { |z| t = df.map_tile_at(t0.x, t0.y, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
                 t = df.map_tile_at(t0.x, t0.y, tz)
@@ -2012,7 +1993,7 @@ class DwarfAI
             @corridors << cor
             old_cor = cor
 
-            infirmary = Room.new(:infirmary, nil, fx+2, fx+5, fy-3, fy-7, fz)
+            infirmary = Room.new(:infirmary, nil, fx+2, fx+6, fy-3, fy-7, fz)
             infirmary.layout << {:item => :door, :x => 3, :y => 5}
             infirmary.layout << {:item => :bed, :x => 0, :y => 1}
             infirmary.layout << {:item => :table, :x => 1, :y => 1}
@@ -2022,14 +2003,14 @@ class DwarfAI
             infirmary.layout << {:item => :bed, :x => 0, :y => 3}
             infirmary.layout << {:item => :table, :x => 1, :y => 3}
             infirmary.layout << {:item => :bed, :x => 2, :y => 3}
-            infirmary.layout << {:item => :chest, :x => 3, :y => 1}
-            infirmary.layout << {:item => :chest, :x => 3, :y => 2}
-            infirmary.layout << {:item => :chest, :x => 3, :y => 3}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 1}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 2}
+            infirmary.layout << {:item => :chest, :x => 4, :y => 3}
             infirmary.accesspath = [cor]
             @rooms << infirmary
 
             # cemetary lots (160 spots)
-            cor = Corridor.new(fx+7, fx+15, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+8, fx+16, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
@@ -2037,7 +2018,7 @@ class DwarfAI
             2.times { |rrx|
                 5.times { |ry|
                     2.times { |rx|
-                        ox = fx+9+5*rx + 10*rrx
+                        ox = fx+10+5*rx + 9*rrx
                         oy = fy-3-3*ry
                         cemetary = Room.new(:cemetary, nil, ox, ox+4, oy, oy-3, fz)
                         4.times { |dx|
@@ -2137,9 +2118,9 @@ class DwarfAI
                 nsrc = src
                 while nsrc
                     src = nsrc
-                    dist = (src.x-dst.x)**2 + (src.y-dst.y)**2
-                    nsrc = spiral_search(src, 1, 1) { |t|
-                        next if (t.x-dst.x)**2 + (t.y-dst.y)**2 >= dist
+                    dist = src.distance_to(dst)
+                    nsrc = src.spiral_search(1, 1) { |t|
+                        next if t.distance_to(dst) > dist
                         t.designation.feature_local
                     }
                 end
@@ -2172,20 +2153,25 @@ class DwarfAI
             dst = df.map_tile_at(dst.x, dst.y, src.z) if src.z < dst.z
             move_river[dst]
 
+            if (dst.x - src.x).abs > 1
+                p3 = dst.offset(src.x-dst.x, 0)
+                move_river[p3]
+            end
+
             # find safe tile near the river
             out = [[-2, 0], [2, 0], [0, -2], [0, 2]].map { |dx, dy|
                 src.offset(dx, dy)
-            }.sort_by { |t| (dst.x-t.x)**2 + (dst.y-t.y)**2 }.find { |t|
+            }.sort_by { |t| t.distance_to(dst) }.find { |t|
                 map_tile_in_rock t
-            } || spiral_search(src) { |t|
+            } || src.spiral_search { |t|
                 map_tile_in_rock t
             }
 
             # find tile to channel to start water flow
-            channel = spiral_search(out, 1, 1) { |t|
-                spiral_search(t, 1, 1) { |tt| tt.designation.feature_local }
-            } || spiral_search(out, 1, 1) { |t|
-                spiral_search(t, 1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
+            channel = out.spiral_search(1, 1) { |t|
+                t.spiral_search(1, 1) { |tt| tt.designation.feature_local }
+            } || out.spiral_search(1, 1) { |t|
+                t.spiral_search(1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
             }
             debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
 
@@ -2272,8 +2258,12 @@ class DwarfAI
 
             cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2)
 
-            if out = cor1.maptile2 and (out.shape_basic != :Floor or out.designation.flow_size != 0)
-                out2 = spiral_search(out) { |t| map_tile_in_rock t }
+            if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or
+                                        out.shape == :TREE or out.designation.flow_size != 0)
+                out2 = out.spiral_search { |t|
+                    t = t.offset(0, 0, 1) while map_tile_in_rock(t)
+                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.shape != :TREE and t.designation.flow_size == 0)
+                }
 
                 if out.designation.flow_size > 0
                     # damp stone located
