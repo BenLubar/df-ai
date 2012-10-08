@@ -269,7 +269,7 @@ class DwarfAI
                 # TODO do not hardcode position name, check population caps, ...
                 assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'MANAGER' }
                 # TODO find a better candidate
-                tg = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.first
+                tg = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find { |u| u.profession != :CHILD and u.profession != :BABY }
                 office = ai.plan.ensure_workshop(:ManagersOffice)
                 ai.plan.set_owner(office, tg.id)
 

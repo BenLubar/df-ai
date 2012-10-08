@@ -789,7 +789,7 @@ class DwarfAI
             }
 
             # XXX ugly
-            wr = Room.new(nil, nil, r.x1, r.x1+2, r.y2+2, r.y2+4, r.z)
+            wr = Room.new(nil, nil, r.x1+1, r.x1+3, r.y2+2, r.y2+4, r.z)
             wr.dig
             if bould = df.world.items.other[:BOULDER].find { |i|
                 i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
@@ -1989,7 +1989,7 @@ class DwarfAI
 
             # infirmary
             old_cor = corridor_center2
-            cor = Corridor.new(fx+3, fx+6, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+3, fx+5, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
@@ -2011,7 +2011,7 @@ class DwarfAI
             @rooms << infirmary
 
             # cemetary lots (160 spots)
-            cor = Corridor.new(fx+8, fx+16, fy-1, fy+1, fz, fz)
+            cor = Corridor.new(fx+6, fx+14, fy-1, fy+1, fz, fz)
             cor.accesspath = [old_cor]
             @corridors << cor
             old_cor = cor
