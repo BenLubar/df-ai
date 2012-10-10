@@ -13,6 +13,7 @@ class DwarfAI
         end
 
         attr_accessor :ai, :citizen, :military
+        attr_accessor :labor_worker, :worker_labor
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
@@ -149,23 +150,23 @@ class DwarfAI
             }
 
             # count active labors
-            labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
-            worker_labor = workers.inject({}) { |h, c| h.update c.id => [] }
+            @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
+            @worker_labor = workers.inject({}) { |h, c| h.update c.id => [] }
             workers.each { |c|
                 ul = c.dfunit.status.labors
                 LaborList.each { |lb|
                     if ul[lb]
-                        labor_worker[lb] << c.id
-                        worker_labor[c.id] << lb
+                        @labor_worker[lb] << c.id
+                        @worker_labor[c.id] << lb
                     end
                 }
             }
 
             # if one has too many labors, free him up (one per round)
-            if cid = worker_labor.keys.find { |id|
+            if cid = @worker_labor.keys.find { |id|
                 lim = 4*LaborList.length/workers.length
                 lim = 4 if lim < 4
-                worker_labor[id].length > lim
+                @worker_labor[id].length > lim
             }
                 c = citizen[cid]
                 u = c.dfunit
@@ -173,8 +174,8 @@ class DwarfAI
 
                 LaborList.each { |lb|
                     if ul[lb]
-                        worker_labor[c.id].delete lb
-                        labor_worker[lb].delete c.id
+                        @worker_labor[c.id].delete lb
+                        @labor_worker[lb].delete c.id
                         ul[lb] = false
                         u.military.pickup_flags.update = true if LaborTool[lb]
                     end
@@ -230,11 +231,11 @@ class DwarfAI
                 min = max if min > max
                 min = workers.length if min > workers.length
 
-                cnt = labor_worker[lb].length
+                cnt = @labor_worker[lb].length
                 if cnt > max
                     (cnt-max).times {
-                        cid = labor_worker[lb].delete_at(rand(labor_worker[lb].length))
-                        worker_labor[cid].delete lb
+                        cid = @labor_worker[lb].delete_at(rand(@labor_worker[lb].length))
+                        @worker_labor[cid].delete lb
                         u = citizen[cid].dfunit
                         u.status.labors[lb] = false
                         u.military.pickup_flags.update = true if LaborTool[lb]
@@ -243,14 +244,14 @@ class DwarfAI
                 elsif cnt < min
                     (min-cnt).times {
                         c = workers.sort_by { |_c|
-                            [worker_labor[_c.id].length, rand]
+                            [@worker_labor[_c.id].length, rand]
                         }.find { |_c|
-                            next if LaborTool[lb] and worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
-                            not worker_labor[_c.id].include? lb
-                        } || workers.find { |_c| not worker_labor[_c.id].include? lb }
+                            next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
+                            not @worker_labor[_c.id].include? lb
+                        } || workers.find { |_c| not @worker_labor[_c.id].include? lb }
 
-                        labor_worker[lb] << c.id
-                        worker_labor[c.id] << lb
+                        @labor_worker[lb] << c.id
+                        @worker_labor[c.id] << lb
                         u = c.dfunit
                         if LaborTool[lb]
                             LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }

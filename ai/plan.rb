@@ -139,6 +139,7 @@ class DwarfAI
                     r.misc[:furnished] = true
                     r.layout.each { |f| f.delete :ignore }
                     furnish_room(r)
+                    smooth_room(r)
                     false
                 elsif r =
                        @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
@@ -1202,7 +1203,7 @@ class DwarfAI
                         # season numbers are also the 1st 4 flags
                         next if not p.flags[season]
 
-			pm = p.material[0]
+                        pm = p.material[0]
                         if isfirst
                             pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
                         else
@@ -1237,7 +1238,7 @@ class DwarfAI
                     bld.plant_id[season] = pids[rand(pids.length)] unless pids.empty?
                 }
 
-		# TODO repurpose fields if we have too much dimple dye or smth
+                # TODO repurpose fields if we have too much dimple dye or smth
             end
 
             true
@@ -1504,6 +1505,7 @@ class DwarfAI
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
+            :DyeCloth => -1,
         }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
@@ -1559,14 +1561,15 @@ class DwarfAI
             custom = ManagerCustom[order]
 
             if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= maxmerge }
-                # try to merge with last manager_order, bypassing maxmerge
+                # try to merge with last manager_order, upgrading maxmerge to 30
                 o = df.world.manager_orders.last
                 if o and o.job_type == _order and
                         o.amount_total + amount < 30 and
                         o.mat_type == (type || (matcat ? -1 : 0)) and
                         (matcat ? o.material_category.send(matcat) : o.material_category._whole == 0) and
                         (not subtype or subtype == o.item_subtype) and
-                        (not custom or custom == o.reaction_name)
+                        (not custom or custom == o.reaction_name) and
+                        o.amount_total + amount < 30
                     o.amount_total += amount
                     o.amount_left += amount
                 else

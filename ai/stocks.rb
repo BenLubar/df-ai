@@ -2,11 +2,11 @@ class DwarfAI
     class Stocks
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
-            :pigtail_seeds => 10, :dimplecup_seeds => 10,
+            :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
-        WatchStock = { :roughgem => 6, :pigtail => 10, :dimplecup => 10,
+        WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5 }
 
         attr_accessor :ai, :count
@@ -82,13 +82,17 @@ class DwarfAI
                     df.world.items.other[:DRINK]
                 when :soap, :coal
                     mat_id = {:soap => 'SOAP', :coal => 'COAL'}[k]
-                    df.world.items.other[:BAR].find_all { |i| mat = df.decode_mat(i) and mat.material and mat.material.id == mat_id }
+                    df.world.items.other[:BAR].find_all { |i|
+                        mat = df.decode_mat(i) and mat.material and mat.material.id == mat_id
+                    }
                 when :logs
                     df.world.items.other[:WOOD]
                 when :roughgem
                     df.world.items.other[:ROUGH]
                 when :crossbow
-                    df.world.items.other[:WEAPON].find_all { |i| i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow] }
+                    df.world.items.other[:WEAPON].find_all { |i|
+                        i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]
+                    }
                 when :pigtail, :dimplecup, :quarrybush
                     # TODO generic handling, same as farm crops selection
                     mspec = {
@@ -103,17 +107,27 @@ class DwarfAI
                         :dimplecup_seeds => 'PLANT:MUSHROOM_CUP_DIMPLE:SEED',
                     }[k]
                     df.world.items.other[:SEEDS].grep(df.decode_mat(mspec))
+                when :dimple_dye
+                    mspec = 'PLANT:MUSHROOM_CUP_DIMPLE:MILL'
+                    df.world.items.other[:POWDER_MISC].grep(df.decode_mat(mspec))
                 when :leaves
                     df.world.items.other[:LEAVES]
                 when :skull
                     # XXX exclude dwarf skulls ?
-                    df.world.items.other[:CORPSEPIECE].find_all { |i| i.corpse_flags.skull }
+                    df.world.items.other[:CORPSEPIECE].find_all { |i|
+                        i.corpse_flags.skull
+                    }
                 when :bone
                     return df.world.items.other[:CORPSEPIECE].find_all { |i|
                         i.corpse_flags.bone
                     }.inject(0) { |s, i|
                         # corpsepieces uses this instead of i.stack_size
                         s + i.material_amount[:Bone]
+                    }
+                when :cloth_nodye
+                    df.world.items.other[:CLOTH].find_all { |i|
+                        !i.flags.in_chest and   # infirmary..
+                        !i.improvements.find { |imp| imp.dye.mat_type != -1 }
                     }
                 else
                     return Needed[k] ? 1000000 : -1
@@ -148,11 +162,16 @@ class DwarfAI
                     :pigtail_seeds => :pigtail,
                     :dimplecup_seeds => :dimplecup,
                 }[what]
+
                 reaction = {
                     :pigtail_seeds => :ProcessPlants,
                     :dimplecup_seeds => :MillPlants,
                 }[what]
-                amount = count[input] if amount > count[input]
+
+            when :dimple_dye
+                reaction = :MillPlants
+                input = :dimplecup
+
             when :logs
                 tree_list.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
                 cuttrees(amount) if amount > 0
@@ -160,7 +179,15 @@ class DwarfAI
 
             when :drink
                 amount = (amount / 5.0).ceil  # accounts for brewer yield, but not for input stack size
+
             end
+
+            if input
+                n_input = count[input] || count_stocks(input)
+                amount = n_input if amount > n_input
+            end
+
+            return if amount <= 0
 
             amount = 30 if amount > 30
 
@@ -186,24 +213,41 @@ class DwarfAI
                 }[what]
                 # stuff may rot before we can process it
                 amount = 20 if amount > 20
+
             when :leaves
                 reaction = :PrepareMeal
                 amount = (amount / 5.0).ceil
+
             when :skull
                 reaction = :MakeTotem
+
             when :bone
-                if count_stocks(:crossbow) < 1
+                nhunters = ai.pop.labor_worker[:HUNT].length if ai.pop.labor_worker
+                return if not nhunters
+                need_crossbow = nhunters + 1 - count_stocks(:crossbow)
+                if need_crossbow > 0
                     reaction = :MakeBoneCrossbow
-                    amount = 1
+                    amount = need_crossbow if amount > need_crossbow
                 else
                     reaction = :MakeBoneBolt
                     # seems like we consume more than we think..
                     amount /= 2
                 end
+
+            when :cloth_nodye
+                reaction = :DyeCloth
+                input = :dimple_dye
+                # cloth may already be queued for sewing
+                amount = 10 if amount > 10
+
             end
 
             ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+
             return if amount <= 0
+
+            amount = 30 if amount > 30
+
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
             ai.plan.add_manager_order(reaction, amount)
         end
