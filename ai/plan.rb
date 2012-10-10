@@ -622,9 +622,13 @@ class DwarfAI
             ws = @rooms.find { |r| r.type == :workshop and r.subtype == subtype }
             raise "unknown workshop #{subtype}" if not ws
             if ws.status == :plan
-                dignow = true if !dignow and subtype.to_s =~ /Office/ and df.world.manager_orders.find { |mo| mo.is_validated == 0 }
                 if dignow
                     digroom(ws)
+                elsif subtype.to_s =~ /Office/ and df.world.manager_orders.find { |mo| mo.is_validated == 0 }
+                    # population warrants a manager to manage work orders, and the AI need him for everything
+                    digroom(ws)
+                    # ensure his throne is on its way
+                    df.world.manager_orders.each { |mo| mo.is_validated = 1 if mo.job_type == :ConstructThrone }
                 else
                     wantdig(ws)
                 end
