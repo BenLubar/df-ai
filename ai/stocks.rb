@@ -1,15 +1,18 @@
 class DwarfAI
     class Stocks
-        attr_accessor :ai, :needed, :needed_perdwarf, :watch_stock, :count
+        Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
+            :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
+            :pigtail_seeds => 10, :dimplecup_seeds => 10,
+        }
+        NeededPerDwarf = { :food => 1, :drink => 2 }
+
+        WatchStock = { :roughgem => 6, :pigtail => 10, :dimplecup => 10,
+            :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5 }
+
+        attr_accessor :ai, :count
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
-            @needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
-                :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5 }
-            @needed_perdwarf = { :food => 1, :drink => 2 }
-            # XXX 'play now' embark has only 5 dimplecup/pigtail seeds
-            @watch_stock = { :roughgem => 6, :pigtail => 2, :dimplecup => 2,
-                :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5 }
             @updating = []
             @count = {}
         end
@@ -28,7 +31,7 @@ class DwarfAI
         def update
             return unless @updating.empty?
 
-            @updating = @needed.keys | @watch_stock.keys
+            @updating = Needed.keys | WatchStock.keys
             @updating_count = @updating.dup
             puts 'AI: updating stocks' if $DEBUG
 
@@ -48,12 +51,12 @@ class DwarfAI
         end
 
         def act(key)
-            if amount = @needed[key]
-                amount += ai.pop.citizen.length * @needed_perdwarf[key].to_i
+            if amount = Needed[key]
+                amount += ai.pop.citizen.length * NeededPerDwarf[key].to_i
                 queue_need(key, (amount-@count[key])*3/2) if @count[key] < amount
             end
             
-            if amount = @watch_stock[key]
+            if amount = WatchStock[key]
                 queue_use(key, @count[key]-amount) if @count[key] > amount
             end
         end
@@ -88,13 +91,18 @@ class DwarfAI
                     df.world.items.other[:WEAPON].find_all { |i| i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow] }
                 when :pigtail, :dimplecup, :quarrybush
                     # TODO generic handling, same as farm crops selection
-                    mat = {
+                    mspec = {
                         :pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
                         :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL',
                         :quarrybush => 'PLANT:BUSH_QUARRY:STRUCTURAL',
                     }[k]
-                    mi = df.decode_mat(mat)
-                    df.world.items.other[:PLANT].find_all { |i| i.mat_index == mi.mat_index and i.mat_type == mi.mat_type }
+                    df.world.items.other[:PLANT].grep(df.decode_mat(mspec))
+                when :pigtail_seeds, :dimplecup_seeds
+                    mspec = {
+                        :pigtail_seeds => 'PLANT:GRASS_TAIL_PIG:SEED',
+                        :dimplecup_seeds => 'PLANT:MUSHROOM_CUP_DIMPLE:SEED',
+                    }[k]
+                    df.world.items.other[:SEEDS].grep(df.decode_mat(mspec))
                 when :leaves
                     df.world.items.other[:LEAVES]
                 when :skull
@@ -108,7 +116,7 @@ class DwarfAI
                         s + i.material_amount[:Bone]
                     }
                 else
-                    return @needed[k] ? 1000000 : -1
+                    return Needed[k] ? 1000000 : -1
                 end
 
             list.find_all { |i|
@@ -134,6 +142,17 @@ class DwarfAI
                 end
                 return
 
+            when :pigtail_seeds, :dimplecup_seeds
+                # only useful at game start, with low seeds stocks
+                input = {
+                    :pigtail_seeds => :pigtail,
+                    :dimplecup_seeds => :dimplecup,
+                }[what]
+                reaction = {
+                    :pigtail_seeds => :ProcessPlants,
+                    :dimplecup_seeds => :MillPlants,
+                }[what]
+                amount = count[input] if amount > count[input]
             when :logs
                 tree_list.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
                 cuttrees(amount) if amount > 0
@@ -145,7 +164,7 @@ class DwarfAI
 
             amount = 30 if amount > 30
 
-            reaction = DwarfAI::Plan::FurnitureOrder[what]
+            reaction ||= DwarfAI::Plan::FurnitureOrder[what]
             ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
             return if amount <= 0
 
@@ -179,7 +198,7 @@ class DwarfAI
                 else
                     reaction = :MakeBoneBolt
                     # seems like we consume more than we think..
-                    amount = (amount * 0.8).ceil
+                    amount /= 2
                 end
             end
 
@@ -203,7 +222,7 @@ class DwarfAI
                     end
                 }
             }
-            @watch_stock[:roughgem].times { free.pop }
+            WatchStock[:roughgem].times { free.pop }
             return if free.empty?
             ai.plan.ensure_workshop(:Jewelers, false)
             gem = free.first

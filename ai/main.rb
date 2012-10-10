@@ -19,6 +19,7 @@ class DwarfAI
         case announce.type
         when :MEGABEAST_ARRIVAL; puts 'AI: uh oh, megabeast...'
         when :BERSERK_CITIZEN; puts 'AI: berserk'
+        when :UNDEAD_ATTACK; puts 'AI: i see dead people'
         when :CAVE_COLLAPSE; puts 'AI: kevin?'
         when :DIG_CANCEL_DAMP, :DIG_CANCEL_WARM; puts 'AI: lazy miners'
         when :BIRTH_CITIZEN; puts 'AI: newborn'

@@ -105,12 +105,17 @@ class DwarfAI
 
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
-        LaborMin = {
-            :DETAIL => 4,
-            :PLANT => 4,
-        }
-        LaborMax = {
-            :FISH => 0,
+
+        LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
+        LaborMax = Hash.new(8).update :FISH => 0
+        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30
+        LaborMaxPct = Hash.new(00).update :DETAIL => 40, :PLANT => 60
+
+        LaborList.each { |lb|
+            if lb.to_s =~ /HAUL/
+                LaborMinPct[lb] = 40
+                LaborMaxPct[lb] = 80
+            end
         }
 
         def autolabors
@@ -176,32 +181,39 @@ class DwarfAI
                 }
             end
 
-            labmin = Hash.new(2).update LaborMin
-            labmax = Hash.new(8).update LaborMax
+            labormin = LaborMin
+            labormax = LaborMax
+            laborminpct = LaborMinPct
+            labormaxpct = LaborMaxPct
+
             # handle low-number of workers + tool labors
-            if workers.length < 6
+            mintool = LaborTool.keys.inject(0) { |s, lb| 
+                min = labormin[lb]
+                minpc = laborminpct[lb] * workers.length / 100
+                min = minpc if minpc > min
+                s + min
+            }
+            if workers.length < mintool
+                labormax = labormax.dup
+                LaborTool.each_key { |lb| labormax[lb] = 0 }
                 case workers.length
                 when 0
                     # meh
                 when 1
                     # switch mine or cutwood based on time (1/2 dwarf month each)
-                    labmax[:MINE] = labmax[:CUTWOOD] = labmax[:HUNT] = 0
                     if (df.cur_year_tick / (1200*28/2)) % 2 == 0
-                        labmax[:MINE] = 1
+                        labormax[:MINE] = 1
                     else
-                        labmax[:CUTWOOD] = 1
+                        labormax[:CUTWOOD] = 1
                     end
-                when 2
-                    labmax[:MINE] = labmax[:CUTWOOD] = 1
-                    labmax[:HUNT] = 0
-                when 3
-                    labmax[:MINE] = labmax[:CUTWOOD] = labmax[:HUNT] = 1
-                when 4
-                    labmax[:MINE] = 2
-                    labmax[:CUTWOOD] = labmax[:HUNT] = 1
-                when 5
-                    labmax[:MINE] = labmax[:CUTWOOD] = 2
-                    labmax[:HUNT] = 1
+                else
+                    mintool.times { |i|
+                        # divide equally between labors, with priority
+                        # to mine, then wood, then hunt
+                        # XXX new labortools ?
+                        lb = [:MINE, :CUTWOOD, :HUNT][i%3]
+                        labormax[lb] += 1
+                    }
                 end
             end
 
@@ -209,8 +221,12 @@ class DwarfAI
             # TODO use skill ranking for decisions
             # TODO handle nobility
             LaborList.each { |lb|
-                min = labmin[lb]
-                max = labmax[lb]
+                min = labormin[lb]
+                max = labormax[lb]
+                minpc = laborminpct[lb] * workers.length / 100
+                maxpc = labormaxpct[lb] * workers.length / 100
+                min = minpc if minpc > min
+                max = maxpc if maxpc > max
                 min = max if min > max
                 min = workers.length if min > workers.length
 

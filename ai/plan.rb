@@ -147,6 +147,7 @@ class DwarfAI
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        ifplan[@rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       ifplan[@rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[@rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }] ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
@@ -377,18 +378,13 @@ class DwarfAI
         end
 
         # queue a room for digging when other dig jobs are finished
-        # with faster=true, this job is inserted in front of existing similar room jobs
-        def wantdig(r, faster=false)
+        def wantdig(r)
             return true if r.misc[:queue_dig] or r.status != :plan
             debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
             r.layout.each { |f| build_furniture(f) if f[:makeroom] }
             r.dig(:plan)
-            if faster and idx = @tasks.index { |t| t[0] == :wantdig and t[1].type == r.type }
-                @tasks.insert(idx, [:wantdig, r])
-            else
-                @tasks << [:wantdig, r]
-            end
+            @tasks << [:wantdig, r]
         end
 
         def digroom(r)
@@ -589,6 +585,7 @@ class DwarfAI
             ws = @rooms.find { |r| r.type == :workshop and r.subtype == subtype }
             raise "unknown workshop #{subtype}" if not ws
             if ws.status == :plan
+                dignow = true if !dignow and subtype.to_s =~ /Office/ and df.world.manager_orders.find { |mo| mo.is_validated == 0 }
                 if dignow
                     digroom(ws)
                 else
@@ -598,10 +595,10 @@ class DwarfAI
             ws
         end
 
-        def ensure_stockpile(sptype, faster=false)
+        def ensure_stockpile(sptype)
             if sp = @rooms.find { |r| r.type == :stockpile and r.subtype == sptype and not r.misc[:workshop] }
                 ensure_stockpile(:food) if sptype != :food  # XXX make sure we dig food first
-                wantdig(sp, faster)
+                wantdig(sp)
             end
         end
 
@@ -913,7 +910,7 @@ class DwarfAI
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i] = (plant.flags[:DRINK] and not plant.flags[:THREAD]) if plant
+                        t.plants[i]= plant.flags[:DRINK] if plant
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
                     mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
@@ -1205,14 +1202,15 @@ class DwarfAI
                         # season numbers are also the 1st 4 flags
                         next if not p.flags[season]
 
+			pm = p.material[0]
                         if isfirst
-                            p.material[0].flags[:EDIBLE_RAW] and p.flags[:DRINK]
+                            pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
                         else
-                            p.material[0].flags[:EDIBLE_RAW] or p.material[0].flags[:EDIBLE_COOKED] or p.flags[:DRINK] or p.flags[:LEAVES]
+                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or p.flags[:LEAVES]
                         end
                     }
 
-                    bld.plant_id[season] = pids[rand(pids.length)]
+                    bld.plant_id[season] = pids[rand(pids.length)] unless pids.empty?
                 }
             else
                 threads = may.find_all { |i|
@@ -1230,14 +1228,16 @@ class DwarfAI
                         p.flags[season]
                     }
                     pids |= dyes.find_all { |i|
-                        # 1st plot gets dyes only if no thread candidate exists
-                        next if isfirst and !pids.empty?
+                        # all plot gets dyes only if no thread candidate exists
+                        next if !pids.empty? #and isfirst
                         p = df.world.raws.plants.all[i]
                         p.flags[season]
                     }
 
-                    bld.plant_id[season] = pids[rand(pids.length)]
+                    bld.plant_id[season] = pids[rand(pids.length)] unless pids.empty?
                 }
+
+		# TODO repurpose fields if we have too much dimple dye or smth
             end
 
             true
