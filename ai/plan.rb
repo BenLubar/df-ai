@@ -105,9 +105,8 @@ class DwarfAI
         end
 
         def del_citizen(uid)
-            freediningroom(uid)
+            freecommonrooms(uid)
             freebedroom(uid)
-            freesoldierbarrack(uid)
             getcoffin(uid) if u = df.unit_find(uid) and u.flags1.dead
         end
         
@@ -335,46 +334,83 @@ class DwarfAI
             end
         end
 
+        # free / deconstruct the bedroom assigned to this dwarf
         def freebedroom(id)
             if r = @rooms.find { |_r| _r.type == :bedroom and _r.owner == id }
                 df.add_announcement("AI: freed bedroom of #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
                 set_owner(r, nil)
+                r.layout.each { |f|
+                    next if f[:ignore]
+                    if f[:bld_id] and bld = df.building_find(f[:bld_id])
+                        df.building_deconstruct(bld)
+                        f.delete :bld_id
+                    end
+                }
+                r.misc.delete(:bld_id)
             end
         end
 
-        def freediningroom(id)
+        # free / deconstruct the common facilities assigned to this dwarf
+        # optionnaly restricted to a single subtype among:
+        #  [dininghall, farmplots, barracks]
+        def freecommonrooms(id, subtype=nil)
             @rooms.each { |r|
-                if r.type == :dininghall
+                next if subtype and subtype != r.type
+
+                case r.type
+                when :dininghall, :barracks
                     r.layout.each { |f|
                         next unless f[:users]
-                        f[:users].delete(id)
-                        if f[:users].empty? and f[:bld_id] and bld = df.building_find(f[:bld_id])
-                            df.building_deconstruct(bld)
-                            f.delete :bld_id
-                            f[:ignore] = true
+                        next if f[:ignore]
+                        if f[:users].delete(id) and f[:users].empty?
+                            # delete the specific table/chair/bed/etc for the dwarf
+                            if f[:bld_id] and f[:bld_id] != r.misc[:bld_id]
+                                if bld = df.building_find(f[:bld_id])
+                                    df.building_deconstruct(bld)
+                                end
+                                f.delete :bld_id
+                                f[:ignore] = true
+                            end
+
+                            # clear the whole room if it is entirely unused
+                            if r.misc[:bld_id] and r.layout.all? { |f| f[:users].to_a.empty? }
+                                if bld = r.dfbuilding
+                                    df.building_deconstruct(bld)
+                                end
+                                r.misc.delete(:bld_id)
+
+                                if r.misc(:squad_index)
+                                    df.add_announcement("AI: freed barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
+                                    r.misc.delete :squad_index
+                                end
+                            end
                         end
                     }
-                elsif r.type == :farmplot
+
+                when :farmplot
                     r.misc[:users].delete id
+                    if r.misc[:bld_id] and r.misc[:users].empty?
+                        if bld = r.dfbuilding
+                            df.building_deconstruct(bld)
+                        end
+                        r.misc.delete(:bld_id)
+                    end
+
                 end
             }
         end
 
         def freesoldierbarrack(id)
-            if r = @rooms.find { |_r| _r.type == :barrack and _r.layout.find { |f| f[:users].to_a.include?(id) } }
-                r.layout.each { |f| f[:users].delete id }
-                if not r.layout.find { |f| not f[:users].to_a.empty? }
-                    df.add_announcement("AI: freed barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
-                    r.misc.delete :squad_index
-                end
-            end
+            freecommonrooms(uid, :barracks)
         end
 
         def set_owner(r, uid)
             r.owner = uid
             if r.misc[:bld_id]
                 u = df.unit_find(uid) if uid
-                df.building_setowner(df.building_find(r.misc[:bld_id]), u)
+                if bld = r.dfbuilding
+                    df.building_setowner(bld, u)
+                end
             end
         end
 
