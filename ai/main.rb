@@ -69,6 +69,10 @@ class DwarfAI
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"
                     df.curview.feed_keys(:LEAVESCREEN)
+                elsif text =~ /Your strength has been broken\./
+                    puts "AI: you just lost the game:", text.inspect, "Exiting AI."
+                    onupdate_unregister
+                    # dont unpause, to allow for 'die'
                 else
                     puts "AI: paused in unknown textviewerst #{text.inspect}" if $DEBUG
                 end
