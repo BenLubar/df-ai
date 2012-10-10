@@ -341,6 +341,7 @@ class DwarfAI
                 set_owner(r, nil)
                 r.layout.each { |f|
                     next if f[:ignore]
+                    next if f[:item] == :door
                     if f[:bld_id] and bld = df.building_find(f[:bld_id])
                         df.building_deconstruct(bld)
                         f.delete :bld_id
@@ -379,7 +380,7 @@ class DwarfAI
                                 end
                                 r.misc.delete(:bld_id)
 
-                                if r.misc(:squad_index)
+                                if r.misc[:squad_index]
                                     df.add_announcement("AI: freed barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
                                     r.misc.delete :squad_index
                                 end
