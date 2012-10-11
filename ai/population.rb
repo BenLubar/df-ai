@@ -81,8 +81,6 @@ class DwarfAI
 
         def update_military
             # check for new soldiers, allocate barracks
-            # TODO assign new dwarves to the military
-
             newsoldiers = []
 
             df.unit_citizens.each { |u|
@@ -98,9 +96,96 @@ class DwarfAI
                 end
             }
 
+            # enlist new soldiers if needed
+            maydraft = df.unit_citizens.reject { |u| 
+                u.profession == :CHILD or
+                u.profession == :BABY or
+                u.mood != :None
+            }
+            while @military.length < maydraft.length/5
+                ns = military_find_new_soldier(maydraft)
+                break if not ns
+                @military[ns.id] = ns.military.squad_index
+                newsoldiers << ns.id
+            end
+
             newsoldiers.each { |uid|
                 ai.plan.getsoldierbarrack(uid)
             }
+        end
+
+        # returns an unit newly assigned to a military squad
+        def military_find_new_soldier(unitlist)
+            ns = unitlist.find_all { |u|
+                u.military.squad_index == -1
+            }.sort_by { |u|
+                unit_totalxp(u)
+            }.first
+            return if not ns
+
+            squad_id = military_find_free_squad
+            return if not squad_id
+            squad = df.world.squads.all.binsearch(squad_id)
+            pos = squad.positions.index { |p| p.occupant == -1 }
+            return if not pos
+
+            squad.positions[pos].occupant = ns.hist_figure_id
+            ns.military.squad_index = squad_id
+            ns.military.position = pos
+
+            ns
+        end
+
+        # return a squad index with an empty slot
+        def military_find_free_squad
+            # XXX segfaults for now, need more info on squad data structures.
+            return
+
+            if not i = @military.values.find { |id|
+                        @military.count { |k, v| v == id } < 8
+                    }
+
+                # create a new squad from scratch
+                # XXX only inferred from looking at data in memory
+                # TODO reuse existing exterminated squad
+                i = df.squad_next_id
+                df.squad_next_id = i+1
+
+                squad = DFHack::Squad.cpp_new :id => i
+
+                squad.name.first_name = "AI squad #{i}"
+                squad.name.unknown = -1
+                squad.name.has_name = true
+
+                10.times {
+                    pos = DFHack::SquadPosition.cpp_new
+                    %w[BODY HEAD PANTS GLOVES SHOES SHIELD WEAPON].each { |t|
+                        idx = t.capitalize.to_sym
+                        pos.uniform[idx] << DFHack::SquadUniformSpec.cpp_new(:color => -1,
+                                :item_filter => { :item_type => t.to_sym, :material_class => :Metal2,
+                                    :mattype => -1, :matindex => -1 })
+                    }
+                    pos.uniform[:Weapon][0].indiv_choice.melee = true
+                    pos.flags.exact_matches = true
+                    pos.unk_118 = pos.unk_11c = -1
+                    squad.positions << pos
+                }
+
+                df.ui.alerts.list.each {
+                    squad.schedule << DFHack.memory_vector_new
+                    12.times {
+                        # TODO actual schedule (train, patrol, ...)
+                        squad.schedule.last << DFHack::SquadScheduleEntry.cpp_new
+                    }
+                }
+                
+                squad.uniform_priority = 2
+                squad.carry_food = 2
+                squad.carry_water = 2
+
+                df.world.squads.all << squad
+            end
+            i
         end
 
 
