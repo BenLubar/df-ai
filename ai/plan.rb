@@ -625,11 +625,22 @@ class DwarfAI
             if ws.status == :plan
                 if dignow
                     digroom(ws)
-                elsif subtype.to_s =~ /Office/ and df.world.manager_orders.find { |mo| mo.is_validated == 0 }
-                    # population warrants a manager to manage work orders, and the AI need him for everything
-                    digroom(ws)
-                    # ensure his throne is on its way
-                    df.world.manager_orders.each { |mo| mo.is_validated = 1 if mo.job_type == :ConstructThrone }
+                elsif subtype == :ManagersOffice
+                    wantdig(ws)
+                    # population level may warrant a manager to manage work orders, and the AI need him for everything
+                    try_count = 0
+                    mo = df.world.manager_orders.find { |_mo| _mo.is_validated == 0 }
+                    df.onupdate_register_once(10) {
+                        try_count += 1
+                        if mo.is_validated == 1
+                            true
+                        elsif try_count > 20
+                            # dig now, and ensure the throne is on its way
+                            digroom(ws)
+                            df.world.manager_orders.each { |_mo| _mo.is_validated = 1 if _mo.job_type == :ConstructThrone }
+                            true
+                        end
+                    }
                 else
                     wantdig(ws)
                 end
@@ -1701,6 +1712,22 @@ class DwarfAI
             puts 'AI: ready'
         end
 
+	# same as tile.spiral_search, but search starting with center of each side first
+        def spiral_search(tile, max=100, min=0, step=1)
+            (min..max).step(step) { |rng|
+                if rng != 0
+                    [[rng, 0], [0, rng], [-rng, 0], [0, -rng]].each { |dx, dy|
+                        next if not tt = tile.offset(dx, dy)
+                        return tt if yield(tt)
+                    }
+                end
+                if tt = tile.spiral_search(rng, rng, step) { |_tt| yield _tt }
+                    return tt
+                end
+            }
+            nil
+        end
+
         # search a valid tile for fortress entrance
         def scan_fort_entrance
             # map center
@@ -2164,7 +2191,7 @@ class DwarfAI
                 while nsrc
                     src = nsrc
                     dist = src.distance_to(dst)
-                    nsrc = src.spiral_search(1, 1) { |t|
+                    nsrc = spiral_search(src, 1, 1) { |t|
                         next if t.distance_to(dst) > dist
                         t.designation.feature_local
                     }
@@ -2204,18 +2231,12 @@ class DwarfAI
             end
 
             # find safe tile near the river
-            out = [[-2, 0], [2, 0], [0, -2], [0, 2]].map { |dx, dy|
-                src.offset(dx, dy)
-            }.sort_by { |t| t.distance_to(dst) }.find { |t|
-                map_tile_in_rock t
-            } || src.spiral_search { |t|
-                map_tile_in_rock t
-            }
+            out = spiral_search(src) { |t| map_tile_in_rock(t) }
 
             # find tile to channel to start water flow
-            channel = out.spiral_search(1, 1) { |t|
+            channel = spiral_search(out, 1, 1) { |t|
                 t.spiral_search(1, 1) { |tt| tt.designation.feature_local }
-            } || out.spiral_search(1, 1) { |t|
+            } || spiral_search(out, 1, 1) { |t|
                 t.spiral_search(1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
             }
             debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
@@ -2305,7 +2326,7 @@ class DwarfAI
 
             if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or
                                         out.shape == :TREE or out.designation.flow_size != 0)
-                out2 = out.spiral_search { |t|
+                out2 = spiral_search(out) { |t|
                     t = t.offset(0, 0, 1) while map_tile_in_rock(t)
                     ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.shape != :TREE and t.designation.flow_size == 0)
                 }
