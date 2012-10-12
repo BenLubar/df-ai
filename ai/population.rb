@@ -151,8 +151,12 @@ class DwarfAI
                 squad.name.unknown = -1
                 squad.name.has_name = true
 
-                squad.cur_alert_idx = 0
+                squad.cur_alert_idx = 1     # train
+                squad.uniform_priority = 2
+                squad.carry_food = 2
+                squad.carry_water = 2
 
+                # uniform
                 10.times {
                     pos = DFHack::SquadPosition.cpp_new
                     %w[BODY HEAD PANTS GLOVES SHOES SHIELD WEAPON].each { |t|
@@ -167,24 +171,32 @@ class DwarfAI
                     squad.positions << pos
                 }
 
-                df.ui.alerts.list.each {
+                # schedule
+                df.ui.alerts.list.each { |alert|
+                    # squad.schedule.index = alerts.list.index (!= alert.id)
                     squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
                     12.times { |i|
                         scm = squad.schedule.last[i]
                         scm._cpp_init
                         10.times { scm.order_assignments << -1 }
-                        # TODO actual schedule (train, patrol, ...)
+
+                        case squad.schedule.length  # currently definied alert + 1
+                        when 2
+                            # train for 2 month, free the 3rd
+                            next if i % 3 == df.ui.main.fortress_entity.squads.length % 3
+                            scm.orders << DFHack::SquadScheduleOrder.cpp_new(:min_count => 0,
+                                    :positions => [false]*10, :order => DFHack::SquadOrderTrainst.cpp_new)
+                        end
                     }
                 }
                 
-                squad.uniform_priority = 2
-                squad.carry_food = 2
-                squad.carry_water = 2
-
+                # link squad into world
+                # TODO missing stuff here, squad does not appear in 'm'ilitary viewscreen
                 df.world.squads.all << squad
                 df.ui.squads.list << squad
                 df.ui.main.fortress_entity.squads << squad.id
             end
+
             squad_id
         end
 
