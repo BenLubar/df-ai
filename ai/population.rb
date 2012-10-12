@@ -131,29 +131,26 @@ class DwarfAI
 
             squad.positions[pos].occupant = ns.hist_figure_id
             ns.military.squad_index = squad_id
-            ns.military.position = pos
+            ns.military.squad_position = pos
 
             ns
         end
 
         # return a squad index with an empty slot
         def military_find_free_squad
-            # XXX segfaults for now, need more info on squad data structures.
+            # XXX segfaults for now, need more info on squad data struct
             return
 
-            if not i = @military.values.find { |id|
-                        @military.count { |k, v| v == id } < 8
-                    }
+            if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < 8 }
 
                 # create a new squad from scratch
                 # XXX only inferred from looking at data in memory
-                # TODO reuse existing exterminated squad
-                i = df.squad_next_id
-                df.squad_next_id = i+1
+                squad_id = df.squad_next_id
+                df.squad_next_id = squad_id+1
 
-                squad = DFHack::Squad.cpp_new :id => i
+                squad = DFHack::Squad.cpp_new :id => squad_id
 
-                squad.name.first_name = "AI squad #{i}"
+                squad.name.first_name = "AI squad #{squad_id}"
                 squad.name.unknown = -1
                 squad.name.has_name = true
 
@@ -172,10 +169,10 @@ class DwarfAI
                 }
 
                 df.ui.alerts.list.each {
-                    squad.schedule << DFHack.memory_vector_new
-                    12.times {
+                    squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
+                    12.times { |i|
+                        squad.schedule.last[i]._cpp_init
                         # TODO actual schedule (train, patrol, ...)
-                        squad.schedule.last << DFHack::SquadScheduleEntry.cpp_new
                     }
                 }
                 
@@ -184,8 +181,10 @@ class DwarfAI
                 squad.carry_water = 2
 
                 df.world.squads.all << squad
+                df.ui.squads.list << squad
+                df.ui.main.fortress_entity.squads << squad.id
             end
-            i
+            squad_id
         end
 
 
