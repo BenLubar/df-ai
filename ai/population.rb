@@ -151,6 +151,8 @@ class DwarfAI
                 squad.name.unknown = -1
                 squad.name.has_name = true
 
+                squad.cur_alert_idx = 0
+
                 10.times {
                     pos = DFHack::SquadPosition.cpp_new
                     %w[BODY HEAD PANTS GLOVES SHOES SHIELD WEAPON].each { |t|
