@@ -138,9 +138,6 @@ class DwarfAI
 
         # return a squad index with an empty slot
         def military_find_free_squad
-            # XXX segfaults for now, need more info on squad data struct
-            return
-
             if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < 8 }
 
                 # create a new squad from scratch
@@ -171,7 +168,9 @@ class DwarfAI
                 df.ui.alerts.list.each {
                     squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
                     12.times { |i|
-                        squad.schedule.last[i]._cpp_init
+                        scm = squad.schedule.last[i]
+                        scm._cpp_init
+                        10.times { scm.order_assignments << -1 }
                         # TODO actual schedule (train, patrol, ...)
                     }
                 }
