@@ -632,7 +632,7 @@ class DwarfAI
                     mo = df.world.manager_orders.find { |_mo| _mo.is_validated == 0 }
                     df.onupdate_register_once(10) {
                         try_count += 1
-                        if mo.is_validated == 1
+                        if !mo or mo.is_validated == 1
                             true
                         elsif try_count > 20
                             # dig now, and ensure the throne is on its way
