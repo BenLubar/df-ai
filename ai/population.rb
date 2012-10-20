@@ -112,6 +112,16 @@ class DwarfAI
             newsoldiers.each { |uid|
                 ai.plan.getsoldierbarrack(uid)
             }
+
+            df.ui.main.fortress_entity.squads_tg.each { |sq|
+                soldier_count = sq.positions.find_all { |sp| sp.occupant != -1 }.length
+                sq.schedule[1].each { |sc|
+                    sc.orders.each { |so|
+                        next unless so.order.kind_of?(DFHack::SquadOrderTrainst)
+                        so.min_count = (soldier_count > 3 ? soldier_count-1 : soldier_count)
+                    }
+                }
+            }
         end
 
         # returns an unit newly assigned to a military squad
@@ -150,7 +160,6 @@ class DwarfAI
             if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < 8 }
 
                 # create a new squad from scratch
-                # XXX only inferred from looking at data in memory
                 squad_id = df.squad_next_id
                 df.squad_next_id = squad_id+1
 
@@ -452,7 +461,7 @@ class DwarfAI
                 ent.assignments_by_type[k] << assign if r
             }
 
-	    assign
+            assign
         end
             
         def status
