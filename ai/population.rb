@@ -84,13 +84,13 @@ class DwarfAI
             newsoldiers = []
 
             df.unit_citizens.each { |u|
-                if u.military.squad_index == -1
+                if u.military.squad_id == -1
                     if @military.delete u.id
                         ai.plan.freesoldierbarrack(u.id)
                     end
                 else
                     if not @military[u.id]
-                        @military[u.id] = u.military.squad_index
+                        @military[u.id] = u.military.squad_id
                         newsoldiers << u.id
                     end
                 end
@@ -105,7 +105,7 @@ class DwarfAI
             while @military.length < maydraft.length/5
                 ns = military_find_new_soldier(maydraft)
                 break if not ns
-                @military[ns.id] = ns.military.squad_index
+                @military[ns.id] = ns.military.squad_id
                 newsoldiers << ns.id
             end
 
@@ -117,9 +117,9 @@ class DwarfAI
         # returns an unit newly assigned to a military squad
         def military_find_new_soldier(unitlist)
             ns = unitlist.find_all { |u|
-                u.military.squad_index == -1
+                u.military.squad_id == -1
             }.sort_by { |u|
-                unit_totalxp(u)
+                unit_totalxp(u) + 5000*df.unit_entitypositions(u).length
             }.first
             return if not ns
 
@@ -130,8 +130,17 @@ class DwarfAI
             return if not pos
 
             squad.positions[pos].occupant = ns.hist_figure_id
-            ns.military.squad_index = squad_id
+            ns.military.squad_id = squad_id
             ns.military.squad_position = pos
+            
+            ent = df.ui.main.fortress_entity
+            if !ent.positions.assignments.find { |a| a.squad_id == squad_id }
+                if ent.assignments_by_type[:MILITARY_STRATEGY].empty?
+                    assign_new_noble('MILITIA_COMMANDER', ns).squad_id = squad_id
+                else
+                    assign_new_noble('MILITIA_CAPTAIN', ns).squad_id = squad_id
+                end
+            end
 
             ns
         end
@@ -191,7 +200,6 @@ class DwarfAI
                 }
                 
                 # link squad into world
-                # TODO missing stuff here, squad does not appear in 'm'ilitary viewscreen
                 df.world.squads.all << squad
                 df.ui.squads.list << squad
                 df.ui.main.fortress_entity.squads << squad.id
@@ -364,8 +372,8 @@ class DwarfAI
         end
 
         def unit_hasmilitaryduty(u)
-            return if u.military.squad_index == -1
-            squad = df.world.squads.all.binsearch(u.military.squad_index)
+            return if u.military.squad_id == -1
+            squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
             !curmonth.orders.empty?
         end
@@ -378,45 +386,75 @@ class DwarfAI
         end
 
         def update_nobles
+            cz = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find_all { |u| u.profession != :BABY and u.profession != :CHILD }
             ent = df.ui.main.fortress_entity
-            if not ent.positions.assignments.find { |a| a.histfig != -1 and ent.positions.own.binsearch(a.position_id).responsibilities[:MANAGE_PRODUCTION] }
+
+
+            if ent.assignments_by_type[:MANAGE_PRODUCTION].empty? and tg = cz.find { |u|
+                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
+            } || cz.first
                 # TODO do not hardcode position name, check population caps, ...
-                assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'MANAGER' }
-                # TODO find a better candidate
-                tg = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find { |u| u.profession != :CHILD and u.profession != :BABY }
+                assign_new_noble('MANAGER', tg)
                 office = ai.plan.ensure_workshop(:ManagersOffice)
                 ai.plan.set_owner(office, tg.id)
-
-                pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
-                pos.entity_id = ent.id
-                pos.assignment_id = assign.id
-                tg.hist_figure_tg.entity_links << pos
-                assign.histfig = tg.hist_figure_id
-
-                ent.assignments_by_type[:MANAGE_PRODUCTION] << assign
-
                 df.add_announcement("AI: new manager: #{tg.name}", 7, false) { |ann| ann.pos = tg.pos }
             end
 
-            if not ent.positions.assignments.find { |a| a.histfig != -1 and ent.positions.own.binsearch(a.position_id).responsibilities[:ACCOUNTING] }
-                assign = ent.positions.assignments.find { |a| ent.positions.own.binsearch(a.position_id).code == 'BOOKKEEPER' }
-                tg = df.unit_citizens.find { |c| df.unit_entitypositions(c).find { |p| p.responsibilities[:MANAGE_PRODUCTION] } }
+
+            if ent.assignments_by_type[:ACCOUNTING].empty? and tg = cz.find { |u|
+                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
+            }
+                assign_new_noble('BOOKKEEPER', tg)
+                df.ui.bookkeeper_settings = 4
                 office = ai.plan.ensure_workshop(:BookkeepersOffice)
                 ai.plan.set_owner(office, tg.id)
+            end
 
-                pos = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
-                pos.entity_id = ent.id
-                pos.assignment_id = assign.id
-                tg.hist_figure_tg.entity_links << pos
-                assign.histfig = tg.hist_figure_id
 
-                ent.assignments_by_type[:ACCOUNTING] << assign
+            if ent.assignments_by_type[:HEALTH_MANAGEMENT].empty? and
+                    hosp = ai.plan.rooms.find { |r| r.type == :infirmary } and hosp.status != :plan and tg = cz.find { |u|
+                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
+            }
+                assign_new_noble('CHIEF_MEDICAL_DWARF', tg)
+            end
 
-                df.ui.bookkeeper_settings = 4
-                df.add_announcement("AI: new bookkeeper: #{tg.name}", 7, false) { |ann| ann.pos = tg.pos }
+
+            if ent.assignments_by_type[:TRADE].empty? and tg = cz.find { |u|
+                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
+            }
+                assign_new_noble('BROKER', tg)
             end
         end
 
+        def assign_new_noble(pos_code, unit)
+            ent = df.ui.main.fortress_entity
+
+            pos = ent.positions.own.find { |p| p.code == pos_code }
+            raise "no noble position #{pos_code}" if not pos
+
+            if not assign = ent.positions.assignments.find { |a| a.position_id == pos.id and a.histfig == -1 }
+                a_id = ent.positions.next_assignment_id
+                ent.positions.next_assignment_id = a_id+1
+                assign = DFHack::EntityPositionAssignment.cpp_new(:id => a_id, :position_id => pos.id)
+                assign.flags.resize(ent.positions.assignments.first.flags.length/8)   # XXX
+                assign.flags[0] = true  # XXX
+                ent.positions.assignments << assign
+            end
+
+            poslink = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
+            poslink.entity_id = df.ui.main.fortress_entity.id
+            poslink.assignment_id = assign.id
+
+            unit.hist_figure_tg.entity_links << poslink
+            assign.histfig = unit.hist_figure_id
+            
+            pos.responsibilities.each_with_index { |r, k|
+                ent.assignments_by_type[k] << assign if r
+            }
+
+	    assign
+        end
+            
         def status
             "#{@citizen.length} citizen"
         end

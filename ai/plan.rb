@@ -148,7 +148,7 @@ class DwarfAI
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        ifplan[@rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[@rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       ifplan[@rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }] ||
+                       ifplan[@rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_id] }] ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
                     false
@@ -267,18 +267,18 @@ class DwarfAI
         def getsoldierbarrack(id)
             u = df.unit_find(id)
             return if not u
-            squad_id = u.military.squad_index
+            squad_id = u.military.squad_id
             return if squad_id == -1
 
-            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_index] == squad_id }
-                r = @rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_index] }
+            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_id] == squad_id }
+                r = @rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_id] }
                 if not r
                     puts "AI: no free barracks"
                     return
                 end
 
-                r.misc[:squad_index] = squad_id
-                df.add_announcement("AI: new barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
+                r.misc[:squad_id] = squad_id
+                df.add_announcement("AI: new barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
                 digroom(r)
                 if r.misc[:bld_id]
                     assign_barrack_squad(r, squad_id)
@@ -380,9 +380,9 @@ class DwarfAI
                                 end
                                 r.misc.delete(:bld_id)
 
-                                if r.misc[:squad_index]
-                                    df.add_announcement("AI: freed barracks #{r.misc[:squad_index]}", 7, false) { |ann| ann.pos = r }
-                                    r.misc.delete :squad_index
+                                if r.misc[:squad_id]
+                                    df.add_announcement("AI: freed barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
+                                    r.misc.delete :squad_id
                                 end
                             end
                         end
@@ -1361,7 +1361,7 @@ class DwarfAI
                 add_manager_order(:MakeTrainingAxe, 4)
                 add_manager_order(:MakeTrainingShortSword, 4)
                 add_manager_order(:MakeTrainingSpear, 4)
-                if squad_id = r.misc[:squad_index]
+                if squad_id = r.misc[:squad_id]
                     assign_barrack_squad(r, squad_id)
                 end
 
