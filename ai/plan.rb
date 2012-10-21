@@ -279,7 +279,7 @@ class DwarfAI
 
                 r.misc[:squad_id] = squad_id
                 df.add_announcement("AI: new barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
-                digroom(r)
+                wantdig(r)
                 if r.misc[:bld_id]
                     assign_barrack_squad(r, squad_id)
                 end
@@ -783,6 +783,10 @@ class DwarfAI
             setup_stockpile_settings(r, bld)
 
             room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop] and r.subtype != :stone
+
+            if r.subtype == :refuse and not r.misc[:workshop]
+                ensure_stockpile(:corpses)
+            end
 
             if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
@@ -1712,7 +1716,7 @@ class DwarfAI
             puts 'AI: ready'
         end
 
-	# same as tile.spiral_search, but search starting with center of each side first
+        # same as tile.spiral_search, but search starting with center of each side first
         def spiral_search(tile, max=100, min=0, step=1)
             (min..max).step(step) { |rng|
                 if rng != 0
