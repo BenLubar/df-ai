@@ -157,7 +157,11 @@ class DwarfAI
 
         # return a squad index with an empty slot
         def military_find_free_squad
-            if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < 8 }
+            squad_sz = 8
+            squad_sz = 6 if @military.length < 3*6
+            squad_sz = 4 if @military.length < 2*4
+
+            if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < squad_sz }
 
                 # create a new squad from scratch
                 squad_id = df.squad_next_id
@@ -220,12 +224,12 @@ class DwarfAI
 
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
+        LaborSkill = DFHack::JobSkill::Labor.invert
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
         LaborMax = Hash.new(8).update :FISH => 0
-        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30
-        LaborMaxPct = Hash.new(00).update :DETAIL => 40, :PLANT => 60
-
+        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30, :FISH => 1
+        LaborMaxPct = Hash.new(00).update :DETAIL => 40, :PLANT => 60, :FISH => 3
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
                 LaborMinPct[lb] = 40
@@ -266,6 +270,7 @@ class DwarfAI
             # count active labors
             @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
             @worker_labor = workers.inject({}) { |h, c| h.update c.id => [] }
+            worker_entpos = {}
             workers.each { |c|
                 ul = c.dfunit.status.labors
                 LaborList.each { |lb|
@@ -274,6 +279,7 @@ class DwarfAI
                         @worker_labor[c.id] << lb
                     end
                 }
+                worker_entpos[c.id] = df.unit_entitypositions(c.dfunit)
             }
 
             # if one has too many labors, free him up (one per round)
@@ -333,8 +339,7 @@ class DwarfAI
             end
 
             # autolabor!
-            # TODO use skill ranking for decisions
-            # TODO handle nobility
+            # TODO chief med dwarf -> diagnose
             LaborList.each { |lb|
                 min = labormin[lb]
                 max = labormax[lb]
@@ -347,8 +352,19 @@ class DwarfAI
 
                 cnt = @labor_worker[lb].length
                 if cnt > max
+                    @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
+                        if sk = LaborSkill[lb]
+                            if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
+                                DFHack::SkillRating.int(usk.rating)
+                            else 
+                                0
+                            end
+                        else
+                            rand
+                        end
+                    }
                     (cnt-max).times {
-                        cid = @labor_worker[lb].delete_at(rand(@labor_worker[lb].length))
+                        cid = @labor_worker[lb].shift
                         @worker_labor[cid].delete lb
                         u = citizen[cid].dfunit
                         u.status.labors[lb] = false
@@ -358,7 +374,12 @@ class DwarfAI
                 elsif cnt < min
                     (min-cnt).times {
                         c = workers.sort_by { |_c|
-                            [@worker_labor[_c.id].length, rand]
+                            malus = @worker_labor[_c.id].length * 10
+                            malus += worker_entpos[_c.id].length * 40
+                            if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
+                                malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
+                            end
+                            [malus, rand]
                         }.find { |_c|
                             next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
                             not @worker_labor[_c.id].include? lb

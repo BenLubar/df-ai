@@ -107,7 +107,7 @@ class DwarfAI
         def del_citizen(uid)
             freecommonrooms(uid)
             freebedroom(uid)
-            getcoffin(uid) if u = df.unit_find(uid) and u.flags1.dead
+            getcoffin(uid) #if u = df.unit_find(uid) and u.flags1.dead # bury berserks (future dead) too
         end
         
         def checkidle
@@ -146,9 +146,9 @@ class DwarfAI
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
-                       ifplan[@rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       ifplan[@rooms.find { |_r| _r.type == :cemetary   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[@rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       ifplan[@rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_id] }] ||
+                       ifplan[@rooms.find { |_r| _r.type == :barracks   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
                     false
@@ -235,6 +235,9 @@ class DwarfAI
                 wantdig(r)
                 set_owner(r, id)
                 df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
+                if r.status == :finished
+                    furnish_room(r)
+                end
             else
                 puts "AI cant getbedroom(#{id})"
             end
@@ -1303,7 +1306,7 @@ class DwarfAI
         def try_endfurnish(r, f)
             bld = df.building_find(f[:bld_id]) if f[:bld_id]
             if not bld
-                puts "AI: destroyed building ? #{r.inspect} #{f.inspect}"
+                #puts "AI: destroyed building ? #{r.inspect} #{f.inspect}"
                 return true
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
@@ -1901,8 +1904,8 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            types = [:wood,:stone, :furniture,:goods, :gems,:weapons, :refuse,:corpses]
-            types += [:food,:ammo, :cloth,:leather, :bars,:armor, :animals,:coins]
+            types = [:food,:furniture, :wood,:stone, :refuse, :corpses, :gems,:animals]
+            types += [:goods,:bars, :cloth,:leather, :ammo,:armor, :weapons,:coins]
 
             # TODO side stairs to workshop level ?
             tmp = []

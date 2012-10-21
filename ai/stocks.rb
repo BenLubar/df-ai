@@ -138,7 +138,10 @@ class DwarfAI
                 !i.flags.in_job and
                 !i.flags.removed and
                 !i.flags.forbid and
-                (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) })
+                !i.flags.in_chest and
+                (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and
+                (!i.flags.in_building or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and
+                    ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
             }.inject(0) { |s, i| s + i.stack_size }
         end
 
