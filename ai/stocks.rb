@@ -91,9 +91,13 @@ class DwarfAI
                 when :roughgem
                     df.world.items.other[:ROUGH]
                 when :splint
-                    df.world.items.other[:SPLINT] #.reject { |i| i.flags.in_inventory } # inventory set when it bin
+                    df.world.items.other[:SPLINT].reject { |i| i.flags.in_inventory and
+                        i.itemrefs.grep(DFHack::GeneralRefUnitHolderst).find { |r|
+                            r.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } }
                 when :crutch
-                    df.world.items.other[:CRUTCH] #.reject { |i| i.flags.in_inventory }
+                    df.world.items.other[:CRUTCH].reject { |i| i.flags.in_inventory and
+                        i.itemrefs.grep(DFHack::GeneralRefUnitHolderst).find { |r|
+                            r.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } }
                 when :crossbow
                     df.world.items.other[:WEAPON].find_all { |i|
                         i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]

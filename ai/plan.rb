@@ -1041,6 +1041,7 @@ class DwarfAI
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
                     df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
                     bld.settings.bars_other_mats[0] = true  # coal
+                    bld.settings.allow_organic = false
                 else
                     df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = bld.settings.blocks_mats[i] = true }
                     10.times { |i| bld.settings.bars_other_mats[i] = bld.settings.blocks_other_mats[i] = true }
