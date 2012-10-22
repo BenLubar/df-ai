@@ -3,6 +3,7 @@ class DwarfAI
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
+            :splint => 2, :crutch => 2,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
@@ -89,6 +90,10 @@ class DwarfAI
                     df.world.items.other[:WOOD]
                 when :roughgem
                     df.world.items.other[:ROUGH]
+                when :splint
+                    df.world.items.other[:SPLINT] #.reject { |i| i.flags.in_inventory } # inventory set when it bin
+                when :crutch
+                    df.world.items.other[:CRUTCH] #.reject { |i| i.flags.in_inventory }
                 when :crossbow
                     df.world.items.other[:WEAPON].find_all { |i|
                         i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]

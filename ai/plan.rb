@@ -523,6 +523,8 @@ class DwarfAI
             :barrel => :MakeBarrel,
             :bin => :ConstructBin,
             :drink => :BrewDrink,
+            :crutch => :ConstructCrutch,
+            :splint => :ConstructSplint,
             :bag => :MakeBag,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
@@ -1558,6 +1560,7 @@ class DwarfAI
             :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
             :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
+            :ConstructCrutch => :wood, :ConstructSplint => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
@@ -1571,6 +1574,7 @@ class DwarfAI
             :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
         }
         ManagerSubtype = {
+            # depends on raws.itemdefs, wait until a world is loaded
         }
 
         def self.init_manager_subtype
