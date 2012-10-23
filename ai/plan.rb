@@ -526,6 +526,7 @@ class DwarfAI
             :crutch => :ConstructCrutch,
             :splint => :ConstructSplint,
             :bag => :MakeBag,
+            :rockblock => :ConstructBlocks,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
 

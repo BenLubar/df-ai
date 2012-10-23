@@ -3,7 +3,7 @@ class DwarfAI
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :splint => 2, :crutch => 2,
+            :splint => 2, :crutch => 2, :rockblock => 1,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
@@ -121,6 +121,8 @@ class DwarfAI
                     df.world.items.other[:POWDER_MISC].grep(df.decode_mat(mspec))
                 when :leaves
                     df.world.items.other[:LEAVES]
+                when :rockblock
+                    df.world.items.other[:BLOCKS]
                 when :skull
                     # XXX exclude dwarf skulls ?
                     df.world.items.other[:CORPSEPIECE].find_all { |i|
