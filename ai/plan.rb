@@ -1406,9 +1406,6 @@ class DwarfAI
                 end
 
             when :barracks
-                add_manager_order(:MakeTrainingAxe, 4)
-                add_manager_order(:MakeTrainingShortSword, 4)
-                add_manager_order(:MakeTrainingSpear, 4)
                 if squad_id = r.misc[:squad_id]
                     assign_barrack_squad(r, squad_id)
                 end
