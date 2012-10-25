@@ -1492,6 +1492,7 @@ class DwarfAI
             l_out = df.building_find(@m_c_lever_out[:bld_id]) if @m_c_lever_out[:bld_id]
             f_out = df.building_find(@m_c_lever_out[:target][:bld_id]) if @m_c_lever_out[:target] and @m_c_lever_out[:target][:bld_id]
             return unless l_in and f_in and l_out and f_out
+            return unless l_in.linked_mechanisms.first and l_out.linked_mechanisms.first
             return unless l_in.jobs.empty? and l_out.jobs.empty?
 
             f_in_closed = true if f_in.gate_flags.closed or f_in.gate_flags.closing
