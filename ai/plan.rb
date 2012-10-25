@@ -560,6 +560,7 @@ class DwarfAI
             :splint => :ConstructSplint,
             :bag => :MakeBag,
             :rockblock => :ConstructBlocks,
+            :mechanisms => :ConstructMechanisms,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
 
@@ -1568,7 +1569,11 @@ class DwarfAI
             else
                 # ensure it's either filling up or emptying
                 if f_in_closed and f_out_closed
-                    pull_lever(@m_c_lever_in)
+                    if resvlvl >= 6 and cistlvl < 7
+                        pull_lever(@m_c_lever_out)
+                    else
+                        pull_lever(@m_c_lever_in)
+                    end
                 end
             end
         end

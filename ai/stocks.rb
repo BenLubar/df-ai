@@ -3,7 +3,7 @@ class DwarfAI
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :splint => 2, :crutch => 2, :rockblock => 1,
+            :splint => 2, :crutch => 2, :rockblock => 1, :mechanisms => 4,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
@@ -145,6 +145,8 @@ class DwarfAI
                     !i.flags.in_chest and   # infirmary..
                     !i.improvements.find { |imp| imp.dye.mat_type != -1 }
                 }
+            when :mechanisms
+                df.world.items.other[:TRAPPARTS]
             else
                 return Needed[k] ? 1000000 : -1
 
@@ -262,6 +264,11 @@ class DwarfAI
                 # cloth may already be queued for sewing
                 amount = 10 if amount > 10
 
+            end
+
+            if input
+                n_input = count[input] || count_stocks(input)
+                amount = n_input if amount > n_input
             end
 
             ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
