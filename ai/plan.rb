@@ -166,20 +166,33 @@ class DwarfAI
 
         def idleidle
             debug 'smooth fort'
+            tab = []
             @rooms.each { |r|
                 next if r.status == :plan or r.status == :dig
 
                 case r.type
                 when :bedroom, :well, :dininghall, :cemetary, :infirmary, :barracks
-                    smooth_room(r)
-                    r.layout.each { |f| build_furniture(f, true) }
+                    tab << r
                 end
             }
             @corridors.each { |r|
                 next if r.status == :plan or r.status == :dig
-                smooth_room(r)
+                tab << r
             }
 
+            df.onupdate_register_once(4) {
+                if r = tab.shift
+                    smooth_room(r)
+                    r.layout.each { |f| build_furniture(f, true) }
+                    false
+                else
+                    true
+                end
+            }
+
+            ai.pop.worker_labor.each { |w, wl|
+                df.unit_find(w).status.labors[:DETAIL] = true
+            }
 
             debug 'unforbid dumped items'
             gpit = @rooms.find { |r| r.type == :garbagepit }
@@ -194,7 +207,7 @@ class DwarfAI
 
             @checkroom_idx += ncheck
             if @checkroom_idx >= rl.length
-                debug 'checkrooms rollover'
+                #debug 'checkrooms rollover'
                 @checkroom_idx = 0
             end
         end
@@ -436,9 +449,11 @@ class DwarfAI
             r.dig
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
+
             r.layout.each { |f|
                 build_furniture(f)
             }
+
             if r.type == :workshop
                 case r.subtype
                 when :Dyers
@@ -468,10 +483,28 @@ class DwarfAI
                     digroom(sp)
                 end
             end
+
+            if r.type == :cistern and r.subtype == :well
+                # preorder wall smoothing to speedup floor channeling
+                ((r.z1+1)..r.z2).each { |z|
+                    ((r.x1-1)..(r.x2+1)).each { |x|
+                        ((r.y1-1)..(r.y2+1)).each { |y|
+                            next if not t = df.map_tile_at(x, y, z) or t.designation.dig != :No
+                            t.designation.smooth = 1
+                        }
+                    }
+                }
+
+                ai.pop.worker_labor.each { |w, wl|
+                    df.unit_find(w).status.labors[:DETAIL] = !wl.include?(:MINE)
+                }
+            end
+
             if r.type != :corridor or r.h_z > 1
                 @nrdig += 1
                 @nrdig += 1 if r.w*r.h*r.h_z >= 10
             end
+
             true
         end
 
@@ -1135,6 +1168,10 @@ class DwarfAI
                         t.designation.smooth = 0
                     }
                 }
+            }
+
+            ai.pop.worker_labor.each { |w, wl|
+                df.unit_find(w).status.labors[:DETAIL] = !wl.include?(:MINE)
             }
         end
 

@@ -192,7 +192,10 @@ class DwarfAI
                 return
 
             when :drink
-                amount = (amount / 5.0).ceil  # accounts for brewer yield, but not for input stack size
+                amount = (amount+4)/5  # accounts for brewer yield, but not for input stack size
+
+	    when :rockblock
+                amount = (amount+3)/4
 
             end
 
