@@ -572,24 +572,28 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             build_furniture(f)
+            tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
             case f[:item]
             when :well
                 return try_furnish_well(r, f)
             when :lever
                 return try_furnish_lever(r, f)
             when :pillar
-                df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i).dig(:Smooth)
+                tgtile.dig(:Smooth)
                 return true
             end
             return if @cache_nofurnish[f[:item]]
             mod = FurnitureOrder[f[:item]]
             find = FurnitureFind[f[:item]]
             oidx = DFHack::JobType::Item[mod]
-            if itm = df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
+            if tgtile.occupancy.building != :None
+                # TODO warn if this stays for too long?
+                false
+            elsif itm = df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 bld = df.building_alloc(bldn)
-                df.building_position(bld, [r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1])
+                df.building_position(bld, tgtile)
                 df.building_construct(bld, [itm])
                 if f[:makeroom]
                     r.misc[:bld_id] = bld.id
@@ -1407,6 +1411,7 @@ class DwarfAI
                 end
 
             when :barracks
+                # TODO waterskins/backpacks
                 if squad_id = r.misc[:squad_id]
                     assign_barrack_squad(r, squad_id)
                 end
