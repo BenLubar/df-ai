@@ -3,18 +3,24 @@ class DwarfAI
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :splint => 2, :crutch => 2, :rockblock => 1, :mechanisms => 4,
+            :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 4,
+            :weapon => 1, :armor => 1,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :metal_ore => 6, :raw_coke => 2,
-            :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5 }
+            :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5,
+        }
 
         attr_accessor :ai, :count
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
+            reset
+        end
+
+        def reset
             @updating = []
             @count = {}
         end
@@ -28,6 +34,10 @@ class DwarfAI
 
         def onupdate_unregister
             df.onupdate_unregister(@onupdate_handle)
+        end
+
+        def status
+            @count.inspect
         end
 
         def update
@@ -63,6 +73,8 @@ class DwarfAI
             end
         end
 
+
+        # count unused stocks of one type of item
         def count_stocks(k)
             case k
             when :bin
@@ -96,13 +108,9 @@ class DwarfAI
             when :raw_coke
                 df.world.items.other[:BOULDER].find_all { |i| is_raw_coke(i) }
             when :splint
-                df.world.items.other[:SPLINT].reject { |i| i.flags.in_inventory and
-                    i.itemrefs.grep(DFHack::GeneralRefUnitHolderst).find { |r|
-                        r.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } }
+                df.world.items.other[:SPLINT]
             when :crutch
-                df.world.items.other[:CRUTCH].reject { |i| i.flags.in_inventory and
-                    i.itemrefs.grep(DFHack::GeneralRefUnitHolderst).find { |r|
-                        r.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } }
+                df.world.items.other[:CRUTCH]
             when :crossbow
                 df.world.items.other[:WEAPON].find_all { |i|
                     i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]
@@ -142,11 +150,14 @@ class DwarfAI
                 }
             when :cloth_nodye
                 df.world.items.other[:CLOTH].find_all { |i|
-                    !i.flags.in_chest and   # infirmary..
                     !i.improvements.find { |imp| imp.dye.mat_type != -1 }
                 }
-            when :mechanisms
+            when :mechanism
                 df.world.items.other[:TRAPPARTS]
+            when :weapon
+                return count_stocks_weapon
+            when :armor
+                return count_stocks_armor
             else
                 return Needed[k] ? 1000000 : -1
 
@@ -155,10 +166,44 @@ class DwarfAI
             }.inject(0) { |s, i| s + i.stack_size }
         end
 
+        # return the minimum of the number of free weapons for each subtype used by current civ
+        def count_stocks_weapon
+            count = Hash.new(0)
+            df.world.items.other[:WEAPON].each { |i|
+                count[i.subtype] += 1 if is_item_free(i)
+            }
+
+            ue = df.ui.main.fortress_entity.entity_raw.equipment
+            [ue.digger_id, ue.weapon_id].map { |set| set.map { |id| count[id] } }.flatten.min
+        end
+
+        # return the minimum count of free metal armor piece per subtype
+        def count_stocks_armor
+            count = Hash.new(0)
+            df.world.items.other[38].each { |i|
+                count[i.subtype] += 1 if is_item_free(i)
+            }
+
+            ue = df.ui.main.fortress_entity.entity_raw.equipment
+            [ue.armor_tg, ue.helm_tg, ue.gloves_tg, ue.shoes_tg, ue.pants_tg, ue.shield_tg].map { |set|
+                set.map { |idef|
+                    count[idef.subtype] if idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
+                }.compact
+            }.flatten.min
+        end
+
+
+        # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
             case what
             when :soap
                 return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
+
+            when :weapon
+                return queue_need_weapon
+
+            when :armor
+                return queue_need_armor
 
             when :food
                 # XXX fish/hunt/cook ?
@@ -196,6 +241,10 @@ class DwarfAI
             when :rockblock
                 amount = (amount+3)/4
 
+            when :coal
+                # dont use wood -> charcoal if we have bituminous coal
+                # (except for bootstraping)
+                amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]
             end
 
             if input
@@ -215,6 +264,61 @@ class DwarfAI
             ai.plan.add_manager_order(reaction, amount)
         end
 
+        # forge weapons
+        def queue_need_weapon
+            count = Hash.new(0)
+            df.world.items.other[:WEAPON].each { |i|
+                count[i.subtype] += 1 if is_item_free(i)
+            }
+
+            # TODO count useable metal bars
+            weapon_metal_bars = 0   # { mat_type/index => count }
+            digger_metal_bars = 0
+            coal_bars = @count[:coal]
+            coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
+
+            ue = df.ui.main.fortress_entity.entity_raw.equipment
+            { ue.digger_tg => digger_metal_bars, ue.weapon_tg => weapon_metal_bars }.each { |set, bars|
+                set.each { |idef|
+                    while count[idef.subtype] < Needed[:weapon]
+                        need_bars = idef.material_size/3
+                        need_bars = 1 if need_bars < 1
+                        if digger_metal_bars > need_bars and coal_bars > 0
+                            # XXX decrease global bar stocks, queue_need_armor should know we'll use some
+                            coal_bars -= 1
+                            digger_metal_bars -= need_bars
+                            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1, item_subtype => idef.subtype, :mat_type => moo, :mat_index => moo, :amount_left => 1, :amount_total => 1)
+                        else
+                            break
+                        end
+                    end
+                }
+            }
+        end
+
+        # forge armor pieces
+        def queue_need_armor
+            count = Hash.new(0)
+            df.world.items.other[38].each { |i|
+                count[i.subtype] += 1 if is_item_free(i)
+            }
+
+            armor_metal_bars = 0   # { mat_type/index => count }
+            coal_bars = @count[:coal]
+            coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
+
+            #<ManagerOrder @0xCD9A2B8 job_type=:MakeGloves unk_2=-1 item_subtype=0 reaction_name="" mat_type=0 mat_index=0 item_category=#<StockpileGroupSet @0xCD9A2CC _whole=0x0> hist_figure_id=-1 material_category=#<JobMaterialCategory @0xCD9A2D4 _whole=0x0> amount_left=1 amount_total=1 is_validated=0>
+
+            ue = df.ui.main.fortress_entity.entity_raw.equipment
+            [ue.armor_tg, ue.helm_tg, ue.gloves_tg, ue.shoes_tg, ue.pants_tg, ue.shield_tg].sort_by { rand }.each { |set|
+                set.each { |idef|
+                    next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
+                }
+            }
+        end
+
+
+        # make it so the stocks of 'what' decrease by 'amount'
         def queue_use(what, amount)
             case what
             when :metal_ore
@@ -281,6 +385,8 @@ class DwarfAI
             ai.plan.add_manager_order(reaction, amount)
         end
 
+
+        # cut gems
         def queue_use_gems(amount)
             return if df.world.manager_orders.find { |mo| mo.job_type == :CutGems }
 
@@ -298,6 +404,8 @@ class DwarfAI
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
 
+
+        # smelt metal ores
         def queue_use_metal_ore(amount)
             # TODO actively dig metal ore veins
             return if df.world.manager_orders.find { |mo| mo.job_type == :SmeltOre }
@@ -321,6 +429,8 @@ class DwarfAI
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
 
+
+        # bituminous_coal -> coke
         def queue_use_raw_coke(amount)
             is_raw_coke(nil)    # populate @raw_coke_cache
             inv = @raw_coke_cache.invert
@@ -347,7 +457,9 @@ class DwarfAI
                     :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount, :reaction_name => reaction)
         end
 
-        # designate some trees to cut
+
+
+        # designate some trees for woodcutting
         def cuttrees(amount)
             list = tree_list
             list.each { |tree|
@@ -361,29 +473,35 @@ class DwarfAI
             }
         end
 
-        def is_item_free(i)
-            !i.flags.trader and
-            !i.flags.in_job and
-            !i.flags.removed and
-            !i.flags.forbid and
-            !i.flags.in_chest and
-            (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and
-            (!i.flags.in_building or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and
-             ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
-        end
-
         # return a list of trees on the map
         # lists only visible trees, sorted by distance from the fort entrance
         def tree_list
             fe = ai.plan.fort_entrance
             (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
                 t = df.map_tile_at(p) and
-                  t.shape == :TREE and
-                  not t.designation.hidden
+                t.shape == :TREE and
+                not t.designation.hidden
             }.sort_by { |p|
                 (p.pos.x-fe.x)**2 + (p.pos.y-fe.y)**2 + ((p.pos.z-fe.z2)*4)**2
             }
         end
+
+
+
+        # check if an item is free to use
+        def is_item_free(i)
+            !i.flags.trader and     # merchant's item
+            !i.flags.in_job and     # current job input
+            !i.flags.removed and    # deleted object
+            !i.flags.forbid and     # user forbidden (or dumped)
+            !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
+            (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
+            (!i.flags.in_inventory or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
+             ii = ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } }) and
+            (!i.flags.in_building or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
+             ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
+        end
+
 
         def is_metal_ore(i)
             # mat_index => bool
@@ -392,6 +510,7 @@ class DwarfAI
                 @metal_ore_cache[i.mat_index] = df.world.raws.inorganics[i.mat_index].flags[:METAL_ORE]
             }
         end
+
 
         def is_raw_coke(i)
             # mat_index => custom reaction name
@@ -406,10 +525,6 @@ class DwarfAI
                 end
             }
             i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @raw_coke_cache[i.mat_index]
-        end
-
-        def status
-            @count.inspect
         end
     end
 end

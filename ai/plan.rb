@@ -560,7 +560,7 @@ class DwarfAI
             :splint => :ConstructSplint,
             :bag => :MakeBag,
             :rockblock => :ConstructBlocks,
-            :mechanisms => :ConstructMechanisms,
+            :mechanism => :ConstructMechanisms,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
 
@@ -1717,7 +1717,7 @@ class DwarfAI
             when :MakeLye
                 add_manager_order(:MakeAsh, amount+1, maxmerge)
                 ensure_workshop(:Ashery, false)
-            when :MakeAsh
+            when :MakeAsh, :MakeCharcoal
                 ensure_workshop(:WoodFurnace, false)
             when :MakeTotem
                 ensure_workshop(:Craftsdwarfs, false)
