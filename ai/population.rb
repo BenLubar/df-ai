@@ -432,7 +432,7 @@ class DwarfAI
 
 
             if ent.assignments_by_type[:ACCOUNTING].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
+                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id } and !u.status.labors[:MINE]
             }
                 assign_new_noble('BOOKKEEPER', tg)
                 df.ui.bookkeeper_settings = 4

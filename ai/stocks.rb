@@ -1,7 +1,7 @@
 class DwarfAI
     class Stocks
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
-            :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 5,
+            :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 4,
             :weapon => 1, :armor => 1,
@@ -196,7 +196,7 @@ class DwarfAI
         # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
             case what
-            when :soap
+            when :soap, :mechanism
                 return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
 
             when :weapon
@@ -242,6 +242,7 @@ class DwarfAI
                 amount = (amount+3)/4
 
             when :coal
+                return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
                 # dont use wood -> charcoal if we have bituminous coal
                 # (except for bootstraping)
                 amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]

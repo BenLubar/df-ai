@@ -14,7 +14,7 @@ class DwarfAI
             @rooms = []
             @corridors = []
             @manager_taskmax = 4    # when stacking manager jobs, do not stack more than this
-            @manager_maxbacklog = 10 # allow wantdig only with less than that number of pending masons orders
+            @manager_maxbacklog = 10 # add new masonly if more that this much mason manager orders
             @dwarves_per_table = 3  # number of dwarves per dininghall table/chair
             @dwarves_per_farmtile = 1.5   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
@@ -54,7 +54,7 @@ class DwarfAI
             @tasks.delete_if { |t|
                 case t[0]
                 when :wantdig
-                    digroom(t[1]) if t[1].dug? or (@nrdig<@wantdig_max and (manager_backlog<@manager_maxbacklog or t[1].layout.empty?))
+                    digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
                 when :digroom
                     if t[1].dug?
                         t[1].status = :dug
@@ -134,23 +134,24 @@ class DwarfAI
 
             if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
-                if r = @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] and _r.layout.find { |f| f[:ignore] } }
-                    r.misc[:furnished] = true
-                    r.layout.each { |f| f.delete :ignore }
-                    furnish_room(r)
-                    smooth_room(r)
-                    false
-                elsif r =
-                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
+                if r =
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] } ||
                        ifplan[@rooms.find { |_r| _r.type == :cemetary   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[@rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[@rooms.find { |_r| _r.type == :barracks   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
                     wantdig(r)
+                    if r.status == :finished
+                        r.misc[:furnished] = true
+                        r.layout.each { |f| f.delete :ignore }
+                        furnish_room(r)
+                        smooth_room(r)
+                    end
                     false
                 else
                     idleidle
