@@ -419,7 +419,7 @@ class DwarfAI
         end
 
         def freesoldierbarrack(id)
-            freecommonrooms(uid, :barracks)
+            freecommonrooms(id, :barracks)
         end
 
         def set_owner(r, uid)
@@ -1182,6 +1182,7 @@ class DwarfAI
         end
 
         def construct_cistern(r)
+            @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
             @rooms.each { |_r| wantdig(_r) if _r.type == :well }
 
             furnish_room(r)
@@ -1405,11 +1406,6 @@ class DwarfAI
             case r.type
             when :dininghall
                 bld.table_flags.meeting_hall = true
-
-                # if we set up the temporary hall, queue the real one
-                if r.misc[:temporary] and p = @rooms.find { |_r| _r.type == :dininghall and not _r.misc[:temporary] }
-                    wantdig p
-                end
 
             when :barracks
                 # TODO waterskins/backpacks
