@@ -327,7 +327,7 @@ class DwarfAI
             su.mode.indiv_eq = true
             su.mode.squad_eq = true
 
-            squad = df.world.squads.all[squad_id]
+            squad = df.world.squads.all.binsearch(squad_id)
             sr = squad.rooms.find { |_sr| _sr.building_id == bld.id }
             if not sr
                 sr = DFHack::Squad_TRooms.cpp_new(:building_id => bld.id)
