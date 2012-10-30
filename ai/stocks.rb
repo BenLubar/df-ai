@@ -169,30 +169,32 @@ class DwarfAI
 
         # return the minimum of the number of free weapons for each subtype used by current civ
         def count_stocks_weapon
-            count = Hash.new(0)
-            df.world.items.other[:WEAPON].each { |i|
-                count[i.subtype.subtype] += 1 if is_item_free(i)
-            }
-
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [ue.digger_tg, ue.weapon_tg].map { |set|
-                set.map { |idef|
-                    count[idef.subtype] unless idef.flags[:TRAINING]
+            [[:WEAPON, ue.digger_tg],
+             [:WEAPON, ue.weapon_tg]].map { |oidx, set|
+                set.to_a.map { |idef|
+                    next if idef.flags[:TRAINING]
+                    df.world.items.other[oidx].find_all { |i|
+                        i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
+                    }.length
                 }.compact
             }.flatten.min
         end
 
         # return the minimum count of free metal armor piece per subtype
         def count_stocks_armor
-            count = Hash.new(0)
-            df.world.items.other[38].each { |i|
-                count[i.subtype.subtype] += 1 if is_item_free(i)
-            }
-
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [ue.armor_tg, ue.helm_tg, ue.gloves_tg, ue.shoes_tg, ue.pants_tg, ue.shield_tg].map { |set|
-                set.map { |idef|
-                    count[idef.subtype] if idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
+            [[:ARMOR, ue.armor_tg],
+             [:SHIELD, ue.shield_tg],
+             [:HELM, ue.helm_tg],
+             [:PANTS, ue.pants_tg],
+             [:GLOVES, ue.gloves_tg],
+             [:SHOES, ue.shoes_tg]].map { |oidx, set|
+                set.to_a.map { |idef|
+                    next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
+                    df.world.items.other[oidx].find_all { |i|
+                        i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
+                    }.length
                 }.compact
             }.flatten.min
         end
