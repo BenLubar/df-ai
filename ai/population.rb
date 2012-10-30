@@ -178,16 +178,19 @@ class DwarfAI
                 squad.carry_food = 2
                 squad.carry_water = 2
 
+                item_type = { :Body => :ARMOR, :Head => :HELM, :Pants => :PANTS,
+			:Gloves => :GLOVES, :Shoes => :SHOES, :Shield => :SHIELD,
+                        :Weapon => :WEAPON }
                 # uniform
                 10.times {
                     pos = DFHack::SquadPosition.cpp_new
-                    %w[BODY HEAD PANTS GLOVES SHOES SHIELD WEAPON].each { |t|
-                        idx = t.capitalize.to_sym
-                        pos.uniform[idx] << DFHack::SquadUniformSpec.cpp_new(:color => -1,
-                                :item_filter => { :item_type => t.to_sym, :material_class => :Metal2,
-                                    :mattype => -1, :matindex => -1 })
+                    [:Body, :Head, :Pants, :Gloves, :Shoes, :Shield, :Weapon].each { |t|
+                        pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(:color => -1,
+                                :item_filter => {:item_type => item_type[t], :material_class => :Metal2,
+                                    :mattype => -1, :matindex => -1})
                     }
                     pos.uniform[:Weapon][0].indiv_choice.melee = true
+                    pos.uniform[:Weapon][0].item_filter.material_class = :None
                     pos.flags.exact_matches = true
                     pos.unk_118 = pos.unk_11c = -1
                     squad.positions << pos
