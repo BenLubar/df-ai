@@ -42,6 +42,7 @@ class DwarfAI
             when 3; update_jobs
             when 4; update_military
             end
+            autolabors
         end
 
         def new_citizen(id)
@@ -76,7 +77,6 @@ class DwarfAI
             df.world.job_list.each { |j|
                 j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
             }
-            autolabors
         end
 
         def update_military
@@ -328,7 +328,7 @@ class DwarfAI
                         labormax[:CUTWOOD] = 1
                     end
                 else
-                    mintool.times { |i|
+                    workers.length.times { |i|
                         # divide equally between labors, with priority
                         # to mine, then wood, then hunt
                         # XXX new labortools ?
@@ -446,6 +446,14 @@ class DwarfAI
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
             }
                 assign_new_noble('CHIEF_MEDICAL_DWARF', tg)
+            elsif ass = ent.assignments_by_type[:HEALTH_MANAGEMENT].first and hf = df.world.history.figures.binsearch(ass.histfig) and doc = df.unit_find(hf.unit_id)
+                # doc => healthcare
+                LaborList.each { |lb|
+                    doc.status.labors[lb] = case lb
+                    when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
+                        true
+                    end
+                }
             end
 
 

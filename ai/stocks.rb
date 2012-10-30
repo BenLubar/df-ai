@@ -29,6 +29,7 @@ class DwarfAI
         end
 
         def onupdate_register
+            reset
             @onupdate_handle = df.onupdate_register(2400, 30) { update }
         end
 
@@ -170,7 +171,7 @@ class DwarfAI
         def count_stocks_weapon
             count = Hash.new(0)
             df.world.items.other[:WEAPON].each { |i|
-                count[i.subtype] += 1 if is_item_free(i)
+                count[i.subtype.subtype] += 1 if is_item_free(i)
             }
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
@@ -185,7 +186,7 @@ class DwarfAI
         def count_stocks_armor
             count = Hash.new(0)
             df.world.items.other[38].each { |i|
-                count[i.subtype] += 1 if is_item_free(i)
+                count[i.subtype.subtype] += 1 if is_item_free(i)
             }
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
@@ -201,7 +202,7 @@ class DwarfAI
         def queue_need(what, amount)
             case what
             when :soap, :mechanism
-                return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
+                return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status == :plan }
 
             when :weapon
                 return queue_need_weapon
@@ -327,7 +328,7 @@ class DwarfAI
                         weapon_bars[mi] -= nw * need_bars
                         digger_bars[mi] -= nw * need_bars
                         coal_bars -= nw
-			cnt -= nw
+                        cnt -= nw
                     }
                 }
             }
@@ -395,7 +396,7 @@ class DwarfAI
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
                         coal_bars -= nw
-			cnt -= nw
+                        cnt -= nw
                     }
                 }
             }

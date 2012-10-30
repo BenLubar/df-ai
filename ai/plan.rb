@@ -457,15 +457,6 @@ class DwarfAI
 
             if r.type == :workshop
                 case r.subtype
-                when :Dyers
-                    add_manager_order(:MakeBarrel)
-                    add_manager_order(:MakeBucket)
-                when :Ashery
-                    add_manager_order(:ConstructBlocks)
-                    add_manager_order(:MakeBarrel)
-                    add_manager_order(:MakeBucket)
-                when :SoapMaker
-                    add_manager_order(:MakeBucket)
                 when :Quern
                     add_manager_order(:ConstructQuern)
                 end
@@ -648,12 +639,8 @@ class DwarfAI
             return if f[:ignore] and not build_ignored
             case f[:item]
             when :well
-                add_manager_order(:ConstructBlocks)
-                add_manager_order(:ConstructMechanisms)
-                add_manager_order(:MakeBucket)
                 add_manager_order(:MakeRope)
             when :lever
-                add_manager_order(:ConstructMechanisms, 3)  # 1 for lever, +2 to link
             when :pillar
             else
                 ws = FurnitureWorkshop[f[:item]]
@@ -1701,7 +1688,6 @@ class DwarfAI
                 ensure_workshop(:Dyers, false)
             when :ConstructTractionBench
                 add_manager_order(:ConstructTable, amount, maxmerge)
-                add_manager_order(:ConstructMechanisms, amount, maxmerge)
                 add_manager_order(:MakeRope, amount, maxmerge)
             when :BrewDrink
                 ensure_workshop(:Still)
@@ -1977,6 +1963,8 @@ class DwarfAI
                         r.layout << {:item => :door, :x => 2, :y => (r.y < fy ? 2 : -1)}
                         r.layout << {:item => :door, :x => 4, :y => (r.y < fy ? 2 : -1)}
                     }
+                    t0 = :furniture if t0 == :coins
+                    t1 = :furniture if t1 == :coins
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-11, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
                     @rooms[-2, 2].each { |r| r.misc[:secondary] = true }
