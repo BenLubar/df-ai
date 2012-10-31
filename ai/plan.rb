@@ -122,9 +122,9 @@ class DwarfAI
                 while ws = @important_workshops.shift
                     if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype == ws }
                         wantdig(r)
+			return if digging?
                     end
                 end
-                return if digging?
             end
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
@@ -1176,16 +1176,24 @@ class DwarfAI
             smooth_cistern(r)
 
             # remove boulders
-            todo = [r]
-            while _r = todo.shift
-                room_items(_r) { |i| i.flags.dump = true }
-                todo.concat _r.accesspath
-            end
+            dump_items_access(r)
 
             # check smoothing progress, channel intermediate levels
             if r.subtype == :well
                 @tasks << [:dig_cistern, r]
             end
+        end
+
+        # marks all items in room and its access for dumping
+        # return true if any item is found
+        def dump_items_access(r)
+            found = false
+            todo = [r]
+            while _r = todo.shift
+                room_items(_r) { |i| found = i.flags.dump = true }
+                todo.concat _r.accesspath
+            end
+            found
         end
 
         # yield every on_ground items in the room
@@ -1242,10 +1250,10 @@ class DwarfAI
             @trycistern_count += 1
             smooth_cistern(r) if @trycistern_count % 12 == 0
 
-            dug = (cnt == r.w*r.h*(r.h_z-1))
-            # TODO fill with water
-
-            dug
+            if cnt == r.w*r.h*(r.h_z-1)
+                r.misc[:channeled] = true
+                true
+            end
         end
 
         def dig_garbagedump
@@ -1513,7 +1521,7 @@ class DwarfAI
                         } } }
                     end
 
-                    if empty
+                    if empty and @m_c_cistern.misc[:channeled] and !dump_items_access(@m_c_cistern) and !dump_items_access(@m_c_reserve)
                         debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
                         pull_lever(@m_c_lever_out) if not f_out_closed
