@@ -1,4 +1,16 @@
 class DwarfAI
+    # an object similar to a hash, that will evaluate and cache @proc for every key
+    class CacheHash
+        def initialize(&b)
+            @h = {}
+            @proc = b
+        end
+
+        def [](i)
+            @h.fetch(i) { @h[i] = @proc.call(i) }
+        end
+    end
+
     class Stocks
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 4,
@@ -299,7 +311,10 @@ class DwarfAI
                 - df.world.raws.inorganics[mi].material.strength.yield[:IMPACT]
             }
 
+
             return if metal_pref.empty?
+
+            may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
             { ue.digger_tg => digger_bars, ue.weapon_tg => weapon_bars }.each { |set, bars|
@@ -318,6 +333,7 @@ class DwarfAI
                     need_bars = 1 if need_bars < 1
 
                     metal_pref.each { |mi|
+                        break if bars[mi] < need_bars and may_forge_cache[mi]   # XXX should check only is_metal_digger/weapon
                         nw = bars[mi] / need_bars
                         nw = coal_bars if nw > coal_bars
                         nw = cnt if nw > cnt
@@ -331,6 +347,7 @@ class DwarfAI
                         digger_bars[mi] -= nw * need_bars
                         coal_bars -= nw
                         cnt -= nw
+                        break if may_forge_cache[mi]
                     }
                 }
             }
@@ -362,6 +379,8 @@ class DwarfAI
 
             return if metal_pref.empty?
 
+            may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
+
             ue = df.ui.main.fortress_entity.entity_raw.equipment
             [[:ARMOR, ue.armor_tg],
              [:SHIELD, ue.shield_tg],
@@ -387,6 +406,7 @@ class DwarfAI
                     need_bars = 1 if need_bars < 1
 
                     metal_pref.each { |mi|
+                        break if bars[mi] < need_bars and may_forge_cache[mi]
                         nw = bars[mi] / need_bars
                         nw = coal_bars if nw > coal_bars
                         nw = cnt if nw > cnt
@@ -398,7 +418,8 @@ class DwarfAI
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
                         coal_bars -= nw
-                        cnt -= nw
+                        cnt -= nw 
+                        break if may_forge_cache[mi]
                     }
                 }
             }
@@ -426,8 +447,9 @@ class DwarfAI
                     :dimplecup => :MillPlants,
                     :quarrybush => :ProcessPlantsBag,
                 }[what]
-                # stuff may rot before we can process it
-                amount = 20 if amount > 20
+                # stuff may rot/be brewn before we can process it
+                amount /= 2 if amount > 10
+                amount /= 2 if amount > 5
 
             when :leaves
                 reaction = :PrepareMeal
@@ -592,46 +614,112 @@ class DwarfAI
 
         def is_metal_ore(i)
             # mat_index => bool
-            @metal_ore_cache ||= {}
-            i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @metal_ore_cache.fetch(i.mat_index) {
-                @metal_ore_cache[i.mat_index] = df.world.raws.inorganics[i.mat_index].flags[:METAL_ORE]
-            }
+            @metal_ore_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].flags[:METAL_ORE] }
+            i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @metal_ore_cache[i.mat_index]
         end
 
         def is_metal_digger(i)
-            @metal_digger_cache ||= {}
-            i and i.mat_type == 0 and @metal_digger_cache.fetch(i.mat_index) {
-                @metal_digger_cache[i.mat_index] = df.world.raws.inorganics[i.mat_index].material.flags[:ITEMS_DIGGER]
-            }
+            @metal_digger_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_DIGGER] }
+            i and i.mat_type == 0 and @metal_digger_cache[i.mat_index]
         end
 
         def is_metal_weapon(i)
-            @metal_weapon_cache ||= {}
-            i and i.mat_type == 0 and @metal_weapon_cache.fetch(i.mat_index) {
-                @metal_weapon_cache[i.mat_index] = df.world.raws.inorganics[i.mat_index].material.flags[:ITEMS_WEAPON]
-            }
+            @metal_weapon_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_WEAPON] }
+            i and i.mat_type == 0 and @metal_weapon_cache[i.mat_index]
         end
 
         def is_metal_armor(i)
-            @metal_armor_cache ||= {}
-            i and i.mat_type == 0 and @metal_armor_cache.fetch(i.mat_index) {
-                @metal_armor_cache[i.mat_index] = df.world.raws.inorganics[i.mat_index].material.flags[:ITEMS_ARMOR]
-            }
+            @metal_armor_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_ARMOR] }
+            i and i.mat_type == 0 and @metal_armor_cache[i.mat_index]
         end
 
         def is_raw_coke(i)
             # mat_index => custom reaction name
             @raw_coke_cache ||= df.world.raws.reactions.inject({}) { |h, r|
-                if r.products.length == 1 and p = r.products.first and p.kind_of?(DFHack::ReactionProductItemst) and
-                        r.reagents.length == 1 and rr = r.reagents.first and rr.item_type == :BOULDER and rr.mat_type == 0 and
-                        p.item_type == :BAR and mt = df.decode_mat(p) and mt.material and mt.material.id == 'COAL'
+                if r.reagents.length == 1 and r.reagents.find { |rr|
+                    rr.kind_of?(DFHack::ReactionReagentItemst) and rr.item_type == :BOULDER and rr.mat_type == 0
+                } and r.products.find { |rp|
+                    rp.kind_of?(DFHack::ReactionProductItemst) and rp.item_type == :BAR and
+                    mt = df.decode_mat(rp) and mt.material and mt.material.id == 'COAL'
+                }
                         # XXX check input size vs output size ?
-                    h.update rr.mat_index => r.code
+                    h.update r.reagents[0].mat_index => r.code
                 else
                     h
                 end
             }
             i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @raw_coke_cache[i.mat_index]
+        end
+
+        # determine if we may be able to generate metal bars for this metal
+        # may queue manager_jobs to do so
+        # recursive (eg steel need pig_iron)
+        # return the potential number of bars available (in dimensions, eg 1 bar => 150)
+        def may_forge_bars(mat_index)
+            # simple metal ore
+            moc = CacheHash.new { |mi|
+                df.world.raws.inorganics[mi].metal_ore.mat_index.include?(mat_index)
+            }
+
+            can_melt = df.world.items.other[:BOULDER].find_all { |i|
+                is_metal_ore(i) and moc[i.mat_index]
+            }.length
+
+            if can_melt > WatchStock[:metal_ore]
+                # XXX is 150 hardcoded?
+                return 150*(can_melt - WatchStock[:metal_ore])
+            end
+
+
+            # "make <mi> bars" customreaction
+            df.world.raws.reactions.each { |r|
+                # XXX choose best reaction from all reactions
+                prod_mult = nil
+                next unless r.products.find { |rp|
+                    prod_mult = rp.quantity if rp.kind_of?(DFHack::ReactionProductItemst) and
+                    rp.item_type == :BAR and rp.mat_type == 0 and rp.mat_index == mat_index
+                }
+
+                can_reaction = 30
+                if r.reagents.all? { |rr|
+                    # XXX may queue forge reagents[1] even if we dont handle reagents[2]
+                    next if not rr.kind_of?(DFHack::ReactionReagentItemst)
+                    next if rr.item_type != :BAR and rr.item_type != :BOULDER
+                    has = 0
+                    df.world.items.other[rr.item_type].each { |i|
+                        next if rr.mat_type != -1 and i.mat_type != rr.mat_type
+                        next if rr.mat_index != -1 and i.mat_index != rr.mat_index
+                        next if rr.reaction_class != '' and (!(mi = df.decode_mat(i)) or !mi.material or !mi.material.reaction_class.include?(rr.reaction_class))
+                        if rr.item_type == :BAR
+                            has += i.dimension
+                        else
+                            has += 1
+                        end
+                    }
+                    has /= rr.quantity
+
+                    if has <= 0 and rr.item_type == :BAR and rr.mat_type == 0 and rr.mat_index != -1
+                        has = may_forge_bars(rr.mat_index)
+                        next if not has
+                    end
+
+                    # only use up to available_reagents/3
+                    # this should handle cases like steel -> consume iron, and need pig_iron -> consume iron too
+                    can_reaction = has/3 if can_reaction > has/3
+                }
+                    next if can_reaction <= 0
+
+                    if not df.world.manager_orders.find { |mo|
+                        mo.job_type == :CustomReaction and mo.reaction_name == r.code
+                    }
+                        puts "AI: stocks: queue #{can_reaction} #{r.code}" if $DEBUG
+                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1,
+                            :item_subtype => -1, :reaction_name => r.code, :mat_type => -1, :mat_index => -1,
+                            :amount_left => can_reaction, :amount_total => can_reaction)
+                    end
+                    return prod_mult * can_reaction
+                end
+            }
         end
     end
 end
