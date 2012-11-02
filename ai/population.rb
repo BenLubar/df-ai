@@ -180,7 +180,7 @@ class DwarfAI
                 squad.carry_water = 2
 
                 item_type = { :Body => :ARMOR, :Head => :HELM, :Pants => :PANTS,
-			:Gloves => :GLOVES, :Shoes => :SHOES, :Shield => :SHIELD,
+                        :Gloves => :GLOVES, :Shoes => :SHOES, :Shield => :SHIELD,
                         :Weapon => :WEAPON }
                 # uniform
                 10.times {
@@ -498,16 +498,28 @@ class DwarfAI
         end
             
         def update_pets
-            df.world.units.all { |u|
+            @pets ||= {}
+            np = @pets.dup
+            df.world.units.active.each { |u|
                 next if u.civ_id != df.ui.civ_id
                 next if u.race == df.ui.race_id
                 next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
 
+                if not @pets[u.id]
+                    @pets[u.id] = true
+                end
+                np.delete u.id
+
                 #u.race_tg.caste[u.caste].flags[:GRAZER]    :MILKABLE
+                #@ai.plan.assign_to_pasture(u.id)
                 #u.profession == :CHILD/:BABY
                 #u.refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => 42)
                 #civzone.assigned_creature << u.id
                 #u.flags2.slaughter = true
+            }
+
+            np.each_key { |id|
+                @pets.delete id
             }
         end
 

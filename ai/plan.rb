@@ -855,6 +855,9 @@ class DwarfAI
                 setup_infirmary_supplies(r)
             when :garbagedump
                 bld.zone_flags.garbage_dump = true
+            when :pasture
+                bld.zone_flags.pen_pasture = true
+                # pit_flags |= 2
             end
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -1785,14 +1788,14 @@ class DwarfAI
             # map center
             cx = df.world.map.x_count / 2
             cy = df.world.map.y_count / 2
+            center = surface_tile_at(cx, cy)
             rangez = (0...df.world.map.z_count).to_a.reverse
-            cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
+            cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and tsb = t.shape_basic and (tsb == :Floor or tsb == :Ramp) }
             center = df.map_tile_at(cx, cy, cz)
 
             ent0 = center.spiral_search { |t0|
                 # test the whole map for 3x5 clear spots
-                next unless tz = rangez.find { |z| t = df.map_tile_at(t0.x, t0.y, z) and (t.shape == :FLOOR or t.shape == :RAMP) }
-                t = df.map_tile_at(t0.x, t0.y, tz)
+                next unless t = surface_tile_at(t0)
                 (-1..1).all? { |_x|
                     (-2..2).all? { |_y|
                         tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
@@ -1804,10 +1807,9 @@ class DwarfAI
 
             if not ent0
                 puts 'AI: cant find fortress entrance spot'
-                ent = ent0
+                ent = center
             else
-                ent = nil
-                rangez.find { |z| ent = ent0.offset(0, 0, z) and ent.shape == :FLOOR }
+                ent = surface_tile_at(ent0)
             end
 
             @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
@@ -2189,8 +2191,7 @@ class DwarfAI
                 }
             }
 
-            # TODO
-            # pastures
+            setup_blueprint_pastures
         end
 
         def setup_blueprint_cistern_fromsource(src, fx, fy, fz)
@@ -2313,6 +2314,28 @@ class DwarfAI
             reserve.misc[:channel_enable] = [channel.x, channel.y, channel.z] if channel
         end
 
+        # scan for 11x11 flat areas with grass
+        def setup_blueprint_pastures
+            count = 8
+            @fort_entrance.maptile.spiral_search(df.world.map.x_count, 12, 12) { |_t|
+                next unless sf = surface_tile_at(_t)
+                grasstile = 0
+                if (-5..5).all? { |dx| (-5..5).all? { |dy|
+                    if tt = sf.offset(dx, dy) and tt.shape_basic == :Floor
+                        grasstile += 1 if tt.mapblock.block_events.find { |be|
+                            be.kind_of?(DFHack::BlockSquareEventGrassst) and be.amount[tt.dx][tt.dy] > 0
+                        }
+                        true
+                    end
+                } } and grasstile >= 70
+                    @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
+                    @rooms.last.misc[:users] = []
+                    count -= 1
+                    break if count <= 0
+                end
+            }
+        end
+
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
             corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
             corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
@@ -2417,6 +2440,20 @@ class DwarfAI
                 [cor1]
             end
 
+        end
+
+        def surface_tile_at(t, ty=nil)
+            @rangez ||= (0...df.world.map.z_count).to_a.reverse
+
+            if ty
+                tx = t
+            else
+                tx, ty = t.x, t.y 
+            end
+
+            if sz = @rangez.find { |z| tt = df.map_tile_at(tx, ty, z) and tsb = tt.shape_basic and (tsb == :Floor or tsb == :Ramp) }
+                df.map_tile_at(tx, ty, sz)
+            end
         end
 
         def status

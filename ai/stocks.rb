@@ -514,6 +514,9 @@ class DwarfAI
 
         # smelt metal ores
         def queue_use_metal_ore(amount)
+            # make coke from bituminous coal has priority
+            return if @count[:raw_coke] > WatchStock[:raw_coke]
+
             # TODO actively dig metal ore veins
             return if df.world.manager_orders.find { |mo| mo.job_type == :SmeltOre }
 
