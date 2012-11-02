@@ -13,7 +13,7 @@ class DwarfAI
 
     class Stocks
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
-            :food => 20, :drink => 20, :soap => 5, :logs => 10, :coal => 4,
+            :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 4,
             :weapon => 1, :armor => 1,
@@ -304,7 +304,7 @@ class DwarfAI
 
             @metal_digger_pref ||= (0...df.world.raws.inorganics.length).find_all { |mi|
                 df.world.raws.inorganics[mi].material.flags[:ITEMS_DIGGER]
-            }.sort_by { |mi|	# should roughly order metals by effectiveness
+            }.sort_by { |mi|    # should roughly order metals by effectiveness
                 - df.world.raws.inorganics[mi].material.strength.yield[:IMPACT]
             }
 
@@ -347,7 +347,7 @@ class DwarfAI
                         bars[mi] -= nw * need_bars
                         coal_bars -= nw
                         cnt -= nw
-                        break if may_forge_cache[mi]	# dont use lesser metal
+                        break if may_forge_cache[mi]    # dont use lesser metal
                     }
                 }
             }
@@ -447,11 +447,11 @@ class DwarfAI
                 }[what]
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
-                amount /= 2 if amount > 5
+                amount /= 2 if amount > 4
 
             when :leaves
                 reaction = :PrepareMeal
-                amount = (amount / 5.0).ceil
+                amount = (amount + 4) / 5
 
             when :skull
                 reaction = :MakeTotem
@@ -465,15 +465,15 @@ class DwarfAI
                     amount = need_crossbow if amount > need_crossbow
                 else
                     reaction = :MakeBoneBolt
-                    # seems like we consume more than we think..
-                    amount /= 2
+                    amount /= 2 if amount > 10
+                    amount /= 2 if amount > 4
                 end
 
             when :cloth_nodye
                 reaction = :DyeCloth
                 input = :dimple_dye
-                # cloth may already be queued for sewing
-                amount = 10 if amount > 10
+                amount /= 2 if amount > 10
+                amount /= 2 if amount > 4
 
             end
 
@@ -638,7 +638,7 @@ class DwarfAI
         # may queue manager_jobs to do so
         # recursive (eg steel need pig_iron)
         # return the potential number of bars available (in dimensions, eg 1 bar => 150)
-        def may_forge_bars(mat_index)
+        def may_forge_bars(mat_index, div=1)
             # simple metal ore
             moc = CacheHash.new { |mi|
                 df.world.raws.inorganics[mi].metal_ore.mat_index.include?(mat_index)
@@ -663,6 +663,7 @@ class DwarfAI
                 }
 
                 can_reaction = 30
+                future = false
                 if r.reagents.all? { |rr|
                     # XXX may queue forge reagents[1] even if we dont handle reagents[2]
                     next if not rr.kind_of?(DFHack::ReactionReagentItemst)
@@ -671,9 +672,9 @@ class DwarfAI
                     df.world.items.other[rr.item_type].each { |i|
                         next if rr.mat_type != -1 and i.mat_type != rr.mat_type
                         next if rr.mat_index != -1 and i.mat_index != rr.mat_index
+                        next if not is_item_free(i)
                         next if rr.reaction_class != '' and (!(mi = df.decode_mat(i)) or !mi.material or !mi.material.reaction_class.include?(rr.reaction_class))
-			next if rr.metal_ore != -1 and i.mat_type == 0 and !df.world.raws.inorganics[i.mat_index].metal_ore.mat_index.include?(rr.metal_ore)
-			next if not is_item_free(i)
+                        next if rr.metal_ore != -1 and i.mat_type == 0 and !df.world.raws.inorganics[i.mat_index].metal_ore.mat_index.include?(rr.metal_ore)
                         if rr.item_type == :BAR
                             has += i.dimension
                         else
@@ -683,19 +684,20 @@ class DwarfAI
                     has /= rr.quantity
 
                     if has <= 0 and rr.item_type == :BAR and rr.mat_type == 0 and rr.mat_index != -1
-                        has = may_forge_bars(rr.mat_index)
+                        future = true
+                        # 'div' tries to ensure that eg making pig iron wont consume all available iron
+                        # and leave some to make steel
+                        has = may_forge_bars(rr.mat_index, div+1)
                         next if not has
                     end
 
-                    # only use up to available_reagents/3
-                    # this should handle cases like steel -> consume iron, and need pig_iron -> consume iron too
-                    can_reaction = has/3 if can_reaction > has/3
+                    can_reaction = has/div if can_reaction > has/div
 
                     true
                 }
                     next if can_reaction <= 0
 
-                    if not df.world.manager_orders.find { |mo|
+                    if not future and not df.world.manager_orders.find { |mo|
                         mo.job_type == :CustomReaction and mo.reaction_name == r.code
                     }
                         puts "AI: stocks: queue #{can_reaction} #{r.code}" if $DEBUG
