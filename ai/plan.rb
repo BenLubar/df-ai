@@ -422,6 +422,21 @@ class DwarfAI
             freecommonrooms(id, :barracks)
         end
 
+        def getpasture(pet_id)
+            pet_per_pasture = 8     # TODO tweak by appetite ?
+            if r = @rooms.find { |_r| _r.type == :pasture and _r.misc[:users].length < pet_per_pasture }
+                r.misc[:users] << pet_id
+                construct_room(r) if not r.misc[:bld_id]
+                r.dfbuilding
+            end
+        end
+
+        def freepasture(pet_id)
+            if r = @rooms.find { |_r| _r.type == :pasture and _r.misc[:users].include?(pet_id) }
+                r.misc[:users].delete pet_id
+            end
+        end
+
         def set_owner(r, uid)
             r.owner = uid
             if r.misc[:bld_id]
@@ -515,7 +530,7 @@ class DwarfAI
                 construct_cistern(r)
             when :cemetary
                 furnish_room(r)
-            when :infirmary
+            when :infirmary, :pasture
                 construct_activityzone(r)
             when :dininghall
                 if t = @rooms.find { |_r| _r.type == :dininghall and _r.misc[:temporary] } and not r.misc[:temporary]
@@ -2316,7 +2331,6 @@ class DwarfAI
 
         # scan for 11x11 flat areas with grass
         def setup_blueprint_pastures
-            count = 8
             @fort_entrance.maptile.spiral_search(df.world.map.x_count, 12, 12) { |_t|
                 next unless sf = surface_tile_at(_t)
                 grasstile = 0
@@ -2330,8 +2344,6 @@ class DwarfAI
                 } } and grasstile >= 70
                     @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
                     @rooms.last.misc[:users] = []
-                    count -= 1
-                    break if count <= 0
                 end
             }
         end

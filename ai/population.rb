@@ -12,13 +12,14 @@ class DwarfAI
             end
         end
 
-        attr_accessor :ai, :citizen, :military
+        attr_accessor :ai, :citizen, :military, :pet
         attr_accessor :labor_worker, :worker_labor
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
             @citizen = {}
             @military = {}
+            @pet = {}
             @update_counter = 0
         end
 
@@ -498,33 +499,57 @@ class DwarfAI
         end
             
         def update_pets
-            @pets ||= {}
-            np = @pets.dup
+            np = @pet.dup
             df.world.units.active.each { |u|
                 next if u.civ_id != df.ui.civ_id
                 next if u.race == df.ui.race_id
                 next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
 
-                if not @pets[u.id]
-                    @pets[u.id] = true
-                end
-                np.delete u.id
+                if @pet[u.id]
+                    if @pet[u.id].include?(:MILKABLE)
+                        # TODO check counters etc
+                    end
 
-                #u.race_tg.caste[u.caste].flags[:GRAZER]    :MILKABLE
-                #@ai.plan.assign_to_pasture(u.id)
-                #u.profession == :CHILD/:BABY
-                #u.refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => 42)
-                #civzone.assigned_creature << u.id
-                #u.flags2.slaughter = true
+                    np.delete u.id
+                    next
+                end
+
+                @pet[u.id] = []
+
+                cst = u.race_tg.caste[u.caste]
+
+                if cst.flags[:MILKABLE]
+                    @pet[u.id] << :MILKABLE
+                end
+                # TODO shear
+
+                if cst.flags[:GRAZER]
+                    @pet[u.id] << :GRAZER
+
+                    if bld = @ai.plan.getpasture(u.id)
+                        u.refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
+                        bld.assigned_creature << u.id
+			# TODO monitor grass levels
+                    else
+                        # TODO slaughter best candidate, keep this one
+                        # also avoid killing named pets
+                        u.flags2.slaughter = true
+                    end
+                end
+
+                if cst.flags[:LAYS_EGGS]
+                    # TODO
+                end
             }
 
             np.each_key { |id|
-                @pets.delete id
+                @ai.plan.freepasture(id)
+                @pet.delete id
             }
         end
 
         def status
-            "#{@citizen.length} citizen"
+            "#{@citizen.length} citizen, #{@pet.length} pets"
         end
     end
 end
