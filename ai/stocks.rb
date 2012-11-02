@@ -183,8 +183,8 @@ class DwarfAI
         def count_stocks_weapon
             ue = df.ui.main.fortress_entity.entity_raw.equipment
             [[:WEAPON, ue.digger_tg],
-             [:WEAPON, ue.weapon_tg]].map { |oidx, set|
-                set.to_a.map { |idef|
+             [:WEAPON, ue.weapon_tg]].map { |oidx, idefs|
+                idefs.to_a.map { |idef|
                     next if idef.flags[:TRAINING]
                     df.world.items.other[oidx].find_all { |i|
                         i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
@@ -201,8 +201,8 @@ class DwarfAI
              [:HELM, ue.helm_tg],
              [:PANTS, ue.pants_tg],
              [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].map { |oidx, set|
-                set.to_a.map { |idef|
+             [:SHOES, ue.shoes_tg]].map { |oidx, idefs|
+                idefs.to_a.map { |idef|
                     next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
                     df.world.items.other[oidx].find_all { |i|
                         i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
@@ -285,40 +285,41 @@ class DwarfAI
         end
 
         # forge weapons
-        # TODO wait and make steel?
         def queue_need_weapon
-            weapon_bars = Hash.new(0)
-            digger_bars = Hash.new(0)
+            bars = Hash.new(0)
             coal_bars = @count[:coal]
             coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
 
             df.world.items.other[:BAR].each { |i|
-                digger_bars[i.mat_index] += i.stack_size if is_metal_digger(i)
-                weapon_bars[i.mat_index] += i.stack_size if is_metal_weapon(i)
+                bars[i.mat_index] += i.stack_size if i.mat_type == 0
             }
 
             # rough account of already queued jobs consumption
             df.world.manager_orders.each { |mo|
-                if mo.mat_type == 0 and (digger_bars.has_key?(mo.mat_index) or weapon_bars.has_key?(mo.mat_index))
-                    digger_bars[mo.mat_index] -= 4*mo.amount_total
-                    weapon_bars[mo.mat_index] -= 4*mo.amount_total
+                if mo.mat_type == 0
+                    bars[mo.mat_index] -= 4*mo.amount_total
                     coal_bars -= mo.amount_total
                 end
             }
 
-            metal_pref = (digger_bars.keys | weapon_bars.keys).sort_by { |mi|
-                # should roughly order metals by effectiveness
+            @metal_digger_pref ||= (0...df.world.raws.inorganics.length).find_all { |mi|
+                df.world.raws.inorganics[mi].material.flags[:ITEMS_DIGGER]
+            }.sort_by { |mi|	# should roughly order metals by effectiveness
                 - df.world.raws.inorganics[mi].material.strength.yield[:IMPACT]
             }
 
-
-            return if metal_pref.empty?
+            @metal_weapon_pref ||= (0...df.world.raws.inorganics.length).find_all { |mi|
+                df.world.raws.inorganics[mi].material.flags[:ITEMS_WEAPON]
+            }.sort_by { |mi|
+                - df.world.raws.inorganics[mi].material.strength.yield[:IMPACT]
+            }
 
             may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            { ue.digger_tg => digger_bars, ue.weapon_tg => weapon_bars }.each { |set, bars|
-                set.each { |idef|
+            [[ue.digger_tg, @metal_digger_pref],
+             [ue.weapon_tg, @metal_weapon_pref]].each { |idefs, pref|
+                idefs.each { |idef|
                     next if idef.flags[:TRAINING]
                     cnt = Needed[:weapon]
                     cnt -= df.world.items.other[:WEAPON].find_all { |i|
@@ -332,36 +333,34 @@ class DwarfAI
                     need_bars = idef.material_size / 3  # need this many bars to forge one idef item
                     need_bars = 1 if need_bars < 1
 
-                    metal_pref.each { |mi|
-                        break if bars[mi] < need_bars and may_forge_cache[mi]   # XXX should check only is_metal_digger/weapon
+                    pref.each { |mi|
+                        break if bars[mi] < need_bars and may_forge_cache[mi]
                         nw = bars[mi] / need_bars
                         nw = coal_bars if nw > coal_bars
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
                         ai.plan.ensure_workshop(:MetalsmithsForge, false)
-                        puts "AI: stocks: queue #{amount} MakeWeapon" if $DEBUG
+                        puts "AI: stocks: queue #{nw} MakeWeapon #{idef.id}" if $DEBUG
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
-                        weapon_bars[mi] -= nw * need_bars
-                        digger_bars[mi] -= nw * need_bars
+                        bars[mi] -= nw * need_bars
                         coal_bars -= nw
                         cnt -= nw
-                        break if may_forge_cache[mi]
+                        break if may_forge_cache[mi]	# dont use lesser metal
                     }
                 }
             }
         end
 
         # forge armor pieces
-        # TODO wait and make steel?
         def queue_need_armor
             bars = Hash.new(0)
             coal_bars = @count[:coal]
             coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
 
             df.world.items.other[:BAR].each { |i|
-                bars[i.mat_index] += i.stack_size if is_metal_armor(i)
+                bars[i.mat_index] += i.stack_size if i.mat_type == 0
             }
 
             # rough account of already queued jobs consumption
@@ -372,12 +371,11 @@ class DwarfAI
                 end
             }
 
-            metal_pref = bars.keys.sort_by { |mi|
-                # should roughly order metals by effectiveness
+            @metal_armor_pref ||= (0...df.world.raws.inorganics.length).find_all { |mi|
+                df.world.raws.inorganics[mi].material.flags[:ITEMS_ARMOR]
+            }.sort_by { |mi|
                 - df.world.raws.inorganics[mi].material.strength.yield[:IMPACT]
             }
-
-            return if metal_pref.empty?
 
             may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
 
@@ -387,8 +385,8 @@ class DwarfAI
              [:HELM, ue.helm_tg],
              [:PANTS, ue.pants_tg],
              [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].each { |oidx, set|
-                set.each { |idef|
+             [:SHOES, ue.shoes_tg]].each { |oidx, idefs|
+                idefs.each { |idef|
                     next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
 
                     job = DFHack::JobType::Item.index(oidx)     # :GLOVES => :MakeGloves
@@ -405,7 +403,7 @@ class DwarfAI
                     need_bars = idef.material_size / 3  # need this many bars to forge one idef item
                     need_bars = 1 if need_bars < 1
 
-                    metal_pref.each { |mi|
+                    @metal_armor_pref.each { |mi|
                         break if bars[mi] < need_bars and may_forge_cache[mi]
                         nw = bars[mi] / need_bars
                         nw = coal_bars if nw > coal_bars
@@ -413,7 +411,7 @@ class DwarfAI
                         next if nw <= 0
 
                         ai.plan.ensure_workshop(:MetalsmithsForge, false)
-                        puts "AI: stocks: queue #{amount} #{job}" if $DEBUG
+                        puts "AI: stocks: queue #{nw} #{job} #{idef.id}" if $DEBUG
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -618,21 +616,6 @@ class DwarfAI
             i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @metal_ore_cache[i.mat_index]
         end
 
-        def is_metal_digger(i)
-            @metal_digger_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_DIGGER] }
-            i and i.mat_type == 0 and @metal_digger_cache[i.mat_index]
-        end
-
-        def is_metal_weapon(i)
-            @metal_weapon_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_WEAPON] }
-            i and i.mat_type == 0 and @metal_weapon_cache[i.mat_index]
-        end
-
-        def is_metal_armor(i)
-            @metal_armor_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.flags[:ITEMS_ARMOR] }
-            i and i.mat_type == 0 and @metal_armor_cache[i.mat_index]
-        end
-
         def is_raw_coke(i)
             # mat_index => custom reaction name
             @raw_coke_cache ||= df.world.raws.reactions.inject({}) { |h, r|
@@ -662,12 +645,11 @@ class DwarfAI
             }
 
             can_melt = df.world.items.other[:BOULDER].find_all { |i|
-                is_metal_ore(i) and moc[i.mat_index]
+                is_metal_ore(i) and moc[i.mat_index] and is_item_free(i)
             }.length
 
             if can_melt > WatchStock[:metal_ore]
-                # XXX is 150 hardcoded?
-                return 150*(can_melt - WatchStock[:metal_ore])
+                return 4*150*(can_melt - WatchStock[:metal_ore])
             end
 
 
@@ -676,7 +658,7 @@ class DwarfAI
                 # XXX choose best reaction from all reactions
                 prod_mult = nil
                 next unless r.products.find { |rp|
-                    prod_mult = rp.quantity if rp.kind_of?(DFHack::ReactionProductItemst) and
+                    prod_mult = rp.product_dimension if rp.kind_of?(DFHack::ReactionProductItemst) and
                     rp.item_type == :BAR and rp.mat_type == 0 and rp.mat_index == mat_index
                 }
 
@@ -690,6 +672,8 @@ class DwarfAI
                         next if rr.mat_type != -1 and i.mat_type != rr.mat_type
                         next if rr.mat_index != -1 and i.mat_index != rr.mat_index
                         next if rr.reaction_class != '' and (!(mi = df.decode_mat(i)) or !mi.material or !mi.material.reaction_class.include?(rr.reaction_class))
+			next if rr.metal_ore != -1 and i.mat_type == 0 and !df.world.raws.inorganics[i.mat_index].metal_ore.mat_index.include?(rr.metal_ore)
+			next if not is_item_free(i)
                         if rr.item_type == :BAR
                             has += i.dimension
                         else
@@ -706,6 +690,8 @@ class DwarfAI
                     # only use up to available_reagents/3
                     # this should handle cases like steel -> consume iron, and need pig_iron -> consume iron too
                     can_reaction = has/3 if can_reaction > has/3
+
+                    true
                 }
                     next if can_reaction <= 0
 
@@ -720,6 +706,7 @@ class DwarfAI
                     return prod_mult * can_reaction
                 end
             }
+            nil
         end
     end
 end
