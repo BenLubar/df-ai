@@ -122,7 +122,7 @@ class DwarfAI
                 while ws = @important_workshops.shift
                     if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype == ws }
                         wantdig(r)
-			return if digging?
+                        return if digging?
                     end
                 end
             end
@@ -926,10 +926,12 @@ class DwarfAI
                     bld.settings.flags.goods = true
                     s = bld.settings.finished_goods
                     150.times { |i| s.type[i] = true }  # 112 (== refuse)
+                    bld.max_bins = r.w*r.h
                 when :ammo
                     bld.settings.flags.ammo = true
                     s = bld.settings.ammo
                     10.times { |i| s.type[i] = true }   # 3
+                    bld.max_bins = r.w*r.h
                 when :weapons
                     bld.settings.flags.weapons = true
                     s = bld.settings.weapons
@@ -937,6 +939,7 @@ class DwarfAI
                     20.times { |i| s.trapcomp_type[i] = true }  # 5
                     s.usable = true
                     s.unusable = true
+                    bld.max_bins = r.w*r.h
                 when :armor
                     bld.settings.flags.armor = true
                     s = bld.settings.armor
@@ -948,8 +951,8 @@ class DwarfAI
                     20.times { |i| s.shield[i] = true } # 9
                     s.usable = true
                     s.unusable = true
+                    bld.max_bins = r.w*r.h
                 end
-                bld.max_bins = r.w*r.h
                 30.times { |i| s.other_mats[i] = true }    # 10
                 df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
                 s.quality_core.map! { true }
