@@ -41,6 +41,7 @@ class DwarfAI
             when 2; update_nobles
             when 3; update_jobs
             when 4; update_military
+            when 5; update_pets
             end
             autolabors
         end
@@ -496,6 +497,20 @@ class DwarfAI
             assign
         end
             
+        def update_pets
+            df.world.units.all { |u|
+                next if u.civ_id != df.ui.civ_id
+                next if u.race == df.ui.race_id
+                next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
+
+                #u.race_tg.caste[u.caste].flags[:GRAZER]    :MILKABLE
+                #u.profession == :CHILD/:BABY
+                #u.refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => 42)
+                #civzone.assigned_creature << u.id
+                #u.flags2.slaughter = true
+            }
+        end
+
         def status
             "#{@citizen.length} citizen"
         end
