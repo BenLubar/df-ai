@@ -302,9 +302,9 @@ class DwarfAI
                 end
             end
 
-            [:weaponrack, :armorstand, :bed].map { |it|
+            [:weaponrack, :armorstand, :bed, :cabinet, :chest].map { |it|
                 r.layout.find { |f| f[:item] == it and f[:users].include?(id) } ||
-                r.layout.find { |f| f[:item] == it and f[:users].empty? }
+                r.layout.find { |f| f[:item] == it and f[:users].length < (it == :weaponrack ? 4 : 1) }
             }.compact.each { |f|
                 f[:users] << id unless f[:users].include?(id)
                 f.delete :ignore
@@ -2196,11 +2196,13 @@ class DwarfAI
                     barracks.layout << {:item => :door, :x => 3, :y => (ry > 0 ? -1 : 8)}
                     8.times { |dy|
                         dy = 7-dy if ry < 0
-                        barracks.layout << {:item => :weaponrack, :x => 4, :y => dy, :ignore => true, :users => []}
                         barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
                         barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
+                        barracks.layout << {:item => :cabinet, :x => 0, :y => dy, :ignore => true, :users => []}
+                        barracks.layout << {:item => :chest, :x => 1, :y => dy, :ignore => true, :users => []}
                     }
-                    barracks.layout.find { |f| f[:item] == :weaponrack }[:makeroom] = true
+                    barracks.layout << {:item => :weaponrack, :x => 4, :y => (ry>0 ? 7 : 0), :makeroom => true, :users => []}
+                    barracks.layout << {:item => :weaponrack, :x => 2, :y => (ry>0 ? 7 : 0), :ignore => true, :users => []}
                     barracks.accesspath = [cor]
                     @rooms << barracks
                 }
