@@ -30,6 +30,7 @@ class DwarfAI
             puts 'AI: visitors'
         when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
             puts 'AI: mood'
+        when :FEATURE_DISCOVERY, :STRUCK_DEEP_METAL; puts 'AI: dig dig dig'
         else
             if announce.type.to_s =~ /^AMBUSH/
                 puts 'AI: an ambush!'
