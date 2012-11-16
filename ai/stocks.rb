@@ -605,10 +605,10 @@ class DwarfAI
             !i.flags.removed and    # deleted object
             !i.flags.forbid and     # user forbidden (or dumped)
             !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
-            (!i.flags.container or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
-            (!i.flags.in_inventory or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
+            (!i.flags.container or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
+            (!i.flags.in_inventory or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
              ii = ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } }) and
-            (!i.flags.in_building or !i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
+            (!i.flags.in_building or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
              ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
         end
 

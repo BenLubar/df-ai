@@ -527,7 +527,7 @@ class DwarfAI
                     @pet[u.id] << :GRAZER
 
                     if bld = @ai.plan.getpasture(u.id)
-                        u.refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
+                        u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
                         bld.assigned_creature << u.id
 			# TODO monitor grass levels
                     else

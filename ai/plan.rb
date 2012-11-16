@@ -620,7 +620,7 @@ class DwarfAI
             } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
                 i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
             } and bucket = df.world.items.other[:BUCKET].find { |i|
-                i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
             } and chain = df.world.items.other[:CHAIN].find { |i|
                 i.kind_of?(DFHack::ItemChainst) and df.item_isfree(i)
             }
@@ -712,9 +712,9 @@ class DwarfAI
             when :Dyers
                 # barrel, bucket
                 if barrel = df.world.items.other[:BARREL].find { |i|
-                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -728,9 +728,9 @@ class DwarfAI
                 if block = df.world.items.other[:BLOCKS].find { |i|
                         i.kind_of?(DFHack::ItemBlocksst) and df.item_isfree(i)
                 } and barrel = df.world.items.other[:BARREL].find { |i|
-                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBarrelst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 }
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
@@ -742,7 +742,7 @@ class DwarfAI
             when :SoapMaker
                 # bucket, boulder
                 if bucket = df.world.items.other[:BUCKET].find { |i|
-                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.itemrefs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
+                        i.kind_of?(DFHack::ItemBucketst) and df.item_isfree(i) and not i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }
                 } and bould = df.world.items.other[:BOULDER].find { |i|
                         i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                 }
@@ -1472,7 +1472,7 @@ class DwarfAI
 
             job = DFHack::Job.cpp_new
             job.job_type = :LinkBuildingToTrigger
-            job.references << reflink << refhold
+            job.general_refs << reflink << refhold
             bld.jobs << job
             df.job_link job
 
@@ -1491,7 +1491,7 @@ class DwarfAI
             job = DFHack::Job.cpp_new
             job.job_type = :PullLever
             job.pos = [bld.x1, bld.y1, bld.z]
-            job.references << ref
+            job.general_refs << ref
             bld.jobs << job
             df.job_link job
         end
