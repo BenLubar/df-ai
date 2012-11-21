@@ -16,6 +16,16 @@ class DwarfAI
     end
 
     def handle_pause_event(announce)
+        # unsplit announce text
+        fulltext = announce.text
+        idx = df.world.status.announcements.index(announce)
+        while announce.flags.continuation
+            announce = df.world.status.announcements[idx -= 1]
+            break if not announce
+            fulltext = announce.text + ' ' + fulltext
+        end
+        puts " #{df.cur_year}:#{df.cur_year_tick} #{fulltext.inspect}"
+
         case announce.type
         when :MEGABEAST_ARRIVAL; puts 'AI: uh oh, megabeast...'
         when :BERSERK_CITIZEN; puts 'AI: berserk'
@@ -31,6 +41,8 @@ class DwarfAI
         when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
             puts 'AI: mood'
         when :FEATURE_DISCOVERY, :STRUCK_DEEP_METAL; puts 'AI: dig dig dig'
+        when :TRAINING_FULL_REVERSION; puts 'AI: born to be wild'
+        when :NAMED_ARTIFACT; puts 'AI: hallo'
         else
             if announce.type.to_s =~ /^AMBUSH/
                 puts 'AI: an ambush!'
@@ -39,16 +51,6 @@ class DwarfAI
                 return
             end
         end
-
-        # unsplit announce text
-        fulltext = announce.text
-        idx = df.world.status.announcements.index(announce)
-        while announce.flags.continuation
-            announce = df.world.status.announcements[idx -= 1]
-            break if not announce
-            fulltext = announce.text + ' ' + fulltext
-        end
-        puts " #{df.cur_year}:#{df.cur_year_tick} #{fulltext.inspect}"
 
         df.pause_state = false
     end

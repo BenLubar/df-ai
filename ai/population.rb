@@ -288,11 +288,9 @@ class DwarfAI
             }
 
             # if one has too many labors, free him up (one per round)
-            if cid = @worker_labor.keys.find { |id|
-                lim = 4*LaborList.length/workers.length
-                lim = 4 if lim < 4
-                @worker_labor[id].length > lim
-            }
+            lim = 4*LaborList.length/workers.length
+            lim = 4 if lim < 4
+            if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
                 c = citizen[cid]
                 u = c.dfunit
                 ul = u.status.labors
@@ -344,7 +342,6 @@ class DwarfAI
             end
 
             # autolabor!
-            # TODO chief med dwarf -> diagnose
             LaborList.each { |lb|
                 min = labormin[lb]
                 max = labormax[lb]
@@ -529,7 +526,7 @@ class DwarfAI
                     if bld = @ai.plan.getpasture(u.id)
                         u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
                         bld.assigned_creature << u.id
-			# TODO monitor grass levels
+                        # TODO monitor grass levels
                     else
                         # TODO slaughter best candidate, keep this one
                         # also avoid killing named pets
