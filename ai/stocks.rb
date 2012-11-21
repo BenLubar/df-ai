@@ -115,7 +115,7 @@ class DwarfAI
             when :logs
                 df.world.items.other[:WOOD]
             when :roughgem
-                df.world.items.other[:ROUGH]
+                df.world.items.other[:ROUGH].find_all { |i| i.mat_type == 0 }
             when :metal_ore
                 df.world.items.other[:BOULDER].find_all { |i| is_metal_ore(i) }
             when :raw_coke
@@ -497,7 +497,7 @@ class DwarfAI
         def queue_use_gems(amount)
             return if df.world.manager_orders.find { |mo| mo.job_type == :CutGems }
 
-            i = df.world.items.other[:ROUGH].find { |_i| is_item_free(_i) }
+            i = df.world.items.other[:ROUGH].find { |_i| _i.mat_type == 0 and is_item_free(_i) }
             this_amount = df.world.items.other[:ROUGH].find_all { |_i|
                 _i.mat_type == i.mat_type and _i.mat_index == i.mat_index and is_item_free(_i)
             }.length
