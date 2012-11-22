@@ -340,7 +340,12 @@ class DwarfAI
         end
 
         def getcoffin(id)
-            if r = @rooms.find { |_r| _r.type == :cemetary and _r.layout.find { |f| f[:users] and f[:users].length < 1 } }
+            if r = @rooms.find { |_r|
+                    _r.type == :cemetary and _r.layout.find { |f|
+                        return if f[:users] == [id]
+                        f[:users] and f[:users].length < 1
+                    }
+            }
                 wantdig(r)
                 coffin = r.layout.find { |f| f[:item] == :coffin and f[:users].length < 1 }
                 coffin.delete :ignore
@@ -423,7 +428,7 @@ class DwarfAI
         end
 
         def getpasture(pet_id)
-            pet_per_pasture = 8     # TODO tweak by appetite ?
+            pet_per_pasture = 3     # TODO tweak by appetite ?
             if r = @rooms.find { |_r| _r.type == :pasture and _r.misc[:users].length < pet_per_pasture }
                 r.misc[:users] << pet_id
                 construct_room(r) if not r.misc[:bld_id]

@@ -43,6 +43,7 @@ class DwarfAI
             when 3; update_jobs
             when 4; update_military
             when 5; update_pets
+            when 6; update_deads
             end
             autolabors
         end
@@ -78,6 +79,25 @@ class DwarfAI
         def update_jobs
             df.world.job_list.each { |j|
                 j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
+            }
+        end
+
+        # ensure everyone the dwarves will want to bury has a coffin
+        # TODO engrave slabs for ghosts
+        def update_deads
+            has_coffin = {}
+            @ai.plan.rooms.each { |r|
+                next if r.type != :cemetary
+                r.layout.each { |f|
+                    f[:users].to_a.each { |id| has_coffin[id] = true }
+                }
+            }
+
+            df.world.units.active.each { |u|
+                next if not u.flags1.dead
+                next if u.race != df.ui.race_id # and !df.ui.pets.find { |pi| pi.pet_id == u.id }
+                next if has_coffin[u.id]
+                @ai.plan.getcoffin(u.id)
             }
         end
 
