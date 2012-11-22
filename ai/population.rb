@@ -288,7 +288,7 @@ class DwarfAI
             }
 
             # if one has too many labors, free him up (one per round)
-            lim = 4*LaborList.length/workers.length
+            lim = 4*LaborList.length/[workers.length, 1].max
             lim = 4 if lim < 4
             if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
                 c = citizen[cid]
