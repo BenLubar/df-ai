@@ -161,6 +161,10 @@ class DwarfAI
                     # corpsepieces uses this instead of i.stack_size
                     s + i.material_amount[:Bone]
                 }
+            when :bonebolts
+                df.world.items.other[:AMMO].find_all { |i|
+                    i.skill_used == :BONECARVE
+                }
             when :cloth_nodye
                 df.world.items.other[:CLOTH].find_all { |i|
                     !i.improvements.find { |imp| imp.dye.mat_type != -1 }
@@ -465,6 +469,8 @@ class DwarfAI
                     amount = need_crossbow if amount > need_crossbow
                 else
                     reaction = :MakeBoneBolt
+                    stock = count_stocks(:bonebolts)
+                    amount = 1000 - stock if amount > 1000 - stock
                     amount /= 2 if amount > 10
                     amount /= 2 if amount > 4
                 end
