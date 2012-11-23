@@ -15,8 +15,8 @@ class DwarfAI
         Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
             :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 4,
-            :weapon => 1, :armor => 1,
+            :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
+            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3,
         }
         NeededPerDwarf = { :food => 1, :drink => 2 }
 
@@ -152,11 +152,11 @@ class DwarfAI
             when :skull
                 # XXX exclude dwarf skulls ?
                 df.world.items.other[:CORPSEPIECE].find_all { |i|
-                    i.corpse_flags.skull
+                    i.corpse_flags.skull and not i.corpse_flags.unbutchered
                 }
             when :bone
                 return df.world.items.other[:CORPSEPIECE].find_all { |i|
-                    i.corpse_flags.bone
+                    i.corpse_flags.bone and not i.corpse_flags.unbutchered
                 }.inject(0) { |s, i|
                     # corpsepieces uses this instead of i.stack_size
                     s + i.material_amount[:Bone]
@@ -171,10 +171,19 @@ class DwarfAI
                 }
             when :mechanism
                 df.world.items.other[:TRAPPARTS]
+            when :cage
+                df.world.items.other[:CAGE].reject { |i|
+                    i.general_refs.grep(DFHack::GeneralRefContainsUnitst).first or
+                    i.general_refs.grep(DFHack::GeneralRefContainsItemst).first or
+		    (ref = i.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first and
+		     ref.building_tg.kind_of?(DFHack::BuildingTrapst))
+                }
             when :weapon
                 return count_stocks_weapon
             when :armor
                 return count_stocks_armor
+            when :clothes
+                return count_stocks_clothes
             else
                 return Needed[k] ? 1000000 : -1
 
@@ -215,18 +224,23 @@ class DwarfAI
             }.flatten.min
         end
 
+        def count_stocks_clothes
+            return 40
+        end
+
 
         # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
             case what
-            when :soap, :mechanism
+            when :soap
                 return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status == :plan }
 
             when :weapon
                 return queue_need_weapon
-
             when :armor
                 return queue_need_armor
+            when :clothes
+                return queue_need_clothes
 
             when :food
                 # XXX fish/hunt/cook ?
@@ -427,6 +441,9 @@ class DwarfAI
             }
         end
 
+        def queue_need_clothes
+        end
+
 
         # make it so the stocks of 'what' decrease by 'amount'
         def queue_use(what, amount)
@@ -449,6 +466,7 @@ class DwarfAI
                     :dimplecup => :MillPlants,
                     :quarrybush => :ProcessPlantsBag,
                 }[what]
+                amount = 30 if amount > 30
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
@@ -470,6 +488,7 @@ class DwarfAI
                 else
                     reaction = :MakeBoneBolt
                     stock = count_stocks(:bonebolts)
+                    amount = 30 if amount > 30
                     amount = 1000 - stock if amount > 1000 - stock
                     amount /= 2 if amount > 10
                     amount /= 2 if amount > 4
@@ -478,6 +497,7 @@ class DwarfAI
             when :cloth_nodye
                 reaction = :DyeCloth
                 input = :dimple_dye
+                amount = 30 if amount > 30
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
 
