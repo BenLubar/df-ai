@@ -117,7 +117,7 @@ class DwarfAI
                 end
             }
 
-            @important_workshops ||= [:Farmers, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Quern, :Bowyers, :WoodFurnace, :Smelter, :Mechanics]
+            @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace]
             if @important_workshops.first and not digging?
                 while ws = @important_workshops.shift
                     if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype == ws }
@@ -136,8 +136,8 @@ class DwarfAI
                 freebed = @spare_bedroom
                 if r =
                        @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
+                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] } ||
@@ -573,6 +573,7 @@ class DwarfAI
             :bag => :MakeBag,
             :rockblock => :ConstructBlocks,
             :mechanism => :ConstructMechanisms,
+            :cage => :MakeCage,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
 
@@ -1195,8 +1196,9 @@ class DwarfAI
         end
 
         def construct_cistern(r)
-            @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
+            # ensure levers are built before floodgates (minimize risk/duration of locked dwarves)
             @rooms.each { |_r| wantdig(_r) if _r.type == :well }
+            @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
 
             furnish_room(r)
             smooth_cistern(r)
@@ -1625,7 +1627,7 @@ class DwarfAI
             :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
             :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
-            :ConstructCrutch => :wood, :ConstructSplint => :wood,
+            :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
@@ -1715,35 +1717,15 @@ class DwarfAI
             case order
             when :ProcessPlants
                 ensure_workshop(:Farmers)
-                ensure_workshop(:Loom, false)
-                ensure_workshop(:Clothiers, false)
-            when :MillPlants
-                ensure_workshop(:Quern)
-                ensure_workshop(:Dyers, false)
             when :ConstructTractionBench
                 add_manager_order(:ConstructTable, amount, maxmerge)
                 add_manager_order(:MakeRope, amount, maxmerge)
             when :BrewDrink
                 ensure_workshop(:Still)
             when :MakeSoap
-                ensure_workshop(:Kitchen, false)   # tallow
-                ensure_workshop(:Butchers, false)
                 add_manager_order(:MakeLye, amount+1, maxmerge)
-                ensure_workshop(:SoapMaker, false)
-                ensure_workshop(:Craftsdwarfs, false)   # offtopic, just dont build it too late
             when :MakeLye
                 add_manager_order(:MakeAsh, amount+1, maxmerge)
-                ensure_workshop(:Ashery, false)
-            when :MakeAsh, :MakeCharcoal
-                ensure_workshop(:WoodFurnace, false)
-            when :MakeTotem
-                ensure_workshop(:Craftsdwarfs, false)
-            when :MakeBoneBolt
-                ensure_workshop(:Craftsdwarfs, false)
-            when :MakeBoneCrossbow
-                ensure_workshop(:Bowyers, false)
-            when :ConstructMechanisms
-                ensure_workshop(:Mechanics)
             end
         end
 
@@ -2512,12 +2494,14 @@ class DwarfAI
                 end
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
                     if t = df.map_tile_at(x, y, z)
+                        next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
                         t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|
                     if t = df.map_tile_at(x1+d[:x].to_i, y1+d[:y].to_i, z1+d[:z].to_i)
+                        next if t.tilemat == :CONSTRUCTION
                         dm = dig_mode(t.x, t.y, t.z)
                         case d[:item]
                         when :pillar
