@@ -35,7 +35,7 @@ class DwarfAI
         end
 
         def onupdate_register
-            @onupdate_handle = df.onupdate_register(240, 20) { update }
+            @onupdate_handle = df.onupdate_register('df-ai plan', 240, 20) { update }
         end
 
         def onupdate_unregister
@@ -87,7 +87,7 @@ class DwarfAI
                 end
             }
 
-            df.onupdate_register_once(12, 12) { update ; true } if want_reupdate
+            df.onupdate_register_once('df-ai plan reupdate', 12, 12) { update ; true } if want_reupdate
         end
 
         def digging?
@@ -181,7 +181,7 @@ class DwarfAI
                 tab << r
             }
 
-            df.onupdate_register_once(4) {
+            df.onupdate_register_once('df-ai plan idleidle', 4) {
                 if r = tab.shift
                     smooth_room(r)
                     r.layout.each { |f| build_furniture(f, true) }
@@ -204,7 +204,7 @@ class DwarfAI
             @checkroom_idx ||= 0
             ncheck = 4
             rl = @rooms.find_all { |r| r.status != :plan } + @corridors.find_all { |r| r.status != :plan }
-            rl[@checkroom_idx % rl.length, ncheck].each { |r| checkroom(r) }
+            rl[@checkroom_idx % (rl.length+1), ncheck].each { |r| checkroom(r) }
 
             @checkroom_idx += ncheck
             if @checkroom_idx >= rl.length
@@ -683,7 +683,7 @@ class DwarfAI
                     # population level may warrant a manager to manage work orders, and the AI need him for everything
                     try_count = 0
                     mo = df.world.manager_orders.find { |_mo| _mo.is_validated == 0 }
-                    df.onupdate_register_once(10) {
+		    df.onupdate_register_once('df-ai plan ensure_workshop manager', 10) {
                         try_count += 1
                         if !mo or mo.is_validated == 1
                             true
@@ -910,7 +910,7 @@ class DwarfAI
 
                 add_manager_order(:MakePlasterPowder, 15)
 
-                df.onupdate_register_once(2400, 8) {
+                df.onupdate_register_once('df-ai plan infirmary plasterpowder', 2400, 8) {
                     if find_manager_orders(:MakePlasterPowder).empty?
                         df.building_deconstruct(bld)
                         true

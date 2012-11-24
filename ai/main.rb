@@ -98,7 +98,7 @@ class DwarfAI
         @pop.onupdate_register
         @plan.onupdate_register
         @stocks.onupdate_register
-        @status_onupdate = df.onupdate_register(3*28*1200, 3*28*1200) { puts status }
+        @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { puts status }
 
         df.onstatechange_register_once { |st|
             case st

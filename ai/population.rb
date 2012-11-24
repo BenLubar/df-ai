@@ -28,7 +28,7 @@ class DwarfAI
         end
 
         def onupdate_register
-            @onupdate_handle = df.onupdate_register(360, 10) { update }
+            @onupdate_handle = df.onupdate_register('df-ai pop', 360, 10) { update }
         end
 
         def onupdate_unregister
@@ -37,6 +37,7 @@ class DwarfAI
 
         def update
             @update_counter += 1
+            @onupdate_handle.description = "df-ai pop #{@update_counter % 10}"
             case @update_counter % 10
             when 1; update_citizenlist
             when 2; update_nobles

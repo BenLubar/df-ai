@@ -42,7 +42,7 @@ class DwarfAI
 
         def onupdate_register
             reset
-            @onupdate_handle = df.onupdate_register(2400, 30) { update }
+            @onupdate_handle = df.onupdate_register('df-ai stocks', 2400, 30) { update }
         end
 
         def onupdate_unregister
@@ -61,16 +61,16 @@ class DwarfAI
             puts 'AI: updating stocks' if $DEBUG
 
             # do stocks accounting 'in the background' (ie one bit at a time)
-            df.onupdate_register_once(8) {
+            cb_bg = df.onupdate_register('df-ai stocks bg', 8) {
                 if key = @updating_count.shift
+                    cb_bg.description = "df-ai stocks bg count #{key}"
                     @count[key] = count_stocks(key)
-                    false
                 elsif key = @updating.shift
+                    cb_bg.description = "df-ai stocks bg act #{key}"
                     act(key)
-                    false
                 else
                     # finished, dismiss callback
-                    true
+                    df.onupdate_unregister(cb_bg)
                 end
             }
         end
@@ -175,8 +175,8 @@ class DwarfAI
                 df.world.items.other[:CAGE].reject { |i|
                     i.general_refs.grep(DFHack::GeneralRefContainsUnitst).first or
                     i.general_refs.grep(DFHack::GeneralRefContainsItemst).first or
-		    (ref = i.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first and
-		     ref.building_tg.kind_of?(DFHack::BuildingTrapst))
+                    (ref = i.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first and
+                     ref.building_tg.kind_of?(DFHack::BuildingTrapst))
                 }
             when :weapon
                 return count_stocks_weapon

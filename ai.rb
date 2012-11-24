@@ -11,7 +11,7 @@ when 'start'
 
     $dwarfAI = DwarfAI.new
 
-    df.onupdate_register_once {
+    df.onupdate_register_once('df-ai start') {
         if df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest'
             begin
                 $dwarfAI.onupdate_register
