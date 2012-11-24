@@ -19,6 +19,7 @@ class DwarfAI
             @dwarves_per_farmtile = 1.5   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
             @spare_bedroom = 3  # dig this much free bedroom in advance when idle
+            categorize_all
         end
 
         def debug(str)
@@ -27,6 +28,7 @@ class DwarfAI
 
         def startup
             setup_blueprint
+            categorize_all
 
             ensure_workshop(:Masons)
             ensure_workshop(:Carpenters)
@@ -120,7 +122,6 @@ class DwarfAI
         def del_citizen(uid)
             freecommonrooms(uid)
             freebedroom(uid)
-            getcoffin(uid) #if u = df.unit_find(uid) and u.flags1.dead # bury berserks (future dead) too
         end
         
         def checkidle
@@ -133,7 +134,7 @@ class DwarfAI
             @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace]
             if @important_workshops.first and not digging?
                 while ws = @important_workshops.shift
-                    if r = @rooms.find { |_r| _r.type == :workshop and _r.subtype == ws }
+                    if r = find_rooms(:workshop) { |_r| _r.subtype == ws }
                         wantdig(r)
                         return if digging?
                     end
@@ -148,16 +149,16 @@ class DwarfAI
             if not digging? and manager_backlog < @manager_maxbacklog
                 freebed = @spare_bedroom
                 if r =
-                       @rooms.find { |_r| _r.type == :infirmary and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :workshop and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :cistern and _r.subtype == :well and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :stockpile and not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :bedroom and not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
-                       @rooms.find { |_r| _r.type == :bedroom and _r.status == :finished and not _r.misc[:furnished] } ||
-                       ifplan[@rooms.find { |_r| _r.type == :cemetary   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       ifplan[@rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       ifplan[@rooms.find { |_r| _r.type == :barracks   and _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       @rooms.find { |_r| _r.type == :stockpile and _r.subtype and _r.status == :plan }
+                       find_room(:infirmary) { |_r| _r.status == :plan } ||
+                       find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
+                       find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
+                       find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                       find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
+                       find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
+                       ifplan[find_room(:cemetary)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                       find_room(:stockpile) { |_r| _r.subtype and _r.status == :plan }
                     wantdig(r)
                     if r.status == :finished
                         r.misc[:furnished] = true
@@ -170,7 +171,7 @@ class DwarfAI
                     idleidle
                     true
                 end
-            elsif manager_backlog >= @manager_maxbacklog and r = @rooms.find { |_r| _r.type == :workshop and not _r.subtype and _r.status == :plan }
+            elsif manager_backlog >= @manager_maxbacklog and r = find_room(:workshop) { |_r| not _r.subtype and _r.status == :plan }
                 r.misc[:spare] = true
                 r.subtype = :Masons # TODO repurpose by parsing manager_orders
                 digroom(r)
@@ -209,7 +210,7 @@ class DwarfAI
             }
 
             debug 'unforbid dumped items'
-            gpit = @rooms.find { |r| r.type == :garbagepit }
+            gpit = find_room(:garbagepit)
             df.map_tile_at(gpit.x, gpit.y, gpit.z-1).mapblock.items_tg.each { |i| i.flags.forbid = false }
         end
 
@@ -257,8 +258,8 @@ class DwarfAI
         end
 
         def getbedroom(id)
-            if r = @rooms.find { |_r| _r.type == :bedroom and (not _r.owner or _r.owner == id) } ||
-                   @rooms.find { |_r| _r.type == :bedroom and _r.status == :plan and not _r.misc[:queue_dig] }
+            if r = find_room(:bedroom) { |_r| not _r.owner or _r.owner == id } ||
+                   find_room(:bedroom) { |_r| _r.status == :plan and not _r.misc[:queue_dig] }
                 wantdig(r)
                 set_owner(r, id)
                 df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
@@ -271,16 +272,16 @@ class DwarfAI
         end
 
         def getdiningroom(id)
-            if r = @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :food and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+            if r = find_room(:farmplot) { |_r| _r.subtype == :food and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
                 wantdig(r)
                 r.misc[:users] << id
             end
-            if r = @rooms.find { |_r| _r.type == :farmplot and _r.subtype == :cloth and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+            if r = find_room(:farmplot) { |_r| _r.subtype == :cloth and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
                 wantdig(r)
                 r.misc[:users] << id
             end
 
-            if r = @rooms.find { |_r| _r.type == :dininghall and _r.layout.find { |f| f[:users] and f[:users].length < @dwarves_per_table } }
+            if r = find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].length < @dwarves_per_table } }
                 wantdig(r)
                 table = r.layout.find { |f| f[:item] == :table and f[:users].length < @dwarves_per_table }
                 chair = r.layout.find { |f| f[:item] == :chair and f[:users].length < @dwarves_per_table }
@@ -300,8 +301,8 @@ class DwarfAI
             squad_id = u.military.squad_id
             return if squad_id == -1
 
-            if not r = @rooms.find { |_r| _r.type == :barracks and _r.misc[:squad_id] == squad_id }
-                r = @rooms.find { |_r| _r.type == :barracks and not _r.misc[:squad_id] }
+            if not r = find_room(:barracks) { |_r| _r.misc[:squad_id] == squad_id }
+                r = find_room(:barracks) { |_r| not _r.misc[:squad_id] }
                 if not r
                     puts "AI: no free barracks"
                     return
@@ -353,8 +354,8 @@ class DwarfAI
         end
 
         def getcoffin(id)
-            if r = @rooms.find { |_r|
-                    _r.type == :cemetary and _r.layout.find { |f|
+            if r = find_room(:cemetary) { |_r|
+                    _r.layout.find { |f|
                         return if f[:users] == [id]
                         f[:users] and f[:users].length < 1
                     }
@@ -371,7 +372,7 @@ class DwarfAI
 
         # free / deconstruct the bedroom assigned to this dwarf
         def freebedroom(id)
-            if r = @rooms.find { |_r| _r.type == :bedroom and _r.owner == id }
+            if r = find_room(:bedroom) { |_r| _r.owner == id }
                 df.add_announcement("AI: freed bedroom of #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
                 set_owner(r, nil)
                 r.layout.each { |f|
@@ -442,7 +443,7 @@ class DwarfAI
 
         def getpasture(pet_id)
             pet_per_pasture = 3     # TODO tweak by appetite ?
-            if r = @rooms.find { |_r| _r.type == :pasture and _r.misc[:users].length < pet_per_pasture }
+            if r = find_room(:pasture) { |_r| _r.misc[:users].length < pet_per_pasture }
                 r.misc[:users] << pet_id
                 construct_room(r) if not r.misc[:bld_id]
                 r.dfbuilding
@@ -450,7 +451,7 @@ class DwarfAI
         end
 
         def freepasture(pet_id)
-            if r = @rooms.find { |_r| _r.type == :pasture and _r.misc[:users].include?(pet_id) }
+            if r = find_room(:pasture) { |_r| _r.misc[:users].include?(pet_id) }
                 r.misc[:users].delete pet_id
             end
         end
@@ -551,7 +552,7 @@ class DwarfAI
             when :infirmary, :pasture
                 construct_activityzone(r)
             when :dininghall
-                if t = @rooms.find { |_r| _r.type == :dininghall and _r.misc[:temporary] } and not r.misc[:temporary]
+                if t = find_room(:dininghall) { |_r| _r.misc[:temporary] } and not r.misc[:temporary]
                     move_dininghall_fromtemp(r, t)
                 end
                 furnish_room(r)
@@ -686,7 +687,7 @@ class DwarfAI
         end
 
         def ensure_workshop(subtype, dignow=(subtype.to_s !~ /Office/))
-            ws = @rooms.find { |r| r.type == :workshop and r.subtype == subtype }
+            ws = find_room(:workshop) { |r| r.subtype == subtype }
             raise "unknown workshop #{subtype}" if not ws
             if ws.status == :plan
                 if dignow
@@ -715,7 +716,7 @@ class DwarfAI
         end
 
         def ensure_stockpile(sptype)
-            if sp = @rooms.find { |r| r.type == :stockpile and r.subtype == sptype and not r.misc[:workshop] }
+            if sp = find_room(:stockpile) { |r| r.subtype == sptype and not r.misc[:workshop] }
                 ensure_stockpile(:food) if sptype != :food  # XXX make sure we dig food first
                 wantdig(sp)
             end
@@ -856,7 +857,7 @@ class DwarfAI
 
             if r.misc[:workshop] or r.misc[:secondary]
                 ensure_stockpile(r.subtype)
-                if main = @rooms.find { |o| o.type == :stockpile and o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
+                if main = find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
                     bld, mb = mb, bld if r.misc[:secondary]
                     mb.links.give_to_pile << bld
                     bld.links.take_from_pile << mb
@@ -1144,7 +1145,7 @@ class DwarfAI
             df.building_construct(bld, [])
             r.misc[:bld_id] = bld.id
             furnish_room(r)
-            if st = @rooms.find { |_r| _r.type == :stockpile and _r.misc[:workshop] == r }
+            if st = find_room(:stockpile) { |_r| _r.misc[:workshop] == r }
                 digroom(st)
             end
             case r.subtype
@@ -1465,9 +1466,7 @@ class DwarfAI
             case r.type
             when :well
                 way = f[:way]
-                f[:target] ||= @rooms.find { |_r|
-                    _r.type == :cistern and _r.subtype == :reserve
-                }.layout.find { |_f|
+                f[:target] ||= find_room(:cistern) { |_r| _r.subtype == :reserve }.layout.find { |_f|
                     _f[:item] == :floodgate and _f[:way] == f[:way]
                 }
 
@@ -1525,11 +1524,11 @@ class DwarfAI
 
         def monitor_cistern
             if not @m_c_lever_in
-                well = @rooms.find { |r| r.type == :well }
+                well = find_room(:well)
                 @m_c_lever_in = well.layout.find { |f| f[:item] == :lever and f[:way] == :in }
                 @m_c_lever_out = well.layout.find { |f| f[:item] == :lever and f[:way] == :out }
-                @m_c_cistern = @rooms.find { |r| r.type == :cistern and r.subtype == :well }
-                @m_c_reserve = @rooms.find { |r| r.type == :cistern and r.subtype == :reserve }
+                @m_c_cistern = find_room(:cistern) { |r| r.subtype == :well }
+                @m_c_reserve = find_room(:cistern) { |r| r.subtype == :reserve }
                 @m_c_testgate_delay = 2 if @m_c_reserve.misc[:channel_enable]
             end
 
@@ -1551,7 +1550,7 @@ class DwarfAI
                 @m_c_testgate_delay -= 1
                 return if @m_c_testgate_delay > 0
 
-                well = @rooms.find { |r| r.type == :well }
+                well = find_room(:well)
                 return if df.map_tile_at(well).offset(0, 0, -1).shape_basic != :Open
 
                 # re-dump garbage + smooth reserve accesspath
@@ -2083,7 +2082,7 @@ class DwarfAI
 
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
-            cz = @rooms.find { |r| r.type == :workshop }.z1
+            cz = find_room(:workshop).z1
             ws_cor = @corridors.find { |_c| _c.x1 < cx and _c.x2 >= cx and _c.y1 <= cy and _c.y2 >= cy and _c.z1 <= cz and _c.z2 >= cz }
             raise "cannot connect farm to workshop corridor" if not ws_cor
             moo = Corridor.new(cx+1, cx+1, cy, cy, cz, cz)
@@ -2480,6 +2479,29 @@ class DwarfAI
 
         def status
             @tasks.inject(Hash.new(0)) { |h, t| h.update t[0] => h[t[0]]+1 }.inspect
+        end
+
+        def categorize_all
+            @room_category = {}
+            @rooms.each { |r|
+                (@room_category[r.type] ||= []) << r
+            }
+        end
+
+        def find_room(type, &b)
+            if @room_category.empty?
+                if b
+                    @rooms.find { |r| r.type == type and b[r] }
+                else
+                    @rooms.find { |r| r.type == type }
+                end
+            else
+                if b
+                    @room_category[type].to_a.find(&b)
+                else
+                    @room_category[type].to_a.first
+                end
+            end
         end
 
         class Corridor
