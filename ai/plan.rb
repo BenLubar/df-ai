@@ -1389,6 +1389,13 @@ class DwarfAI
                 bld.burial_mode.no_pets = true
             when :lever
                 return setup_lever(r, f)
+            when :floodgate
+                @rooms.each { |rr|
+                    next if rr.status == :plan
+                    rr.layout.each { |ff|
+                        link_lever(ff, f) if ff[:item] == :lever and ff[:target] == f
+                    }
+                } if f[:way]
             end
 
             return true unless f[:makeroom]
@@ -1540,6 +1547,7 @@ class DwarfAI
                 gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
                 if gate.shape_basic == :Wall
                     debug 'cistern: test channel'
+                    gate.offset(0, 0, 1).dig if gate.offset(0, 0, 1).shape == :TREE
                     empty = true
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
