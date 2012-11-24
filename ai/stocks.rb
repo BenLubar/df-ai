@@ -34,6 +34,7 @@ class DwarfAI
 
         def reset
             @updating = []
+            @lastupdating = 0
             @count = {}
         end
 
@@ -54,7 +55,12 @@ class DwarfAI
         end
 
         def update
-            return unless @updating.empty?
+            if not @updating.empty? and @lastupdating != @updating.length + @updating_count.length
+                # avoid stall if cb_bg crashed and was unregistered
+                puts 'AI: not updating stocks' if $DEBUG
+                @lastupdating = @updating.length + @updating_count.length
+                return
+            end
 
             @updating = Needed.keys | WatchStock.keys
             @updating_count = @updating.dup

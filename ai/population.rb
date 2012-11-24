@@ -46,7 +46,7 @@ class DwarfAI
             when 5; update_pets
             when 6; update_deads
             end
-            autolabors
+            df.onupdate_register_once('df-ai pop autolabor', 20, 20) { autolabors; true }
         end
 
         def new_citizen(id)

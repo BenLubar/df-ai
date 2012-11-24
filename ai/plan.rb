@@ -51,8 +51,17 @@ class DwarfAI
             # avoid too much manager backlog
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             want_reupdate = false
-            @tasks.delete_if { |t|
-                case t[0]
+            i = 0
+            bg = df.onupdate_register('df-ai plan bg', 12, 12) {
+                t = @tasks[i]
+                if not t
+                    update if want_reupdate
+                    df.onupdate_unregister(bg)
+                    next
+                end
+
+                bg.description = "df-ai plan bg #{t[0]} #{t[1].type if t[1].respond_to?(:type)}"
+                del = case t[0]
                 when :wantdig
                     digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
                 when :digroom
@@ -85,9 +94,13 @@ class DwarfAI
                     monitor_cistern
                     false
                 end
-            }
 
-            df.onupdate_register_once('df-ai plan reupdate', 12, 12) { update ; true } if want_reupdate
+                if del
+                    @tasks.delete_at(i)
+                else
+                    i += 1
+                end
+            }
         end
 
         def digging?
@@ -683,7 +696,7 @@ class DwarfAI
                     # population level may warrant a manager to manage work orders, and the AI need him for everything
                     try_count = 0
                     mo = df.world.manager_orders.find { |_mo| _mo.is_validated == 0 }
-		    df.onupdate_register_once('df-ai plan ensure_workshop manager', 10) {
+                    df.onupdate_register_once('df-ai plan ensure_workshop manager', 10) {
                         try_count += 1
                         if !mo or mo.is_validated == 1
                             true
