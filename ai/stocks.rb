@@ -16,9 +16,10 @@ class DwarfAI
             :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
-            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3,
+            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin => 2,
+            :coffin_bld => 4,
         }
-        NeededPerDwarf = { :food => 1, :drink => 2 }
+        NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :metal_ore => 6, :raw_coke => 2,
@@ -83,7 +84,7 @@ class DwarfAI
 
         def act(key)
             if amount = Needed[key]
-                amount += ai.pop.citizen.length * NeededPerDwarf[key].to_i
+                amount += (@ai.pop.citizen.length * NeededPerDwarf[key]).to_i
                 queue_need(key, (amount-@count[key])*3/2) if @count[key] < amount
             end
             
@@ -132,7 +133,7 @@ class DwarfAI
                 df.world.items.other[:CRUTCH]
             when :crossbow
                 df.world.items.other[:WEAPON].find_all { |i|
-                    i.subtype.subtype == ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]
+                    i.subtype.subtype == @ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]
                 }
             when :pigtail, :dimplecup, :quarrybush
                 # TODO generic handling, same as farm crops selection
@@ -184,6 +185,11 @@ class DwarfAI
                     (ref = i.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first and
                      ref.building_tg.kind_of?(DFHack::BuildingTrapst))
                 }
+            when :coffin
+                df.world.items.other[:COFFIN]
+            when :coffin_bld
+                # count free constructed coffin buildings, not items
+                return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner }.length
             when :weapon
                 return count_stocks_weapon
             when :armor
@@ -238,15 +244,14 @@ class DwarfAI
         # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
             case what
-            when :soap
-                return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status == :plan }
-
             when :weapon
                 return queue_need_weapon
             when :armor
                 return queue_need_armor
             when :clothes
                 return queue_need_clothes
+            when :coffin_bld
+                return queue_need_coffin_bld(amount)
 
             when :food
                 # XXX fish/hunt/cook ?
@@ -285,7 +290,6 @@ class DwarfAI
                 amount = (amount+3)/4
 
             when :coal
-                return if ai.plan.rooms.find { |r| r.type == :infirmary and r.status != :finished }
                 # dont use wood -> charcoal if we have bituminous coal
                 # (except for bootstraping)
                 amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]
@@ -301,11 +305,11 @@ class DwarfAI
             amount = 30 if amount > 30
 
             reaction ||= DwarfAI::Plan::FurnitureOrder[what]
-            ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            @ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
             return if amount <= 0
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            ai.plan.add_manager_order(reaction, amount)
+            @ai.plan.add_manager_order(reaction, amount)
         end
 
         # forge weapons
@@ -364,7 +368,6 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        ai.plan.ensure_workshop(:MetalsmithsForge, false)
                         puts "AI: stocks: queue #{nw} MakeWeapon #{idef.id}" if $DEBUG
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
@@ -434,7 +437,6 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        ai.plan.ensure_workshop(:MetalsmithsForge, false)
                         puts "AI: stocks: queue #{nw} #{job} #{idef.id}" if $DEBUG
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
@@ -450,6 +452,21 @@ class DwarfAI
         def queue_need_clothes
         end
 
+        def queue_need_coffin_bld(amount)
+            # dont dig too early
+            return if @ai.plan.find_room(:infirmary) { |r| r.status != :finished }
+
+            # count actually allocated (plan wise) coffin buildings
+            return if @ai.plan.find_room(:cemetary) { |r|
+                r.layout.each { |f|
+                    amount -= 1 if f[:item] == :coffin and not f[:bld_id] and not f[:ignore]
+                }
+                amount <= 0
+            }
+
+            amount.times { ai.plan.getcoffin }
+        end
+        
 
         # make it so the stocks of 'what' decrease by 'amount'
         def queue_use(what, amount)
@@ -485,7 +502,7 @@ class DwarfAI
                 reaction = :MakeTotem
 
             when :bone
-                nhunters = ai.pop.labor_worker[:HUNT].length if ai.pop.labor_worker
+                nhunters = @ai.pop.labor_worker[:HUNT].length if @ai.pop.labor_worker
                 return if not nhunters
                 need_crossbow = nhunters + 1 - count_stocks(:crossbow)
                 if need_crossbow > 0
@@ -514,14 +531,14 @@ class DwarfAI
                 amount = n_input if amount > n_input
             end
 
-            ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            @ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
 
             return if amount <= 0
 
             amount = 30 if amount > 30
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            ai.plan.add_manager_order(reaction, amount)
+            @ai.plan.add_manager_order(reaction, amount)
         end
 
 
@@ -538,7 +555,6 @@ class DwarfAI
             amount = 30 if amount > 30
 
             puts "AI: stocks: queue #{amount} CutGems #{df.decode_mat(i)}" if $DEBUG
-            ai.plan.ensure_workshop(:Jewelers, false)
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -566,7 +582,6 @@ class DwarfAI
             end
 
             puts "AI: stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}" if $DEBUG
-            ai.plan.ensure_workshop(:Smelter, false)
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :SmeltOre, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -594,7 +609,6 @@ class DwarfAI
             end
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            ai.plan.ensure_workshop(:Smelter, false)
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount, :reaction_name => reaction)
         end
@@ -618,7 +632,7 @@ class DwarfAI
         # return a list of trees on the map
         # lists only visible trees, sorted by distance from the fort entrance
         def tree_list
-            fe = ai.plan.fort_entrance
+            fe = @ai.plan.fort_entrance
             (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
                 t = df.map_tile_at(p) and
                 t.shape == :TREE and

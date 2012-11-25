@@ -83,23 +83,8 @@ class DwarfAI
             }
         end
 
-        # ensure everyone the dwarves will want to bury has a coffin
-        # TODO engrave slabs for ghosts
         def update_deads
-            has_coffin = {}
-            @ai.plan.rooms.each { |r|
-                next if r.type != :cemetary
-                r.layout.each { |f|
-                    f[:users].to_a.each { |id| has_coffin[id] = true }
-                }
-            }
-
-            df.world.units.active.each { |u|
-                next if not u.flags1.dead
-                next if u.race != df.ui.race_id # and !df.ui.pets.find { |pi| pi.pet_id == u.id }
-                next if has_coffin[u.id]
-                @ai.plan.getcoffin(u.id)
-            }
+            # TODO engrave slabs for ghosts
         end
 
         def update_military
@@ -465,7 +450,7 @@ class DwarfAI
 
 
             if ent.assignments_by_type[:HEALTH_MANAGEMENT].empty? and
-                    hosp = ai.plan.rooms.find { |r| r.type == :infirmary } and hosp.status != :plan and tg = cz.find { |u|
+                    hosp = ai.plan.find_room(:infirmary) and hosp.status != :plan and tg = cz.find { |u|
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
             }
                 assign_new_noble('CHIEF_MEDICAL_DWARF', tg)

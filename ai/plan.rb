@@ -45,6 +45,15 @@ class DwarfAI
         end
 
         def update
+            @bg_idx ||= 0
+            if @bg_idx < @tasks.length
+                if @last_bg_idx != @bg_idx
+                    @last_bg_idx = @bg_idx
+                    return
+                end
+            end
+            @bg_idx = 0
+
             @cache_nofurnish = {}
 
             @nrdig = @tasks.count { |t| t[0] == :digroom and (t[1].type != :corridor or t[1].h_z>1) }
@@ -53,16 +62,15 @@ class DwarfAI
             # avoid too much manager backlog
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             want_reupdate = false
-            i = 0
-            bg = df.onupdate_register('df-ai plan bg', 12, 12) {
-                t = @tasks[i]
+            bg = df.onupdate_register('df-ai plan bg') {
+                t = @tasks[@bg_idx]
                 if not t
                     update if want_reupdate
                     df.onupdate_unregister(bg)
                     next
                 end
 
-                bg.description = "df-ai plan bg #{t[0]} #{t[1].type if t[1].respond_to?(:type)}"
+                bg.description = "df-ai plan bg #{t[0]} #{t[1].type if t[1].kind_of?(Corridor)}"
                 del = case t[0]
                 when :wantdig
                     digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
@@ -98,9 +106,9 @@ class DwarfAI
                 end
 
                 if del
-                    @tasks.delete_at(i)
+                    @tasks.delete_at(@bg_idx)
                 else
-                    i += 1
+                    @bg_idx += 1
                 end
             }
         end
@@ -155,7 +163,6 @@ class DwarfAI
                        find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
-                       ifplan[find_room(:cemetary)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                        find_room(:stockpile) { |_r| _r.subtype and _r.status == :plan }
@@ -353,17 +360,13 @@ class DwarfAI
             sr.mode.squad_eq = true
         end
 
-        def getcoffin(id)
+        def getcoffin
             if r = find_room(:cemetary) { |_r|
-                    _r.layout.find { |f|
-                        return if f[:users] == [id]
-                        f[:users] and f[:users].length < 1
-                    }
+                    _r.layout.find { |f| f[:users] and f[:users].length < 1 }
             }
                 wantdig(r)
                 coffin = r.layout.find { |f| f[:item] == :coffin and f[:users].length < 1 }
                 coffin.delete :ignore
-                coffin[:users] << id
                 if r.status == :finished
                     furnish_room(r)
                 end
