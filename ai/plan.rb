@@ -224,14 +224,21 @@ class DwarfAI
         def checkrooms
             @checkroom_idx ||= 0
             ncheck = 4
-            rl = @rooms.find_all { |r| r.status != :plan } + @corridors.find_all { |r| r.status != :plan }
-            rl[@checkroom_idx % (rl.length+1), ncheck].each { |r| checkroom(r) }
+            (ncheck*4).times {
+                r = @corridors[@checkroom_idx]
+                if r and r.status != :plan
+                    checkroom(r)
+                end
 
-            @checkroom_idx += ncheck
-            if @checkroom_idx >= rl.length
-                #debug 'checkrooms rollover'
-                @checkroom_idx = 0
-            end
+                r = @rooms[@checkroom_idx]
+                if r and r.status != :plan
+                    checkroom(r)
+                    ncheck -= 1
+                    break if ncheck <= 0
+                end
+                @checkroom_idx += 1
+            }
+            @checkroom_idx = 0 if @checkroom_idx >= @rooms.length and @checkroom_idx >= @corridors.length
         end
 
         # ensure room was not tantrumed etc

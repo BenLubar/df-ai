@@ -47,6 +47,7 @@ class DwarfAI
             when 5; update_pets
             when 6; update_deads
             end
+            @onupdate_handle.description = "df-ai pop"
 
             i = 0
             bga = df.onupdate_register('df-ai pop autolabors', 3) {
