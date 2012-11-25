@@ -410,6 +410,7 @@ class DwarfAI
                                 not @worker_labor[_c.id].include? lb
                             } || @workers.find { |_c| not @worker_labor[_c.id].include? lb }
 
+                            next if not c
                             @labor_worker[lb] << c.id
                             @worker_labor[c.id] << lb
                             u = c.dfunit

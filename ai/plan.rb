@@ -142,7 +142,7 @@ class DwarfAI
             @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace]
             if @important_workshops.first and not digging?
                 while ws = @important_workshops.shift
-                    if r = find_rooms(:workshop) { |_r| _r.subtype == ws }
+                    if r = find_room(:workshop) { |_r| _r.subtype == ws }
                         wantdig(r)
                         return if digging?
                     end
@@ -373,6 +373,7 @@ class DwarfAI
             }
                 wantdig(r)
                 coffin = r.layout.find { |f| f[:item] == :coffin and f[:users].length < 1 }
+                coffin[:users] << 0
                 coffin.delete :ignore
                 if r.status == :finished
                     furnish_room(r)
@@ -1495,6 +1496,10 @@ class DwarfAI
             return if not bld or bld.getBuildStage < bld.getMaxBuildStage
             tbld = df.building_find(dst[:bld_id])
             return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
+            return if bld.jobs.find { |j| j.job_type == :LinkBuildingToTrigger and
+                j.general_refs.find { |ref| ref.kind_of?(DFHack::GeneralRefBuildingTriggertargetst) and
+                    ref.building_id == tbld.id }
+            }
 
             mechas = df.world.items.other[:TRAPPARTS].find_all { |i|
                 i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
@@ -2085,7 +2090,7 @@ class DwarfAI
 
 
             # farm plots
-            farm_h = 6
+            farm_h = 3
             farm_w = 3
             dpf = (@dwarves_per_farmtile * farm_h * farm_w).to_i
             nrfarms = (200+dpf-1)/dpf
@@ -2102,17 +2107,22 @@ class DwarfAI
             farm_stairs.accesspath = [moo]
             @corridors << farm_stairs
             cx += 3
-            cz2 = (cz...fort_entrance.z2).find { |z|
-                (-1..(nrfarms*farm_w)).all? { |dx|
-                    (-(farm_h+2)..(farm_h+2)).all? { |dy|
-                        t = df.map_tile_at(cx+dx, cy+dy, z) and t.shape == :WALL and t.tilemat == :SOIL
+            soilcnt = {}
+            (cz...df.world.map.z_count).each { |z|
+                scnt = 0
+                if (-1..(nrfarms*farm_w/2)).all? { |dx|
+                    (-(2*farm_h+2)..(2*farm_h+2)).all? { |dy|
+                        t = df.map_tile_at(cx+dx, cy+dy, z)
+                        next if not t or t.shape != :WALL
+                        scnt += 1 if t.tilemat == :SOIL
+                        true
                     }
                 }
+                    soilcnt[z] = scnt
+                end
             }
-            if !cz2
-                puts "AI: no soil, farms will need manual irrigation"
-                cz2 = cz
-            end
+            cz2 = soilcnt.index(soilcnt.values.max)
+
             farm_stairs.z2 = cz2
             cor = Corridor.new(cx, cx+1, cy, cy, cz2, cz2)
             cor.accesspath = [farm_stairs]
@@ -2120,16 +2130,18 @@ class DwarfAI
             types = [:food, :cloth]
             [-1, 1].each { |dy|
                 st = types.shift
-                nrfarms.times { |dx|
-                    r = Room.new(:farmplot, st, cx+farm_w*dx, cx+farm_w*dx+farm_w-1, cy+dy*2, cy+dy*(2+farm_h-1), cz2)
-                    r.misc[:users] = []
-                    if dx == 0
-                        r.layout << {:item => :door, :x => 1, :y => (dy>0 ? -1 : farm_h)}
-                        r.accesspath = [cor]
-                    else
-                        r.accesspath = [@rooms.last]
-                    end
-                    @rooms << r
+                (nrfarms/2).times { |dx|
+                    2.times { |ddy|
+                        r = Room.new(:farmplot, st, cx+farm_w*dx, cx+farm_w*dx+farm_w-1, cy+dy*2+dy*ddy*farm_h, cy+dy*(2+farm_h-1)+dy*ddy*farm_h, cz2)
+                        r.misc[:users] = []
+                        if dx == 0 and ddy == 0
+                            r.layout << {:item => :door, :x => 1, :y => (dy>0 ? -1 : farm_h)}
+                            r.accesspath = [cor]
+                        else
+                            r.accesspath = [@rooms.last]
+                        end
+                        @rooms << r
+                    }
                 }
             }
             # seeds stockpile

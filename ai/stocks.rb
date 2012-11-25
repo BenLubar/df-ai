@@ -16,8 +16,7 @@ class DwarfAI
             :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
-            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin => 2,
-            :coffin_bld => 4,
+            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin_bld => 4,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -185,8 +184,6 @@ class DwarfAI
                     (ref = i.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first and
                      ref.building_tg.kind_of?(DFHack::BuildingTrapst))
                 }
-            when :coffin
-                df.world.items.other[:COFFIN]
             when :coffin_bld
                 # count free constructed coffin buildings, not items
                 return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner }.length
@@ -282,10 +279,10 @@ class DwarfAI
                 # dont bother if the last designated tree is not cut yet
                 return if @last_cutpos and @last_cutpos.offset(0, 0, 0).designation.dig == :Default
 
+                amount *= 2
                 tl = tree_list
                 tl.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
-                last = cuttrees(amount, tl) if amount > 0
-                @last_cutpos = df.map_tile_at(last.pos) if last
+                @last_cutpos = cuttrees(amount, tl) if amount > 0
                 return
 
             when :drink
@@ -354,6 +351,7 @@ class DwarfAI
              [ue.weapon_tg, @metal_weapon_pref]].each { |idefs, pref|
                 idefs.each { |idef|
                     next if idef.flags[:TRAINING]
+
                     cnt = Needed[:weapon]
                     cnt -= df.world.items.other[:WEAPON].find_all { |i|
                         i.subtype.subtype == idef.subtype and is_item_free(i)
@@ -622,30 +620,35 @@ class DwarfAI
 
         # designate some trees for woodcutting
         def cuttrees(amount, list=tree_list)
-            list.find { |tree|
+            # return the bottom-rightest designated tree
+            br = nil
+            list.each { |tree|
                 t = df.map_tile_at(tree)
                 next if t.shape != :TREE
                 next if t.designation.dig == :Default
                 next if list.length > 4*amount and rand(4) != 0
                 t.dig(:Default)
+                br = t if not br or (br.x & -16) < (t.x & -16) or
+                        ((br.x & -16) == (t.x & -16) and (br.y & -16) < (t.y & -16))
                 amount -= 1
-                amount <= 0
+                break if amount <= 0
             }
+            br
         end
 
         # return a list of trees on the map
         # lists only visible trees, sorted by distance from the fort entrance
+        # expensive method, dont call often
         def tree_list
             fe = @ai.plan.fort_entrance
-            (df.world.plants.tree_dry.find_all { |p|
+            # avoid re-scanning full map if there was no visible tree last time
+            return [] if @last_treelist and @last_treelist.empty? and rand(6) > 0
+
+            @last_treelist = (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
                 t = df.map_tile_at(p) and
                 t.shape == :TREE and
                 not t.designation.hidden
-            } + df.world.plants.tree_wet.find_all { |p|
-                t = df.map_tile_at(p) and
-                t.shape == :TREE and
-                not t.designation.hidden
-            }).sort_by { |p|
+            }.sort_by { |p|
                 (p.pos.x-fe.x)**2 + (p.pos.y-fe.y)**2 + ((p.pos.z-fe.z2)*4)**2
             }
         end
