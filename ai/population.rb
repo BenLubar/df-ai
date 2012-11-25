@@ -1,10 +1,11 @@
 class DwarfAI
     class Population
         class Citizen
-            attr_accessor :id, :role, :idlecounter
+            attr_accessor :id, :role, :idlecounter, :entitypos
             def initialize(id)
                 @id = id
                 @idlecounter = 0
+                @entitypos = []
             end
 
             def dfunit
@@ -46,7 +47,14 @@ class DwarfAI
             when 5; update_pets
             when 6; update_deads
             end
-            df.onupdate_register_once('df-ai pop autolabor', 20, 20) { autolabors; true }
+
+            i = 0
+            bga = df.onupdate_register('df-ai pop autolabors', 3) {
+                bga.description = "df-ai pop autolabors #{i}"
+                autolabors(i)
+                df.onupdate_unregister(bga) if i > 10
+                i += 1
+            } if @update_counter % 3 == 0
         end
 
         def new_citizen(id)
@@ -68,6 +76,7 @@ class DwarfAI
             # add new fort citizen to our list
             df.unit_citizens.each { |u|
                 @citizen[u.id] ||= new_citizen(u.id)
+                @citizen[u.id].entitypos = df.unit_entitypositions(u)
                 old.delete u.id
             }
 
@@ -248,165 +257,173 @@ class DwarfAI
             end
         }
 
-        def autolabors
-            workers = []
-            nonworkers = []
-            citizen.each_value { |c|
-                next if not u = c.dfunit
-                if df.unit_isworker(u) and
-                        !unit_hasmilitaryduty(u) and
-                        (!u.job.current_job or u.job.current_job.job_type != :AttendParty) and
-                        not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
-                        not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
-                    workers << c
-                else
-                    nonworkers << c
-                end
-            }
+        def autolabors(step)
+            case step
+            when 2
+                @workers = []
+                nonworkers = []
 
-            # free non-workers
-            nonworkers.each { |c|
-                u = c.dfunit
-                ul = u.status.labors
-                LaborList.each { |lb|
-                    if ul[lb]
-                        # disable everything (may wait meeting)
-                        ul[lb] = false
-                        # free pick/axe/crossbow  XXX does it work?
-                        u.military.pickup_flags.update = true if LaborTool[lb]
-                    end
-                }
-            }
-
-            # count active labors
-            @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
-            @worker_labor = workers.inject({}) { |h, c| h.update c.id => [] }
-            worker_entpos = {}
-            workers.each { |c|
-                ul = c.dfunit.status.labors
-                LaborList.each { |lb|
-                    if ul[lb]
-                        @labor_worker[lb] << c.id
-                        @worker_labor[c.id] << lb
-                    end
-                }
-                worker_entpos[c.id] = df.unit_entitypositions(c.dfunit)
-            }
-
-            # if one has too many labors, free him up (one per round)
-            lim = 4*LaborList.length/[workers.length, 1].max
-            lim = 4 if lim < 4
-            if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
-                c = citizen[cid]
-                u = c.dfunit
-                ul = u.status.labors
-
-                LaborList.each { |lb|
-                    if ul[lb]
-                        @worker_labor[c.id].delete lb
-                        @labor_worker[lb].delete c.id
-                        ul[lb] = false
-                        u.military.pickup_flags.update = true if LaborTool[lb]
-                    end
-                }
-            end
-
-            labormin = LaborMin
-            labormax = LaborMax
-            laborminpct = LaborMinPct
-            labormaxpct = LaborMaxPct
-
-            # handle low-number of workers + tool labors
-            mintool = LaborTool.keys.inject(0) { |s, lb| 
-                min = labormin[lb]
-                minpc = laborminpct[lb] * workers.length / 100
-                min = minpc if minpc > min
-                s + min
-            }
-            if workers.length < mintool
-                labormax = labormax.dup
-                LaborTool.each_key { |lb| labormax[lb] = 0 }
-                case workers.length
-                when 0
-                    # meh
-                when 1
-                    # switch mine or cutwood based on time (1/2 dwarf month each)
-                    if (df.cur_year_tick / (1200*28/2)) % 2 == 0
-                        labormax[:MINE] = 1
+                citizen.each_value { |c|
+                    next if not u = c.dfunit
+                    if u.mood == :None and
+                            u.profession != :CHILD and
+                            u.profession != :BABY and
+                            !unit_hasmilitaryduty(u) and
+                            (!u.job.current_job or u.job.current_job.job_type != :AttendParty) and
+                            not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
+                            not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
+                            # TODO filter nobles that will not work
+                        @workers << c
                     else
-                        labormax[:CUTWOOD] = 1
+                        nonworkers << c
                     end
-                else
-                    workers.length.times { |i|
-                        # divide equally between labors, with priority
-                        # to mine, then wood, then hunt
-                        # XXX new labortools ?
-                        lb = [:MINE, :CUTWOOD, :HUNT][i%3]
-                        labormax[lb] += 1
+                }
+
+                # free non-workers
+                nonworkers.each { |c|
+                    u = c.dfunit
+                    ul = u.status.labors
+                    LaborList.each { |lb|
+                        if ul[lb]
+                            # disable everything (may wait meeting)
+                            ul[lb] = false
+                            # free pick/axe/crossbow  XXX does it work?
+                            u.military.pickup_flags.update = true if LaborTool[lb]
+                        end
+                    }
+                }
+
+            when 3
+                # count active labors
+                @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
+                @worker_labor = @workers.inject({}) { |h, c| h.update c.id => [] }
+                @workers.each { |c|
+                    ul = c.dfunit.status.labors
+                    LaborList.each { |lb|
+                        if ul[lb]
+                            @labor_worker[lb] << c.id
+                            @worker_labor[c.id] << lb
+                        end
+                    }
+                }
+
+                # if one has too many labors, free him up (one per round)
+                lim = 4*LaborList.length/[@workers.length, 1].max
+                lim = 4 if lim < 4
+                if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
+                    c = citizen[cid]
+                    u = c.dfunit
+                    ul = u.status.labors
+
+                    LaborList.each { |lb|
+                        if ul[lb]
+                            @worker_labor[c.id].delete lb
+                            @labor_worker[lb].delete c.id
+                            ul[lb] = false
+                            u.military.pickup_flags.update = true if LaborTool[lb]
+                        end
                     }
                 end
-            end
 
-            # autolabor!
-            LaborList.each { |lb|
-                min = labormin[lb]
-                max = labormax[lb]
-                minpc = laborminpct[lb] * workers.length / 100
-                maxpc = labormaxpct[lb] * workers.length / 100
-                min = minpc if minpc > min
-                max = maxpc if maxpc > max
-                min = max if min > max
-                min = workers.length if min > workers.length
+            when 4
+                labormin = LaborMin
+                labormax = LaborMax
+                laborminpct = LaborMinPct
+                labormaxpct = LaborMaxPct
 
-                cnt = @labor_worker[lb].length
-                if cnt > max
-                    @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
-                        if sk = LaborSkill[lb]
-                            if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                DFHack::SkillRating.int(usk.rating)
-                            else 
-                                0
-                            end
+                # handle low-number of workers + tool labors
+                mintool = LaborTool.keys.inject(0) { |s, lb| 
+                    min = labormin[lb]
+                    minpc = laborminpct[lb] * @workers.length / 100
+                    min = minpc if minpc > min
+                    s + min
+                }
+                if @workers.length < mintool
+                    labormax = labormax.dup
+                    LaborTool.each_key { |lb| labormax[lb] = 0 }
+                    case @workers.length
+                    when 0
+                        # meh
+                    when 1
+                        # switch mine or cutwood based on time (1/2 dwarf month each)
+                        if (df.cur_year_tick / (1200*28/2)) % 2 == 0
+                            labormax[:MINE] = 1
                         else
-                            rand
+                            labormax[:CUTWOOD] = 1
                         end
-                    }
-                    (cnt-max).times {
-                        cid = @labor_worker[lb].shift
-                        @worker_labor[cid].delete lb
-                        u = citizen[cid].dfunit
-                        u.status.labors[lb] = false
-                        u.military.pickup_flags.update = true if LaborTool[lb]
-                    }
-
-                elsif cnt < min
-                    (min-cnt).times {
-                        c = workers.sort_by { |_c|
-                            malus = @worker_labor[_c.id].length * 10
-                            malus += worker_entpos[_c.id].length * 40
-                            if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
-                            end
-                            [malus, rand]
-                        }.find { |_c|
-                            next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
-                            not @worker_labor[_c.id].include? lb
-                        } || workers.find { |_c| not @worker_labor[_c.id].include? lb }
-
-                        @labor_worker[lb] << c.id
-                        @worker_labor[c.id] << lb
-                        u = c.dfunit
-                        if LaborTool[lb]
-                            LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
-                            u.military.pickup_flags.update = true
-                        end
-                        u.status.labors[lb] = true
-                    }
-
-                else
-                    # TODO allocate more workers if needed, from job_list
+                    else
+                        @workers.length.times { |i|
+                            # divide equally between labors, with priority
+                            # to mine, then wood, then hunt
+                            # XXX new labortools ?
+                            lb = [:MINE, :CUTWOOD, :HUNT][i%3]
+                            labormax[lb] += 1
+                        }
+                    end
                 end
-            }
+
+                # autolabor!
+                LaborList.each { |lb|
+                    min = labormin[lb]
+                    max = labormax[lb]
+                    minpc = laborminpct[lb] * @workers.length / 100
+                    maxpc = labormaxpct[lb] * @workers.length / 100
+                    min = minpc if minpc > min
+                    max = maxpc if maxpc > max
+                    min = max if min > max
+                    min = @workers.length if min > @workers.length
+
+                    cnt = @labor_worker[lb].length
+                    if cnt > max
+                        @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
+                            if sk = LaborSkill[lb]
+                                if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
+                                    DFHack::SkillRating.int(usk.rating)
+                                else 
+                                    0
+                                end
+                            else
+                                rand
+                            end
+                        }
+                        (cnt-max).times {
+                            cid = @labor_worker[lb].shift
+                            @worker_labor[cid].delete lb
+                            u = citizen[cid].dfunit
+                            u.status.labors[lb] = false
+                            u.military.pickup_flags.update = true if LaborTool[lb]
+                        }
+
+                    elsif cnt < min
+                        min += 1 if min < max and not LaborTool[lb]
+                        (min-cnt).times {
+                            c = @workers.sort_by { |_c|
+                                malus = @worker_labor[_c.id].length * 10
+                                malus += _c.entitypos.length * 40
+                                if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
+                                    malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
+                                end
+                                [malus, rand]
+                            }.find { |_c|
+                                next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
+                                not @worker_labor[_c.id].include? lb
+                            } || @workers.find { |_c| not @worker_labor[_c.id].include? lb }
+
+                            @labor_worker[lb] << c.id
+                            @worker_labor[c.id] << lb
+                            u = c.dfunit
+                            if LaborTool[lb]
+                                LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
+                                u.military.pickup_flags.update = true
+                            end
+                            u.status.labors[lb] = true
+                        }
+
+                    else
+                        # TODO allocate more workers if needed, from job_list
+                    end
+                }
+            end
         end
 
         def unit_hasmilitaryduty(u)

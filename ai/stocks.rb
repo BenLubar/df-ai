@@ -52,7 +52,7 @@ class DwarfAI
         end
 
         def status
-            @count.inspect
+            @count.map { |k, v| "#{k}: #{v}" }.sort.join(", ")
         end
 
         def update
@@ -279,8 +279,13 @@ class DwarfAI
                 input = :dimplecup
 
             when :logs
-                tree_list.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
-                cuttrees(amount) if amount > 0
+                # dont bother if the last designated tree is not cut yet
+                return if @last_cutpos and @last_cutpos.offset(0, 0, 0).designation.dig == :Default
+
+                tl = tree_list
+                tl.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
+                last = cuttrees(amount, tl) if amount > 0
+                @last_cutpos = df.map_tile_at(last.pos) if last
                 return
 
             when :drink
@@ -616,16 +621,15 @@ class DwarfAI
 
 
         # designate some trees for woodcutting
-        def cuttrees(amount)
-            list = tree_list
-            list.each { |tree|
+        def cuttrees(amount, list=tree_list)
+            list.find { |tree|
                 t = df.map_tile_at(tree)
                 next if t.shape != :TREE
                 next if t.designation.dig == :Default
                 next if list.length > 4*amount and rand(4) != 0
                 t.dig(:Default)
                 amount -= 1
-                break if amount <= 0
+                amount <= 0
             }
         end
 
@@ -633,11 +637,15 @@ class DwarfAI
         # lists only visible trees, sorted by distance from the fort entrance
         def tree_list
             fe = @ai.plan.fort_entrance
-            (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
+            (df.world.plants.tree_dry.find_all { |p|
                 t = df.map_tile_at(p) and
                 t.shape == :TREE and
                 not t.designation.hidden
-            }.sort_by { |p|
+            } + df.world.plants.tree_wet.find_all { |p|
+                t = df.map_tile_at(p) and
+                t.shape == :TREE and
+                not t.designation.hidden
+            }).sort_by { |p|
                 (p.pos.x-fe.x)**2 + (p.pos.y-fe.y)**2 + ((p.pos.z-fe.z2)*4)**2
             }
         end
