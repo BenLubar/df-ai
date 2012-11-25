@@ -16,7 +16,7 @@ class DwarfAI
             :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
-            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin_bld => 4,
+            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin_bld => 3,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -84,7 +84,7 @@ class DwarfAI
         def act(key)
             if amount = Needed[key]
                 amount += (@ai.pop.citizen.length * NeededPerDwarf[key]).to_i
-                queue_need(key, (amount-@count[key])*3/2) if @count[key] < amount
+                queue_need(key, amount*3/2-@count[key]) if @count[key] < amount
             end
             
             if amount = WatchStock[key]
@@ -171,6 +171,8 @@ class DwarfAI
                 df.world.items.other[:AMMO].find_all { |i|
                     i.skill_used == :BONECARVE
                 }
+            when :cloth
+                df.world.items.other[:CLOTH]
             when :cloth_nodye
                 df.world.items.other[:CLOTH].find_all { |i|
                     !i.improvements.find { |imp| imp.dye.mat_type != -1 }
@@ -295,6 +297,9 @@ class DwarfAI
                 # dont use wood -> charcoal if we have bituminous coal
                 # (except for bootstraping)
                 amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]
+
+            when :bag
+                input = :cloth
             end
 
             if input
@@ -496,6 +501,7 @@ class DwarfAI
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
+                input = :bag if reaction == :MillPlants or reaction == :ProcessPlantsBag
 
             when :leaves
                 reaction = :PrepareMeal

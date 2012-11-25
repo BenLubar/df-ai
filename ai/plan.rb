@@ -139,7 +139,7 @@ class DwarfAI
                 end
             }
 
-            @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace]
+            @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace, :Loom, :Smelter]
             if @important_workshops.first and not digging?
                 while ws = @important_workshops.shift
                     if r = find_room(:workshop) { |_r| _r.subtype == ws }
