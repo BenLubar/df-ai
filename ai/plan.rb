@@ -2362,6 +2362,7 @@ class DwarfAI
 
         # scan for 11x11 flat areas with grass
         def setup_blueprint_pastures
+            want = 36
             @fort_entrance.maptile.spiral_search(df.world.map.x_count, 12, 12) { |_t|
                 next unless sf = surface_tile_at(_t)
                 grasstile = 0
@@ -2375,6 +2376,8 @@ class DwarfAI
                 } } and grasstile >= 70
                     @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
                     @rooms.last.misc[:users] = []
+                    want -= 1
+                    true if want == 0
                 end
             }
         end
