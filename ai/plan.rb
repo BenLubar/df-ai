@@ -1330,6 +1330,10 @@ class DwarfAI
                         construct_activityzone(r)
                     end
                 }
+            else
+                # tree ?
+                r.dig(:Channel)
+                false
             end
         end
 
@@ -1574,7 +1578,6 @@ class DwarfAI
                 gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
                 if gate.shape_basic == :Wall
                     debug 'cistern: test channel'
-                    gate.offset(0, 0, 1).dig if gate.offset(0, 0, 1).shape == :TREE
                     empty = true
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
@@ -2564,6 +2567,7 @@ class DwarfAI
                     if t = df.map_tile_at(x, y, z)
                         next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
+                        dm = :Default if dm != :No and t.shape == :TREE
                         t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }

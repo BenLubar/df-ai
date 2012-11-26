@@ -262,6 +262,8 @@ class DwarfAI
             case step
             when 2
                 @workers = []
+                @idlers = []
+                @labor_needmore = Hash.new(0)
                 nonworkers = []
 
                 citizen.each_value { |c|
@@ -275,6 +277,7 @@ class DwarfAI
                             not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
                             # TODO filter nobles that will not work
                         @workers << c
+                        @idlers << c if not u.job.current_job
                     else
                         nonworkers << c
                     end
@@ -292,6 +295,63 @@ class DwarfAI
                             u.military.pickup_flags.update = true if LaborTool[lb]
                         end
                     }
+                }
+
+                seen_workshop = {}
+                df.world.job_list.each { |job|
+                    ref_bld = job.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first
+                    ref_wrk = job.general_refs.grep(DFHack::GeneralRefUnitWorkerst).first
+                    next if ref_bld and seen_workshop[ref_bld.building_id]
+
+                    if not ref_wrk
+                        job_labor = DFHack::JobSkill::Labor[DFHack::JobType::Skill[job.job_type]]
+                        job_labor = DFHack::JobType::Labor.fetch(job.job_type, job_labor)
+                        if job_labor and job_labor != :NONE
+                            @labor_needmore[job_labor] += 1
+
+                        else
+                            case job.job_type
+                            when :ConstructBuilding, :DestroyBuilding
+                                # TODO
+                            when :CustomReaction
+                                reac = df.world.raws.reactions.find { |r| r.code == job.reaction_name }
+                                if reac and job_labor = DFHack::JobSkill::Labor[reac.skill]
+                                    @labor_needmore[job_labor] += 1 if job_labor != :NONE
+                                end
+                            when :PenSmallAnimal, :PenLargeAnimal
+                                @labor_needmore[:HAUL_ANIMAL] += 1
+                            when :StoreItemInStockpile, :StoreItemInBag, :StoreItemInHospital,
+                                    :StoreItemInChest, :StoreItemInCabinet, :StoreWeapon,
+                                    :StoreArmor, :StoreItemInBarrel, :StoreItemInBin, :StoreItemInVehicle
+                                @labor_needmore[:HAUL_ITEM] += 1
+                            else
+                                if job.material_category.wood
+                                    @labor_needmore[:CARPENTER] += 1
+                                elsif job.material_category.bone
+                                    @labor_needmore[:BONE_CARVE] += 1
+                                elsif job.material_category.cloth
+                                    @labor_needmore[:CLOTHESMAKER] += 1
+                                elsif job.mat_type == 0
+                                    # XXX metalcraft ?
+                                    @labor_needmore[:MASON] += 1
+				else
+					@seen_badwork ||= {}
+					puts "df-ai autolabor: unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type] if $DEBUG
+					@seen_badwork[job.job_type] = true
+                                end
+                            end
+                        end
+                    end
+
+                    if ref_bld
+                        case ref_bld.building_tg
+                        when DFHack::BuildingFarmplotst
+                            # parallel work allowed
+                        else
+                            seen_workshop[ref_bld.building_id] = true
+                        end
+                    end
+
                 }
 
             when 3
@@ -376,8 +436,9 @@ class DwarfAI
 
                     cnt = @labor_worker[lb].length
                     if cnt > max
+                        sk = LaborSkill[lb]
                         @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
-                            if sk = LaborSkill[lb]
+                            if sk
                                 if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
                                     DFHack::SkillRating.int(usk.rating)
                                 else 
@@ -389,10 +450,7 @@ class DwarfAI
                         }
                         (cnt-max).times {
                             cid = @labor_worker[lb].shift
-                            @worker_labor[cid].delete lb
-                            u = citizen[cid].dfunit
-                            u.status.labors[lb] = false
-                            u.military.pickup_flags.update = true if LaborTool[lb]
+                            autolabor_unsetlabor(citizen[cid], lb)
                         }
 
                     elsif cnt < min
@@ -410,22 +468,40 @@ class DwarfAI
                                 not @worker_labor[_c.id].include? lb
                             } || @workers.find { |_c| not @worker_labor[_c.id].include? lb }
 
-                            next if not c
-                            @labor_worker[lb] << c.id
-                            @worker_labor[c.id] << lb
-                            u = c.dfunit
-                            if LaborTool[lb]
-                                LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
-                                u.military.pickup_flags.update = true
-                            end
-                            u.status.labors[lb] = true
+                            autolabor_setlabor(c, lb)
                         }
 
-                    else
-                        # TODO allocate more workers if needed, from job_list
+                    elsif not @idlers.empty?
+                        @labor_needmore[lb].times {
+                            break if @labor_worker[lb].length >= max
+                            c = @idlers[rand(@idlers.length)]
+                            autolabor_setlabor(c, lb)
+                        }
                     end
                 }
             end
+        end
+
+        def autolabor_setlabor(c, lb)
+            return if not c
+            return if @worker_labor[c.id].include?(lb)
+            @labor_worker[lb] << c.id
+            @worker_labor[c.id] << lb
+            u = c.dfunit
+            if LaborTool[lb]
+                LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
+                u.military.pickup_flags.update = true
+            end
+            u.status.labors[lb] = true
+        end
+
+        def autolabor_unsetlabor(c, lb)
+            return if not c
+            @labor_worker[lb].delete c.id
+            @worker_labor[c.id].delete lb
+            u = c.dfunit
+            u.status.labors[lb] = false
+            u.military.pickup_flags.update = true if LaborTool[lb]
         end
 
         def unit_hasmilitaryduty(u)
@@ -549,6 +625,16 @@ class DwarfAI
                     @pet[u.id] << :GRAZER
 
                     if bld = @ai.plan.getpasture(u.id)
+                        # remove existing pastures
+                        # TODO remove existing chains/cages ?
+                        while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
+                            ref = u.general_refs[ridx]
+                            cidx = ref.building_tg.assigned_creature.index(u.id)
+                            ref.building_tg.assigned_creature.delete_at(cidx)
+                            u.general_refs.delete_at(ridx)
+                            df.free(ref._memaddr)
+                        end
+
                         u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
                         bld.assigned_creature << u.id
                         # TODO monitor grass levels
