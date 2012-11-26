@@ -674,7 +674,7 @@ class DwarfAI
                 t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
                 df.building_position(bld, t)
                 df.building_construct(bld, [mecha])
-                r.misc[:bld_id] = f[:bld_id] = bld.id
+                f[:bld_id] = bld.id
                 @tasks << [:checkfurnish, r, f]
                 true
             end
