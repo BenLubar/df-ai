@@ -62,9 +62,10 @@ class DwarfAI
                     df.announcements.flags[a.type].PAUSE rescue nil
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
+
         elsif st == :VIEWSCREEN_CHANGED
-            case cvname = df.curview._raw_rtti_classname
-            when 'viewscreen_textviewerst'
+            case cvname = df.curview._rtti_classname
+            when :viewscreen_textviewerst
                 text = df.curview.text_display.map { |t|
                     t.text.to_s.strip.gsub(/\s+/, ' ')
                 }.join(' ')
@@ -72,22 +73,31 @@ class DwarfAI
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"
                     df.curview.feed_keys(:LEAVESCREEN)
+
+                elsif text =~ /A vile force of darkness has arrived!/
+                    puts "AI: siege (#{text.inspect})"
+                    df.curview.feed_keys(:LEAVESCREEN)
+                    df.pause_state = false
+
                 elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\./
                     puts "AI: you just lost the game:", text.inspect, "Exiting AI."
                     onupdate_unregister
                     # dont unpause, to allow for 'die'
+
                 else
                     puts "AI: paused in unknown textviewerst #{text.inspect}" if $DEBUG
                 end
-            when 'viewscreen_topicmeetingst'
+
+            when :viewscreen_topicmeetingst
                 df.curview.feed_keys(:OPTION1)
                 #puts "AI: exit diplomat topicmeetingst"
-            when 'viewscreen_topicmeeting_takerequestsst', 'viewscreen_requestagreementst'
+
+            when :viewscreen_topicmeeting_takerequestsst, :viewscreen_requestagreementst
                 puts "AI: exit diplomat #{cvname}"
                 df.curview.feed_keys(:LEAVESCREEN)
 
             else
-                @seen_cvname ||= { 'viewscreen_dwarfmodest' => true }
+                @seen_cvname ||= { :viewscreen_dwarfmodest => true }
                 puts "AI: paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname] and $DEBUG
                 @seen_cvname[cvname] = true
             end
