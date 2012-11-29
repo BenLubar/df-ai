@@ -276,7 +276,8 @@ class DwarfAI
                    find_room(:bedroom) { |_r| _r.status == :plan and not _r.misc[:queue_dig] }
                 wantdig(r)
                 set_owner(r, id)
-                df.add_announcement("AI: assigned a bedroom to #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
+		name = (u = df.unit_find(id) ? u.name : '?')
+                df.add_announcement("AI: assigned a bedroom to #{name}", 7, false) { |ann| ann.pos = r }
                 if r.status == :finished
                     furnish_room(r)
                 end
@@ -384,7 +385,8 @@ class DwarfAI
         # free / deconstruct the bedroom assigned to this dwarf
         def freebedroom(id)
             if r = find_room(:bedroom) { |_r| _r.owner == id }
-                df.add_announcement("AI: freed bedroom of #{df.unit_find(id).name}", 7, false) { |ann| ann.pos = r }
+		name = (u = df.unit_find(id) ? u.name : '?')
+                df.add_announcement("AI: freed bedroom of #{name}", 7, false) { |ann| ann.pos = r }
                 set_owner(r, nil)
                 r.layout.each { |f|
                     next if f[:ignore]
@@ -2402,7 +2404,7 @@ class DwarfAI
                 ocx = fx + dirx*3
                 (1..3).each { |dx|
                     # segments of the big central horizontal corridor
-                    cx = fx + dirx*(11*dx-4)
+                    cx = fx + dirx*(9*dx-1)
                     cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
                     cor_x.accesspath = [prev_corx]
                     @corridors << cor_x
@@ -2413,21 +2415,21 @@ class DwarfAI
                         prev_cory = cor_x
                         ocy = fy + diry*2
                         (1..5).each { |dy|
-                            cy = fy + diry*4*dy
+                            cy = fy + diry*3*dy
                             cor_y = Corridor.new(cx, cx-dirx*1, ocy, cy, fz, fz)
                             cor_y.accesspath = [prev_cory]
                             @corridors << cor_y
                             prev_cory = cor_y
                             ocy = cy+diry
 
-                            @rooms << Room.new(:bedroom, nil, cx-dirx*5, cx-dirx*3, cy-1, cy+1, fz)
-                            @rooms << Room.new(:bedroom, nil, cx+dirx*2, cx+dirx*4, cy-1, cy+1, fz)
+                            @rooms << Room.new(:bedroom, nil, cx-dirx*4, cx-dirx*3, cy, cy+diry, fz)
+                            @rooms << Room.new(:bedroom, nil, cx+dirx*2, cx+dirx*3, cy, cy+diry, fz)
                             @rooms[-2, 2].each { |r|
                                 r.accesspath = [cor_y]
-                                r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
-                                r.layout << {:item => :cabinet, :x => 1+(r.x<=>cx), :y => 1+diry, :ignore => true}
-                                r.layout << {:item => :chest, :x => 1+(r.x<=>cx), :y => 1-diry, :ignore => true}
-                                r.layout << {:item => :door, :x => 1-2*(r.x<=>cx), :y => 1}
+                                r.layout << {:item => :bed, :x => (r.x<cx ? 0 : 1), :y => (diry<0 ? 1 : 0), :makeroom => true}
+                                r.layout << {:item => :cabinet, :x => (r.x<cx ? 0 : 1), :y => (diry<0 ? 0 : 1), :ignore => true}
+                                r.layout << {:item => :chest, :x => (r.x<cx ? 1 : 0), :y => (diry<0 ? 0 : 1), :ignore => true}
+                                r.layout << {:item => :door, :x => (r.x<cx ? 2 : -1), :y => (diry<0 ? 1 : 0)}
                             }
                         }
                     }
