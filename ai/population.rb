@@ -625,18 +625,7 @@ class DwarfAI
                     @pet[u.id] << :GRAZER
 
                     if bld = @ai.plan.getpasture(u.id)
-                        # remove existing pastures
-                        # TODO remove existing chains/cages ?
-                        while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
-                            ref = u.general_refs[ridx]
-                            cidx = ref.building_tg.assigned_creature.index(u.id)
-                            ref.building_tg.assigned_creature.delete_at(cidx)
-                            u.general_refs.delete_at(ridx)
-                            df.free(ref._memaddr)
-                        end
-
-                        u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
-                        bld.assigned_creature << u.id
+                        assign_unit_to_zone(u, bld)
                         # TODO monitor grass levels
                     else
                         # TODO slaughter best candidate, keep this one
@@ -654,6 +643,21 @@ class DwarfAI
                 @ai.plan.freepasture(id)
                 @pet.delete id
             }
+        end
+
+        def assign_unit_to_zone(u, bld)
+            # remove existing zone assignments
+            # TODO remove existing chains/cages ?
+            while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
+                ref = u.general_refs[ridx]
+                cidx = ref.building_tg.assigned_creature.index(u.id)
+                ref.building_tg.assigned_creature.delete_at(cidx)
+                u.general_refs.delete_at(ridx)
+                df.free(ref._memaddr)
+            end
+
+            u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
+            bld.assigned_creature << u.id
         end
 
         def status

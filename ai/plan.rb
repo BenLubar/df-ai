@@ -276,7 +276,7 @@ class DwarfAI
                    find_room(:bedroom) { |_r| _r.status == :plan and not _r.misc[:queue_dig] }
                 wantdig(r)
                 set_owner(r, id)
-		name = (u = df.unit_find(id) ? u.name : '?')
+                name = ((u = df.unit_find(id)) ? u.name : '?')
                 df.add_announcement("AI: assigned a bedroom to #{name}", 7, false) { |ann| ann.pos = r }
                 if r.status == :finished
                     furnish_room(r)
@@ -385,7 +385,7 @@ class DwarfAI
         # free / deconstruct the bedroom assigned to this dwarf
         def freebedroom(id)
             if r = find_room(:bedroom) { |_r| _r.owner == id }
-		name = (u = df.unit_find(id) ? u.name : '?')
+                name = ((u = df.unit_find(id)) ? u.name : '?')
                 df.add_announcement("AI: freed bedroom of #{name}", 7, false) { |ann| ann.pos = r }
                 set_owner(r, nil)
                 r.layout.each { |f|
