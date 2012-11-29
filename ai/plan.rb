@@ -140,26 +140,26 @@ class DwarfAI
             }
 
             @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace, :Loom, :Smelter]
-            if @important_workshops.first and not digging?
-                while ws = @important_workshops.shift
-                    if r = find_room(:workshop) { |_r| _r.subtype == ws }
-                        wantdig(r)
-                        return if digging?
-                    end
-                end
-            end
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
 
             ifplan = lambda { |_r| _r if _r and _r.status == :plan }
 
-            if not digging? and manager_backlog < @manager_maxbacklog
+            if manager_backlog >= @manager_maxbacklog and r = find_room(:workshop) { |_r| not _r.subtype and _r.status == :plan }
+                r.misc[:spare] = true
+                r.subtype = :Masons # TODO repurpose by parsing manager_orders
+                digroom(r)
+                false
+            else
                 freebed = @spare_bedroom
+                st = @important_workshops.shift
                 if r =
+                       (st and find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
                        find_room(:infirmary) { |_r| _r.status == :plan } ||
                        find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                        find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
+                       (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                        find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                        find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                        find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -178,11 +178,6 @@ class DwarfAI
                     idleidle
                     true
                 end
-            elsif manager_backlog >= @manager_maxbacklog and r = find_room(:workshop) { |_r| not _r.subtype and _r.status == :plan }
-                r.misc[:spare] = true
-                r.subtype = :Masons # TODO repurpose by parsing manager_orders
-                digroom(r)
-                false
             end
         end
 
@@ -600,13 +595,15 @@ class DwarfAI
             :bag => :MakeBag,
             :rockblock => :ConstructBlocks,
             :mechanism => :ConstructMechanisms,
+            :trap => :ConstructMechanisms,
             :cage => :MakeCage,
             :soap => :MakeSoap,
             :coal => :MakeCharcoal
 
         FurnitureFind = Hash.new { |h, k|
             h[k] = lambda { |o| o._rtti_classname == "item_#{k}st".to_sym }
-        }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 }
+        }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
+                 :trap => lambda { |o| o._rtti_classname == :item_trappartsst }
 
         def try_furnish(r, f)
             return true if f[:bld_id]
@@ -616,12 +613,11 @@ class DwarfAI
             case f[:item]
             when :well
                 return try_furnish_well(r, f)
-            when :lever
-                return try_furnish_lever(r, f)
             when :pillar
                 tgtile.dig(:Smooth)
                 return true
             end
+
             return if @cache_nofurnish[f[:item]]
             mod = FurnitureOrder[f[:item]]
             find = FurnitureFind[f[:item]]
@@ -629,10 +625,14 @@ class DwarfAI
             if tgtile.occupancy.building != :None
                 # TODO warn if this stays for too long?
                 false
+            elsif tgtile.shape == :RAMP or tgtile.shape == :TREE
+                tgtile.dig(:Default)
+                false
             elsif itm = df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
                 debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
-                bld = df.building_alloc(bldn)
+                subtype = { :cage => :CageTrap, :lever => :Lever }.fetch(f[:subtype], -1)
+                bld = df.building_alloc(bldn, subtype)
                 df.building_position(bld, tgtile)
                 df.building_construct(bld, [itm])
                 if f[:makeroom]
@@ -658,7 +658,7 @@ class DwarfAI
                 i.kind_of?(DFHack::ItemChainst) and df.item_isfree(i)
             }
                 bld = df.building_alloc(:Well)
-                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
+                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
                 df.building_position(bld, t)
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
@@ -668,12 +668,22 @@ class DwarfAI
             end
         end
 
-        def try_furnish_lever(r, f)
+        def try_furnish_trap(r, f)
+            t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
+
+            if t.occupancy.building != :None
+                return
+            elsif t.shape == :RAMP or t.shape == :TREE
+                # XXX dont remove last access ramp ?
+                t.dig(:Default)
+                return
+            end
+
             if mecha = df.world.items.other[:TRAPPARTS].find { |i|
                 i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
             }
-                bld = df.building_alloc(:Trap, :Lever)
-                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1)
+                subtype = {:lever => :Lever, :cage => :CageTrap}.fetch(f[:subtype])
+                bld = df.building_alloc(:Trap, subtype)
                 df.building_position(bld, t)
                 df.building_construct(bld, [mecha])
                 f[:bld_id] = bld.id
@@ -688,12 +698,11 @@ class DwarfAI
             case f[:item]
             when :well
                 add_manager_order(:MakeRope)
-            when :lever
             when :pillar
             else
                 ws = FurnitureWorkshop[f[:item]]
                 mod = FurnitureOrder[f[:item]]
-                ensure_workshop(ws)
+                #ensure_workshop(ws)
                 add_manager_order(mod, 1, @manager_taskmax)
             end
             f[:queue_build] = true
@@ -1010,8 +1019,8 @@ class DwarfAI
                 s.quality_total.map! { true }
             when :animals
                 bld.settings.flags.animals = true
-                bld.settings.animals.animals_empty_cages = true
-                bld.settings.animals.animals_empty_traps = true
+                bld.settings.animals.animals_empty_cages = (r.misc[:secondary] ? true : false)
+                bld.settings.animals.animals_empty_traps = (r.misc[:secondary] ? true : false)
                 df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
             when :refuse, :corpses
                 bld.settings.flags.refuse = true
@@ -1418,13 +1427,13 @@ class DwarfAI
                 bld.burial_mode.allow_burial = true
                 bld.burial_mode.no_citizens = false
                 bld.burial_mode.no_pets = true
-            when :lever
-                return setup_lever(r, f)
+            when :trap
+                return setup_lever(r, f) if f[:subtype] == :lever
             when :floodgate
                 @rooms.each { |rr|
                     next if rr.status == :plan
                     rr.layout.each { |ff|
-                        link_lever(ff, f) if ff[:item] == :lever and ff[:target] == f
+                        link_lever(ff, f) if ff[:item] == :trap and ff[:subtype] == :lever and ff[:target] == f
                     }
                 } if f[:way]
             end
@@ -1546,8 +1555,8 @@ class DwarfAI
         def monitor_cistern
             if not @m_c_lever_in
                 well = find_room(:well)
-                @m_c_lever_in = well.layout.find { |f| f[:item] == :lever and f[:way] == :in }
-                @m_c_lever_out = well.layout.find { |f| f[:item] == :lever and f[:way] == :out }
+                @m_c_lever_in = well.layout.find { |f| f[:item] == :trap and f[:subtype] == :lever and f[:way] == :in }
+                @m_c_lever_out = well.layout.find { |f| f[:item] == :trap and f[:subtype] == :lever and f[:way] == :out }
                 @m_c_cistern = find_room(:cistern) { |r| r.subtype == :well }
                 @m_c_reserve = find_room(:cistern) { |r| r.subtype == :reserve }
                 @m_c_testgate_delay = 2 if @m_c_reserve.misc[:channel_enable]
@@ -1806,6 +1815,10 @@ class DwarfAI
             debug 'blueprint found body'
             setup_blueprint_rooms
             debug 'blueprint found rooms'
+            # ensure traps are on the surface
+            @fort_entrance.layout.each { |i|
+                i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y]).z-@fort_entrance.z1
+            }
             puts 'AI: ready'
         end
 
@@ -1855,6 +1868,19 @@ class DwarfAI
             end
 
             @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
+            3.times { |i|
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-1, :y => -1}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1,   :y => i}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1-i, :y => 3}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -1,  :y => 2-i}
+            }
+            5.times { |i|
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-2, :y => -2, :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2,   :y => i-1, :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2-i, :y => 4, :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -2,  :y => 3-i, :ignore => true}
+            }
+
         end
 
         # search how much we need to dig to find a spot for the full fortress body
@@ -2259,8 +2285,8 @@ class DwarfAI
             well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
             well.layout << {:item => :door, :x => 9, :y => 3}
             well.layout << {:item => :door, :x => 9, :y => 5}
-            well.layout << {:item => :lever, :x => 1, :y => 0, :way => :out}
-            well.layout << {:item => :lever, :x => 0, :y => 0, :way => :in}
+            well.layout << {:item => :trap, :subtype => :lever, :x => 1, :y => 0, :way => :out}
+            well.layout << {:item => :trap, :subtype => :lever, :x => 0, :y => 0, :way => :in}
             well.accesspath = [cor]
             @rooms << well
 
