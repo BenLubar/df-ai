@@ -118,7 +118,12 @@ class DwarfAI
         end
 
         def idle?
-            @tasks.empty?
+            @tasks.reject { |t|
+                case t[0]
+                when :monitor_cistern, :checkrooms, :checkidle
+                    true
+                end
+            }.empty?
         end
 
         def new_citizen(uid)
@@ -133,6 +138,8 @@ class DwarfAI
         end
         
         def checkidle
+            return if digging?
+
             df.world.buildings.other[:WAGON].each { |w|
                 if w.kind_of?(DFHack::BuildingWagonst) and not w.contained_items.find { |i| i.use_mode == 0 }
                     df.building_deconstruct(w)
@@ -145,39 +152,36 @@ class DwarfAI
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
 
             ifplan = lambda { |_r| _r if _r and _r.status == :plan }
-
+            freebed = @spare_bedroom
             if manager_backlog >= @manager_maxbacklog and r = find_room(:workshop) { |_r| not _r.subtype and _r.status == :plan }
                 r.misc[:spare] = true
                 r.subtype = :Masons # TODO repurpose by parsing manager_orders
                 digroom(r)
                 false
-            else
-                freebed = @spare_bedroom
-                st = @important_workshops.shift
-                if r =
-                       (st and find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
-                       find_room(:infirmary) { |_r| _r.status == :plan } ||
-                       find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
-                       find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
-                       (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
-                       find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
-                       find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
-                       find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
-                       ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                       find_room(:stockpile) { |_r| _r.subtype and _r.status == :plan }
-                    wantdig(r)
-                    if r.status == :finished
-                        r.misc[:furnished] = true
-                        r.layout.each { |f| f.delete :ignore }
-                        furnish_room(r)
-                        smooth_room(r)
-                    end
-                    false
-                else
-                    idleidle
-                    true
+            elsif r =
+                   (st = @important_workshops.shift and
+                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
+                   find_room(:infirmary) { |_r| _r.status == :plan } ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
+                   find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
+                   (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
+                   find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                   find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
+                   find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
+                   ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                   ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
+                   find_room(:stockpile) { |_r| _r.subtype and _r.status == :plan }
+                wantdig(r)
+                if r.status == :finished
+                    r.misc[:furnished] = true
+                    r.layout.each { |f| f.delete :ignore }
+                    furnish_room(r)
+                    smooth_room(r)
                 end
+                false
+            elsif idle?
+                idleidle
+                true
             end
         end
 
@@ -2430,7 +2434,7 @@ class DwarfAI
                 ocx = fx + dirx*3
                 (1..3).each { |dx|
                     # segments of the big central horizontal corridor
-                    cx = fx + dirx*(9*dx-1)
+                    cx = fx + dirx*(9*dx-4)
                     cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
                     cor_x.accesspath = [prev_corx]
                     @corridors << cor_x
@@ -2440,7 +2444,7 @@ class DwarfAI
                     [-1, 1].each { |diry|
                         prev_cory = cor_x
                         ocy = fy + diry*2
-                        (1..5).each { |dy|
+                        (1..6).each { |dy|
                             cy = fy + diry*3*dy
                             cor_y = Corridor.new(cx, cx-dirx*1, ocy, cy, fz, fz)
                             cor_y.accesspath = [prev_cory]
