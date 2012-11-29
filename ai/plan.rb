@@ -2426,6 +2426,7 @@ class DwarfAI
                                 r.accesspath = [cor_y]
                                 r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
                                 r.layout << {:item => :cabinet, :x => 1+(r.x<=>cx), :y => 1+diry, :ignore => true}
+                                r.layout << {:item => :chest, :x => 1+(r.x<=>cx), :y => 1-diry, :ignore => true}
                                 r.layout << {:item => :door, :x => 1-2*(r.x<=>cx), :y => 1}
                             }
                         }
