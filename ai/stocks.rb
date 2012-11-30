@@ -62,6 +62,12 @@ class DwarfAI
                 return
             end
 
+            @last_unforbidall_year ||= df.cur_year
+            if @last_unforbidall_year != df.cur_year
+                @last_unforbidall_year = df.cur_year
+                df.world.items.all { |i| i.flags.forbid = false }
+            end
+
             @updating = Needed.keys | WatchStock.keys
             @updating_count = @updating.dup
             puts 'AI: updating stocks' if $DEBUG

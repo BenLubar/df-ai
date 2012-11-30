@@ -167,6 +167,7 @@ class DwarfAI
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
+                   find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                    ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
@@ -192,7 +193,7 @@ class DwarfAI
                 next if r.status == :plan or r.status == :dig
 
                 case r.type
-                when :bedroom, :well, :dininghall, :cemetary, :infirmary, :barracks
+                when :nobleroom, :bedroom, :well, :dininghall, :cemetary, :infirmary, :barracks
                     tab << r
                 end
             }
@@ -214,10 +215,6 @@ class DwarfAI
             ai.pop.worker_labor.each { |w, wl|
                 df.unit_find(w).status.labors[:DETAIL] = true
             }
-
-            debug 'unforbid dumped items'
-            gpit = find_room(:garbagepit)
-            df.map_tile_at(gpit.x, gpit.y, gpit.z-1).mapblock.items_tg.each { |i| i.flags.forbid = false }
         end
 
         def checkrooms
