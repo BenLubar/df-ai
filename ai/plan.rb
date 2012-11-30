@@ -1428,6 +1428,8 @@ class DwarfAI
                 bld.burial_mode.allow_burial = true
                 bld.burial_mode.no_citizens = false
                 bld.burial_mode.no_pets = true
+            when :door
+                bld.door_flags.internal = true if f[:internal]
             when :trap
                 return setup_lever(r, f) if f[:subtype] == :lever
             when :floodgate
@@ -2460,6 +2462,46 @@ class DwarfAI
                             }
                         }
                     }
+                }
+
+                # noble suites
+                cx = fx + dirx*(9*3-4+6)
+                cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
+                cor_x.accesspath = [prev_corx]
+                @corridors << cor_x
+
+                [-1, 1].each { |diry|
+                    @noblesuite ||= -1
+                    @noblesuite += 1
+
+                    r = Room.new(:nobleroom, :office, cx-1, cx+1, fy+diry*3, fy+diry*5, fz)
+                    r.misc[:noblesuite] = @noblesuite
+                    r.accesspath = [cor_x]
+                    r.layout << {:item => :chair, :x => 1, :y => 1, :makeroom => true}
+                    r.layout << {:item => :chair, :x => 1-dirx, :y => 1}
+                    r.layout << {:item => :door, :x => 1, :y => 1-2*diry}
+                    # TODO noble furniture
+                    #r.layout << {:item => :chest, :x => 1+dirx, :y => 0, :ignore => true}
+                    @rooms << r
+
+                    r = Room.new(:nobleroom, :bedroom, cx-1, cx+1, fy+diry*7, fy+diry*9, fz)
+                    r.misc[:noblesuite] = @noblesuite
+                    r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
+                    r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    @rooms << r
+
+                    r = Room.new(:nobleroom, :diningroom, cx-1, cx+1, fy+diry*11, fy+diry*13, fz)
+                    r.misc[:noblesuite] = @noblesuite
+                    r.layout << {:item => :table, :x => 1, :y => 1, :makeroom => true}
+                    r.layout << {:item => :chair, :x => 1+dirx, :y => 1}
+                    r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    @rooms << r
+
+                    r = Room.new(:nobleroom, :tomb, cx-1, cx+1, fy+diry*15, fy+diry*17, fz)
+                    r.misc[:noblesuite] = @noblesuite
+                    r.layout << {:item => :coffin, :x => 1, :y => 1, :makeroom => true}
+                    r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    @rooms << r
                 }
             }
         end
