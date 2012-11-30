@@ -508,7 +508,7 @@ class DwarfAI
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
                         :Clothiers => :cloth, :Still => :food, :Kitchen => :food, :WoodFurnace => :wood,
-                        :Smelter => :stone, :MetalsmithsForge => :bars,
+                        :Smelter => :stone, :MetalsmithsForge => :bars_blocks,
                 }[r.subtype]
                     # XXX hardcoded fort layout
                     y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
@@ -960,56 +960,58 @@ class DwarfAI
             case r.subtype
             when :stone
                 bld.settings.flags.stone = true
+                t = bld.settings.stone.mats
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
                     df.world.raws.inorganics.length.times { |i|
-                        bld.settings.stone[i] = (df.ui.economic_stone[i] ? 0 : 1)
+                        t[i] = (df.ui.economic_stone[i] ? 0 : 1)
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
                     df.world.raws.inorganics.length.times { |i|
-                        bld.settings.stone[i] = (df.world.raws.inorganics[i].flags[:METAL_ORE] ? 1 : 0)
+                        t[i] = (df.world.raws.inorganics[i].flags[:METAL_ORE] ? 1 : 0)
                     }
                 else
-                    df.world.raws.inorganics.length.times { |i| bld.settings.stone[i] = 1 }
+                    df.world.raws.inorganics.length.times { |i| t[i] = 1 }
                 end
                 bld.max_wheelbarrows = 1
                 add_manager_order(:MakeWoodenWheelbarrow)
             when :wood
                 bld.settings.flags.wood = true
-                df.world.raws.plants.all.length.times { |i| bld.settings.wood[i] = 1 }
-            when :furniture, :goods, :ammo, :weapons, :armor
+                t = bld.settings.wood.mats
+                df.world.raws.plants.all.length.times { |i| t[i] = 1 }
+            when :furniture, :finished_goods, :ammo, :weapons, :armor
                 case r.subtype
                 when :furniture
                     bld.settings.flags.furniture = true
+                    bld.settings.furniture.sand_bags = true
                     s = bld.settings.furniture
-                    s.sand_bags = true
-                    60.times { |i| s.type[i] = true }   # 33
-                when :goods
-                    bld.settings.flags.goods = true
+                    60.times { |i| s.type[i] = true }   # 33, hardcoded (28 ItemTypes, 4 ToolUses, 1 SandBags)
+                when :finished_goods
+                    bld.settings.flags.finished_goods = true
                     s = bld.settings.finished_goods
                     150.times { |i| s.type[i] = true }  # 112 (== refuse)
                     bld.max_bins = r.w*r.h
                 when :ammo
                     bld.settings.flags.ammo = true
                     s = bld.settings.ammo
-                    10.times { |i| s.type[i] = true }   # 3
+                    df.world.raws.itemdefs.ammo.length.times { |i| s.type[i] = true }
                     bld.max_bins = r.w*r.h
                 when :weapons
                     bld.settings.flags.weapons = true
                     s = bld.settings.weapons
-                    40.times { |i| s.weapon_type[i] = true }    # 24
-                    20.times { |i| s.trapcomp_type[i] = true }  # 5
+                    df.world.raws.itemdefs.weapons.length.times { |i| s.weapon_type[i] = true }
+                    df.world.raws.itemdefs.trapcomps.length.times { |i| s.trapcomp_type[i] = true }
                     s.usable = true
                     s.unusable = true
                     bld.max_bins = r.w*r.h
                 when :armor
                     bld.settings.flags.armor = true
                     s = bld.settings.armor
-                    20.times { |i| s.body[i] = true }   # 12
-                    20.times { |i| s.head[i] = true }   # 8
-                    20.times { |i| s.feet[i] = true }   # 6
-                    20.times { |i| s.hands[i] = true }  # 3
-                    20.times { |i| s.legs[i] = true }   # 9
-                    20.times { |i| s.shield[i] = true } # 9
+                    df.world.raws.itemdefs.armor.length.times { |i| s.body[i] = true }
+                    df.world.raws.itemdefs.helms.length.times { |i| s.head[i] = true }
+                    df.world.raws.itemdefs.shoes.length.times { |i| s.feet[i] = true }
+                    df.world.raws.itemdefs.pants.length.times { |i| s.legs[i] = true }
+                    df.world.raws.itemdefs.gloves.length.times { |i| s.hands[i] = true }
+                    df.world.raws.itemdefs.shields.length.times { |i| s.shield[i] = true }
                     s.usable = true
                     s.unusable = true
                     bld.max_bins = r.w*r.h
@@ -1020,14 +1022,14 @@ class DwarfAI
                 s.quality_total.map! { true }
             when :animals
                 bld.settings.flags.animals = true
-                bld.settings.animals.animals_empty_cages = (r.misc[:secondary] ? true : false)
-                bld.settings.animals.animals_empty_traps = (r.misc[:secondary] ? true : false)
+                bld.settings.animals.empty_cages = (r.misc[:secondary] ? true : false)
+                bld.settings.animals.empty_traps = (r.misc[:secondary] ? true : false)
                 df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
             when :refuse, :corpses
                 bld.settings.flags.refuse = true
                 bld.settings.refuse.fresh_raw_hide = false
                 bld.settings.refuse.rotten_raw_hide = true
-                t = bld.settings.refuse.type
+                t = bld.settings.refuse
                 150.times { |i| t.type[i] = true }  # 112, ItemType enum + other stuff
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
                     df.world.raws.creatures.all.length.times { |i|
@@ -1050,7 +1052,7 @@ class DwarfAI
             when :food
                 bld.settings.flags.food = true
                 bld.max_barrels = r.w*r.h
-                t = bld.settings.food.type
+                t = bld.settings.food
                 mt = df.world.raws.mat_table
                    if r.misc[:workshop] and r.misc[:workshop].type == :farmplot
                     mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
@@ -1114,7 +1116,8 @@ class DwarfAI
             when :leather
                 bld.settings.flags.leather = true
                 bld.max_bins = r.w*r.h
-                df.world.raws.mat_table.organic_types[:Leather].length.times { |i| bld.settings.leather[i] = true }
+                t = bld.settings.leather.mats
+                df.world.raws.mat_table.organic_types[:Leather].length.times { |i| t[i] = true }
             when :gems
                 bld.settings.flags.gems = true
                 bld.max_bins = r.w*r.h
@@ -1126,21 +1129,23 @@ class DwarfAI
                     df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = true }
                     df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = t.cut_mats[i] = true }
                 end
-            when :bars
-                bld.settings.flags.bars = true
+            when :bars_blocks
+                bld.settings.flags.bars_blocks = true
                 bld.max_bins = r.w*r.h
+                s = bld.settings.bars_blocks
                 if r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
-                    df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
-                    bld.settings.bars_other_mats[0] = true  # coal
+                    df.world.raws.inorganics.length.times { |i| s.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
+                    s.bars_other_mats[0] = true  # coal
                     bld.settings.allow_organic = false
                 else
-                    df.world.raws.inorganics.length.times { |i| bld.settings.bars_mats[i] = bld.settings.blocks_mats[i] = true }
-                    10.times { |i| bld.settings.bars_other_mats[i] = bld.settings.blocks_other_mats[i] = true }
-                # bars_other = 5 (coal/potash/ash/pearlash/soap)     blocks_other = 4 (greenglass/clearglass/crystalglass/wood)
+                    df.world.raws.inorganics.length.times { |i| s.bars_mats[i] = s.blocks_mats[i] = true }
+                    10.times { |i| s.bars_other_mats[i] = s.blocks_other_mats[i] = true }
+                    # bars_other = 5 (coal/potash/ash/pearlash/soap)     blocks_other = 4 (greenglass/clearglass/crystalglass/wood)
                 end
             when :coins
                 bld.settings.flags.coins = true
-                df.world.raws.inorganics.length.times { |i| bld.settings.coins[i] = true }
+                t = bld.settings.coins.mats
+                df.world.raws.inorganics.length.times { |i| t[i] = true }
             end
         end
 
@@ -2023,7 +2028,7 @@ class DwarfAI
             @corridors << corridor_center2
 
             types = [:food,:furniture, :wood,:stone, :refuse, :corpses, :gems,:animals]
-            types += [:goods,:bars, :cloth,:leather, :ammo,:armor, :weapons,:coins]
+            types += [:finished_goods,:bars_blocks, :cloth,:leather, :ammo,:armor, :weapons,:coins]
 
             # TODO side stairs to workshop level ?
             tmp = []
