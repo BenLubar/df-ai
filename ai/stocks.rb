@@ -65,7 +65,7 @@ class DwarfAI
             @last_unforbidall_year ||= df.cur_year
             if @last_unforbidall_year != df.cur_year
                 @last_unforbidall_year = df.cur_year
-                df.world.items.all { |i| i.flags.forbid = false }
+                df.world.items.all.each { |i| i.flags.forbid = false }
             end
 
             @updating = Needed.keys | WatchStock.keys
