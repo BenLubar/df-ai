@@ -164,8 +164,8 @@ class DwarfAI
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
-                   (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                   (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -294,12 +294,14 @@ class DwarfAI
 
             if r = find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].length < @dwarves_per_table } }
                 wantdig(r)
-                table = r.layout.find { |f| f[:item] == :table and f[:users].length < @dwarves_per_table }
-                chair = r.layout.find { |f| f[:item] == :chair and f[:users].length < @dwarves_per_table }
-                table.delete :ignore
-                chair.delete :ignore
-                table[:users] << id
-                chair[:users] << id
+                if table = r.layout.find { |f| f[:item] == :table and f[:users].length < @dwarves_per_table }
+                    table.delete :ignore
+                    table[:users] << id
+                end
+                if chair = r.layout.find { |f| f[:item] == :chair and f[:users].length < @dwarves_per_table }
+                    chair.delete :ignore
+                    chair[:users] << id
+                end
                 if r.status == :finished
                     furnish_room(r)
                 end
@@ -1065,7 +1067,7 @@ class DwarfAI
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i]= plant.flags[:DRINK] if plant
+                        t.plants[i] = plant.flags[:DRINK] if plant
                     }
                 elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
                     mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
@@ -2645,7 +2647,7 @@ class DwarfAI
                         next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
                         dm = :Default if dm != :No and t.shape == :TREE
-                        t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
+                        t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|

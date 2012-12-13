@@ -317,6 +317,16 @@ class DwarfAI
                 return
 
             when :drink
+                if @count[:food] <= 0
+                    amount = 0
+                elsif false
+                    mt = df.world.raws.mat_table
+                    mt.organic_types[:Plants].length.times { |i|
+                        plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
+                        t.plants[i]= plant.flags[:DRINK] if plant
+                    }
+                    # TODO count brewable
+                end
                 amount = (amount+4)/5  # accounts for brewer yield, but not for input stack size
 
             when :rockblock

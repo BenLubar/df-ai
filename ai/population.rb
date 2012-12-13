@@ -83,6 +83,7 @@ class DwarfAI
 
             # del those who are no longer here
             old.each { |id, c|
+                # u.counters.death_tg.flags.discovered dead/missing
                 del_citizen(id)
             }
         end
@@ -334,10 +335,10 @@ class DwarfAI
                                 elsif job.mat_type == 0
                                     # XXX metalcraft ?
                                     @labor_needmore[:MASON] += 1
-				else
-					@seen_badwork ||= {}
-					puts "df-ai autolabor: unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type] if $DEBUG
-					@seen_badwork[job.job_type] = true
+                                else
+                                    @seen_badwork ||= {}
+                                    puts "df-ai autolabor: unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type] if $DEBUG
+                                    @seen_badwork[job.job_type] = true
                                 end
                             end
                         end
