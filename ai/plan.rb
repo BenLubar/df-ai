@@ -2330,14 +2330,15 @@ class DwarfAI
             # trivial walk of the river tiles to find a spot closer to dst
             move_river = lambda { |dst|
                 nsrc = src
-                while nsrc
+                500.times {
+                    break if not nsrc
                     src = nsrc
                     dist = src.distance_to(dst)
                     nsrc = spiral_search(src, 1, 1) { |t|
                         next if t.distance_to(dst) > dist
                         t.designation.feature_local
                     }
-                end
+		}
             }
 
             # 1st end: reservoir input
