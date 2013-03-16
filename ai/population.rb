@@ -529,9 +529,6 @@ class DwarfAI
             } || cz.first
                 # TODO do not hardcode position name, check population caps, ...
                 assign_new_noble('MANAGER', tg)
-                office = ai.plan.ensure_workshop(:ManagersOffice)
-                ai.plan.set_owner(office, tg.id)
-                df.add_announcement("AI: new manager: #{tg.name}", 7, false) { |ann| ann.pos = tg.pos }
             end
 
 
@@ -540,8 +537,6 @@ class DwarfAI
             }
                 assign_new_noble('BOOKKEEPER', tg)
                 df.ui.bookkeeper_settings = 4
-                office = ai.plan.ensure_workshop(:BookkeepersOffice)
-                ai.plan.set_owner(office, tg.id)
             end
 
 

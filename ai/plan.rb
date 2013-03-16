@@ -309,6 +309,7 @@ class DwarfAI
         end
 
         def attribute_noblerooms(id_list)
+            # XXX tomb may be populated...
             while old = find_room(:nobleroom) { |r| r.owner and not id_list.include?(r.owner) }
                 set_owner(old, nil)
             end
@@ -727,28 +728,12 @@ class DwarfAI
             f[:queue_build] = true
         end
 
-        def ensure_workshop(subtype, dignow=(subtype.to_s !~ /Office/))
+        def ensure_workshop(subtype, dignow=true)
             ws = find_room(:workshop) { |r| r.subtype == subtype }
             raise "unknown workshop #{subtype}" if not ws
             if ws.status == :plan
                 if dignow
                     digroom(ws)
-                elsif subtype == :ManagersOffice
-                    wantdig(ws)
-                    # population level may warrant a manager to manage work orders, and the AI need him for everything
-                    try_count = 0
-                    mo = df.world.manager_orders.find { |_mo| _mo.is_validated == 0 }
-                    df.onupdate_register_once('df-ai plan ensure_workshop manager', 10) {
-                        try_count += 1
-                        if !mo or mo.is_validated == 1
-                            true
-                        elsif try_count > 20
-                            # dig now, and ensure the throne is on its way
-                            digroom(ws)
-                            df.world.manager_orders.each { |_mo| _mo.is_validated = 1 if _mo.job_type == :ConstructThrone }
-                            true
-                        end
-                    }
                 else
                     wantdig(ws)
                 end
@@ -765,11 +750,6 @@ class DwarfAI
 
         def try_construct_workshop(r)
             case r.subtype
-            when :ManagersOffice, :BookkeepersOffice
-                r.layout.each { |f|
-                    @tasks << [:furnish, r, f] if f[:makeroom]
-                }
-                true
             when :Dyers
                 # barrel, bucket
                 if barrel = df.world.items.other[:BARREL].find { |i|
@@ -829,7 +809,7 @@ class DwarfAI
                     @tasks << [:checkconstruct, r]
                     true
                 end
-            when :WoodFurnace, :Smelter
+            when :WoodFurnace, :Smelter, :Kiln, :GlassFurnace
                 # firesafe boulder
                 if bould = df.world.items.other[:BOULDER].find { |i|
                         i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
@@ -953,25 +933,7 @@ class DwarfAI
                 m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
             }
 
-            # XXX ugly
-            wr = Room.new(nil, nil, r.x1+1, r.x1+3, r.y2+2, r.y2+4, r.z)
-            wr.dig
-            if bould = df.world.items.other[:BOULDER].find { |i|
-                i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
-            }
-                bld = df.building_alloc(:Furnace, :Kiln)
-                df.building_position(bld, wr)
-                df.building_construct(bld, [bould])
-
-                add_manager_order(:MakePlasterPowder, 15)
-
-                df.onupdate_register_once('df-ai plan infirmary plasterpowder', 2400, 8) {
-                    if find_manager_orders(:MakePlasterPowder).empty?
-                        df.building_deconstruct(bld)
-                        true
-                    end
-                }
-            end
+	    add_manager_order(:MakePlasterPowder, 15)
         end
 
         def setup_stockpile_settings(r, bld)
@@ -1980,12 +1942,11 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            # Millstone, Siege, Custom/screwpress
-            # GlassFurnace, Kiln, magma workshops/furnaces, other nobles offices
+            # Millstone, Siege, Custom/screwpress, magma workshops/furnaces
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-                :Loom,:Clothiers, :Dyers,:Bowyers, nil,:BookkeepersOffice]
+                :Loom,:Clothiers, :Dyers,:Bowyers, nil,:Kiln]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-                :Smelter,:MetalsmithsForge, :Ashery,:WoodFurnace, :SoapMaker,:ManagersOffice]
+                :Smelter,:MetalsmithsForge, :Ashery,:WoodFurnace, :SoapMaker,:GlassFurnace]
 
             [-1, 1].each { |dirx|
                 prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
@@ -2022,14 +1983,6 @@ class DwarfAI
                         r.layout << {:item => :door, :x => 1, :y => 1-2*(r.y<=>fy)}
                     }
                 }
-            }
-
-            @rooms.each { |r|
-                next if r.type != :workshop
-                case r.subtype
-                when :ManagersOffice, :BookkeepersOffice
-                    r.layout << {:item => :chair, :x => 1, :y => 1, :makeroom => true}
-                end
             }
         end
 
