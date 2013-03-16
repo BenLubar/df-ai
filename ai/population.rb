@@ -566,6 +566,22 @@ class DwarfAI
             }
                 assign_new_noble('BROKER', tg)
             end
+
+            check_noble_appartments
+        end
+
+        def check_noble_appartments
+            noble_ids = df.ui.main.fortress_entity.assignments_by_type.map { |alist|
+                alist.map { |a| a.histfig_tg.unit_id }
+            }.flatten.uniq.sort
+
+            noble_ids.delete_if { |id|
+                not df.unit_entitypositions(df.unit_find(id)).find { |ep|
+                    ep.required_office > 0 or ep.required_dining > 0 or ep.required_tomb > 0
+                }
+            }
+
+            @ai.plan.attribute_noblerooms(noble_ids)
         end
 
         def assign_new_noble(pos_code, unit)

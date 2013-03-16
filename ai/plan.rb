@@ -118,12 +118,12 @@ class DwarfAI
         end
 
         def idle?
-            @tasks.reject { |t|
+            @tasks.find { |t|
                 case t[0]
                 when :monitor_cistern, :checkrooms, :checkidle
-                    true
+                else true
                 end
-            }.empty?
+            }
         end
 
         def new_citizen(uid)
@@ -306,6 +306,22 @@ class DwarfAI
                     furnish_room(r)
                 end
             end
+        end
+
+        def attribute_noblerooms(id_list)
+            while old = find_room(:nobleroom) { |r| r.owner and not id_list.include?(r.owner) }
+                set_owner(old, nil)
+            end
+
+            id_list.each { |id|
+                if not find_room(:nobleroom) { |r| r.owner == id }
+                    free = find_room(:nobleroom) { |r| not r.owner }
+                    while new = find_room(:nobleroom) { |r| r.owner != id and r.misc[:noblesuite] == free.misc[:noblesuite] }
+                        set_owner(new, id)
+                        wantdig(new)
+                    end
+                end
+            }
         end
 
         def getsoldierbarrack(id)
@@ -2338,7 +2354,7 @@ class DwarfAI
                         next if t.distance_to(dst) > dist
                         t.designation.feature_local
                     }
-		}
+                }
             }
 
             # 1st end: reservoir input
@@ -2475,8 +2491,10 @@ class DwarfAI
                 # noble suites
                 cx = fx + dirx*(9*3-4+6)
                 cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
-                cor_x.accesspath = [prev_corx]
-                @corridors << cor_x
+                cor_x2 = Corridor.new(ocx-dirx, fx+dirx*3, fy, fy, fz, fz)
+                cor_x.accesspath = [cor_x2]
+                cor_x2.accesspath = [dirx < 0 ? corridor_center0 : corridor_center2]
+                @corridors << cor_x << cor_x2
 
                 [-1, 1].each { |diry|
                     @noblesuite ||= -1
