@@ -118,7 +118,7 @@ class DwarfAI
         end
 
         def idle?
-            @tasks.find { |t|
+            not @tasks.find { |t|
                 case t[0]
                 when :monitor_cistern, :checkrooms, :checkidle
                 else true
@@ -317,9 +317,15 @@ class DwarfAI
             id_list.each { |id|
                 if not find_room(:nobleroom) { |r| r.owner == id }
                     free = find_room(:nobleroom) { |r| not r.owner }
+                    entpos = df.unit_entitypositions(df.unit_find(id))
                     while new = find_room(:nobleroom) { |r| r.owner != id and r.misc[:noblesuite] == free.misc[:noblesuite] }
                         set_owner(new, id)
-                        wantdig(new)
+                        wantdig(new) if new.status == :plan and case new.subtype
+                            when :tomb;       entpos.find { |ep| ep.required_tomb > 0 }
+                            when :diningroom; entpos.find { |ep| ep.required_dining > 0 }
+                            when :bedroom;    entpos.find { |ep| ep.required_bedroom > 0 }
+                            when :office;     entpos.find { |ep| ep.required_office > 0 }
+                            end
                     end
                 end
             }
@@ -933,7 +939,7 @@ class DwarfAI
                 m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
             }
 
-	    add_manager_order(:MakePlasterPowder, 15)
+            add_manager_order(:MakePlasterPowder, 15)
         end
 
         def setup_stockpile_settings(r, bld)
@@ -1799,6 +1805,7 @@ class DwarfAI
             # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
             debug 'blueprint found entrance'
+            # TODO if no room for fort body, make surface fort
             scan_fort_body
             debug 'blueprint found body'
             setup_blueprint_rooms
@@ -1806,6 +1813,11 @@ class DwarfAI
             # ensure traps are on the surface
             @fort_entrance.layout.each { |i|
                 i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y]).z-@fort_entrance.z1
+            }
+            @fort_entrance.layout.delete_if { |i|
+                t = df.map_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], @fort_entrance.z1+i[:z]-1)
+                tm = t.tilemat
+                t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
             }
             puts 'AI: ready'
         end
@@ -2467,6 +2479,7 @@ class DwarfAI
                     r.misc[:noblesuite] = @noblesuite
                     r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    r.accesspath = [@rooms.last]
                     @rooms << r
 
                     r = Room.new(:nobleroom, :diningroom, cx-1, cx+1, fy+diry*11, fy+diry*13, fz)
@@ -2474,12 +2487,14 @@ class DwarfAI
                     r.layout << {:item => :table, :x => 1, :y => 1, :makeroom => true}
                     r.layout << {:item => :chair, :x => 1+dirx, :y => 1}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    r.accesspath = [@rooms.last]
                     @rooms << r
 
                     r = Room.new(:nobleroom, :tomb, cx-1, cx+1, fy+diry*15, fy+diry*17, fz)
                     r.misc[:noblesuite] = @noblesuite
                     r.layout << {:item => :coffin, :x => 1, :y => 1, :makeroom => true}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
+                    r.accesspath = [@rooms.last]
                     @rooms << r
                 }
             }

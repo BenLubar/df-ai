@@ -579,7 +579,6 @@ class DwarfAI
                     :dimplecup => :MillPlants,
                     :quarrybush => :ProcessPlantsBag,
                 }[what]
-                amount = 30 if amount > 30
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
@@ -602,7 +601,6 @@ class DwarfAI
                 else
                     reaction = :MakeBoneBolt
                     stock = count_stocks(:bonebolts)
-                    amount = 30 if amount > 30
                     amount = 1000 - stock if amount > 1000 - stock
                     amount /= 2 if amount > 10
                     amount /= 2 if amount > 4
@@ -611,7 +609,6 @@ class DwarfAI
             when :cloth_nodye
                 reaction = :DyeCloth
                 input = :dimple_dye
-                amount = 30 if amount > 30
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
 
