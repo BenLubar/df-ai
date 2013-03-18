@@ -315,18 +315,18 @@ class DwarfAI
             end
 
             id_list.each { |id|
-                if not find_room(:nobleroom) { |r| r.owner == id }
-                    free = find_room(:nobleroom) { |r| not r.owner }
-                    entpos = df.unit_entitypositions(df.unit_find(id))
-                    while new = find_room(:nobleroom) { |r| r.owner != id and r.misc[:noblesuite] == free.misc[:noblesuite] }
-                        set_owner(new, id)
-                        wantdig(new) if new.status == :plan and case new.subtype
-                            when :tomb;       entpos.find { |ep| ep.required_tomb > 0 }
-                            when :diningroom; entpos.find { |ep| ep.required_dining > 0 }
-                            when :bedroom;    entpos.find { |ep| ep.required_bedroom > 0 }
-                            when :office;     entpos.find { |ep| ep.required_office > 0 }
-                            end
-                    end
+                entpos = df.unit_entitypositions(df.unit_find(id))
+                base = find_room(:nobleroom) { |r| r.owner == id } || find_room(:nobleroom) { |r| not r.owner }
+                seen = {}
+                while room = find_room(:nobleroom) { |r| r.misc[:noblesuite] == base.misc[:noblesuite] and not seen[r.subtype] }
+                    seen[room.subtype] = true
+                    set_owner(room, id)
+                    wantdig(room) if case room.subtype
+                        when :tomb;       entpos.find { |ep| ep.required_tomb    > 0 }
+                        when :diningroom; entpos.find { |ep| ep.required_dining  > 0 }
+                        when :bedroom;    entpos.find { |ep| ep.required_bedroom > 0 }
+                        when :office;     entpos.find { |ep| ep.required_office  > 0 }
+                        end
                 end
             }
         end
