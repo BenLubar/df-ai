@@ -2390,7 +2390,8 @@ class DwarfAI
                 next unless sf = surface_tile_at(_t)
                 grasstile = 0
                 if (-5..5).all? { |dx| (-5..5).all? { |dy|
-                    if tt = sf.offset(dx, dy) and tt.shape_basic == :Floor
+                    if tt = sf.offset(dx, dy) and tt.shape_basic == :Floor and
+                            tt.designation.flow_size == 0 and tt.tilemat != :FROZEN_LIQUID
                         grasstile += 1 if tt.mapblock.block_events.find { |be|
                             be.kind_of?(DFHack::BlockSquareEventGrassst) and be.amount[tt.dx][tt.dy] > 0
                         }
@@ -2470,14 +2471,16 @@ class DwarfAI
                     r.accesspath = [cor_x]
                     r.layout << {:item => :chair, :x => 1, :y => 1, :makeroom => true}
                     r.layout << {:item => :chair, :x => 1-dirx, :y => 1}
+                    r.layout << {:item => :chest, :x => 1+dirx, :y => 0, :ignore => true}
+                    r.layout << {:item => :cabinet, :x => 1+dirx, :y => 2, :ignore => true}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry}
-                    # TODO noble furniture
-                    #r.layout << {:item => :chest, :x => 1+dirx, :y => 0, :ignore => true}
                     @rooms << r
 
                     r = Room.new(:nobleroom, :bedroom, cx-1, cx+1, fy+diry*7, fy+diry*9, fz)
                     r.misc[:noblesuite] = @noblesuite
                     r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
+                    r.layout << {:item => :armorstand, :x => 1-dirx, :y => 0, :ignore => true}
+                    r.layout << {:item => :weaponrack, :x => 1-dirx, :y => 2, :ignore => true}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
                     r.accesspath = [@rooms.last]
                     @rooms << r
@@ -2486,6 +2489,8 @@ class DwarfAI
                     r.misc[:noblesuite] = @noblesuite
                     r.layout << {:item => :table, :x => 1, :y => 1, :makeroom => true}
                     r.layout << {:item => :chair, :x => 1+dirx, :y => 1}
+                    r.layout << {:item => :cabinet, :x => 1-dirx, :y => 0, :ignore => true}
+                    r.layout << {:item => :chest, :x => 1-dirx, :y => 2, :ignore => true}
                     r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
                     r.accesspath = [@rooms.last]
                     @rooms << r
