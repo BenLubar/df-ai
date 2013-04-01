@@ -793,6 +793,10 @@ class DwarfAI
                 is_metal_ore(i) and moc[i.mat_index] and is_item_free(i)
             }.length
 
+            @ai.plan.map_veins.keys.find { |k|
+                can_melt += @ai.plan.dig_vein(k) if moc[k]
+            } if can_melt < WatchStock[:metal_ore]
+
             if can_melt > WatchStock[:metal_ore]
                 return 4*150*(can_melt - WatchStock[:metal_ore])
             end
@@ -826,6 +830,10 @@ class DwarfAI
                             has += 1
                         end
                     }
+                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1
+                        has += @ai.plan.dig_vein(rr.mat_index)
+                        future = true if has > 0
+                    end
                     has /= rr.quantity
 
                     if has <= 0 and rr.item_type == :BAR and rr.mat_type == 0 and rr.mat_index != -1

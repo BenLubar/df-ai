@@ -1819,7 +1819,152 @@ class DwarfAI
                 tm = t.tilemat
                 t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
             }
+            list_map_veins
+            debug 'listed map veins'
             puts 'AI: ready'
+        end
+
+        attr_accessor :map_veins
+
+        # scan the map, list all map veins in @map_veins (mat_index => [block coords], sorted by z)
+        def list_map_veins
+            @map_veins = {}
+            df.each_map_block { |block|
+                block.block_events.grep(DFHack::BlockSquareEventMineralst).each { |vein|
+                    @map_veins[vein.inorganic_mat] ||= []
+                    @map_veins[vein.inorganic_mat] << [block.map_pos.x, block.map_pos.y, block.map_pos.z]
+                }
+            }
+            @map_veins.each { |mat, list|
+                list.replace list.sort_by { |x, y, z| z + rand(6) }
+            }
+        end
+   
+        # mark a vein of a mat for digging, return expected boulder count
+        # when called repeatedly, dont queue new veins until the last one is dug out
+        def dig_vein(mat, want_boulders = 1)
+            # mat => [x, y, z, dig_mode] marked for to dig
+            @map_vein_queue ||= {}
+
+            count = 0
+            # check previously queued veins
+            if q = @map_vein_queue[mat]
+                q.delete_if { |x, y, z, dd|
+                    t = df.map_tile_at(x, y, z)
+                    if t.shape_basic != :Wall
+                        true
+                    else
+                        t.dig(dd) if t.designation.dig == :No     # warm/wet tile
+                        count += 1 if t.tilemat == :MINERAL and t.mat_index_vein == mat
+                        false
+                    end
+                }
+                @map_vein_queue.delete mat if q.empty?
+            end
+            return count unless @map_vein_queue.empty?
+
+            # queue new vein
+            # delete it from @map_veins
+            # discard tiles that would dig into a @plan room/corridor, or into a cavern (hidden + !wall)
+            16.times {
+                break if count*4 >= want_boulders
+                @map_veins.delete mat if @map_veins[mat] == []
+                break if not @map_veins[mat]
+                bx, by, bz = @map_veins[mat].pop
+
+                count += do_dig_vein(mat, bx, by, bz)
+            }
+
+            count/4
+        end
+
+        def do_dig_vein(mat, bx, by, bz)
+            count = 0
+            fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
+            if bz >= fort_minz
+                # TODO rooms outline
+                return count
+            end
+
+            q = @map_vein_queue[mat] ||= []
+
+            # dig whole block
+            # TODO have the dwarves search for the vein
+            # TODO mine in (visible?) chunks
+            dxs = []
+            dys = []
+            (0..15).each { |dx| (0..15).each { |dy|
+                next if bx+dx == 0 or by+dy == 0 or bx+dx >= df.world.map.x_count-1 or by+dy >= df.world.map.y_count-1
+                t = df.map_tile_at(bx+dx, by+dy, bz)
+                if t.tilemat == :MINERAL and t.mat_index_vein == mat
+                    dxs |= [dx]
+                    dys |= [dy]
+                end
+            } }
+
+            need_shaft = true
+            (dxs.min..dxs.max).each { |dx| (dys.min..dys.max).each { |dy|
+                t = df.map_tile_at(bx+dx, by+dy, bz)
+                if t.designation.dig == :No
+                    ok = true
+                    ns = need_shaft
+                    (-1..1).each { |ddx| (-1..1).each { |ddy|
+                        tt = t.offset(ddx, ddy)
+                        if tt.shape_basic != :Wall
+                            tt.designation.hidden ? ok = false : ns = false
+                        end
+                    } }
+                    if ok
+                        t.dig(:Default)
+                        q << [t.x, t.y, t.z, :Default]
+                        count += 1 if t.tilemat == :MINERAL and t.mat_index_vein == mat
+                        need_shaft = ns
+                    end
+                end
+            } }
+
+            if need_shaft
+                # TODO better pathing (shaft may start in cavern)
+                # TODO reuse vertical part for many veins on different zlevels
+                # TODO minecarts?
+                if by > @fort_entrance.y
+                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+60, bz)   # XXX 60...
+                else
+                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-60, bz)
+                end
+                vert = vert.offset(1, 0) if (vert.z % 32) > 16  # XXX check this
+
+                t0 = df.map_tile_at(bx+(dxs.min+dxs.max)/2, by+(dys.min+dys.max)/2, bz)
+                while t0.y != vert.y
+                    t0.dig(:Default)
+                    q << [t0.x, t0.y, t0.z, :Default]
+                    t0 = t0.offset(0, (t0.y > vert.y ? -1 : 1))
+                end
+                while t0.x != vert.x
+                    t0.dig(:Default)
+                    q << [t0.x, t0.y, t0.z, :Default]
+                    t0 = t0.offset((t0.x > vert.x ? -1 : 1), 0)
+                end
+                while t0.designation.hidden
+                    if t0.z % 16 == 0
+                        t0.dig(:DownStair)
+                        q << [t0.x, t0.y, t0.z, :DownStair]
+                        t0 = t0.offset(((t0.z % 32) >= 16 ? 1 : -1), 0)
+                        t0.dig(:UpStair)
+                        q << [t0.x, t0.y, t0.z, :UpStair]
+                    else
+                        t0.dig(:UpDownStair)
+                        q << [t0.x, t0.y, t0.z, :UpDownStair]
+                    end
+                    break if not t0 = t0.offset(0, 0, 1)
+                end
+                if t0 and not t0.shape_passablelow
+                    t0.dig(:DownStair)
+                    q << [t0.x, t0.y, t0.z, :DownStair]
+                end
+            end
+
+            count
         end
 
         # same as tile.spiral_search, but search starting with center of each side first
