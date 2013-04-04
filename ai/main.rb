@@ -9,6 +9,10 @@ class DwarfAI
         @stocks = Stocks.new(self)
     end
 
+    def debug(str)
+	    puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+    end
+
     def startup
         @pop.startup
         @plan.startup

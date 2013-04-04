@@ -12,11 +12,18 @@ class DwarfAI
     end
 
     class Stocks
-        Needed = { :bin => 6, :barrel => 6, :bucket => 4, :bag => 4,
-            :food => 20, :drink => 20, :soap => 5, :logs => 16, :coal => 4,
+        Needed = {
+            :bed => 3, :table => 3, :chair => 3, :door => 3,
+            :bin => 3, :barrel => 3, :bucket => 2, :bag => 3,
+            :food => 20, :drink => 20, :logs => 16,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
-            :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin_bld => 3,
+            :coal => 4, :mechanism => 4, :cage => 3, :coffin_bld => 3,
+            :weapon => 2, :armor => 2, :clothes => 2, :cabinet => 2,
+            #:quiver => 2, :flask => 2, :backpack => 2,
+            :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
+            :armorstand => 1, :floodgate => 1, :traction_bench => 1,
+            :chest => 1, :coffin => 1, :soap => 1,
+            #:lye => 1, :ash => 1, :plasterpowder => 1, :wheelbarrow => 1,
             :raw_coke => 1,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
@@ -109,6 +116,8 @@ class DwarfAI
                 df.world.items.other[:BARREL].find_all { |i| i.stockpile.id == -1 }
             when :bag
                 df.world.items.other[:BOX].find_all { |i| df.decode_mat(i).plant }
+            when :rope
+                df.world.items.other[:CHAIN].find_all { |i| df.decode_mat(i).plant }
             when :bucket
                 df.world.items.other[:BUCKET]
             when :food
@@ -203,7 +212,7 @@ class DwarfAI
             when :clothes
                 return count_stocks_clothes
             else
-                return Needed[k] ? 1000000 : -1
+                return find_furniture_itemcount(k)
 
             end.find_all { |i|
                 is_item_free(i)
@@ -355,12 +364,12 @@ class DwarfAI
 
             amount = 30 if amount > 30
 
-            reaction ||= DwarfAI::Plan::FurnitureOrder[what]
-            @ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            reaction ||= FurnitureOrder[what]
+            find_manager_orders(reaction).each { |o| amount -= o.amount_total }
             return if amount <= 0
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            @ai.plan.add_manager_order(reaction, amount)
+            add_manager_order(reaction, amount)
         end
 
         # forge weapons
@@ -549,7 +558,7 @@ class DwarfAI
 
         def queue_need_coffin_bld(amount)
             # dont dig too early
-            return if @ai.plan.find_room(:infirmary) { |r| r.status != :finished }
+            return if not @ai.plan.past_initial_phase 
 
             # count actually allocated (plan wise) coffin buildings
             return if @ai.plan.find_room(:cemetary) { |r|
@@ -624,14 +633,14 @@ class DwarfAI
                 amount = n_input if amount > n_input
             end
 
-            @ai.plan.find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            find_manager_orders(reaction).each { |o| amount -= o.amount_total }
 
             return if amount <= 0
 
             amount = 30 if amount > 30
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            @ai.plan.add_manager_order(reaction, amount)
+            add_manager_order(reaction, amount)
         end
 
 
@@ -867,6 +876,156 @@ class DwarfAI
                 end
             }
             nil
+        end
+
+        ManagerRealOrder = {
+            :MakeSoap => :CustomReaction,
+            :MakePlasterPowder => :CustomReaction,
+            :MakeBag => :ConstructChest,
+            :MakeRope => :MakeChain,
+            :MakeWoodenWheelbarrow => :MakeTool,
+            :MakeBoneBolt => :MakeAmmo,
+            :MakeBoneCrossbow => :MakeWeapon,
+            :MakeTrainingAxe => :MakeWeapon,
+            :MakeTrainingShortSword => :MakeWeapon,
+            :MakeTrainingSpear => :MakeWeapon,
+        }
+        ManagerMatCategory = {
+            :MakeRope => :cloth, :MakeBag => :cloth,
+            :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
+            :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
+            :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
+            :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
+            :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
+        }
+        ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
+            :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
+            :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
+            :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
+            :DyeCloth => -1,
+        }
+        ManagerCustom = {
+            :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
+            :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
+        }
+        ManagerSubtype = {
+            # depends on raws.itemdefs, wait until a world is loaded
+        }
+
+        def self.init_manager_subtype
+            ManagerSubtype.update \
+                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
+                :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
+                :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
+                :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
+                :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
+                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
+        end
+
+        df.onstatechange_register { |st|
+            init_manager_subtype if st == :WORLD_LOADED
+        }
+        init_manager_subtype if not df.world.raws.itemdefs.ammo.empty?
+
+        def find_manager_orders(order)
+            _order = ManagerRealOrder[order] || order
+            matcat = ManagerMatCategory[order]
+            type = ManagerType[order]
+            subtype = ManagerSubtype[order]
+            custom = ManagerCustom[order]
+
+            df.world.manager_orders.find_all { |_o|
+                _o.job_type == _order and
+                _o.mat_type == (type || (matcat ? -1 : 0)) and
+                (matcat ? _o.material_category.send(matcat) : _o.material_category._whole == 0) and
+                (not subtype or subtype == _o.item_subtype) and
+                (not custom or custom == _o.reaction_name)
+            }
+        end
+
+        def setup_infirmary_supplies(r)
+            return unless df.world.items.other[:BOULDER].find { |i|
+                m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
+            }
+
+            add_manager_order(:MakePlasterPowder, 15)
+            add_manager_order(:MakeWoodenWheelbarrow)
+            add_manager_order(:MakeLye, amount+1, maxmerge)
+            add_manager_order(:MakeAsh, amount+1, maxmerge)
+        end
+
+        def add_manager_order(order, amount=1, maxmerge=30)
+            @ai.debug "add_manager #{order} #{amount}"
+            _order = ManagerRealOrder[order] || order
+            matcat = ManagerMatCategory[order]
+            type = ManagerType[order]
+            subtype = ManagerSubtype[order]
+            custom = ManagerCustom[order]
+
+            if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= maxmerge }
+                # try to merge with last manager_order, upgrading maxmerge to 30
+                o = df.world.manager_orders.last
+                if o and o.job_type == _order and
+                        o.amount_total + amount < 30 and
+                        o.mat_type == (type || (matcat ? -1 : 0)) and
+                        (matcat ? o.material_category.send(matcat) : o.material_category._whole == 0) and
+                        (not subtype or subtype == o.item_subtype) and
+                        (not custom or custom == o.reaction_name) and
+                        o.amount_total + amount < 30
+                    o.amount_total += amount
+                    o.amount_left += amount
+                else
+                    o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => (subtype || -1),
+                            :mat_type => (type || (matcat ? -1 : 0)), :mat_index => -1, :amount_left => amount, :amount_total => amount)
+                    o.material_category.send("#{matcat}=", true) if matcat
+                    o.reaction_name = custom if custom
+                    df.world.manager_orders << o
+                end
+            else
+                o.amount_total += amount
+                o.amount_left += amount
+            end
+        end
+
+        FurnitureOrder = Hash.new { |h, k|
+            h[k] = "Construct#{k.to_s.capitalize}".to_sym
+        }.update :chair => :ConstructThrone,
+            :traction_bench => :ConstructTractionBench,
+            :weaponrack => :ConstructWeaponRack,
+            :armorstand => :ConstructArmorStand,
+            :bucket => :MakeBucket,
+            :barrel => :MakeBarrel,
+            :bin => :ConstructBin,
+            :drink => :BrewDrink,
+            :crutch => :ConstructCrutch,
+            :splint => :ConstructSplint,
+            :bag => :MakeBag,
+            :rockblock => :ConstructBlocks,
+            :mechanism => :ConstructMechanisms,
+            :trap => :ConstructMechanisms,
+            :cage => :MakeCage,
+            :soap => :MakeSoap,
+            :rope => :MakeRope,
+            :coal => :MakeCharcoal
+
+        FurnitureFind = Hash.new { |h, k|
+            sym = "item_#{k}st".to_sym
+            h[k] = lambda { |o| o._rtti_classname == sym }
+        }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
+                 :trap => lambda { |o| o._rtti_classname == :item_trappartsst }
+
+        # find one item of this type (:bed, etc)
+        def find_furniture_item(itm)
+            find = FurnitureFind[itm]
+            oidx = DFHack::JobType::Item[FurnitureOrder[itm]]
+            df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
+        end
+
+        # return nr of free items of this type
+        def find_furniture_itemcount(itm)
+            find = FurnitureFind[itm]
+            oidx = DFHack::JobType::Item[FurnitureOrder[itm]]
+            df.world.items.other[oidx].find_all { |i| find[i] and df.item_isfree(i) }.length
         end
     end
 end

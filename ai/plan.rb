@@ -22,10 +22,6 @@ class DwarfAI
             categorize_all
         end
 
-        def debug(str)
-            puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
-        end
-
         def startup
             setup_blueprint
             categorize_all
@@ -152,7 +148,7 @@ class DwarfAI
                 end
             }
 
-            @important_workshops ||= [:Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace, :Loom, :Smelter]
+            @important_workshops ||= [:Still, :Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace, :Loom, :Smelter]
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
@@ -193,7 +189,7 @@ class DwarfAI
         end
 
         def idleidle
-            debug 'smooth fort'
+            @ai.debug 'smooth fort'
             tab = []
             @rooms.each { |r|
                 next if r.status == :plan or r.status == :dig
@@ -211,7 +207,6 @@ class DwarfAI
             df.onupdate_register_once('df-ai plan idleidle', 4) {
                 if r = tab.shift
                     smooth_room(r)
-                    r.layout.each { |f| build_furniture(f, true) }
                     false
                 else
                     true
@@ -260,7 +255,6 @@ class DwarfAI
                     if f[:bld_id] and not df.building_find(f[:bld_id])
                         df.add_announcement("AI: fix furniture #{f[:item]} in #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = [r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i] }
                         f.delete :bld_id
-                        f.delete :queue_build
                         @tasks << [:furnish, r, f]
                     end
                 }
@@ -509,30 +503,25 @@ class DwarfAI
         # queue a room for digging when other dig jobs are finished
         def wantdig(r)
             return true if r.misc[:queue_dig] or r.status != :plan
-            debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
-            r.layout.each { |f| build_furniture(f) if f[:makeroom] }
             r.dig(:plan)
             @tasks << [:wantdig, r]
         end
 
         def digroom(r)
             return true if r.status != :plan
-            debug "digroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "digroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
             r.misc.delete :queue_dig
             r.status = :dig
             r.dig
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
 
-            r.layout.each { |f|
-                build_furniture(f)
-            }
-
             if r.type == :workshop
                 case r.subtype
                 when :Quern
-                    add_manager_order(:ConstructQuern)
+                    @ai.stocks.add_manager_order(:ConstructQuern)
                 end
 
                 # add minimal stockpile in front of workshop
@@ -575,7 +564,7 @@ class DwarfAI
         end
 
         def construct_room(r)
-            debug "construct #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "construct #{@rooms.index(r)} #{r.type} #{r.subtype}"
             case r.type
             when :corridor
                 furnish_room(r)
@@ -609,38 +598,9 @@ class DwarfAI
         FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
             :traction_bench => :TractionBench
 
-        FurnitureWorkshop = Hash.new(:Masons).update :bed => :Carpenters,
-            :traction_bench => :Mechanics
-
-        FurnitureOrder = Hash.new { |h, k|
-            h[k] = "Construct#{k.to_s.capitalize}".to_sym
-        }.update :chair => :ConstructThrone,
-            :traction_bench => :ConstructTractionBench,
-            :weaponrack => :ConstructWeaponRack,
-            :armorstand => :ConstructArmorStand,
-            :bucket => :MakeBucket,
-            :barrel => :MakeBarrel,
-            :bin => :ConstructBin,
-            :drink => :BrewDrink,
-            :crutch => :ConstructCrutch,
-            :splint => :ConstructSplint,
-            :bag => :MakeBag,
-            :rockblock => :ConstructBlocks,
-            :mechanism => :ConstructMechanisms,
-            :trap => :ConstructMechanisms,
-            :cage => :MakeCage,
-            :soap => :MakeSoap,
-            :coal => :MakeCharcoal
-
-        FurnitureFind = Hash.new { |h, k|
-            h[k] = lambda { |o| o._rtti_classname == "item_#{k}st".to_sym }
-        }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
-                 :trap => lambda { |o| o._rtti_classname == :item_trappartsst }
-
         def try_furnish(r, f)
             return true if f[:bld_id]
             return true if f[:ignore]
-            build_furniture(f)
             tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
             case f[:item]
             when :well
@@ -651,17 +611,14 @@ class DwarfAI
             end
 
             return if @cache_nofurnish[f[:item]]
-            mod = FurnitureOrder[f[:item]]
-            find = FurnitureFind[f[:item]]
-            oidx = DFHack::JobType::Item[mod]
             if tgtile.occupancy.building != :None
                 # TODO warn if this stays for too long?
                 false
             elsif tgtile.shape == :RAMP or tgtile.shape == :TREE
                 tgtile.dig(:Default)
                 false
-            elsif itm = df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
-                debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
+            elsif itm = @ai.stocks.find_furniture_item(f[:item])
+                @ai.debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 subtype = { :cage => :CageTrap, :lever => :Lever }.fetch(f[:subtype], -1)
                 bld = df.building_alloc(bldn, subtype)
@@ -722,22 +679,6 @@ class DwarfAI
                 @tasks << [:checkfurnish, r, f]
                 true
             end
-        end
-
-        def build_furniture(f, build_ignored = false)
-            return if f[:queue_build]
-            return if f[:ignore] and not build_ignored
-            case f[:item]
-            when :well
-                add_manager_order(:MakeRope)
-            when :pillar
-            else
-                ws = FurnitureWorkshop[f[:item]]
-                mod = FurnitureOrder[f[:item]]
-                #ensure_workshop(ws)
-                add_manager_order(mod, 1, @manager_taskmax)
-            end
-            f[:queue_build] = true
         end
 
         def ensure_workshop(subtype, dignow=true)
@@ -920,7 +861,6 @@ class DwarfAI
                 bld.hospital.max_plaster = 750
                 bld.hospital.max_buckets = 2
                 bld.hospital.max_soap = 750
-                setup_infirmary_supplies(r)
             when :garbagedump
                 bld.zone_flags.garbage_dump = true
             when :pasture
@@ -940,14 +880,6 @@ class DwarfAI
             furnish_room(r)
         end
 
-        def setup_infirmary_supplies(r)
-            return unless df.world.items.other[:BOULDER].find { |i|
-                m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
-            }
-
-            add_manager_order(:MakePlasterPowder, 15)
-        end
-
         def setup_stockpile_settings(r, bld)
             case r.subtype
             when :stone
@@ -965,7 +897,6 @@ class DwarfAI
                     df.world.raws.inorganics.length.times { |i| t[i] = 1 }
                 end
                 bld.max_wheelbarrows = 1
-                add_manager_order(:MakeWoodenWheelbarrow)
             when :wood
                 bld.settings.flags.wood = true
                 t = bld.settings.wood.mats
@@ -1168,11 +1099,6 @@ class DwarfAI
             if st = find_room(:stockpile) { |_r| _r.misc[:workshop] == r }
                 digroom(st)
             end
-            case r.subtype
-            when :food
-                ensure_workshop(:Still)
-            when :cloth
-            end
             @tasks << [:setup_farmplot, r]
         end
 
@@ -1181,7 +1107,6 @@ class DwarfAI
             t.layout.each { |f|
                 if of = r.layout.find { |_f| _f[:item] == f[:item] and _f[:users] == [] }
                     of[:users] = f[:users]
-                    of[:queue_build] = true if f[:queue_build]
                     of.delete :ignore unless f[:ignore]
                     if f[:bld_id] and bld = df.building_find(f[:bld_id])
                         df.building_deconstruct(bld)
@@ -1440,7 +1365,7 @@ class DwarfAI
 
             return true unless f[:makeroom]
 
-            debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
 
             df.free(bld.room.extents._getp) if bld.room.extents
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
@@ -1539,7 +1464,7 @@ class DwarfAI
         def pull_lever(f)
             bld = df.building_find(f[:bld_id])
             return if not bld
-            debug "pull lever #{f[:way]}"
+            @ai.debug "pull lever #{f[:way]}"
 
             ref = DFHack::GeneralRefBuildingHolderst.cpp_new
             ref.building_id = bld.id
@@ -1588,7 +1513,7 @@ class DwarfAI
 
                 gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
                 if gate.shape_basic == :Wall
-                    debug 'cistern: test channel'
+                    @ai.debug 'cistern: test channel'
                     empty = true
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
@@ -1599,7 +1524,7 @@ class DwarfAI
                     end
 
                     if empty and @m_c_cistern.misc[:channeled] and !dump_items_access(@m_c_cistern) and !dump_items_access(@m_c_reserve)
-                        debug 'cistern: do channel'
+                        @ai.debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
                         pull_lever(@m_c_lever_out) if not f_out_closed
                     elsif well.maptile1.offset(-2, well.h/2).designation.flow_size == 7
@@ -1659,125 +1584,6 @@ class DwarfAI
             true
         end
 
-        ManagerRealOrder = {
-            :MakeSoap => :CustomReaction,
-            :MakePlasterPowder => :CustomReaction,
-            :MakeBag => :ConstructChest,
-            :MakeRope => :MakeChain,
-            :MakeWoodenWheelbarrow => :MakeTool,
-            :MakeBoneBolt => :MakeAmmo,
-            :MakeBoneCrossbow => :MakeWeapon,
-            :MakeTrainingAxe => :MakeWeapon,
-            :MakeTrainingShortSword => :MakeWeapon,
-            :MakeTrainingSpear => :MakeWeapon,
-        }
-        ManagerMatCategory = {
-            :MakeRope => :cloth, :MakeBag => :cloth,
-            :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
-            :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
-            :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
-            :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
-            :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
-        }
-        ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
-            :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
-            :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
-            :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
-            :DyeCloth => -1,
-        }
-        ManagerCustom = {
-            :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
-            :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
-        }
-        ManagerSubtype = {
-            # depends on raws.itemdefs, wait until a world is loaded
-        }
-
-        def self.init_manager_subtype
-            ManagerSubtype.update \
-                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
-                :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
-                :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
-                :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
-                :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
-                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
-        end
-
-        if df.world.raws.itemdefs.ammo.empty?
-            df.onstatechange_register_once { |st|
-                if st == :WORLD_LOADED
-                    init_manager_subtype
-                    true
-                end
-            }
-        else
-            init_manager_subtype
-        end
-
-
-        def find_manager_orders(order)
-            _order = ManagerRealOrder[order] || order
-            matcat = ManagerMatCategory[order]
-            type = ManagerType[order]
-            subtype = ManagerSubtype[order]
-            custom = ManagerCustom[order]
-
-            df.world.manager_orders.find_all { |_o|
-                _o.job_type == _order and
-                _o.mat_type == (type || (matcat ? -1 : 0)) and
-                (matcat ? _o.material_category.send(matcat) : _o.material_category._whole == 0) and
-                (not subtype or subtype == _o.item_subtype) and
-                (not custom or custom == _o.reaction_name)
-            }
-        end
-
-        def add_manager_order(order, amount=1, maxmerge=30)
-            debug "add_manager #{order} #{amount}"
-            _order = ManagerRealOrder[order] || order
-            matcat = ManagerMatCategory[order]
-            type = ManagerType[order]
-            subtype = ManagerSubtype[order]
-            custom = ManagerCustom[order]
-
-            if not o = find_manager_orders(order).find { |_o| _o.amount_total+amount <= maxmerge }
-                # try to merge with last manager_order, upgrading maxmerge to 30
-                o = df.world.manager_orders.last
-                if o and o.job_type == _order and
-                        o.amount_total + amount < 30 and
-                        o.mat_type == (type || (matcat ? -1 : 0)) and
-                        (matcat ? o.material_category.send(matcat) : o.material_category._whole == 0) and
-                        (not subtype or subtype == o.item_subtype) and
-                        (not custom or custom == o.reaction_name) and
-                        o.amount_total + amount < 30
-                    o.amount_total += amount
-                    o.amount_left += amount
-                else
-                    o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => (subtype || -1),
-                            :mat_type => (type || (matcat ? -1 : 0)), :mat_index => -1, :amount_left => amount, :amount_total => amount)
-                    o.material_category.send("#{matcat}=", true) if matcat
-                    o.reaction_name = custom if custom
-                    df.world.manager_orders << o
-                end
-            else
-                o.amount_total += amount
-                o.amount_left += amount
-            end
-
-            case order
-            when :ProcessPlants
-                ensure_workshop(:Farmers)
-            when :ConstructTractionBench
-                add_manager_order(:ConstructTable, amount, maxmerge)
-                add_manager_order(:MakeRope, amount, maxmerge)
-            when :BrewDrink
-                ensure_workshop(:Still)
-            when :MakeSoap
-                add_manager_order(:MakeLye, amount+1, maxmerge)
-            when :MakeLye
-                add_manager_order(:MakeAsh, amount+1, maxmerge)
-            end
-        end
-
         # returns one tile of an outdoor river (if one exists)
         def scan_river
             ifeat = df.world.cur_savegame.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }
@@ -1810,12 +1616,12 @@ class DwarfAI
             puts 'AI: setting up fort blueprint...'
             # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
-            debug 'blueprint found entrance'
+            @ai.debug 'blueprint found entrance'
             # TODO if no room for fort body, make surface fort
             scan_fort_body
-            debug 'blueprint found body'
+            @ai.debug 'blueprint found body'
             setup_blueprint_rooms
-            debug 'blueprint found rooms'
+            @ai.debug 'blueprint found rooms'
             # ensure traps are on the surface
             @fort_entrance.layout.each { |i|
                 i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y]).z-@fort_entrance.z1
@@ -1826,7 +1632,7 @@ class DwarfAI
                 t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
             }
             list_map_veins
-            debug 'listed map veins'
+            @ai.debug 'listed map veins'
             puts 'AI: ready'
         end
 
@@ -2478,7 +2284,7 @@ class DwarfAI
             # 1st end: reservoir input
             p1 = df.map_tile_at(cx-16, fy, fz)
             move_river[p1]
-            debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
+            @ai.debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
 
             # XXX hardcoded layout again
             if src.x <= p1.x+16
@@ -2516,7 +2322,7 @@ class DwarfAI
             } || spiral_search(out, 1, 1) { |t|
                 t.spiral_search(1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
             }
-            debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
+            @ai.debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
 
             # TODO check that 'channel' is easily channelable (eg river in a hole)
 
