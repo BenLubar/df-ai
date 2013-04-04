@@ -17,6 +17,7 @@ class DwarfAI
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :splint => 2, :crutch => 2, :rockblock => 1, :mechanism => 6,
             :weapon => 2, :armor => 2, :clothes => 2, :cage => 3, :coffin_bld => 3,
+            :raw_coke => 1,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -280,7 +281,11 @@ class DwarfAI
                 return queue_need_clothes
             when :coffin_bld
                 return queue_need_coffin_bld(amount)
-
+            when :raw_coke
+                if @ai.plan.past_initial_phase and raw = @ai.plan.map_veins.keys.find { |k| is_raw_coke(k) }
+                    @ai.plan.dig_vein(raw)
+                end
+                return
             when :food
                 # XXX fish/hunt/cook ?
                 @last_warn_food ||= Time.now-610    # warn every 10mn
@@ -795,7 +800,7 @@ class DwarfAI
 
             @ai.plan.map_veins.keys.find { |k|
                 can_melt += @ai.plan.dig_vein(k) if moc[k]
-            } if can_melt < WatchStock[:metal_ore]
+            } if can_melt < WatchStock[:metal_ore] and @ai.plan.past_initial_phase 
 
             if can_melt > WatchStock[:metal_ore]
                 return 4*150*(can_melt - WatchStock[:metal_ore])
@@ -830,7 +835,7 @@ class DwarfAI
                             has += 1
                         end
                     }
-                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1
+                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1 and @ai.plan.past_initial_phase 
                         has += @ai.plan.dig_vein(rr.mat_index)
                         future = true if has > 0
                     end

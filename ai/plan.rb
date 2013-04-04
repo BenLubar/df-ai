@@ -136,6 +136,12 @@ class DwarfAI
             freecommonrooms(uid)
             freebedroom(uid)
         end
+
+        # return true if the fort has basic features (rooms, primary workshops, etc)
+        def past_initial_phase
+            # never go back
+            @past_initial_phase ||= ((ct = find_room(:cistern) and ct.status != :plan) or (!ct and find_room(:infirmary) { |r| r.status != :plan }))
+        end
         
         def checkidle
             return if digging?
@@ -1883,7 +1889,9 @@ class DwarfAI
             fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
             if bz >= fort_minz
                 # TODO rooms outline
-                return count
+                if by > @fort_entrance.y-30-16 and by < @fort_entrance.y+30
+                    return count
+                end
             end
 
             q = @map_vein_queue[mat] ||= []
@@ -1928,9 +1936,9 @@ class DwarfAI
                 # TODO reuse vertical part for many veins on different zlevels
                 # TODO minecarts?
                 if by > @fort_entrance.y
-                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+60, bz)   # XXX 60...
+                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
                 else
-                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-60, bz)
+                    vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-30, bz)
                 end
                 vert = vert.offset(1, 0) if (vert.z % 32) > 16  # XXX check this
 
