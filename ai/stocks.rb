@@ -17,12 +17,12 @@ class DwarfAI
             :bin => 3, :barrel => 3, :bucket => 2, :bag => 3,
             :food => 20, :drink => 20, :logs => 16,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :coal => 4, :mechanism => 4, :cage => 3, :coffin_bld => 3,
+            :coal => 4, :mechanism => 4, :cage => 3, :coffin_bld => 3, :chest => 3,
             :weapon => 2, :armor => 2, :clothes => 2, :cabinet => 2,
             #:quiver => 2, :flask => 2, :backpack => 2,
             :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
-            :chest => 1, :coffin => 1, :soap => 1,
+	    :coffin => 1, :soap => 1, :rope => 1,
             #:lye => 1, :ash => 1, :plasterpowder => 1, :wheelbarrow => 1,
             :raw_coke => 1,
         }
@@ -148,7 +148,7 @@ class DwarfAI
                 df.world.items.other[:CRUTCH]
             when :crossbow
                 df.world.items.other[:WEAPON].find_all { |i|
-                    i.subtype.subtype == @ai.plan.class::ManagerSubtype[:MakeBoneCrossbow]
+                    i.subtype.subtype == ManagerSubtype[:MakeBoneCrossbow]
                 }
             when :pigtail, :dimplecup, :quarrybush
                 # TODO generic handling, same as farm crops selection
@@ -930,8 +930,8 @@ class DwarfAI
         def find_manager_orders(order)
             _order = ManagerRealOrder[order] || order
             matcat = ManagerMatCategory[order]
-            type = ManagerType[order]
-            subtype = ManagerSubtype[order]
+            type   = ManagerType[order]
+            subtype= ManagerSubtype[order]
             custom = ManagerCustom[order]
 
             df.world.manager_orders.find_all { |_o|
