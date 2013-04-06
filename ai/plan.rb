@@ -1654,10 +1654,10 @@ class DwarfAI
         end
    
         # mark a vein of a mat for digging, return expected boulder count
-        # when called repeatedly, dont queue new veins until the last one is dug out
         def dig_vein(mat, want_boulders = 1)
             # mat => [x, y, z, dig_mode] marked for to dig
             @map_vein_queue ||= {}
+            @dug_veins ||= {}
 
             count = 0
             # check previously queued veins
@@ -1674,18 +1674,22 @@ class DwarfAI
                 }
                 @map_vein_queue.delete mat if q.empty?
             end
-            return count unless @map_vein_queue.empty?
 
             # queue new vein
             # delete it from @map_veins
             # discard tiles that would dig into a @plan room/corridor, or into a cavern (hidden + !wall)
+            # try to find a vein close to one we already dug
             16.times {
-                break if count*4 >= want_boulders
+                break if count/4 >= want_boulders
                 @map_veins.delete mat if @map_veins[mat] == []
                 break if not @map_veins[mat]
-                bx, by, bz = @map_veins[mat].pop
-
-                count += do_dig_vein(mat, bx, by, bz)
+                v = @map_veins[mat].find { |x, y, z|
+                    (-1..1).find { |vx| (-1..1).find { |vy| @dug_veins[[x+16*vx, y+16*vy, z]] } }
+                } || @map_veins[mat].last
+                @map_veins[mat].delete v
+                cnt = do_dig_vein(mat, *v)
+                @dug_veins[v] = true if cnt > 0
+                count += cnt
             }
 
             count/4
@@ -1718,6 +1722,7 @@ class DwarfAI
             } }
 
             need_shaft = true
+            todo = []
             (dxs.min..dxs.max).each { |dx| (dys.min..dys.max).each { |dy|
                 t = df.map_tile_at(bx+dx, by+dy, bz)
                 if t.designation.dig == :No
@@ -1727,16 +1732,21 @@ class DwarfAI
                         tt = t.offset(ddx, ddy)
                         if tt.shape_basic != :Wall
                             tt.designation.hidden ? ok = false : ns = false
+                        elsif tt.designation.dig != :No
+                            ns = false
                         end
                     } }
                     if ok
-                        t.dig(:Default)
-                        q << [t.x, t.y, t.z, :Default]
+                        todo << [t.x, t.y, t.z, :Default]
                         count += 1 if t.tilemat == :MINERAL and t.mat_index_vein == mat
                         need_shaft = ns
                     end
                 end
             } }
+            todo.each { |x, y, z, dd|
+                q << [x, y, z, dd]
+                df.map_tile_at(x, y, z).dig(dd)
+            }
 
             if need_shaft
                 # TODO better pathing (shaft may start in cavern)
@@ -1773,7 +1783,7 @@ class DwarfAI
                     end
                     break if not t0 = t0.offset(0, 0, 1)
                 end
-                if t0 and not t0.shape_passablelow
+                if t0 and not t0.designation.hidden and not t0.shape_passablelow
                     t0.dig(:DownStair)
                     q << [t0.x, t0.y, t0.z, :DownStair]
                 end
