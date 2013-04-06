@@ -13,18 +13,18 @@ class DwarfAI
 
     class Stocks
         Needed = {
-            :bed => 3, :table => 3, :chair => 3, :door => 3,
+            :bed => 3, :table => 3, :chair => 3, :door => 4,
             :bin => 3, :barrel => 3, :bucket => 2, :bag => 3,
             :food => 20, :drink => 20, :logs => 16,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :coal => 4, :mechanism => 4, :cage => 3, :coffin_bld => 3, :chest => 3,
+            :coal => 3, :mechanism => 4, :cage => 3, :coffin_bld => 3, :chest => 3,
             :weapon => 2, :armor => 2, :clothes => 2, :cabinet => 2,
             #:quiver => 2, :flask => 2, :backpack => 2,
             :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
-	    :coffin => 1, :soap => 1, :rope => 1,
-            #:lye => 1, :ash => 1, :plasterpowder => 1, :wheelbarrow => 1,
-            :raw_coke => 1,
+            :coffin => 1, :soap => 1, :rope => 1,
+            :lye => 1, :ash => 1, :plasterpowder => 1, :wheelbarrow => 1,
+            :raw_coke => 1, :gypsum => 1,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -129,8 +129,8 @@ class DwarfAI
                 }
             when :drink
                 df.world.items.other[:DRINK]
-            when :soap, :coal
-                mat_id = {:soap => 'SOAP', :coal => 'COAL'}[k]
+            when :soap, :coal, :ash
+                mat_id = {:soap => 'SOAP', :coal => 'COAL', :ash => 'ASH'}[k]
                 df.world.items.other[:BAR].find_all { |i|
                     mat = df.decode_mat(i) and mat.material and mat.material.id == mat_id
                 }
@@ -142,6 +142,8 @@ class DwarfAI
                 df.world.items.other[:BOULDER].find_all { |i| is_metal_ore(i) }
             when :raw_coke
                 df.world.items.other[:BOULDER].find_all { |i| is_raw_coke(i) }
+            when :gypsum
+                df.world.items.other[:BOULDER].find_all { |i| is_gypsum(i) }
             when :splint
                 df.world.items.other[:SPLINT]
             when :crutch
@@ -211,6 +213,23 @@ class DwarfAI
                 return count_stocks_armor
             when :clothes
                 return count_stocks_clothes
+            when :lye
+                df.world.items.other[:LIQUID_MISC].find_all { |i|
+                    mat = df.decode_mat(i) and mat.material and mat.material.id == 'LYE'
+                    # TODO check container has no water
+                }
+            when :plasterpowder
+                df.world.items.other[:POWDER_MISC].find_all { |i|
+                    mat = df.decode_mat(i) and mat.inorganic and mat.inorganic.id == 'PLASTER'
+                }
+            when :wheelbarrow
+                df.world.items.other[:TOOL].find_all { |i|
+                    i.subtype.subtype == ManagerSubtype[:MakeWoodenWheelbarrow] and
+                    i.stockpile.id == -1
+                }
+            when :quiver
+            when :flask
+            when :backpack
             else
                 return find_furniture_itemcount(k)
 
@@ -295,6 +314,11 @@ class DwarfAI
                     @ai.plan.dig_vein(raw)
                 end
                 return
+            when :gypsum
+                if @ai.plan.past_initial_phase and raw = @ai.plan.map_veins.keys.find { |k| is_gypsum(k) }
+                    @ai.plan.dig_vein(raw)
+                end
+                return
             when :food
                 # XXX fish/hunt/cook ?
                 @last_warn_food ||= Time.now-610    # warn every 10mn
@@ -307,8 +331,8 @@ class DwarfAI
             when :pigtail_seeds, :dimplecup_seeds
                 # only useful at game start, with low seeds stocks
                 input = {
-                    :pigtail_seeds => :pigtail,
-                    :dimplecup_seeds => :dimplecup,
+                    :pigtail_seeds => [:pigtail],
+                    :dimplecup_seeds => [:dimplecup, :bag],
                 }[what]
 
                 reaction = {
@@ -318,7 +342,7 @@ class DwarfAI
 
             when :dimple_dye
                 reaction = :MillPlants
-                input = :dimplecup
+                input = [:dimplecup, :bag]
 
             when :logs
                 # dont bother if the last designated tree is not cut yet
@@ -352,12 +376,14 @@ class DwarfAI
                 amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]
 
             when :bag
-                input = :cloth
+                input = [:cloth]
+            when :plasterpowder
+                input = [:gypsum, :bag]
             end
 
             if input
-                n_input = count[input] || count_stocks(input)
-                amount = n_input if amount > n_input
+                i_amount = input.map { |i| count[i] || count_stocks(i) }.min
+                amount = i_amount if amount > i_amount
             end
 
             return if amount <= 0
@@ -596,7 +622,7 @@ class DwarfAI
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
-                input = :bag if reaction == :MillPlants or reaction == :ProcessPlantsBag
+                input = [:bag] if reaction == :MillPlants or reaction == :ProcessPlantsBag
 
             when :leaves
                 reaction = :PrepareMeal
@@ -622,15 +648,15 @@ class DwarfAI
 
             when :cloth_nodye
                 reaction = :DyeCloth
-                input = :dimple_dye
+                input = [:dimple_dye]
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
 
             end
 
             if input
-                n_input = count[input] || count_stocks(input)
-                amount = n_input if amount > n_input
+                i_amount = input.map { |i| count[i] || count_stocks(i) }.min
+                amount = i_amount if amount > i_amount
             end
 
             find_manager_orders(reaction).each { |o| amount -= o.amount_total }
@@ -755,15 +781,19 @@ class DwarfAI
 
 
         # check if an item is free to use
-        def is_item_free(i)
+        def is_item_free(i, allow_nonempty=false)
             !i.flags.trader and     # merchant's item
             !i.flags.in_job and     # current job input
             !i.flags.removed and    # deleted object
             !i.flags.forbid and     # user forbidden (or dumped)
             !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
-            (!i.flags.container or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
-            (!i.flags.in_inventory or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
-             ii = ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } }) and
+            (!i.flags.container or allow_nonempty or
+	     !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
+            (!i.flags.in_inventory or
+             !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
+                 ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } or
+             !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainedInItemst) and
+                 !is_item_free(ir.item_tg, true) }) and
             (!i.flags.in_building or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
              ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
         end
@@ -772,7 +802,8 @@ class DwarfAI
         def is_metal_ore(i)
             # mat_index => bool
             @metal_ore_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].flags[:METAL_ORE] }
-            i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @metal_ore_cache[i.mat_index]
+            (i.kind_of?(Integer) and @metal_ore_cache[i]) or
+            (i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @metal_ore_cache[i.mat_index])
         end
 
         def is_raw_coke(i)
@@ -790,7 +821,15 @@ class DwarfAI
                     h
                 end
             }
-            i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @raw_coke_cache[i.mat_index]
+            (i.kind_of?(Integer) and @raw_coke_cache[i]) or
+            (i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @raw_coke_cache[i.mat_index])
+        end
+
+        def is_gypsum(i)
+            # mat_index => bool
+            @gypsum_cache ||= CacheHash.new { |mi| df.world.raws.inorganics[mi].material.reaction_class.include?('GYPSUM') }
+            (i.kind_of?(Integer) and @gypsum_cache[i]) or
+            (i.kind_of?(DFHack::ItemBoulderst) and i.mat_type == 0 and @gypsum_cache[i.mat_index])
         end
 
         # determine if we may be able to generate metal bars for this metal
@@ -943,17 +982,6 @@ class DwarfAI
             }
         end
 
-        def setup_infirmary_supplies(r)
-            return unless df.world.items.other[:BOULDER].find { |i|
-                m = df.decode_mat(i) and m.material and m.material.reaction_class.include?('GYPSUM')
-            }
-
-            add_manager_order(:MakePlasterPowder, 15)
-            add_manager_order(:MakeWoodenWheelbarrow)
-            add_manager_order(:MakeLye, amount+1, maxmerge)
-            add_manager_order(:MakeAsh, amount+1, maxmerge)
-        end
-
         def add_manager_order(order, amount=1, maxmerge=30)
             @ai.debug "add_manager #{order} #{amount}"
             _order = ManagerRealOrder[order] || order
@@ -1006,6 +1034,10 @@ class DwarfAI
             :cage => :MakeCage,
             :soap => :MakeSoap,
             :rope => :MakeRope,
+            :lye => :MakeLye,
+            :ash => :MakeAsh,
+            :plasterpowder => :MakePlasterPowder,
+            :wheelbarrow => :MakeWoodenWheelbarrow,
             :coal => :MakeCharcoal
 
         FurnitureFind = Hash.new { |h, k|
