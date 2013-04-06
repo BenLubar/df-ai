@@ -136,7 +136,8 @@ class DwarfAI
         # return true if the fort has basic features (rooms, primary workshops, etc)
         def past_initial_phase
             # never go back
-            @past_initial_phase ||= ((ct = find_room(:cistern) and ct.status != :plan) or (!ct and find_room(:infirmary) { |r| r.status != :plan }))
+            @past_initial_phase ||= ((ct = find_room(:cistern) and not find_room(:cistern) { |r| r.status == :plan }) or
+                                     (!ct and find_room(:infirmary) { |r| r.status != :plan }))
         end
         
         def checkidle
