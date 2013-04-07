@@ -17,7 +17,7 @@ class DwarfAI
             :chest => 4, :mechanism => 4, :cabinet => 4,
             :bag => 3, :table => 3, :chair => 3, :cage => 3,
             :coal => 3, :coffin_bld => 3, :bucket => 2,
-            :food => 20, :drink => 20, :logs => 16,
+            :food => 20, :drink => 20, :wood => 16,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :weapon => 2, :armor => 2, :clothes => 2,
             :quiver => 2, :flask => 2, :backpack => 2,
@@ -27,7 +27,7 @@ class DwarfAI
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :raw_coke => 1, :gypsum => 1,
             #:giant_corkscrew => 1, :pipe_section => 1,
-            :tanned_hide => 0, :tallow => 0,
+            :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
@@ -138,7 +138,7 @@ class DwarfAI
                 df.world.items.other[:BAR].find_all { |i|
                     mat = df.decode_mat(i) and mat.material and mat.material.id == mat_id
                 }
-            when :logs
+            when :wood
                 df.world.items.other[:WOOD]
             when :roughgem
                 df.world.items.other[:ROUGH].find_all { |i| i.mat_type == 0 }
@@ -238,7 +238,7 @@ class DwarfAI
                 df.world.items.other[:FLASK]
             when :backpack
                 df.world.items.other[:BACKPACK]
-            when :tanned_hide
+            when :leather
                 df.world.items.other[:SKIN_TANNED]
             when :tallow
                 df.world.items.other[:GLOB].find_all { |i|
@@ -350,16 +350,16 @@ class DwarfAI
                     :dimplecup_seeds => [:dimplecup, :bag],
                 }[what]
 
-                reaction = {
+                order = {
                     :pigtail_seeds => :ProcessPlants,
                     :dimplecup_seeds => :MillPlants,
                 }[what]
 
             when :dimple_dye
-                reaction = :MillPlants
+                order = :MillPlants
                 input = [:dimplecup, :bag]
 
-            when :logs
+            when :wood
                 # dont bother if the last designated tree is not cut yet
                 return if @last_cutpos and @last_cutpos.offset(0, 0, 0).designation.dig == :Default
 
@@ -390,34 +390,32 @@ class DwarfAI
                 # (except for bootstraping)
                 amount = 2-@count[:coal] if amount > 2-@count[:coal] and @count[:raw_coke] > WatchStock[:raw_coke]
 
-            when :bag
-                input = [:cloth]
             when :ash
-                input = [:logs]
+                input = [:wood]
             when :lye
                 input = [:ash, :bucket]
             when :soap
                 input = [:lye, :tallow]
             when :plasterpowder
                 input = [:gypsum, :bag]
-            when :quiver, :flask, :backpack
-                input = [:tanned_hide]
             end
 
+            amount = 30 if amount > 30
+            order ||= FurnitureOrder[what]
             if input
                 i_amount = input.map { |i| count[i] || count_stocks(i) }.min
                 amount = i_amount if amount > i_amount
             end
-
-            reaction ||= FurnitureOrder[what]
-            same = count_manager_orders_samemat(reaction)
-            amount -= same
-            amount = 30 if amount > 30
-            find_manager_orders(reaction).each { |o| amount -= o.amount_total } if same == 0
+            if matcat = ManagerMatCategory[order]
+                i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat)
+                amount = i_amount if amount > i_amount
+            else
+                find_manager_orders(order).each { |o| amount -= o.amount_total }
+            end
             return if amount <= 0
 
-            puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            add_manager_order(reaction, amount)
+            puts "AI: stocks: queue #{amount} #{order}" if $DEBUG
+            add_manager_order(order, amount)
         end
 
         # forge weapons
@@ -636,7 +634,7 @@ class DwarfAI
                 return
 
             when :pigtail, :dimplecup, :quarrybush
-                reaction = {
+                order = {
                     :pigtail => :ProcessPlants,
                     :dimplecup => :MillPlants,
                     :quarrybush => :ProcessPlantsBag,
@@ -644,24 +642,24 @@ class DwarfAI
                 # stuff may rot/be brewn before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
-                input = [:bag] if reaction == :MillPlants or reaction == :ProcessPlantsBag
+                input = [:bag] if order == :MillPlants or order == :ProcessPlantsBag
 
             when :leaves
-                reaction = :PrepareMeal
+                order = :PrepareMeal
                 amount = (amount + 4) / 5
 
             when :skull
-                reaction = :MakeTotem
+                order = :MakeTotem
 
             when :bone
                 nhunters = @ai.pop.labor_worker[:HUNT].length if @ai.pop.labor_worker
                 return if not nhunters
                 need_crossbow = nhunters + 1 - count_stocks(:crossbow)
                 if need_crossbow > 0
-                    reaction = :MakeBoneCrossbow
+                    order = :MakeBoneCrossbow
                     amount = need_crossbow if amount > need_crossbow
                 else
-                    reaction = :MakeBoneBolt
+                    order = :MakeBoneBolt
                     stock = count_stocks(:bonebolts)
                     amount = 1000 - stock if amount > 1000 - stock
                     amount /= 2 if amount > 10
@@ -669,7 +667,7 @@ class DwarfAI
                 end
 
             when :cloth_nodye
-                reaction = :DyeCloth
+                order = :DyeCloth
                 input = [:dimple_dye]
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
@@ -681,14 +679,14 @@ class DwarfAI
                 amount = i_amount if amount > i_amount
             end
 
-            find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            find_manager_orders(order).each { |o| amount -= o.amount_total }
 
             return if amount <= 0
 
             amount = 30 if amount > 30
 
-            puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
-            add_manager_order(reaction, amount)
+            puts "AI: stocks: queue #{amount} #{order}" if $DEBUG
+            add_manager_order(order, amount)
         end
 
 
@@ -1007,14 +1005,11 @@ class DwarfAI
 
         # return the number of current manager orders that share the same material (leather, cloth)
         # ignore inorganics
-        def count_manager_orders_samemat(order)
-            matcat = ManagerMatCategory[order]
+        def count_manager_orders_matcat(matcat)
             cnt = 0
-            if matcat
-                df.world.manager_orders.each { |_o|
-                    cnt += _o.amount_total if _o.material_category.send(matcat)
-                }
-            end
+            df.world.manager_orders.each { |_o|
+                cnt += _o.amount_total if _o.material_category.send(matcat)
+            }
             cnt
         end
 
