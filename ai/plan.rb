@@ -1784,7 +1784,7 @@ class DwarfAI
                     end
                     break if not t0 = t0.offset(0, 0, 1)
                 end
-                if t0 and not t0.designation.hidden and not t0.shape_passablelow
+                if t0 and not t0.designation.hidden and not t0.shape_passablelow and t0.designation.dig == :No
                     t0.dig(:DownStair)
                     q << [t0.x, t0.y, t0.z, :DownStair]
                 end

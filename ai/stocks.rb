@@ -481,7 +481,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        @ai.debug "stocks: queue #{nw} MakeWeapon #{idef.id}"
+                        @ai.debug "stocks: queue #{nw} MakeWeapon #{df.world.raws.inorganics[mi].id} #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -553,7 +553,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        @ai.debug "stocks: queue #{nw} #{job} #{idef.id}"
+                        @ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -597,7 +597,7 @@ class DwarfAI
                     cnt = available_cloth if cnt > available_cloth
                     next if cnt <= 0
 
-                    @ai.debug "stocks: queue #{cnt} #{job} #{idef.id}"
+                    @ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
                     df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                             :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
                             :material_category => { :cloth => true },
