@@ -1,9 +1,12 @@
-A dwarf fortress autonomous script.
+Watch Dwarf Fortress play itself !
 
-Requires the ruby plugin.
+Script for DFHack 0.34.11-r3
 
-Copy all files to df/hack/scripts.
+Installation: copy all files to df/hack/scripts
 
-Start a new fortress, chose your site, run 'ai start' in the dfhack console, and watch.
+Start a fresh embark on an area with no aquifer, and with the caverns not too close to the surface.
+For best results, choose a site with a river on the west side.
 
-To stop, 'ai end'.
+Run 'ai start' in the dfhack console, thats all.
+
+Does not handle already started forts, or resume from saved game.
