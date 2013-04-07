@@ -16,16 +16,15 @@ class DwarfAI
             :bed => 4, :door => 4, :bin => 4, :barrel => 4,
             :chest => 4, :mechanism => 4, :cabinet => 4,
             :bag => 3, :table => 3, :chair => 3, :cage => 3,
-            :coal => 3, :coffin_bld => 3, :bucket => 2,
-            :food => 20, :drink => 20, :wood => 16,
+            :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
+            :food => 20, :drink => 20, :wood => 16, :bucket => 2,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :weapon => 2, :armor => 2, :clothes => 2,
-            :quiver => 2, :flask => 2, :backpack => 2,
+            :weapon => 2, :armor => 2, :clothes => 2, :rope => 1,
+            :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
             :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
-            :coffin => 1, :wheelbarrow => 1, :rope => 1,
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
-            :raw_coke => 1, :gypsum => 1,
+            :coal => 3, :raw_coke => 1, :gypsum => 1,
             #:giant_corkscrew => 1, :pipe_section => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
@@ -69,7 +68,7 @@ class DwarfAI
         def update
             if not @updating.empty? and @lastupdating != @updating.length + @updating_count.length
                 # avoid stall if cb_bg crashed and was unregistered
-                puts 'AI: not updating stocks' if $DEBUG
+                @ai.debug 'not updating stocks'
                 @lastupdating = @updating.length + @updating_count.length
                 return
             end
@@ -82,7 +81,7 @@ class DwarfAI
 
             @updating = Needed.keys | WatchStock.keys
             @updating_count = @updating.dup
-            puts 'AI: updating stocks' if $DEBUG
+            @ai.debug 'updating stocks'
 
             # do stocks accounting 'in the background' (ie one bit at a time)
             cb_bg = df.onupdate_register('df-ai stocks bg', 8) {
@@ -212,6 +211,8 @@ class DwarfAI
             when :coffin_bld
                 # count free constructed coffin buildings, not items
                 return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner }.length
+            when :coffin_bld_pet
+                return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner and !bld.burial_mode.no_pets }.length
             when :weapon
                 return count_stocks_weapon
             when :armor
@@ -324,6 +325,12 @@ class DwarfAI
                 return queue_need_clothes
             when :coffin_bld
                 return queue_need_coffin_bld(amount)
+            when :coffin_bld_pet
+                if count[:coffin_bld] >= Needed[:coffin_bld] and
+                        cof = df.world.buildings.other[:COFFIN].find { |bld| !bld.owner and bld.burial_mode.no_pets }
+                    cof.burial_mode.no_pets = false
+                end
+                return
             when :raw_coke
                 if @ai.plan.past_initial_phase and raw = @ai.plan.map_veins.keys.find { |k| is_raw_coke(k) }
                     @ai.plan.dig_vein(raw)
@@ -407,14 +414,13 @@ class DwarfAI
                 amount = i_amount if amount > i_amount
             end
             if matcat = ManagerMatCategory[order]
-                i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat)
+                i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
                 amount = i_amount if amount > i_amount
-            else
-                find_manager_orders(order).each { |o| amount -= o.amount_total }
             end
+            find_manager_orders(order).each { |o| amount -= o.amount_total }
             return if amount <= 0
 
-            puts "AI: stocks: queue #{amount} #{order}" if $DEBUG
+            @ai.debug "stocks: queue #{amount} #{order}"
             add_manager_order(order, amount)
         end
 
@@ -475,7 +481,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        puts "AI: stocks: queue #{nw} MakeWeapon #{idef.id}" if $DEBUG
+                        @ai.debug "stocks: queue #{nw} MakeWeapon #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -547,7 +553,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        puts "AI: stocks: queue #{nw} #{job} #{idef.id}" if $DEBUG
+                        @ai.debug "stocks: queue #{nw} #{job} #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -591,7 +597,7 @@ class DwarfAI
                     cnt = available_cloth if cnt > available_cloth
                     next if cnt <= 0
 
-                    puts "AI: stocks: queue #{cnt} #{job} #{idef.id}" if $DEBUG
+                    @ai.debug "stocks: queue #{cnt} #{job} #{idef.id}"
                     df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                             :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
                             :material_category => { :cloth => true },
@@ -685,7 +691,7 @@ class DwarfAI
 
             amount = 30 if amount > 30
 
-            puts "AI: stocks: queue #{amount} #{order}" if $DEBUG
+            @ai.debug "stocks: queue #{amount} #{order}"
             add_manager_order(order, amount)
         end
 
@@ -702,7 +708,7 @@ class DwarfAI
             amount = amount*3/4 if amount >= 10
             amount = 30 if amount > 30
 
-            puts "AI: stocks: queue #{amount} CutGems #{df.decode_mat(i)}" if $DEBUG
+            @ai.debug "stocks: queue #{amount} CutGems #{df.decode_mat(i)}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -729,7 +735,7 @@ class DwarfAI
                 return if amount <= 0
             end
 
-            puts "AI: stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}" if $DEBUG
+            @ai.debug "stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :SmeltOre, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -756,7 +762,7 @@ class DwarfAI
                 return if @count[:coal] <= 0
             end
 
-            puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
+            @ai.debug "stocks: queue #{amount} #{reaction}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount, :reaction_name => reaction)
         end
@@ -926,7 +932,7 @@ class DwarfAI
                     if not future and not df.world.manager_orders.find { |mo|
                         mo.job_type == :CustomReaction and mo.reaction_name == r.code
                     }
-                        puts "AI: stocks: queue #{can_reaction} #{r.code}" if $DEBUG
+                        @ai.debug "stocks: queue #{can_reaction} #{r.code}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1,
                             :item_subtype => -1, :reaction_name => r.code, :mat_type => -1, :mat_index => -1,
                             :amount_left => can_reaction, :amount_total => can_reaction)
@@ -1004,11 +1010,11 @@ class DwarfAI
         end
 
         # return the number of current manager orders that share the same material (leather, cloth)
-        # ignore inorganics
-        def count_manager_orders_matcat(matcat)
+        # ignore inorganics, ignore order
+        def count_manager_orders_matcat(matcat, order=nil)
             cnt = 0
             df.world.manager_orders.each { |_o|
-                cnt += _o.amount_total if _o.material_category.send(matcat)
+                cnt += _o.amount_total if _o.material_category.send(matcat) and _o.job_type != order
             }
             cnt
         end
