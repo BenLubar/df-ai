@@ -1696,6 +1696,7 @@ class DwarfAI
         end
 
         def do_dig_vein(mat, bx, by, bz)
+            @ai.debug "dig_vein #{df.world.raws.inorganics[mat].id}"
             count = 0
             fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
             if bz >= fort_minz

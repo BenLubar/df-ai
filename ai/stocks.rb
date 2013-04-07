@@ -54,7 +54,7 @@ class DwarfAI
 
         def onupdate_register
             reset
-            @onupdate_handle = df.onupdate_register('df-ai stocks', 2400, 30) { update }
+            @onupdate_handle = df.onupdate_register('df-ai stocks', 4800, 30) { update }
         end
 
         def onupdate_unregister
@@ -699,8 +699,7 @@ class DwarfAI
         # cut gems
         def queue_use_gems(amount)
             return if df.world.manager_orders.find { |mo| mo.job_type == :CutGems }
-
-            i = df.world.items.other[:ROUGH].find { |_i| _i.mat_type == 0 and is_item_free(_i) }
+            return if not i = df.world.items.other[:ROUGH].find { |_i| _i.mat_type == 0 and is_item_free(_i) }
             this_amount = df.world.items.other[:ROUGH].find_all { |_i|
                 _i.mat_type == i.mat_type and _i.mat_index == i.mat_index and is_item_free(_i)
             }.length
@@ -816,12 +815,13 @@ class DwarfAI
             (!i.flags.container or allow_nonempty or
              !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
             (!i.flags.in_inventory or
-             !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
-                 ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } or
-             !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainedInItemst) and
-                 !is_item_free(ir.item_tg, true) }) and
+             (!i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
+                 ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } and
+              !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainedInItemst) and
+                 !is_item_free(ir.item_tg, true) })) and
             (!i.flags.in_building or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
-             ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } })
+             ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } }) and
+             (!i.flags.on_ground or !df.map_tile_at(i).designation.hidden)      # i.flags.unk11?
         end
 
 
