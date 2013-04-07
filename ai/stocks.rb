@@ -13,18 +13,22 @@ class DwarfAI
 
     class Stocks
         Needed = {
-            :bed => 3, :table => 3, :chair => 3, :door => 4,
-            :bin => 3, :barrel => 3, :bucket => 2, :bag => 3,
+            :bed => 4, :door => 4, :bin => 4, :barrel => 4,
+            :chest => 4, :mechanism => 4, :cabinet => 4,
+            :bag => 3, :table => 3, :chair => 3, :cage => 3,
+            :coal => 3, :coffin_bld => 3, :bucket => 2,
             :food => 20, :drink => 20, :logs => 16,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :coal => 3, :mechanism => 4, :cage => 3, :coffin_bld => 3, :chest => 3,
-            :weapon => 2, :armor => 2, :clothes => 2, :cabinet => 2,
-            #:quiver => 2, :flask => 2, :backpack => 2,
+            :weapon => 2, :armor => 2, :clothes => 2,
+            :quiver => 2, :flask => 2, :backpack => 2,
             :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
-            :coffin => 1, :soap => 1, :rope => 1,
-            :lye => 1, :ash => 1, :plasterpowder => 1, :wheelbarrow => 1,
+            :coffin => 1, :wheelbarrow => 1, :rope => 1,
+            :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :raw_coke => 1, :gypsum => 1,
+            #:giant_corkscrew => 1, :pipe_section => 1,
+            :tanned_hide => 0, :tallow => 0,
+            #:rock_noeco => 10,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -154,6 +158,7 @@ class DwarfAI
                 }
             when :pigtail, :dimplecup, :quarrybush
                 # TODO generic handling, same as farm crops selection
+                # TODO filter rotten
                 mspec = {
                     :pigtail => 'PLANT:GRASS_TAIL_PIG:STRUCTURAL',
                     :dimplecup => 'PLANT:MUSHROOM_CUP_DIMPLE:STRUCTURAL',
@@ -228,8 +233,18 @@ class DwarfAI
                     i.stockpile.id == -1
                 }
             when :quiver
+                df.world.items.other[:QUIVER]
             when :flask
+                df.world.items.other[:FLASK]
             when :backpack
+                df.world.items.other[:BACKPACK]
+            when :tanned_hide
+                df.world.items.other[:SKIN_TANNED]
+            when :tallow
+                df.world.items.other[:GLOB].find_all { |i|
+                    mat = df.decode_mat(i) and mat.material and mat.material.id == 'TALLOW'
+                    # TODO filter rotten
+                }
             else
                 return find_furniture_itemcount(k)
 
@@ -377,8 +392,16 @@ class DwarfAI
 
             when :bag
                 input = [:cloth]
+            when :ash
+                input = [:logs]
+            when :lye
+                input = [:ash, :bucket]
+            when :soap
+                input = [:lye, :tallow]
             when :plasterpowder
                 input = [:gypsum, :bag]
+            when :quiver, :flask, :backpack
+                input = [:tanned_hide]
             end
 
             if input
@@ -386,12 +409,11 @@ class DwarfAI
                 amount = i_amount if amount > i_amount
             end
 
-            return if amount <= 0
-
-            amount = 30 if amount > 30
-
             reaction ||= FurnitureOrder[what]
-            find_manager_orders(reaction).each { |o| amount -= o.amount_total }
+            same = count_manager_orders_samemat(reaction)
+            amount -= same
+            amount = 30 if amount > 30
+            find_manager_orders(reaction).each { |o| amount -= o.amount_total } if same == 0
             return if amount <= 0
 
             puts "AI: stocks: queue #{amount} #{reaction}" if $DEBUG
@@ -788,7 +810,7 @@ class DwarfAI
             !i.flags.forbid and     # user forbidden (or dumped)
             !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
             (!i.flags.container or allow_nonempty or
-	     !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
+             !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
             (!i.flags.in_inventory or
              !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefUnitHolderst) and       # is not in an unit's inventory (ignore if it is simply hauled)
                  ir.unit_tg.inventory.find { |ii| ii.item == i and ii.mode != :Hauled } } or
@@ -936,6 +958,7 @@ class DwarfAI
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
             :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
+            :MakeQuiver => :leather, :MakeFlask => :leather, :MakeBackpack => :leather,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
@@ -980,6 +1003,19 @@ class DwarfAI
                 (not subtype or subtype == _o.item_subtype) and
                 (not custom or custom == _o.reaction_name)
             }
+        end
+
+        # return the number of current manager orders that share the same material (leather, cloth)
+        # ignore inorganics
+        def count_manager_orders_samemat(order)
+            matcat = ManagerMatCategory[order]
+            cnt = 0
+            if matcat
+                df.world.manager_orders.each { |_o|
+                    cnt += _o.amount_total if _o.material_category.send(matcat)
+                }
+            end
+            cnt
         end
 
         def add_manager_order(order, amount=1, maxmerge=30)
@@ -1038,6 +1074,9 @@ class DwarfAI
             :ash => :MakeAsh,
             :plasterpowder => :MakePlasterPowder,
             :wheelbarrow => :MakeWoodenWheelbarrow,
+            :quiver => :MakeQuiver,
+            :flask => :MakeFlask,
+            :backpack => :MakeBackpack,
             :coal => :MakeCharcoal
 
         FurnitureFind = Hash.new { |h, k|
@@ -1058,6 +1097,9 @@ class DwarfAI
             find = FurnitureFind[itm]
             oidx = DFHack::JobType::Item[FurnitureOrder[itm]]
             df.world.items.other[oidx].find_all { |i| find[i] and df.item_isfree(i) }.length
+        rescue
+            puts_err "df-ai stocks: cannot itemcount #{itm.inspect}", $!, $!.backtrace
+            0
         end
     end
 end
