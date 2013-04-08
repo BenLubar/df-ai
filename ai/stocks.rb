@@ -25,7 +25,7 @@ class DwarfAI
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :coal => 3, :raw_coke => 1, :gypsum => 1,
-            #:giant_corkscrew => 1, :pipe_section => 1,
+            :giant_corkscrew => 1, :pipe_section => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
@@ -246,6 +246,12 @@ class DwarfAI
                     mat = df.decode_mat(i) and mat.material and mat.material.id == 'TALLOW'
                     # TODO filter rotten
                 }
+            when :giant_corkscrew
+                df.world.items.other[:TRAPCOMP].find_all { |i|
+                    i.subtype.subtype == ManagerSubtype[:MakeGiantCorkscrew]
+                }
+            when :pipe_section
+                df.world.items.other[:PIPE_SECTION]
             else
                 return find_furniture_itemcount(k)
 
@@ -954,6 +960,7 @@ class DwarfAI
             :MakeTrainingAxe => :MakeWeapon,
             :MakeTrainingShortSword => :MakeWeapon,
             :MakeTrainingSpear => :MakeWeapon,
+            :MakeGiantCorkscrew => :MakeTrapComponent,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
@@ -961,6 +968,7 @@ class DwarfAI
             :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
             :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
+            :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
             :MakeQuiver => :leather, :MakeFlask => :leather, :MakeBackpack => :leather,
         }
@@ -984,6 +992,7 @@ class DwarfAI
                 :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
                 :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
                 :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
+                :MakeGiantCorkscrew => df.world.raws.itemdefs.trapcomps.find { |d| d.id == 'ITEM_TRAPCOMP_ENORMOUSCORKSCREW' }.subtype,
                 :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
                 :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
         end
@@ -1078,6 +1087,8 @@ class DwarfAI
             :quiver => :MakeQuiver,
             :flask => :MakeFlask,
             :backpack => :MakeBackpack,
+            :giant_corkscrew => :MakeGiantCorkscrew,
+            :pipe_section => :MakePipeSection,
             :coal => :MakeCharcoal
 
         FurnitureFind = Hash.new { |h, k|
