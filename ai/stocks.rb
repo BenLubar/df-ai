@@ -13,8 +13,8 @@ class DwarfAI
 
     class Stocks
         Needed = {
-            :bed => 4, :door => 4, :bin => 4, :barrel => 4,
-            :chest => 4, :mechanism => 4, :cabinet => 4,
+            :door => 4, :bed => 4, :bin => 4, :barrel => 4,
+            :cabinet => 4, :chest => 4, :mechanism => 4,
             :bag => 3, :table => 3, :chair => 3, :cage => 3,
             :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
             :food => 20, :drink => 20, :wood => 16, :bucket => 2,
@@ -77,6 +77,18 @@ class DwarfAI
             if @last_unforbidall_year != df.cur_year
                 @last_unforbidall_year = df.cur_year
                 df.world.items.all.each { |i| i.flags.forbid = false }
+            end
+
+            # trim stalled manager orders once per month
+            @last_managerstall ||= df.cur_year_tick / (1200*28)
+            if @last_managerstall != df.cur_year_tick / (1200*28)
+                @last_managerstall = df.cur_year_tick / (1200*28)
+                if m = df.world.manager_orders.first and m.amount_left > 3
+                    m.amount_left -= 3
+                elsif m
+                    df.world.manager_orders.delete_at(0)
+                    #m._cpp_delete # TODO once dfhack-0.34.11-r4 is out
+                end
             end
 
             @updating = Needed.keys | WatchStock.keys
@@ -423,7 +435,7 @@ class DwarfAI
                 i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
                 amount = i_amount if amount > i_amount
             end
-            find_manager_orders(order).each { |o| amount -= o.amount_total }
+            find_manager_orders(order).each { |o| amount -= o.amount_left }
             return if amount <= 0
 
             @ai.debug "stocks: queue #{amount} #{order}"
