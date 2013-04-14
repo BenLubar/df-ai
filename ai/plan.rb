@@ -26,8 +26,9 @@ class DwarfAI
             setup_blueprint
             categorize_all
 
-            ensure_workshop(:Masons)
-            ensure_workshop(:Carpenters)
+            digroom find_room(:workshop) { |r| r.subtype == :Masons }
+            digroom find_room(:workshop) { |r| r.subtype == :Carpenters }
+            find_room(:workshop) { |r| !r.subtype }.subtype = :Masons
             
             dig_garbagedump
         end
@@ -348,14 +349,14 @@ class DwarfAI
                 r.misc[:squad_id] = squad_id
                 df.add_announcement("AI: new barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
                 wantdig(r)
-                if r.misc[:bld_id]
-                    assign_barrack_squad(r, squad_id)
+                if r.misc[:bld_id] and bld = r.dfbuilding
+                    assign_barrack_squad(bld, squad_id)
                 end
             end
 
-            [:weaponrack, :armorstand, :bed, :cabinet, :chest].map { |it|
+            [:weaponrack, :armorstand, :bed, :cabinet, :chest, :archerytarget].map { |it|
                 r.layout.find { |f| f[:item] == it and f[:users].include?(id) } ||
-                r.layout.find { |f| f[:item] == it and f[:users].length < (it == :weaponrack ? 4 : 1) }
+                r.layout.find { |f| f[:item] == it and (it == :archerytarget or f[:users].length < (it == :weaponrack ? 4 : 1)) }
             }.compact.each { |f|
                 f[:users] << id unless f[:users].include?(id)
                 f.delete :ignore
@@ -365,18 +366,18 @@ class DwarfAI
             end
         end
         
-        def assign_barrack_squad(barrack, squad_id)
-            return if not bld = barrack.dfbuilding
-
-            su = bld.squads.find { |_su| _su.squad_id == squad_id }
-            if not su
-                su = DFHack::BuildingSquadUse.cpp_new(:squad_id => squad_id)
-                bld.squads << su
+        def assign_barrack_squad(bld, squad_id)
+            if bld.respond_to?(:squads) # archerytarget has no such field
+                su = bld.squads.find { |_su| _su.squad_id == squad_id }
+                if not su
+                    su = DFHack::BuildingSquadUse.cpp_new(:squad_id => squad_id)
+                    bld.squads << su
+                end
+                su.mode.sleep = true
+                su.mode.train = true
+                su.mode.indiv_eq = true
+                su.mode.squad_eq = true
             end
-            su.mode.sleep = true
-            su.mode.train = true
-            su.mode.indiv_eq = true
-            su.mode.squad_eq = true
 
             squad = df.world.squads.all.binsearch(squad_id)
             sr = squad.rooms.find { |_sr| _sr.building_id == bld.id }
@@ -606,6 +607,8 @@ class DwarfAI
             case f[:item]
             when :well
                 return try_furnish_well(r, f)
+            when :archerytarget
+                return try_furnish_archerytarget(r, f)
             when :pillar
                 tgtile.dig(:Smooth)
                 return true
@@ -658,6 +661,22 @@ class DwarfAI
             end
         end
 
+        def try_furnish_archerytarget(r, f)
+            if bould = df.world.items.other[:BOULDER].find { |i|
+                i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and
+                !df.ui.economic_stone[i.mat_index]
+            }
+                bld = df.building_alloc(:ArcheryTarget)
+                bld.archery_direction = (f[:y] > 2 ? :TopToBottom : :BottomToTop)
+                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
+                df.building_position(bld, t)
+                df.building_construct(bld, [bould])
+                f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
         def try_furnish_trap(r, f)
             t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
 
@@ -680,19 +699,6 @@ class DwarfAI
                 @tasks << [:checkfurnish, r, f]
                 true
             end
-        end
-
-        def ensure_workshop(subtype, dignow=true)
-            ws = find_room(:workshop) { |r| r.subtype == subtype }
-            raise "unknown workshop #{subtype}" if not ws
-            if ws.status == :plan
-                if dignow
-                    digroom(ws)
-                else
-                    wantdig(ws)
-                end
-            end
-            ws
         end
 
         def ensure_stockpile(sptype)
@@ -1362,6 +1368,8 @@ class DwarfAI
                         link_lever(ff, f) if ff[:item] == :trap and ff[:subtype] == :lever and ff[:target] == f
                     }
                 } if f[:way]
+            when :archerytarget
+                f[:makeroom] = true
             end
 
             return true unless f[:makeroom]
@@ -1404,9 +1412,10 @@ class DwarfAI
                 bld.table_flags.meeting_hall = true
 
             when :barracks
-                # TODO waterskins/backpacks
-                if squad_id = r.misc[:squad_id]
-                    assign_barrack_squad(r, squad_id)
+                bld = r.dfbuilding
+                bld = df.building_find(f[:bld_id]) if f[:item] == :archerytarget
+                if squad_id = r.misc[:squad_id] and bld
+                    assign_barrack_squad(bld, squad_id)
                 end
 
             end
@@ -1492,6 +1501,11 @@ class DwarfAI
             f_in = df.building_find(@m_c_lever_in[:target][:bld_id]) if @m_c_lever_in[:target] and @m_c_lever_in[:target][:bld_id]
             l_out = df.building_find(@m_c_lever_out[:bld_id]) if @m_c_lever_out[:bld_id]
             f_out = df.building_find(@m_c_lever_out[:target][:bld_id]) if @m_c_lever_out[:target] and @m_c_lever_out[:target][:bld_id]
+            if l_in and not f_out and l_in.linked_mechanisms.first
+                # f_in is linked, can furnish f_out now without risking walling workers in the reserve
+                @m_c_reserve.layout.each { |l| l.delete :ignore }
+                furnish_room @m_c_reserve
+            end
             return unless l_in and f_in and l_out and f_out
             return unless l_in.linked_mechanisms.first and l_out.linked_mechanisms.first
             return unless l_in.jobs.empty? and l_out.jobs.empty?
@@ -1750,15 +1764,15 @@ class DwarfAI
             }
 
             if need_shaft
-                # TODO better pathing (shaft may start in cavern)
-                # TODO reuse vertical part for many veins on different zlevels
                 # TODO minecarts?
+                # TODO avoid water pools
                 if by > @fort_entrance.y
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
                 else
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-30, bz)
                 end
                 vert = vert.offset(1, 0) if (vert.z % 32) > 16  # XXX check this
+                # map_tile_in_rock(vert)
 
                 t0 = df.map_tile_at(bx+(dxs.min+dxs.max)/2, by+(dys.min+dys.max)/2, bz)
                 while t0.y != vert.y
@@ -2225,6 +2239,7 @@ class DwarfAI
                     }
                     barracks.layout << {:item => :weaponrack, :x => 4, :y => (ry>0 ? 7 : 0), :makeroom => true, :users => []}
                     barracks.layout << {:item => :weaponrack, :x => 2, :y => (ry>0 ? 7 : 0), :ignore => true, :users => []}
+                    barracks.layout << {:item => :archerytarget, :x => 3, :y => (ry>0 ? 7 : 0), :ignore => true, :users => []}
                     barracks.accesspath = [cor]
                     @rooms << barracks
                 }
@@ -2272,7 +2287,7 @@ class DwarfAI
             #  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
             reserve = Room.new(:cistern, :reserve, cx-10, cx-14, fy-3, fy+3, fz)
             reserve.layout << {:item => :floodgate, :x => -1, :y => 3, :way => :in}
-            reserve.layout << {:item => :floodgate, :x =>  5, :y => 3, :way => :out}
+            reserve.layout << {:item => :floodgate, :x =>  5, :y => 3, :way => :out, :ignore => true}
             reserve.accesspath = [cist_cors[0]]
             @rooms << reserve
 

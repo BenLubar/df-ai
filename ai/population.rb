@@ -76,6 +76,7 @@ class DwarfAI
 
             # add new fort citizen to our list
             df.unit_citizens.each { |u|
+                next if u.profession == :BABY
                 @citizen[u.id] ||= new_citizen(u.id)
                 @citizen[u.id].entitypos = df.unit_entitypositions(u)
                 old.delete u.id
@@ -214,6 +215,17 @@ class DwarfAI
                     pos.unk_118 = pos.unk_11c = -1
                     squad.positions << pos
                 }
+
+                if df.ui.main.fortress_entity.squads.length % 2 == 1
+                    # ranged squad
+                    squad.positions.each { |pos|
+                        pos.uniform[:Weapon][0].indiv_choice.melee = false
+                        pos.uniform[:Weapon][0].indiv_choice.ranged = true
+                    }
+                    squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(:item_filter => { :item_type => :AMMO,
+                                        :item_subtype => 0, :material_class => :NONE}, # subtype = bolts
+                                :amount => 100, :flags => { :use_combat => true, :use_training => true })
+                end
 
                 # schedule
                 df.ui.alerts.list.each { |alert|
