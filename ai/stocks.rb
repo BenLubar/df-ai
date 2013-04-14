@@ -26,6 +26,7 @@ class DwarfAI
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
+            :quern => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
@@ -83,11 +84,17 @@ class DwarfAI
             @last_managerstall ||= df.cur_year_tick / (1200*28)
             if @last_managerstall != df.cur_year_tick / (1200*28)
                 @last_managerstall = df.cur_year_tick / (1200*28)
-                if m = df.world.manager_orders.first and m.amount_left > 3
-                    m.amount_left -= 3
-                elsif m
-                    df.world.manager_orders.delete_at(0)
-                    #m._cpp_delete # TODO once dfhack-0.34.11-r4 is out
+                if m = df.world.manager_orders.first and m.is_validated
+                    if m.job_type == @last_managerorder 
+                        if m.amount_left > 3
+                            m.amount_left -= 3
+                        else
+                            df.world.manager_orders.delete_at(0)
+                            #m._cpp_delete # TODO once dfhack-0.34.11-r4 is out
+                        end
+                    else
+                        @last_managerorder = m.job_type
+                    end
                 end
             end
 
@@ -264,6 +271,9 @@ class DwarfAI
                 }
             when :pipe_section
                 df.world.items.other[:PIPE_SECTION]
+            when :quern
+                # include used in building
+                return df.world.items.other[:QUERN].length
             else
                 return find_furniture_itemcount(k)
 

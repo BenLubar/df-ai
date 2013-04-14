@@ -29,6 +29,7 @@ class DwarfAI
             digroom find_room(:workshop) { |r| r.subtype == :Masons }
             digroom find_room(:workshop) { |r| r.subtype == :Carpenters }
             find_room(:workshop) { |r| !r.subtype }.subtype = :Masons
+            ensure_stockpile(:food)
             
             dig_garbagedump
         end
@@ -137,8 +138,7 @@ class DwarfAI
         # return true if the fort has basic features (rooms, primary workshops, etc)
         def past_initial_phase
             # never go back
-            @past_initial_phase ||= ((ct = find_room(:cistern) and not find_room(:cistern) { |r| r.status == :plan }) or
-                                     (!ct and find_room(:infirmary) { |r| r.status != :plan }))
+            @past_initial_phase ||= !find_room(:infirmary) { |r| r.status == :plan }
         end
         
         def checkidle
@@ -150,24 +150,20 @@ class DwarfAI
                 end
             }
 
-            @important_workshops ||= [:Still, :Mechanics, :Butchers, :Craftsdwarfs, :Kitchen, :Tanners, :Farmers, :WoodFurnace, :Loom, :Smelter]
+            @important_workshops ||= [:Still, :Mechanics, :Farmers, :Quern]
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
 
             ifplan = lambda { |_r| _r if _r and _r.status == :plan }
             freebed = @spare_bedroom
-            if manager_backlog >= @manager_maxbacklog and r = find_room(:workshop) { |_r| not _r.subtype and _r.status == :plan }
-                r.misc[:spare] = true
-                r.subtype = :Masons # TODO repurpose by parsing manager_orders
-                digroom(r)
-                false
-            elsif r =
+            if r =
                    (st = @important_workshops.shift and
                     find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
+                   find_room(:cistern)   { |_r| _r.status == :plan } ||
+                   find_room(:well)      { |_r| _r.status == :plan } ||
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
-                   find_room(:cistern)   { |_r| _r.subtype == :well and _r.status == :plan } ||
                    find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
@@ -521,11 +517,6 @@ class DwarfAI
             r.accesspath.each { |ap| digroom(ap) }
 
             if r.type == :workshop
-                case r.subtype
-                when :Quern
-                    @ai.stocks.add_manager_order(:ConstructQuern)
-                end
-
                 # add minimal stockpile in front of workshop
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
@@ -537,6 +528,7 @@ class DwarfAI
                     sp = Room.new(:stockpile, sptype, r.x1, r.x2, y, y, r.z1)
                     sp.misc[:workshop] = r
                     @rooms << sp
+                    categorize_all
                     digroom(sp)
                 end
             end
@@ -547,7 +539,10 @@ class DwarfAI
                     ((r.x1-1)..(r.x2+1)).each { |x|
                         ((r.y1-1)..(r.y2+1)).each { |y|
                             next if not t = df.map_tile_at(x, y, z) or t.designation.dig != :No
-                            t.designation.smooth = 1
+                            case t.shape_basic
+                            when :Wall, :Floor
+                                t.designation.smooth = 1 if t.caption !~ /pillar|smooth/i
+                            end
                         }
                     }
                 }
@@ -610,7 +605,7 @@ class DwarfAI
             when :archerytarget
                 return try_furnish_archerytarget(r, f)
             when :pillar
-                tgtile.dig(:Smooth)
+                tgtile.dig :Smooth
                 return true
             end
 
@@ -656,7 +651,6 @@ class DwarfAI
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
                 @tasks << [:checkfurnish, r, f]
-                @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
                 true
             end
         end
@@ -703,7 +697,6 @@ class DwarfAI
 
         def ensure_stockpile(sptype)
             if sp = find_room(:stockpile) { |r| r.subtype == sptype and not r.misc[:workshop] }
-                ensure_stockpile(:food) if sptype != :food  # XXX make sure we dig food first
                 wantdig(sp)
             end
         end
@@ -837,19 +830,24 @@ class DwarfAI
             end
 
             if r.misc[:workshop] or r.misc[:secondary]
+                if r.subtype == :stone or r.subtype == :wood
+                    # stone/wood stockpile is not a priority
+                    return unless find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and o.dfbuilding }
+                end
                 ensure_stockpile(r.subtype)
-                if main = find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary]} and mb = main.dfbuilding
+                if main = find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary] } and mb = main.dfbuilding
                     bld, mb = mb, bld if r.misc[:secondary]
                     mb.links.give_to_pile << bld
                     bld.links.take_from_pile << mb
                 end
             else
-                @rooms.each { |o|
-                    if o.type == :stockpile and o.subtype == r.subtype and (o.misc[:workshop] or o.misc[:secondary]) and sub = o.dfbuilding
+                find_room(:stockpile) { |o|
+                    if o.subtype == r.subtype and (o.misc[:workshop] or o.misc[:secondary]) and sub = o.dfbuilding
                         bld, sub = sub, bld if o.misc[:secondary]
                         bld.links.give_to_pile << sub
                         sub.links.take_from_pile << bld
                         bld, sub = sub, bld if o.misc[:secondary]
+                        false
                     end
                 }
             end
@@ -1121,6 +1119,7 @@ class DwarfAI
                 end
             }
             @rooms.delete t
+            categorize_all
         end
 
         def smooth_room(r)
@@ -1129,6 +1128,7 @@ class DwarfAI
                     ((r.y1-1)..(r.y2+1)).each { |y|
                         next unless t = df.map_tile_at(x, y, z)
                         next if t.designation.hidden
+                        next if t.designation.dig != :No
                         case t.shape_basic
                         when :Wall, :Floor
                             t.dig :Smooth
@@ -1162,15 +1162,14 @@ class DwarfAI
         end
 
         def construct_cistern(r)
-            # ensure levers are built before floodgates (minimize risk/duration of locked dwarves)
-            @rooms.each { |_r| wantdig(_r) if _r.type == :well }
-            @rooms.each { |_r| wantdig(_r) if _r.type == :cistern }
-
             furnish_room(r)
             smooth_cistern(r)
 
             # remove boulders
             dump_items_access(r)
+
+            # build levers for floodgates
+            wantdig find_room(:well)
 
             # check smoothing progress, channel intermediate levels
             if r.subtype == :well
@@ -1501,14 +1500,22 @@ class DwarfAI
             f_in = df.building_find(@m_c_lever_in[:target][:bld_id]) if @m_c_lever_in[:target] and @m_c_lever_in[:target][:bld_id]
             l_out = df.building_find(@m_c_lever_out[:bld_id]) if @m_c_lever_out[:bld_id]
             f_out = df.building_find(@m_c_lever_out[:target][:bld_id]) if @m_c_lever_out[:target] and @m_c_lever_out[:target][:bld_id]
+
             if l_in and not f_out and l_in.linked_mechanisms.first
                 # f_in is linked, can furnish f_out now without risking walling workers in the reserve
                 @m_c_reserve.layout.each { |l| l.delete :ignore }
                 furnish_room @m_c_reserve
             end
+
             return unless l_in and f_in and l_out and f_out
             return unless l_in.linked_mechanisms.first and l_out.linked_mechanisms.first
             return unless l_in.jobs.empty? and l_out.jobs.empty?
+
+            if @fort_entrance.layout.find { |f| f[:ignore] }
+                # may use mechanisms for entrance cage traps now
+                @fort_entrance.layout.each { |ef| ef.delete :ignore }
+                furnish_room(@fort_entrance)
+            end
 
             f_in_closed = true if f_in.gate_flags.closed or f_in.gate_flags.closing
             f_in_closed = false if f_in.gate_flags.opening
@@ -1519,9 +1526,6 @@ class DwarfAI
                 # expensive, dont check too often
                 @m_c_testgate_delay -= 1
                 return if @m_c_testgate_delay > 0
-
-                well = find_room(:well)
-                return if df.map_tile_at(well).offset(0, 0, -1).shape_basic != :Open
 
                 # re-dump garbage + smooth reserve accesspath
                 construct_cistern(@m_c_reserve)
@@ -1538,11 +1542,12 @@ class DwarfAI
                         } } }
                     end
 
-                    if empty and @m_c_cistern.misc[:channeled] and !dump_items_access(@m_c_cistern) and !dump_items_access(@m_c_reserve)
+                    if empty and !dump_items_access(@m_c_reserve)
                         @ai.debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
+                        pull_lever(@m_c_lever_in) if f_in_closed
                         pull_lever(@m_c_lever_out) if not f_out_closed
-                    elsif well.maptile1.offset(-2, well.h/2).designation.flow_size == 7
+                    elsif find_room(:well).maptile1.offset(-2, find_room(:well).h/2).designation.flow_size == 7
                         # something went not as planned, but we have a water source
                         @m_c_testgate_delay = nil
                     else
@@ -1550,9 +1555,20 @@ class DwarfAI
                     end
                 else
                     @m_c_testgate_delay = nil
+                    # channel surrounding tiles
+                    gate.spiral_search(1, 1) { |tt|
+                        tm = tt.tilemat
+                        next if tt.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
+                        if tt.spiral_search(1) { |ttt| ttt.designation.feature_local }
+                            tt.offset(0, 0, 1).dig(:Channel)
+                        end
+                        false
+                    }
                 end
                 return
             end
+
+            return unless @m_c_cistern.misc[:channeled]
 
             # cistlvl = water level for the next-to-top floor
             cistlvl = df.map_tile_at(@m_c_cistern).designation.flow_size
@@ -1647,7 +1663,6 @@ class DwarfAI
                 t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
             }
             list_map_veins
-            @ai.debug 'listed map veins'
             puts 'AI: ready'
         end
 
@@ -1656,6 +1671,7 @@ class DwarfAI
         # scan the map, list all map veins in @map_veins (mat_index => [block coords], sorted by z)
         def list_map_veins
             @map_veins = {}
+            #df.onupdate_register_once('df-ai plan list_map_veins') { true }
             df.each_map_block { |block|
                 block.block_events.grep(DFHack::BlockSquareEventMineralst).each { |vein|
                     @map_veins[vein.inorganic_mat] ||= []
@@ -1765,7 +1781,6 @@ class DwarfAI
 
             if need_shaft
                 # TODO minecarts?
-                # TODO avoid water pools
                 if by > @fort_entrance.y
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
                 else
@@ -1854,15 +1869,15 @@ class DwarfAI
 
             @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
             3.times { |i|
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-1, :y => -1}
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1,   :y => i}
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1-i, :y => 3}
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -1,  :y => 2-i}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-1, :y => -1,  :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1,   :y => i,   :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1-i, :y => 3,   :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -1,  :y => 2-i, :ignore => true}
             }
             5.times { |i|
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-2, :y => -2, :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-2, :y => -2,  :ignore => true}
                 @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2,   :y => i-1, :ignore => true}
-                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2-i, :y => 4, :ignore => true}
+                @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2-i, :y => 4,   :ignore => true}
                 @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -2,  :y => 3-i, :ignore => true}
             }
 
@@ -1951,19 +1966,9 @@ class DwarfAI
                 (1..6).each { |dx|
                     # segments of the big central horizontal corridor
                     cx = fx + dirx*4*dx
-                    if dx <= 5
-                        cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
-                        cor_x.accesspath = [prev_corx]
-                        @corridors << cor_x
-                    else
-                        # last 2 workshops of the row (offices etc) get only a narrow/direct corridor
-                        cor_x = Corridor.new(fx+dirx*3, cx, fy, fy, fz, fz)
-                        cor_x.accesspath = [(dirx < 0 ? corridor_center0 : corridor_center2)]
-                        @corridors << cor_x
-                        cor_x = Corridor.new(cx-dirx*3, cx+dirx, fy-1, fy+1, fz, fz)
-                        cor_x.accesspath = [@corridors.last]
-                        @corridors << cor_x
-                    end
+                    cor_x = Corridor.new(ocx, cx + (dx <= 5 ? 0 : dirx), fy-1, fy+1, fz, fz)
+                    cor_x.accesspath = [prev_corx]
+                    @corridors << cor_x
                     prev_corx = cor_x
                     ocx = cx+dirx
 
@@ -1995,8 +2000,8 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            types = [:food,:furniture, :wood,:stone, :refuse, :corpses, :gems,:animals]
-            types += [:finished_goods,:bars_blocks, :cloth,:leather, :ammo,:armor, :weapons,:coins]
+            types = [:food,:furniture, :wood,:stone, :refuse,:animals, :corpses,:gems]
+            types += [:finished_goods,:cloth, :bars_blocks,:leather, :ammo,:armor, :weapons,:coins]
 
             # TODO side stairs to workshop level ?
             tmp = []
@@ -2105,13 +2110,10 @@ class DwarfAI
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
             cz = find_room(:workshop).z1
-            ws_cor = @corridors.find { |_c| _c.x1 < cx and _c.x2 >= cx and _c.y1 <= cy and _c.y2 >= cy and _c.z1 <= cz and _c.z2 >= cz }
-            raise "cannot connect farm to workshop corridor" if not ws_cor
-            moo = Corridor.new(cx+1, cx+1, cy, cy, cz, cz)
-            moo.accesspath = [ws_cor]
-            @corridors << moo
+            ws_cor = Corridor.new(fx+3, cx+1, cy, cy, cz, cz)    # ws_corr.access_path ...
+            @corridors << ws_cor
             farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
-            farm_stairs.accesspath = [moo]
+            farm_stairs.accesspath = [ws_cor]
             @corridors << farm_stairs
             cx += 3
             soilcnt = {}
@@ -2274,7 +2276,6 @@ class DwarfAI
             cistern = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
             cistern.z1 -= 2
             cistern.accesspath = [cist_cors[0]]
-            @rooms << cistern
 
             # handle low rivers / high mountain forts
             fz = src.z if fz > src.z
@@ -2289,8 +2290,11 @@ class DwarfAI
             reserve.layout << {:item => :floodgate, :x => -1, :y => 3, :way => :in}
             reserve.layout << {:item => :floodgate, :x =>  5, :y => 3, :way => :out, :ignore => true}
             reserve.accesspath = [cist_cors[0]]
-            @rooms << reserve
 
+            # cisterns are dug in order
+            # try to dig reserve first, so we have liquid water even if river freezes
+            @rooms << reserve
+            @rooms << cistern
 
             # link the cistern reserve to the water source
 
@@ -2625,7 +2629,8 @@ class DwarfAI
                         next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
                         dm = :Default if dm != :No and t.shape == :TREE
-                        t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or t.shape == :WALL or t.shape == :TREE
+                        t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or
+                                t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
                 @layout.each { |d|
