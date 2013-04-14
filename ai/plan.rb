@@ -1671,15 +1671,23 @@ class DwarfAI
         # scan the map, list all map veins in @map_veins (mat_index => [block coords], sorted by z)
         def list_map_veins
             @map_veins = {}
-            #df.onupdate_register_once('df-ai plan list_map_veins') { true }
-            df.each_map_block { |block|
-                block.block_events.grep(DFHack::BlockSquareEventMineralst).each { |vein|
-                    @map_veins[vein.inorganic_mat] ||= []
-                    @map_veins[vein.inorganic_mat] << [block.map_pos.x, block.map_pos.y, block.map_pos.z]
-                }
-            }
-            @map_veins.each { |mat, list|
-                list.replace list.sort_by { |x, y, z| z + rand(6) }
+            i = 0
+            df.onupdate_register_once('df-ai plan list_map_veins') {
+                if i < df.world.map.z_count
+                    df.each_map_block_z(i) { |block|
+                        block.block_events.grep(DFHack::BlockSquareEventMineralst).each { |vein|
+                            @map_veins[vein.inorganic_mat] ||= []
+                            @map_veins[vein.inorganic_mat] << [block.map_pos.x, block.map_pos.y, block.map_pos.z]
+                        }
+                    }
+                    i += 1
+                    false
+                else
+                    @map_veins.each { |mat, list|
+                        list.replace list.sort_by { |x, y, z| z + rand(6) }
+                    }
+		    true
+                end
             }
         end
    
