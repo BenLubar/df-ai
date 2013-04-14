@@ -223,7 +223,7 @@ class DwarfAI
                         pos.uniform[:Weapon][0].indiv_choice.ranged = true
                     }
                     squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(:item_filter => { :item_type => :AMMO,
-                                        :item_subtype => 0, :material_class => :NONE}, # subtype = bolts
+                                        :item_subtype => 0, :material_class => :None}, # subtype = bolts
                                 :amount => 100, :flags => { :use_combat => true, :use_training => true })
                 end
 
