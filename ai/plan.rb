@@ -29,7 +29,6 @@ class DwarfAI
             digroom find_room(:workshop) { |r| r.subtype == :Masons }
             digroom find_room(:workshop) { |r| r.subtype == :Carpenters }
             find_room(:workshop) { |r| !r.subtype }.subtype = :Masons
-            ensure_stockpile(:food)
             
             dig_garbagedump
         end
@@ -516,6 +515,8 @@ class DwarfAI
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
 
+            r.layout.each { |f| @tasks << [:furnish, r, f] }
+
             if r.type == :workshop
                 # add minimal stockpile in front of workshop
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
@@ -599,6 +600,7 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
+            return if tgtile.shape_basic == :Wall and tgtile.designation.dig != :No
             case f[:item]
             when :well
                 return try_furnish_well(r, f)
@@ -1357,6 +1359,7 @@ class DwarfAI
                 bld.burial_mode.no_citizens = false
                 bld.burial_mode.no_pets = true
             when :door
+                bld.door_flags.pet_passable = true if r.type == :corridor
                 bld.door_flags.internal = true if f[:internal]
             when :trap
                 return setup_lever(r, f) if f[:subtype] == :lever
@@ -1372,6 +1375,7 @@ class DwarfAI
             end
 
             return true unless f[:makeroom]
+            return unless r.dug?
 
             @ai.debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
 
@@ -1686,7 +1690,7 @@ class DwarfAI
                     @map_veins.each { |mat, list|
                         list.replace list.sort_by { |x, y, z| z + rand(6) }
                     }
-		    true
+                    true
                 end
             }
         end
@@ -1789,13 +1793,31 @@ class DwarfAI
 
             if need_shaft
                 # TODO minecarts?
+
+                # avoid giant vertical runs: slalom x+-1 every z%16
+                vertshift = lambda { |t| t.offset(((t.z%32) >= 16 ? 1 : -1), 0) }
+
+                shaftop = df.map_tile_at(@fort_entrance.x, @fort_entrance.y, bz)
+                if by > @fort_entrance.y
+                    shaftop = shaftop.offset(0, 30)
+                else
+                    shaftop = shaftop.offset(0, -30)
+                end
+                shaftop = shaftop.offset(0, 0, 1) while vertshift[shaftop].designation.hidden
+                if map_tile_nocavern(vertshift[shaftop])
+                    if vertshift[shaftop].shape_passablelow
+                        shaftop = nil
+                    end
+                end
+
+
+                
                 if by > @fort_entrance.y
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
                 else
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-30, bz)
                 end
                 vert = vert.offset(1, 0) if (vert.z % 32) > 16  # XXX check this
-                # map_tile_in_rock(vert)
 
                 t0 = df.map_tile_at(bx+(dxs.min+dxs.max)/2, by+(dys.min+dys.max)/2, bz)
                 while t0.y != vert.y
@@ -2507,6 +2529,19 @@ class DwarfAI
         def map_tile_in_rock(tile)
             (-1..1).all? { |dx| (-1..1).all? { |dy|
                 t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+            } }
+        end
+
+        # check tile is surrounded by solid walls or visible tile
+        def map_tile_nocavern(tile)
+            (-1..1).all? { |dx| (-1..1).all? { |dy|
+                next if not t = tile.offset(dx, dy)
+                tm = t.tilemat
+                if !t.designation.hidden
+                    t.designation.flow_size < 4 and tm != :FROZEN_LIQUID
+                else
+                    t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+                end
             } }
         end
 

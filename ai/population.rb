@@ -326,6 +326,7 @@ class DwarfAI
                             case job.job_type
                             when :ConstructBuilding, :DestroyBuilding
                                 # TODO
+                            when :PullLever
                             when :CustomReaction
                                 reac = df.world.raws.reactions.find { |r| r.code == job.reaction_name }
                                 if reac and job_labor = DFHack::JobSkill::Labor[reac.skill]
