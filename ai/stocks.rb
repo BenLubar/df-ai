@@ -26,7 +26,7 @@ class DwarfAI
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
-            :quern => 1,
+            :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
@@ -247,9 +247,10 @@ class DwarfAI
                 df.world.items.other[:POWDER_MISC].find_all { |i|
                     mat = df.decode_mat(i) and mat.inorganic and mat.inorganic.id == 'PLASTER'
                 }
-            when :wheelbarrow
+            when :wheelbarrow, :minecart, :nestbox, :hive
+                ord = FurnitureOrder[k]
                 df.world.items.other[:TOOL].find_all { |i|
-                    i.subtype.subtype == ManagerSubtype[:MakeWoodenWheelbarrow] and
+                    i.subtype.subtype == ManagerSubtype[ord] and
                     i.stockpile.id == -1
                 }
             when :quiver
@@ -978,6 +979,9 @@ class DwarfAI
             :MakeBag => :ConstructChest,
             :MakeRope => :MakeChain,
             :MakeWoodenWheelbarrow => :MakeTool,
+            :MakeWoodenMinecart => :MakeTool,
+            :MakeRockNestbox => :MakeTool,
+            :MakeRockHive => :MakeTool,
             :MakeBoneBolt => :MakeAmmo,
             :MakeBoneCrossbow => :MakeWeapon,
             :MakeTrainingAxe => :MakeWeapon,
@@ -988,7 +992,7 @@ class DwarfAI
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
             :ConstructBed => :wood, :MakeBarrel => :wood, :MakeBucket => :wood, :ConstructBin => :wood,
-            :MakeWoodenWheelbarrow => :wood, :MakeTrainingAxe => :wood,
+            :MakeWoodenWheelbarrow => :wood, :MakeWoodenMinecart => :wood, :MakeTrainingAxe => :wood,
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
             :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
             :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood,
@@ -1012,6 +1016,9 @@ class DwarfAI
         def self.init_manager_subtype
             ManagerSubtype.update \
                 :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
+                :MakeWoodenMinecart => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_MINECART' }.subtype,
+                :MakeRockNestbox => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_NEST_BOX' }.subtype,
+                :MakeRockHive => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_HIVE' }.subtype,
                 :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
                 :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
                 :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
@@ -1107,6 +1114,9 @@ class DwarfAI
             :ash => :MakeAsh,
             :plasterpowder => :MakePlasterPowder,
             :wheelbarrow => :MakeWoodenWheelbarrow,
+            :minecart => :MakeWoodenMinecart,
+            :nestbox => :MakeRockNestbox,
+            :hive => :MakeRockHive,
             :quiver => :MakeQuiver,
             :flask => :MakeFlask,
             :backpack => :MakeBackpack,

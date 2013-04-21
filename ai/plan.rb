@@ -515,7 +515,7 @@ class DwarfAI
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
 
-            r.layout.each { |f| @tasks << [:furnish, r, f] }
+            r.layout.each { |f| @tasks << [:furnish, r, f] if f[:item] != :floodgate }
 
             if r.type == :workshop
                 # add minimal stockpile in front of workshop
