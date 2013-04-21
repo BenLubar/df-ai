@@ -2045,14 +2045,17 @@ class DwarfAI
                         r.layout << {:item => :door, :x => 2, :y => (r.y < fy ? 2 : -1)}
                         r.layout << {:item => :door, :x => 4, :y => (r.y < fy ? 2 : -1)}
                     }
-                    t0 = :furniture if t0 == :coins
-                    t1 = :furniture if t1 == :coins
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-11, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
                     @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 2 }
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
                     @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 3 }
+                    if t0 == :coins or t1 == :coins
+                        (t0 == :coins ? [-2, -4] : [-1, -3]).each { |i|
+                            @rooms[i].subtype = :furniture ; @rooms[i].misc[:stockpile_level] += 2
+                        }
+                    end
                 }
             }
         end

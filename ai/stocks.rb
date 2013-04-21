@@ -251,7 +251,8 @@ class DwarfAI
                 ord = FurnitureOrder[k]
                 df.world.items.other[:TOOL].find_all { |i|
                     i.subtype.subtype == ManagerSubtype[ord] and
-                    i.stockpile.id == -1
+                    i.stockpile.id == -1 and
+                    (!i.vehicle_tg or i.vehicle_tg.route_id == -1)
                 }
             when :quiver
                 df.world.items.other[:QUIVER]
