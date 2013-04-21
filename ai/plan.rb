@@ -163,7 +163,7 @@ class DwarfAI
                    find_room(:well)      { |_r| _r.status == :plan } ||
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
-                   find_room(:stockpile) { |_r| not _r.misc[:secondary] and _r.subtype and _r.status == :plan } ||
+                   find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -528,6 +528,7 @@ class DwarfAI
                     y = (r.layout[0][:y] > 0 ? r.y2+2 : r.y1-2)  # check door position
                     sp = Room.new(:stockpile, sptype, r.x1, r.x2, y, y, r.z1)
                     sp.misc[:workshop] = r
+                    sp.misc[:stockpile_level] = 0
                     @rooms << sp
                     categorize_all
                     digroom(sp)
@@ -697,12 +698,6 @@ class DwarfAI
             end
         end
 
-        def ensure_stockpile(sptype)
-            if sp = find_room(:stockpile) { |r| r.subtype == sptype and not r.misc[:workshop] }
-                wantdig(sp)
-            end
-        end
-
         def try_construct_workshop(r)
             case r.subtype
             when :Dyers
@@ -827,32 +822,27 @@ class DwarfAI
 
             room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop] and r.subtype != :stone
 
-            if r.subtype == :refuse and not r.misc[:workshop]
-                ensure_stockpile(:corpses)
+            if r.misc[:stockpile_level] == 0 and not (r.subtype == :stone or r.subtype == :wood)
+                if rr = find_room(:stockpile) { |o| o.subtype == r.subtype and o.misc[:stockpile_level] == 1 }
+                    wantdig(rr)
+                end
             end
 
-            if r.misc[:workshop] or r.misc[:secondary]
-                if r.subtype == :stone or r.subtype == :wood
-                    # stone/wood stockpile is not a priority
-                    return unless find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and o.dfbuilding }
-                end
-                ensure_stockpile(r.subtype)
-                if main = find_room(:stockpile) { |o| o.subtype == r.subtype and not o.misc[:workshop] and not o.misc[:secondary] } and mb = main.dfbuilding
-                    bld, mb = mb, bld if r.misc[:secondary]
-                    mb.links.give_to_pile << bld
-                    bld.links.take_from_pile << mb
-                end
-            else
-                find_room(:stockpile) { |o|
-                    if o.subtype == r.subtype and (o.misc[:workshop] or o.misc[:secondary]) and sub = o.dfbuilding
-                        bld, sub = sub, bld if o.misc[:secondary]
-                        bld.links.give_to_pile << sub
-                        sub.links.take_from_pile << bld
-                        bld, sub = sub, bld if o.misc[:secondary]
-                        false
+            find_room(:stockpile) { |o|
+                if o.subtype == r.subtype and (o.misc[:stockpile_level] - r.misc[:stockpile_level]).abs == 1 and obld = o.dfbuilding
+                    if o.misc[:stockpile_level] > r.misc[:stockpile_level]
+                        b_from = obld
+                        b_to = bld
+                    else
+                        b_from = bld
+                        b_to = obld
                     end
-                }
-            end
+                    next if b_to.links.take_from_pile.find { |btf| btf.id == b_from.id }
+                    b_to.links.take_from_pile << b_from
+                    b_from.links.give_to_pile << b_to
+                    false   # loop on all stockpiles
+                end
+            }
         end
 
         def construct_activityzone(r)
@@ -952,8 +942,8 @@ class DwarfAI
                 s.quality_total.map! { true }
             when :animals
                 bld.settings.flags.animals = true
-                bld.settings.animals.empty_cages = (r.misc[:secondary] ? true : false)
-                bld.settings.animals.empty_traps = (r.misc[:secondary] ? true : false)
+                bld.settings.animals.empty_cages =
+                bld.settings.animals.empty_traps = (r.misc[:stockpile_level] > 1 ? true : false)
                 df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
             when :refuse, :corpses
                 bld.settings.flags.refuse = true
@@ -2034,7 +2024,6 @@ class DwarfAI
             types += [:finished_goods,:cloth, :bars_blocks,:leather, :ammo,:armor, :weapons,:coins]
 
             # TODO side stairs to workshop level ?
-            tmp = []
             [-1, 1].each { |dirx|
                 prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
                 ocx = fx + dirx*3
@@ -2050,6 +2039,7 @@ class DwarfAI
                     t0, t1 = types.shift, types.shift
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-3, fy-4, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+3, fy+4, fz)
+                    @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 1 }
                     @rooms[-2, 2].each { |r|
                         r.accesspath = [cor_x]
                         r.layout << {:item => :door, :x => 2, :y => (r.y < fy ? 2 : -1)}
@@ -2059,14 +2049,12 @@ class DwarfAI
                     t1 = :furniture if t1 == :coins
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-11, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
-                    @rooms[-2, 2].each { |r| r.misc[:secondary] = true }
-                    tmp << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
-                    tmp << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
-                    tmp[-2, 2].each { |r| r.misc[:secondary] = true }
+                    @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 2 }
+                    @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
+                    @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
+                    @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 3 }
                 }
             }
-            # tweak the order of 2nd secondary stockpiles in @rooms (they are dug in order)
-            @rooms.concat tmp
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
@@ -2185,6 +2173,7 @@ class DwarfAI
             }
             # seeds stockpile
             r = Room.new(:stockpile, :food, cx+2, cx+4, cy, cy, cz2)
+            r.misc[:stockpile_level] = 0
             r.misc[:workshop] = @rooms[-2*nrfarms]
             r.accesspath = [cor]
             @rooms << r
@@ -2618,6 +2607,9 @@ class DwarfAI
             @rooms.each { |r|
                 (@room_category[r.type] ||= []) << r
             }
+            @room_category[:stockpile] = @room_category[:stockpile].sort_by { |r|
+                [r.misc[:stockpile_level], (r.x1 < @fort_entrance.x ? -r.x1 : r.x1), r.y1]
+            } if @room_category[:stockpile]
         end
 
         def find_room(type, &b)
