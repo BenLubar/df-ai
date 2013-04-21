@@ -178,8 +178,8 @@ class DwarfAI
         # return a squad index with an empty slot
         def military_find_free_squad
             squad_sz = 8
-            squad_sz = 6 if @military.length < 3*6
-            squad_sz = 4 if @military.length < 2*4
+            squad_sz = 6 if @military.length < 4*6
+            squad_sz = 4 if @military.length < 3*4
 
             if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < squad_sz }
 
@@ -266,8 +266,8 @@ class DwarfAI
         LaborMaxPct = Hash.new(00).update :DETAIL => 40, :PLANT => 60, :FISH => 3
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
-                LaborMinPct[lb] = 40
-                LaborMaxPct[lb] = 80
+                LaborMinPct[lb] = 30
+                LaborMaxPct[lb] = 60
             end
         }
 
@@ -347,9 +347,9 @@ class DwarfAI
                                 elsif job.mat_type == 0
                                     # XXX metalcraft ?
                                     @labor_needmore[:MASON] += 1
-                                else
+                                elsif $DEBUG
                                     @seen_badwork ||= {}
-                                    puts "df-ai autolabor: unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type] if $DEBUG
+                                    @ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
                                     @seen_badwork[job.job_type] = true
                                 end
                             end

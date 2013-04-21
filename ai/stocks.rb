@@ -837,6 +837,7 @@ class DwarfAI
         def is_item_free(i, allow_nonempty=false)
             !i.flags.trader and     # merchant's item
             !i.flags.in_job and     # current job input
+            !i.flags.construction and
             !i.flags.removed and    # deleted object
             !i.flags.forbid and     # user forbidden (or dumped)
             !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
