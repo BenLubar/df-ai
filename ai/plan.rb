@@ -170,7 +170,9 @@ class DwarfAI
                    find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                    ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
-                   find_room(:stockpile) { |_r| _r.subtype and _r.status == :plan }
+                   find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 3 and _r.status == :plan } ||
+                   find_room(:cartway)   { |_r| _r.status == :plan } ||
+                   find_room(:stockpile) { |_r| _r.status == :plan }
                 wantdig(r)
                 if r.status == :finished
                     r.misc[:furnished] = true
@@ -595,6 +597,8 @@ class DwarfAI
         end
 
         FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
+            :gear_assembly => :GearAssembly,
+            :vertical_axle => :AxleVertical,
             :traction_bench => :TractionBench
 
         def try_furnish(r, f)
@@ -604,12 +608,22 @@ class DwarfAI
             return if tgtile.shape_basic == :Wall and tgtile.designation.dig != :No
             case f[:item]
             when :well
-                return try_furnish_well(r, f)
+                return try_furnish_well(r, f, tgtile)
             when :archerytarget
-                return try_furnish_archerytarget(r, f)
+                return try_furnish_archerytarget(r, f, tgtile)
             when :pillar
                 tgtile.dig :Smooth
                 return true
+            when :track
+                return try_furnish_track(r, f, tgtile)
+            when :ramp
+                return true
+            when :vertical_axle
+                return if not itm = df.world.items.other[:WOOD].find { |i| df.item_isfree(i) }
+            when :gear_assembly
+                return if not itm = df.world.items.other[:TRAPPARTS].find { |i| df.item_isfree(i) }
+            when :windmill
+                return try_furnish_windmill(r, f, tgtile)
             end
 
             return if @cache_nofurnish[f[:item]]
@@ -619,12 +633,13 @@ class DwarfAI
             elsif tgtile.shape == :RAMP or tgtile.shape == :TREE
                 tgtile.dig(:Default)
                 false
-            elsif itm = @ai.stocks.find_furniture_item(f[:item])
+            elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
                 @ai.debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
-                subtype = { :cage => :CageTrap, :lever => :Lever }.fetch(f[:subtype], -1)
+                subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
                 bld = df.building_alloc(bldn, subtype)
                 df.building_position(bld, tgtile)
+                f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
                 df.building_construct(bld, [itm])
                 if f[:makeroom]
                     r.misc[:bld_id] = bld.id
@@ -638,7 +653,7 @@ class DwarfAI
             end
         end
 
-        def try_furnish_well(r, f)
+        def try_furnish_well(r, f, t)
             if block = df.world.items.other[:BLOCKS].find { |i|
                 i.kind_of?(DFHack::ItemBlocksst) and df.item_isfree(i)
             } and mecha = df.world.items.other[:TRAPPARTS].find { |i|
@@ -649,7 +664,6 @@ class DwarfAI
                 i.kind_of?(DFHack::ItemChainst) and df.item_isfree(i)
             }
                 bld = df.building_alloc(:Well)
-                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
                 df.building_position(bld, t)
                 df.building_construct(bld, [block, mecha, bucket, chain])
                 r.misc[:bld_id] = f[:bld_id] = bld.id
@@ -658,16 +672,55 @@ class DwarfAI
             end
         end
 
-        def try_furnish_archerytarget(r, f)
+        def try_furnish_archerytarget(r, f, t)
             if bould = df.world.items.other[:BOULDER].find { |i|
                 i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and
                 !df.ui.economic_stone[i.mat_index]
             }
                 bld = df.building_alloc(:ArcheryTarget)
                 bld.archery_direction = (f[:y] > 2 ? :TopToBottom : :BottomToTop)
-                t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
                 df.building_position(bld, t)
                 df.building_construct(bld, [bould])
+                f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
+        def try_furnish_track(r, f, t)
+            if (t.tilemat == :MINERAL or t.tilemat == :STONE) and (not f[:ramp] or t.shape == :RAMP)
+                if not f[:ramp] and t.shape == :RAMP
+                    t.dig   # remove ramp
+                    return false
+                end
+                t.occupancy.carve_track_north = true if f[:dir].include?(:n)
+                t.occupancy.carve_track_south = true if f[:dir].include?(:s)
+                t.occupancy.carve_track_east = true if f[:dir].include?(:e)
+                t.occupancy.carve_track_west = true if f[:dir].include?(:w)
+                t.mapblock.flags.designated = true
+                return true
+            elsif bould = df.world.items.other[:BOULDER].find { |i|
+                    i.kind_of?(DFHack::ItemBoulderst) and df.item_isfree(i) and
+                    !df.ui.economic_stone[i.mat_index]
+                }
+                type = 'Track' + (f[:ramp] ? 'Ramp' : '') + f[:dir].sort_by { |d| [:n, :s, :e, :w].index(d) }.join.upcase
+                bld = df.building_alloc(:Construction, type.to_sym)
+                df.building_position(bld, t)
+                df.building_construct(bld, [bould])
+                f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
+        def try_furnish_windmill(r, f, t)
+            mat = (1..4).map {
+                df.world.items.other[:WOOD].find { |i| ai.stocks.is_item_free(i) }
+            }
+            if mat.compact.length == 4
+                bld = df.building_alloc(:Windmill)
+                df.building_position(bld, t.offset(-1, -1), 3, 3)
+                df.building_construct(bld, mat)
                 f[:bld_id] = bld.id
                 @tasks << [:checkfurnish, r, f]
                 true
@@ -2058,6 +2111,88 @@ class DwarfAI
                     end
                 }
             }
+
+            # minecart airway stuff
+            last_stone = @rooms.reverse.find { |r| r.type == :stockpile and r.subtype == :stone }
+            return if not last_stone
+            rx = last_stone.x
+            ry = last_stone.y + (last_stone.y > @fort_entrance.y ? 6 : -6)
+            dirx = (rx > @fort_entrance.x ? 1 : -1)
+            diry = (ry > @fort_entrance.y ? 1 : -1)
+            r = Room.new(:stockpile, :stone, rx, rx, ry, ry+diry, fz)
+            r.layout << { :item => :door, :x => 0, :y => (diry > 0 ? -1 : 2) }
+            r.misc[:stockpile_level] = last_stone.misc[:stockpile_level] + 1
+            r.accesspath = [last_stone]
+            @rooms << r
+
+            x1 = (dirx > 0 ? 1 : 0)
+            y1 = (diry > 0 ? 1 : 0)
+            r1 = Room.new(:cartway, :fort, rx-dirx, rx-2*dirx, ry, ry+diry, fz)
+            r1.layout << { :item => :track,     :x => x1, :y => y1, :dir => [:n, :s] }
+            r1.layout << { :item => :track,     :x => x1, :y => 1-y1, :dir => [(dirx > 0 ? :w : :e), (diry > 0 ? :s : :n)] }
+            r1.layout << { :item => :trap, :subtype => :trackstop, :x => x1, :y => 1-y1,
+                :misc_bldprops => { :friction => 10, :dump_x_shift => dirx, :dump_y_shift => 0, :use_dump => 1 } }
+            r1.layout << { :item => :track,     :x => 1-x1, :y => 1-y1, :dir => [(dirx > 0 ? :e : :w), (diry > 0 ? :s : :n)] }
+            r1.accesspath = [@rooms.last]
+
+            ry += 2*diry
+            ey = (diry > 0 ? (2*df.world.map.y_count+ry)/3 : ry/3)
+
+            corr = Corridor.new(rx, rx, ry+3*diry, ry+3*diry, fz-1, fz)
+            corr.z2 += 1 while map_tile_in_rock(corr.maptile2)
+
+            rshaft = Room.new(:cartway, :shaft, rx, rx, ry+4*diry, ry+5*diry, fz)
+            rshaft.accesspath = [corr]
+            rshaft.z2 += 1 while map_tile_in_rock(rshaft.maptile2)
+            rshaft.h_z.times { |i|
+                rshaft.layout << { :item => :ramp, :x => 0, :y => (diry > 0 ? 1 : 0), :z => i }
+                rshaft.layout << { :item => (i == 0 ? :gear_assembly : :vertical_axle), :x => 0, :y => (diry > 0 ? 1 : 0), :z => i }
+            }
+            rshaft.layout << { :item => :windmill, :x => 0, :y => (diry > 0 ? 1 : 0), :z => rshaft.h_z }
+
+            r2 = Room.new(:cartway, :out, rx-dirx, rx-dirx, ry, ey, fz-1)
+            r2.z2 += 1
+            r2.accesspath = [corr]
+
+            rroof = Room.new(:cartway, :roof, rx-dirx, rx-dirx, ry-diry, ry+3*diry, fz+1)
+            rroof.accesspath = [corr]
+            4.times { |i|
+                rroof.layout << { :item => :ramp, :x => 0, :y => (diry > 0 ? i*diry : rroof.h-1-i*diry), :z => -1 }
+            }
+
+            # ramp sequence to channel z-1
+            r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? -1 : r2.h), :z => 0 }
+            r2.layout << { :item => :track,  :x => -dirx, :y => (diry > 0 ? -1 : r2.h), :z => 0, :dir => [(diry > 0 ? :s : :n)] }
+            r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? 0 : r2.h-1), :z => 0 }
+            r2.layout << { :item => :track,  :x => -dirx, :y => (diry > 0 ? 0 : r2.h-1), :z => 0, :dir => [:n, :s] }
+            r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 0 }
+            r2.layout << { :item => :track,  :x => -dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 0, :dir => [:n, :s] }
+            r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 0 }
+            r2.layout << { :item => :track,  :x => -dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 0, :dir => [(diry > 0 ? :n : :s), (dirx > 0 ? :e : :w)] }
+            r2.layout << { :item => :ramp,   :x => 0, :y => (diry > 0 ? 0 : r2.h-1), :z => 0 }
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 0 : r2.h-1), :z => 0, :dir => [(diry > 0 ? :s : :n)] }
+            r2.layout << { :item => :ramp,   :x => 0, :y => (diry > 0 ? 1 : r2.h-2), :z => 0 }
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 1 : r2.h-2), :z => 0, :dir => [(diry > 0 ? :n : :s)] }
+            r2.layout << { :item => :ramp,   :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 0 }
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 0, :dir => [(diry > 0 ? :s : :n), (dirx > 0 ? :w : :e)] }
+
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 0, :dir => [:n, :s] }
+            r2.layout << { :item => :pillar, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 1 }
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 4 : r2.h-5), :z => 0, :dir => [:n, :s] }
+            r2.layout << { :item => :ramp,   :x => 0, :y => (diry > 0 ? 4 : r2.h-5), :z => 1 }
+            r2.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 4 : r2.h-5), :z => 1, :dir => [:n, :s], :ramp => true }
+            r2.h.times { |i|
+                next if i <= 4
+                r2.layout << { :item => :track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 0, :dir => [:n, :s] }
+                r2.layout << { :item => :track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 1, :dir => [:n, :s] }
+            }
+            r2.layout[-1][:dir].delete((diry > 0 ? :s : :n))
+            r2.layout[-2][:dir].delete((diry > 0 ? :s : :n))
+
+            r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? r2.h-1 : 0), :z => 0 }
+
+            # order matters: roof needs 1st for ramps, then r2 to disallow unauthorized access to fortress (tmp ramps to r1)
+            @rooms << corr << rshaft << rroof << r2 << r1
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
@@ -2679,10 +2814,13 @@ class DwarfAI
                         when :pillar
                             t.dig :No
                             t.dig :Smooth
+                        when :ramp
+                            t.dig :Ramp
                         when :well
                             t.dig :Channel if t.shape_basic != :Open
                         else
                             next if plandig
+                            next if t.designation.dig != :No
                             t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                         end
                     end
