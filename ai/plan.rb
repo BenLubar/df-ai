@@ -605,7 +605,11 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
-            return if tgtile.shape_basic == :Wall and tgtile.designation.dig != :No
+            return if tgtile.shape_basic == :Wall and f[:item] != :pillar
+            if f[:channel] and tgtile.shape_basic != :Wall and tgtile.shape_basic != :Open
+                tgtile.dig(:Channel)
+                return
+            end
             case f[:item]
             when :well
                 return try_furnish_well(r, f, tgtile)
@@ -618,12 +622,16 @@ class DwarfAI
                 return try_furnish_track(r, f, tgtile)
             when :ramp
                 return true
-            when :vertical_axle
-                return if not itm = df.world.items.other[:WOOD].find { |i| df.item_isfree(i) }
             when :gear_assembly
                 return if not itm = df.world.items.other[:TRAPPARTS].find { |i| df.item_isfree(i) }
+            when :vertical_axle
+                return if not itm = df.world.items.other[:WOOD].find { |i| df.item_isfree(i) }
             when :windmill
                 return try_furnish_windmill(r, f, tgtile)
+            when :roller
+                return try_furnish_roller(r, f, tgtile)
+            when :minecart_route
+                return try_furnish_minecart_route(r, f, tgtile)
             end
 
             return if @cache_nofurnish[f[:item]]
@@ -723,6 +731,46 @@ class DwarfAI
                 df.building_construct(bld, mat)
                 f[:bld_id] = bld.id
                 @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
+        def try_furnish_roller(r, f, t)
+            if mecha = df.world.items.other[:TRAPPARTS].find { |i|
+                i.kind_of?(DFHack::ItemTrappartsst) and df.item_isfree(i)
+            } and chain = df.world.items.other[:CHAIN].find { |i|
+                i.kind_of?(DFHack::ItemChainst) and df.item_isfree(i)
+            }
+                bld = df.building_alloc(:Rollers)
+                df.building_position(bld, t)
+                f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
+                df.building_construct(bld, [mecha, chain])
+                r.misc[:bld_id] = f[:bld_id] = bld.id
+                @tasks << [:checkfurnish, r, f]
+                true
+            end
+        end
+
+        def try_furnish_minecart_route(r, f, t)
+            if mcart = df.world.items.other[:TOOL].find { |i|
+                i.subtype.subtype == ai.stocks.class::ManagerSubtype[:MakeWoodenMinecart] and
+                i.stockpile.id == -1 and
+                (!i.vehicle_tg or i.vehicle_tg.route_id == -1)
+            }
+                vehicle = df.world.vehicles.all.find { |v| v.item_id == mcart.id }
+                stop = DFHack::HaulingStop.cpp_new(:id => 1, :pos => {:x => t.x, :y => t.y, :z => t.z })
+                cond = DFHack::StopDepartCondition.cpp_new(:direction => f[:direction], :mode => :Push,
+                        :load_percent => 100, :flags => {:desired => true})
+                stop.conditions << cond
+                route = DFHack::HaulingRoute.cpp_new(:id => df.ui.hauling.next_id)
+                route.stops << stop
+                route.vehicle_ids << 0
+                route.vehicle_stops << 0
+                df.ui.hauling.next_id += 1
+                df.ui.hauling.routes << route
+                df.ui.hauling.view_routes << route
+                df.ui.hauling.view_stops << stop
+                df.ui.hauling.vehicles[1] = vehicle
                 true
             end
         end
@@ -2104,12 +2152,13 @@ class DwarfAI
                     @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
                     @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
                     @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 3 }
-                    if t0 == :coins or t1 == :coins
-                        (t0 == :coins ? [-2, -4] : [-1, -3]).each { |i|
-                            @rooms[i].subtype = :furniture ; @rooms[i].misc[:stockpile_level] += 2
-                        }
-                    end
                 }
+            }
+            @rooms.each { |r|
+                if r.type == :stockpile and r.subtype == :coins and r.misc[:stockpile_level] > 1
+                    r.subtype = :furniture
+                    r.misc[:stockpile_level] += 2
+                end
             }
 
             # minecart airway stuff
@@ -2144,11 +2193,11 @@ class DwarfAI
             rshaft = Room.new(:cartway, :shaft, rx, rx, ry+4*diry, ry+5*diry, fz)
             rshaft.accesspath = [corr]
             rshaft.z2 += 1 while map_tile_in_rock(rshaft.maptile2)
-            rshaft.h_z.times { |i|
-                rshaft.layout << { :item => :ramp, :x => 0, :y => (diry > 0 ? 1 : 0), :z => i }
-                rshaft.layout << { :item => (i == 0 ? :gear_assembly : :vertical_axle), :x => 0, :y => (diry > 0 ? 1 : 0), :z => i }
+            rshaft.layout << { :item => :gear_assembly, :x => 0, :y => (diry > 0 ? 1 : 0), :z => 0 }
+            (1...rshaft.h_z).each { |i|
+                rshaft.layout << { :item => :vertical_axle, :x => 0, :y => (diry > 0 ? 1 : 0), :z => i, :channel => true }
             }
-            rshaft.layout << { :item => :windmill, :x => 0, :y => (diry > 0 ? 1 : 0), :z => rshaft.h_z }
+            rshaft.layout << { :item => :windmill, :x => 0, :y => (diry > 0 ? 1 : 0), :z => rshaft.h_z-1, :channel => true }
 
             r2 = Room.new(:cartway, :out, rx-dirx, rx-dirx, ry, ey, fz-1)
             r2.z2 += 1
@@ -2159,6 +2208,7 @@ class DwarfAI
             4.times { |i|
                 rroof.layout << { :item => :ramp, :x => 0, :y => (diry > 0 ? i*diry : rroof.h-1-i*diry), :z => -1 }
             }
+            rroof.layout << { :item => :track,  :x => 0, :y => (diry > 0 ? 4 : rroof.h-5), :z => 0, :dir => [:n, :s] }
 
             # ramp sequence to channel z-1
             r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? -1 : r2.h), :z => 0 }
@@ -2188,11 +2238,17 @@ class DwarfAI
             }
             r2.layout[-1][:dir].delete((diry > 0 ? :s : :n))
             r2.layout[-2][:dir].delete((diry > 0 ? :s : :n))
+            r2.layout << { :item => :roller, :x => 0, :y => (diry > 0 ? 5 : r2.h-6), :z => 1,
+                    :misc_bldprops => {:speed => 50000, :direction => (diry > 0 ? :FromSouth : :FromNorth)} }
 
             r2.layout << { :item => :ramp,   :x => -dirx, :y => (diry > 0 ? r2.h-1 : 0), :z => 0 }
 
+            st = Room.new(:stockpile, :stone, rx-dirx-1, rx-dirx+1, ey+diry, ey+3*diry, fz)
+            st.misc[:stockpile_level] = 100
+            st.layout << { :item => :minecart_route, :x => 1, :y => (diry > 0 ? -1 : 3), :direction => (diry > 0 ? :North : :South) }
+
             # order matters: roof needs 1st for ramps, then r2 to disallow unauthorized access to fortress (tmp ramps to r1)
-            @rooms << corr << rshaft << rroof << r2 << r1
+            @rooms << corr << rshaft << rroof << r2 << r1 << st
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
@@ -2418,7 +2474,7 @@ class DwarfAI
             
             cx = fx-32
             well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
-            well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true}
+            well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true, :channel => true}
             well.layout << {:item => :door, :x => 9, :y => 3}
             well.layout << {:item => :door, :x => 9, :y => 5}
             well.layout << {:item => :trap, :subtype => :lever, :x => 1, :y => 0, :way => :out}
@@ -2812,12 +2868,12 @@ class DwarfAI
                         dm = dig_mode(t.x, t.y, t.z)
                         case d[:item]
                         when :pillar
-                            t.dig :No
-                            t.dig :Smooth
+                            if t.caption !~ /pillar|smooth/i
+                                t.dig :No
+                                t.dig :Smooth
+                            end
                         when :ramp
-                            t.dig :Ramp
-                        when :well
-                            t.dig :Channel if t.shape_basic != :Open
+                            t.dig :Ramp if t.shape_basic == :Wall
                         else
                             next if plandig
                             next if t.designation.dig != :No
