@@ -21,7 +21,7 @@ class DwarfAI
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
             :weapon => 2, :armor => 2, :clothes => 2, :rope => 1,
             :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
-            :splint => 1, :crutch => 1, :rockblock => 1, :weaponrack => 1,
+            :splint => 1, :crutch => 1, :block => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :coal => 3, :raw_coke => 1, :gypsum => 1,
@@ -194,7 +194,7 @@ class DwarfAI
                 df.world.items.other[:POWDER_MISC].grep(df.decode_mat(mspec))
             when :leaves
                 df.world.items.other[:LEAVES]
-            when :rockblock
+            when :block
                 df.world.items.other[:BLOCKS]
             when :skull
                 # XXX exclude dwarf skulls ?
@@ -419,8 +419,16 @@ class DwarfAI
                 end
                 amount = (amount+4)/5  # accounts for brewer yield, but not for input stack size
 
-            when :rockblock
+            when :block
                 amount = (amount+3)/4
+                # no stone => make wooden blocks (needed for pumps for aquifer handling)
+                if not df.world.items.other[:BOULDER].find { |i|
+                        is_item_free(i) and !df.ui.economic_stone[i.mat_index]
+                        # TODO check the boulders we find there are reachable..
+                    }
+                    amount = 2 if amount > 2
+                    order = :ConstructWoodenBlocks
+                end
 
             when :coal
                 # dont use wood -> charcoal if we have bituminous coal
@@ -989,6 +997,7 @@ class DwarfAI
             :MakeTrainingShortSword => :MakeWeapon,
             :MakeTrainingSpear => :MakeWeapon,
             :MakeGiantCorkscrew => :MakeTrapComponent,
+            :ConstructWoodenBlocks => :ConstructBlocks,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
@@ -996,7 +1005,7 @@ class DwarfAI
             :MakeWoodenWheelbarrow => :wood, :MakeWoodenMinecart => :wood, :MakeTrainingAxe => :wood,
             :MakeTrainingShortSword => :wood, :MakeTrainingSpear => :wood,
             :ConstructCrutch => :wood, :ConstructSplint => :wood, :MakeCage => :wood,
-            :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood,
+            :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood, :ConstructWoodenBlocks => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
             :MakeQuiver => :leather, :MakeFlask => :leather, :MakeBackpack => :leather,
         }
@@ -1105,7 +1114,7 @@ class DwarfAI
             :crutch => :ConstructCrutch,
             :splint => :ConstructSplint,
             :bag => :MakeBag,
-            :rockblock => :ConstructBlocks,
+            :block => :ConstructBlocks,
             :mechanism => :ConstructMechanisms,
             :trap => :ConstructMechanisms,
             :cage => :MakeCage,

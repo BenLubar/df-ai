@@ -216,7 +216,7 @@ class DwarfAI
                     squad.positions << pos
                 }
 
-                if df.ui.main.fortress_entity.squads.length % 2 == 1
+                if df.ui.main.fortress_entity.squads.length % 3 == 2
                     # ranged squad
                     squad.positions.each { |pos|
                         pos.uniform[:Weapon][0].indiv_choice.melee = false
