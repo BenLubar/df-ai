@@ -751,6 +751,7 @@ class DwarfAI
         end
 
         def try_furnish_windmill(r, f, t)
+            return if t.shape_basic != :Open
             mat = (1..4).map {
                 df.world.items.other[:WOOD].find { |i| ai.stocks.is_item_free(i) }
             }
@@ -779,23 +780,28 @@ class DwarfAI
 
         def try_furnish_minecart_route(r, f, t)
             return true if f[:route_id]
-            # TODO wait until stockpile is finalized
+            return if not r.dfbuilding
             # TODO wait roller ?
             if mcart = df.world.items.other[:TOOL].find { |i|
                 i.subtype.subtype == ai.stocks.class::ManagerSubtype[:MakeWoodenMinecart] and
                 i.stockpile.id == -1 and
                 (!i.vehicle_tg or i.vehicle_tg.route_id == -1)
             }
-                vehicle = mcart.vehicle_tg
-                stop = DFHack::HaulingStop.cpp_new(:id => 1, :pos => {:x => t.x, :y => t.y, :z => t.z })
+                routelink = DFHack::RouteStockpileLink.cpp_new(:building_id => r.misc[:bld_id], :mode => { :take => true })
+                stop = DFHack::HaulingStop.cpp_new(:id => 1, :pos => t)
                 cond = DFHack::StopDepartCondition.cpp_new(:direction => f[:direction], :mode => :Push,
                         :load_percent => 100, :flags => {:desired => true})
                 stop.conditions << cond
+                stop.stockpiles << routelink
+                stop.cart_id = mcart.id
+                setup_stockpile_settings(r.subtype, stop)
                 route = DFHack::HaulingRoute.cpp_new(:id => df.ui.hauling.next_id)
                 route.stops << stop
-                route.vehicle_ids << vehicle.id
+                route.vehicle_ids << mcart.vehicle_id
                 route.vehicle_stops << 0
+                vehicle = mcart.vehicle_tg
                 vehicle.route_id = route.id
+                r.dfbuilding.linked_stops << stop
                 df.ui.hauling.next_id += 1
                 df.ui.hauling.routes << route
                 #view_* are gui only
@@ -935,7 +941,7 @@ class DwarfAI
             r.misc[:bld_id] = bld.id
             furnish_room(r)
 
-            setup_stockpile_settings(r, bld)
+            setup_stockpile_settings(r.subtype, bld, r)
 
             room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop] and r.subtype != :stone
 
@@ -994,29 +1000,29 @@ class DwarfAI
             furnish_room(r)
         end
 
-        def setup_stockpile_settings(r, bld)
-            case r.subtype
+        def setup_stockpile_settings(subtype, bld, r=nil)
+            case subtype
             when :stone
                 bld.settings.flags.stone = true
                 t = bld.settings.stone.mats
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
+                   if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
                     df.world.raws.inorganics.length.times { |i|
                         t[i] = (df.ui.economic_stone[i] ? 0 : 1)
                     }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
                     df.world.raws.inorganics.length.times { |i|
                         t[i] = (df.world.raws.inorganics[i].flags[:METAL_ORE] ? 1 : 0)
                     }
                 else
                     df.world.raws.inorganics.length.times { |i| t[i] = 1 }
                 end
-                bld.max_wheelbarrows = 1
+                bld.max_wheelbarrows = 1 if r
             when :wood
                 bld.settings.flags.wood = true
                 t = bld.settings.wood.mats
                 df.world.raws.plants.all.length.times { |i| t[i] = 1 }
             when :furniture, :finished_goods, :ammo, :weapons, :armor
-                case r.subtype
+                case subtype
                 when :furniture
                     bld.settings.flags.furniture = true
                     bld.settings.furniture.sand_bags = true
@@ -1026,12 +1032,12 @@ class DwarfAI
                     bld.settings.flags.finished_goods = true
                     s = bld.settings.finished_goods
                     150.times { |i| s.type[i] = true }  # 112 (== refuse)
-                    bld.max_bins = r.w*r.h
+                    bld.max_bins = r.w*r.h if r
                 when :ammo
                     bld.settings.flags.ammo = true
                     s = bld.settings.ammo
                     df.world.raws.itemdefs.ammo.length.times { |i| s.type[i] = true }
-                    bld.max_bins = r.w*r.h
+                    bld.max_bins = r.w*r.h if r
                 when :weapons
                     bld.settings.flags.weapons = true
                     s = bld.settings.weapons
@@ -1039,7 +1045,7 @@ class DwarfAI
                     df.world.raws.itemdefs.trapcomps.length.times { |i| s.trapcomp_type[i] = true }
                     s.usable = true
                     s.unusable = true
-                    bld.max_bins = r.w*r.h
+                    bld.max_bins = r.w*r.h if r
                 when :armor
                     bld.settings.flags.armor = true
                     s = bld.settings.armor
@@ -1051,7 +1057,7 @@ class DwarfAI
                     df.world.raws.itemdefs.shields.length.times { |i| s.shield[i] = true }
                     s.usable = true
                     s.unusable = true
-                    bld.max_bins = r.w*r.h
+                    bld.max_bins = r.w*r.h if r
                 end
                 30.times { |i| s.other_mats[i] = true }    # 10
                 df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
@@ -1060,7 +1066,7 @@ class DwarfAI
             when :animals
                 bld.settings.flags.animals = true
                 bld.settings.animals.empty_cages =
-                bld.settings.animals.empty_traps = (r.misc[:stockpile_level] > 1 ? true : false)
+                bld.settings.animals.empty_traps = (!r || r.misc[:stockpile_level] > 1 ? true : false)
                 df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
             when :refuse, :corpses
                 bld.settings.flags.refuse = true
@@ -1068,12 +1074,12 @@ class DwarfAI
                 bld.settings.refuse.rotten_raw_hide = true
                 t = bld.settings.refuse
                 150.times { |i| t.type[i] = true }  # 112, ItemType enum + other stuff
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
+                if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
                     df.world.raws.creatures.all.length.times { |i|
                         t.corpses[i] = t.body_parts[i] = t.hair[i] = false
                         t.skulls[i] = t.bones[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
                     }
-                elsif r.subtype == :corpses
+                elsif subtype == :corpses
                     df.world.raws.creatures.all.length.times { |i|
                         t.corpses[i] = true
                         t.body_parts[i] = t.skulls[i] = t.bones[i] = t.hair[i] =
@@ -1088,25 +1094,25 @@ class DwarfAI
                 end
             when :food
                 bld.settings.flags.food = true
-                bld.max_barrels = r.w*r.h
+                bld.max_barrels = r.w*r.h if r
                 t = bld.settings.food
                 mt = df.world.raws.mat_table
-                   if r.misc[:workshop] and r.misc[:workshop].type == :farmplot
+                   if r and r.misc[:workshop] and r.misc[:workshop].type == :farmplot
                     mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
                     mt.organic_types[:Plants].length.times { |i|
                         # include MILL because the quern is near
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
                         t.plants[i] = (plant.flags[:THREAD] or plant.flags[:LEAVES] or plant.flags[:MILL]) if plant
                     }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Still
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
                         t.plants[i] = plant.flags[:DRINK] if plant
                     }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
                     mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
                     bld.settings.food.prepared_meals = true
@@ -1132,14 +1138,14 @@ class DwarfAI
                 end
             when :cloth
                 bld.settings.flags.cloth = true
-                bld.max_bins = r.w*r.h
+                bld.max_bins = r.w*r.h if r
                 t = bld.settings.cloth
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :Loom
+                if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Loom
                     df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = true ; t.cloth_silk[i]  = false }
                     df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = true ; t.cloth_plant[i] = false }
                     df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = true ; t.cloth_yarn[i]  = false }
                     df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = false; t.cloth_metal[i] = false }
-                elsif r.misc[:workshop] and r.misc[:workshop].subtype == :Clothiers
+                elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Clothiers
                     df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = false ; t.cloth_silk[i]  = true }
                     df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = false ; t.cloth_plant[i] = true }
                     df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = false ; t.cloth_yarn[i]  = true }
@@ -1152,14 +1158,14 @@ class DwarfAI
                 end
             when :leather
                 bld.settings.flags.leather = true
-                bld.max_bins = r.w*r.h
+                bld.max_bins = r.w*r.h if r
                 t = bld.settings.leather.mats
                 df.world.raws.mat_table.organic_types[:Leather].length.times { |i| t[i] = true }
             when :gems
                 bld.settings.flags.gems = true
-                bld.max_bins = r.w*r.h
+                bld.max_bins = r.w*r.h if r
                 t = bld.settings.gems
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :Jewelers
+                if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Jewelers
                     df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = false }
                     df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = true ; t.cut_mats[i] = false }
                 else
@@ -1168,9 +1174,9 @@ class DwarfAI
                 end
             when :bars_blocks
                 bld.settings.flags.bars_blocks = true
-                bld.max_bins = r.w*r.h
+                bld.max_bins = r.w*r.h if r
                 s = bld.settings.bars_blocks
-                if r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
+                if r and r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
                     df.world.raws.inorganics.length.times { |i| s.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
                     s.bars_other_mats[0] = true  # coal
                     bld.settings.allow_organic = false
@@ -2281,6 +2287,7 @@ class DwarfAI
             [1, -1, 2, -2].each { |dx|
                 st = Room.new(:stockpile, :stone, rx-dirx+dx, rx-dirx+dx, ey+diry, ey+3*diry, rz)
                 st.misc[:stockpile_level] = 101
+                st.accesspath = [@rooms.last]
                 @rooms << st
             }
         end
@@ -2896,13 +2903,13 @@ class DwarfAI
                                 t.shape == :WALL or t.shape == :TREE
                     end
                 } } }
+                return if plandig
                 @layout.each { |f|
                     if t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
                         next if t.tilemat == :CONSTRUCTION
                         if f[:dig]
-                            t.dig f[:dig] if t.shape_basic == :Wall
+                            t.dig f[:dig] if t.shape_basic == :Wall or (f[:dig] == :Channel and t.shape_basic != :Open)
                         else
-                            next if plandig
                             dm = dig_mode(t.x, t.y, t.z)
                             t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
                         end
@@ -2931,9 +2938,11 @@ class DwarfAI
             def dug?(want=nil)
                 holes = []
                 @layout.each { |f|
+                    next if f[:ignore]
                     if t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
                         next holes << t if f[:dig] == :No
                         return false if t.shape == :WALL
+                        return false if f[:dig] == :Channel and t.shape_basic != :Open
                     end
                 }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
