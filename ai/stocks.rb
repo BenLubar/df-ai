@@ -1013,7 +1013,7 @@ class DwarfAI
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
-            :DyeCloth => -1,
+            :DyeCloth => -1, :MilkCreature => -1,
         }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',

@@ -630,7 +630,9 @@ class DwarfAI
 
                 if @pet[u.id]
                     if @pet[u.id].include?(:MILKABLE)
-                        # TODO check counters etc
+                        if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
+                            ai.stocks.add_manager_order(:MilkCreature) if not ai.stocks.find_manager_orders(:MilkCreature).first
+                        end
                     end
 
                     np.delete u.id
@@ -660,7 +662,7 @@ class DwarfAI
                 end
 
                 if cst.flags[:LAYS_EGGS]
-                    # TODO
+                    # TODO nest boxes
                 end
             }
 
