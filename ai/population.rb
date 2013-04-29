@@ -622,6 +622,8 @@ class DwarfAI
         end
             
         def update_pets
+            needmilk = -ai.stocks.find_manager_orders(:MilkCreature).length
+
             np = @pet.dup
             df.world.units.active.each { |u|
                 next if u.civ_id != df.ui.civ_id
@@ -629,9 +631,9 @@ class DwarfAI
                 next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
 
                 if @pet[u.id]
-                    if @pet[u.id].include?(:MILKABLE)
+                    if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
                         if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
-                            ai.stocks.add_manager_order(:MilkCreature) if not ai.stocks.find_manager_orders(:MilkCreature).first
+                            needmilk += 1
                         end
                     end
 
@@ -670,6 +672,9 @@ class DwarfAI
                 @ai.plan.freepasture(id)
                 @pet.delete id
             }
+
+            needmilk = 30 if needmilk > 30
+            ai.stocks.add_manager_order(:MilkCreature, needmilk) if needmilk > 0
         end
 
         def assign_unit_to_zone(u, bld)
