@@ -943,7 +943,10 @@ class DwarfAI
             bld.room.y = r.y1
             bld.room.width = r.w
             bld.room.height = r.h
-            r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
+            r.w.times { |x| r.h.times { |y|
+                t = r.maptile1.offset(x, y)
+                bld.room.extents[x+r.w*y] = (t.shape_basic == :Floor ? 1 : 0)
+            } }
             bld.is_room = 1
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
