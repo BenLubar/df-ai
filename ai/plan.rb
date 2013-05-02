@@ -80,6 +80,8 @@ class DwarfAI
                     end
                 when :construct_workshop
                     try_construct_workshop(t[1])
+                when :construct_stockpile
+                    try_construct_stockpile(t[1])
                 when :setup_farmplot
                     try_setup_farmplot(t[1])
                 when :furnish
@@ -577,7 +579,8 @@ class DwarfAI
             when :corridor
                 furnish_room(r)
             when :stockpile
-                construct_stockpile(r)
+                furnish_room(r)
+                @tasks << [:construct_stockpile, r]
             when :workshop
                 @tasks << [:construct_workshop, r]
             when :farmplot
@@ -612,6 +615,7 @@ class DwarfAI
             return true if f[:bld_id]
             return true if f[:ignore]
             tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
+            return if not tgtile
             return try_furnish_construction(r, f, tgtile) if f[:construction]
             return if tgtile.shape_basic == :Wall
             case f[:item]
@@ -694,6 +698,8 @@ class DwarfAI
                 return true if t.shape_basic == :Wall
             when :Ramp
                 return true if t.shape_basic == :Ramp
+            when :UpStair, :DownStair, :UpDownStair
+                return true if t.shape_basic == :Stair
             when :Floor
                 return true if t.shape_basic == :Floor
                 if t.shape_basic == :Ramp
@@ -927,7 +933,9 @@ class DwarfAI
             end
         end
 
-        def construct_stockpile(r)
+        def try_construct_stockpile(r)
+            return if not r.dug?
+            return if not r.constructions_done?
             bld = df.building_alloc(:Stockpile)
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -951,6 +959,7 @@ class DwarfAI
                 end
             end
 
+            # setup stockpile links with adjacent stockpile_level
             find_room(:stockpile) { |o|
                 if o.subtype == r.subtype and (o.misc[:stockpile_level] - r.misc[:stockpile_level]).abs == 1 and obld = o.dfbuilding
                     if o.misc[:stockpile_level] > r.misc[:stockpile_level]
@@ -966,6 +975,8 @@ class DwarfAI
                     false   # loop on all stockpiles
                 end
             }
+
+	    true
         end
 
         def construct_activityzone(r)
@@ -1322,9 +1333,11 @@ class DwarfAI
         def try_digcistern(r)
             issmooth = lambda { |t|
                 next if not t
-                next true if t.shape_basic == :Open
                 next true if t.tilemat == :SOIL
-                next true if t.shape_basic == :Wall and t.caption =~ /pillar|smooth/i
+                case t.shape_basic
+                when :Wall; next true if t.caption =~ /pillar|smooth/i
+                when :Open; next true
+                end
             }
 
             # XXX hardcoded layout..
@@ -1346,7 +1359,9 @@ class DwarfAI
                                 # last column before stairs
                                 next unless nt10 = df.map_tile_at(x, y-1, z)
                                 next unless nt12 = df.map_tile_at(x, y+1, z)
-                                t.dig :Channel if (y > acc_y ? issmooth[nt12] : issmooth[nt10])
+                                next unless nt00 = df.map_tile_at(x-1, y-1, z)
+                                next unless nt02 = df.map_tile_at(x-1, y+1, z)
+                                t.dig :Channel if (y > acc_y ? issmooth[nt12] && issmooth[nt02] : issmooth[nt10] && issmooth[nt00])
                             end
                         when :Open
                             cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
@@ -2183,6 +2198,7 @@ class DwarfAI
             }
 
             setup_blueprint_minecarts
+            setup_blueprint_pitcage
         end
 
         def setup_blueprint_minecarts
@@ -2290,6 +2306,24 @@ class DwarfAI
                 st.accesspath = [@rooms.last]
                 @rooms << st
             }
+        end
+
+        def setup_blueprint_pitcage
+            return if not gpit = find_room(:garbagepit)
+            r = Room.new(:stockpile, :animals, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+3)
+            r.misc[:stockpile_level] = 0
+            r.layout << { :construction => :UpStair, :x => -1, :y => 1, :z => -3 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -2 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -1 }
+            r.layout << { :construction => :DownStair, :x => -1, :y => 1, :z => 0 }
+            [0, 1, 2].each { |dx| [1, 0, 2].each { |dy|
+                if dx == 1 and dy == 1
+                    r.layout << { :dig => :Channel, :x => dx, :y => dy }
+                else
+                    r.layout << { :construction => :Floor, :x => dx, :y => dy }
+                end
+            } }
+            @rooms << r
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
@@ -2939,10 +2973,12 @@ class DwarfAI
                 holes = []
                 @layout.each { |f|
                     next if f[:ignore]
-                    if t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
-                        next holes << t if f[:dig] == :No
-                        return false if t.shape == :WALL
-                        return false if f[:dig] == :Channel and t.shape_basic != :Open
+                    return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
+                    next holes << t if f[:dig] == :No
+                    case t.shape_basic
+                    when :Wall; return false
+                    when :Open
+                    else return false if f[:dig] == :Channel
                     end
                 }
                 (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
@@ -2951,6 +2987,15 @@ class DwarfAI
                     end
                 } } }
                 true
+            end
+
+            def constructions_done?
+                @layout.each { |f|
+                    next if not f[:construction]
+                    return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
+                    # TODO check actual tile shape vs construction type
+                    return if t.shape_basic == :Open
+                }
             end
         end
 
