@@ -270,6 +270,8 @@ class DwarfAI
                 LaborMaxPct[lb] = 60
             end
         }
+        LaborWontWorkJob = { :AttendParty => true, :Rest => true,
+            :UpdateStockpileRecords => true }
 
         def autolabors(step)
             case step
@@ -285,7 +287,7 @@ class DwarfAI
                             u.profession != :CHILD and
                             u.profession != :BABY and
                             !unit_hasmilitaryduty(u) and
-                            (!u.job.current_job or u.job.current_job.job_type != :AttendParty) and
+                            (!u.job.current_job or !LaborWontWorkJob[u.job.current_job.job_type]) and
                             not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
                             not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
                             # TODO filter nobles that will not work
@@ -437,6 +439,28 @@ class DwarfAI
                     end
                 end
 
+                # list of dwarves with an exclusive labor
+                exclusive = {}
+                [
+                    [:CARPENTER, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Carpenters and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
+                    [:MINE, lambda { ai.plan.digging? }],
+                    [:MASON, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Masons and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
+                ].each { |lb, test|
+                    if @workers.length > exclusive.length+2 and test[]
+                        # keep last run's choice
+                        cid = @labor_worker[lb].sort_by { |i| @worker_labor[i].length }.first
+                        next if not cid
+                        exclusive[cid] = lb
+                        @idlers.delete_if { |_c| _c.id == cid }
+                        c = citizen[cid]
+                        @worker_labor[cid].dup.each { |llb|
+                            next if llb == lb
+                            autolabor_unsetlabor(c, llb)
+                        }
+                        @worker_labor[cid].freeze
+                    end
+                }
+
                 # autolabor!
                 LaborList.each { |lb|
                     min = labormin[lb]
@@ -478,9 +502,10 @@ class DwarfAI
                                 end
                                 [malus, rand]
                             }.find { |_c|
+                                next if exclusive[_c.id]
                                 next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
-                                not @worker_labor[_c.id].include? lb
-                            } || @workers.find { |_c| not @worker_labor[_c.id].include? lb }
+                                not @worker_labor[_c.id].include?(lb)
+                            } || @workers.find { |_c| not exclusive[_c.id] and not @worker_labor[_c.id].include?(lb) }
 
                             autolabor_setlabor(c, lb)
                         }
