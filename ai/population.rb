@@ -647,7 +647,7 @@ class DwarfAI
         end
             
         def update_pets
-            needmilk = -ai.stocks.find_manager_orders(:MilkCreature).length
+            needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
 
             np = @pet.dup
             df.world.units.active.each { |u|

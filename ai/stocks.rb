@@ -19,7 +19,7 @@ class DwarfAI
             :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
             :food => 20, :drink => 20, :wood => 16, :bucket => 2,
             :pigtail_seeds => 10, :dimplecup_seeds => 10, :dimple_dye => 10,
-            :weapon => 2, :armor => 2, :clothes => 2, :block => 2,
+            :weapon => 2, :armor => 2, :clothes => 2, :block => 6,
             :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
             :splint => 1, :crutch => 1, :rope => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,

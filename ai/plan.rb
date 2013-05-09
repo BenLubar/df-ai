@@ -1525,10 +1525,10 @@ class DwarfAI
                     set_ext[rx, ry, 3]
                 end
             } }
-            r.layout.each { |f|
-                next if f[:item] != :door
-                x = r.x1 + f[:x].to_i
-                y = r.y1 + f[:y].to_i
+            r.layout.each { |f_|
+                next if f_[:item] != :door
+                x = r.x1 + f_[:x].to_i
+                y = r.y1 + f_[:y].to_i
                 set_ext[x, y, 0]
                 # tile in front of the door tile is 4   (TODO door in corner...)
                 set_ext[x+1, y, 4] if x < r.x1
@@ -2278,7 +2278,6 @@ class DwarfAI
             r2.layout << { :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 2, :dig => :Channel }
             r2.layout << { :x => dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 2 } # access to dig preceding Channels from rshaft
             r2.layout << { :x => dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 2 }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 2, :dir => [:n, :s] }
             # main track
             (5..(r2.h-3)).each { |i|
                 r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 0, :dir => [:n, :s] }
