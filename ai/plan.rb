@@ -152,6 +152,8 @@ class DwarfAI
             }
 
             @important_workshops ||= [:Still, :Mechanics, :Farmers, :Quern]
+            @important_workshops2 ||= [:Kitchen, :Tanners, :Butchers, :Craftsdwarfs, :Loom, :WoodFurnace, :Smelter]
+            # [:Fishery,:Leatherworks,:Clothiers,:Jewelers,:MetalsmithsForge,:SoapMaker,:GlassFurnace]
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
             manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
@@ -164,8 +166,10 @@ class DwarfAI
                    find_room(:cistern)   { |_r| _r.status == :plan } ||
                    find_room(:well)      { |_r| _r.status == :plan } ||
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
-                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
+                   (st = @important_workshops2.shift and
+                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -873,6 +877,18 @@ class DwarfAI
                     bld = df.building_alloc(:Workshop, :Custom, custom)
                     df.building_position(bld, r)
                     df.building_construct(bld, [buckt, bould])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
+            when :ScrewPress
+                # mechanism*2
+                mechas = df.world.items.other[:TRAPPARTS].find_all { |i| ai.stocks.is_item_free(i) }[0, 2]
+                if mechas.length == 2
+                    custom = df.world.raws.buildings.all.find { |b| b.code == 'SCREW_PRESS' }.id
+                    bld = df.building_alloc(:Workshop, :Custom, custom)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, mechas)
                     r.misc[:bld_id] = bld.id
                     @tasks << [:checkconstruct, r]
                     true
@@ -2114,7 +2130,7 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            # Millstone, Siege, Custom/screwpress, magma workshops/furnaces
+            # Millstone, Siege, magma workshops/furnaces
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Loom,:Clothiers, :Dyers,:Bowyers, nil,:Kiln]
             types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
@@ -2133,8 +2149,10 @@ class DwarfAI
                     ocx = cx+dirx
 
                     if dirx == 1 and dx == 3
-                        # stuff a quern near the farmers'
+                        # stuff a quern&screwpress near the farmers'
                         @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy+1, fy+1, fz)
+                        @rooms.last.accesspath = [cor_x]
+                        @rooms << Room.new(:workshop, :ScrewPress, cx-2, cx-2, fy-1, fy-1, fz)
                         @rooms.last.accesspath = [cor_x]
                     end
 
@@ -2278,13 +2296,14 @@ class DwarfAI
             r2.layout << { :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 2, :dig => :Channel }
             r2.layout << { :x => dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 2 } # access to dig preceding Channels from rshaft
             r2.layout << { :x => dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 2 }
+            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 2, :dir => [:n, :s] }
             # main track
             (5..(r2.h-3)).each { |i|
                 r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 0, :dir => [:n, :s] }
                 r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 1, :dir => [:n, :s] }
             }
             # track termination + manual reset ramp
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-2 : 1), :z => 0, :dir => [(diry > 0 ? :n : :s)] }
+            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-2 : 1), :z => 0, :dir => [(diry > 0 ? :n : :s), (dirx > 0 ? :w : :e)] }
             r2.layout << { :construction => :Wall,  :x => 0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :No }
             r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-2 : 1), :z => 1, :dir => [:n, :s] }
             r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-1 : 0), :z => 1, :dir => [(diry > 0 ? :n : :s)] }

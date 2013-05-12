@@ -27,6 +27,7 @@ class DwarfAI
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
+            :jug => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
@@ -247,7 +248,7 @@ class DwarfAI
                 df.world.items.other[:POWDER_MISC].find_all { |i|
                     mat = df.decode_mat(i) and mat.inorganic and mat.inorganic.id == 'PLASTER'
                 }
-            when :wheelbarrow, :minecart, :nestbox, :hive
+            when :wheelbarrow, :minecart, :nestbox, :hive, :jug
                 ord = FurnitureOrder[k]
                 df.world.items.other[:TOOL].find_all { |i|
                     i.subtype.subtype == ManagerSubtype[ord] and
@@ -991,6 +992,7 @@ class DwarfAI
             :MakeWoodenMinecart => :MakeTool,
             :MakeRockNestbox => :MakeTool,
             :MakeRockHive => :MakeTool,
+            :MakeRockJug => :MakeTool,
             :MakeBoneBolt => :MakeAmmo,
             :MakeBoneCrossbow => :MakeWeapon,
             :MakeTrainingAxe => :MakeWeapon,
@@ -1029,6 +1031,7 @@ class DwarfAI
                 :MakeWoodenMinecart => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_MINECART' }.subtype,
                 :MakeRockNestbox => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_NEST_BOX' }.subtype,
                 :MakeRockHive => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_HIVE' }.subtype,
+                :MakeRockJug => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_JUG' }.subtype,
                 :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
                 :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
                 :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
@@ -1127,6 +1130,7 @@ class DwarfAI
             :minecart => :MakeWoodenMinecart,
             :nestbox => :MakeRockNestbox,
             :hive => :MakeRockHive,
+            :jug => :MakeRockJug,
             :quiver => :MakeQuiver,
             :flask => :MakeFlask,
             :backpack => :MakeBackpack,
