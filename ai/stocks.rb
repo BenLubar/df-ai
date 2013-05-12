@@ -1142,19 +1142,23 @@ class DwarfAI
             sym = "item_#{k}st".to_sym
             h[k] = lambda { |o| o._rtti_classname == sym }
         }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
+                 :hive => lambda { |o| o._rtti_classname == :item_toolst and o.subtype.subtype == ManagerSubtype[FurnitureOrder[:hive]] },
+                 :nestbox => lambda { |o| o._rtti_classname == :item_toolst and o.subtype.subtype == ManagerSubtype[FurnitureOrder[:nestbox]] },
                  :trap => lambda { |o| o._rtti_classname == :item_trappartsst }
 
         # find one item of this type (:bed, etc)
         def find_furniture_item(itm)
             find = FurnitureFind[itm]
-            oidx = DFHack::JobType::Item[FurnitureOrder[itm]]
+            oidx = DFHack::JobType::Item.fetch(FurnitureOrder[itm],
+                    DFHack::JobType::Item.fetch(ManagerRealOrder[FurnitureOrder[itm]], :IN_PLAY))
             df.world.items.other[oidx].find { |i| find[i] and df.item_isfree(i) }
         end
 
         # return nr of free items of this type
         def find_furniture_itemcount(itm)
             find = FurnitureFind[itm]
-            oidx = DFHack::JobType::Item[FurnitureOrder[itm]]
+            oidx = DFHack::JobType::Item.fetch(FurnitureOrder[itm],
+                    DFHack::JobType::Item.fetch(ManagerRealOrder[FurnitureOrder[itm]], :IN_PLAY))
             df.world.items.other[oidx].find_all { |i| find[i] and df.item_isfree(i) }.length
         rescue
             puts_err "df-ai stocks: cannot itemcount #{itm.inspect}", $!, $!.backtrace

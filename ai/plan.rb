@@ -262,7 +262,8 @@ class DwarfAI
                         df.add_announcement("AI: fix furniture #{f[:item]} in #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = t }
                         f.delete :bld_id
                         @tasks << [:furnish, r, f]
-                    elsif f[:construction]
+                    end
+                    if f[:construction]
                         try_furnish_construction(r, f, t)
                     end
                 }
@@ -620,7 +621,13 @@ class DwarfAI
             return true if f[:ignore]
             tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
             return if not tgtile
-            return try_furnish_construction(r, f, tgtile) if f[:construction]
+            if f[:construction]
+                if try_furnish_construction(r, f, tgtile)
+                   return true if not f[:item]
+                else
+                    return  # dont try to furnish item before construction is done
+                end
+            end
             return if tgtile.shape_basic == :Wall
             case f[:item]
             when nil
@@ -649,6 +656,7 @@ class DwarfAI
                 tgtile.dig(f[:dig] || :Default)
                 false
             elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
+                return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
                 @ai.debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
@@ -698,6 +706,9 @@ class DwarfAI
 
         def try_furnish_construction(r, f, t)
             case ctype = f[:construction]
+            when :NoRamp
+                t.dig if t.shape_basic == :Ramp 
+                return (t.designation.dig == :No)
             when :Wall
                 return true if t.shape_basic == :Wall
             when :Ramp
@@ -800,7 +811,7 @@ class DwarfAI
                 routelink = DFHack::RouteStockpileLink.cpp_new(:building_id => r.misc[:bld_id], :mode => { :take => true })
                 stop = DFHack::HaulingStop.cpp_new(:id => 1, :pos => t)
                 cond = DFHack::StopDepartCondition.cpp_new(:direction => f[:direction], :mode => :Push,
-                        :load_percent => 100, :flags => {:desired => true})
+                        :load_percent => 100, :flags => {})
                 stop.conditions << cond
                 stop.stockpiles << routelink
                 stop.cart_id = mcart.id
@@ -995,7 +1006,7 @@ class DwarfAI
                 end
             }
 
-	    true
+            true
         end
 
         def construct_activityzone(r)
@@ -2246,6 +2257,7 @@ class DwarfAI
             r1.layout << { :construction => :Track, :x =>   x1, :y =>   y1, :dir => [:n, :s], :dig => :Ramp }
             r1.layout << { :construction => :Track, :x =>   x1, :y => 1-y1, :dir => [(dirx > 0 ? :w : :e), (diry > 0 ? :s : :n)] }
             r1.layout << { :construction => :Track, :x => 1-x1, :y => 1-y1, :dir => [(dirx > 0 ? :e : :w), (diry > 0 ? :s : :n)] }
+            r1.layout << { :construction => :Track, :x => 1-x1, :y =>   y1, :dir => [:n, :s] }
             r1.layout << { :item => :trap, :subtype => :trackstop, :x => x1, :y => 1-y1,
                 :misc_bldprops => { :friction => 10, :dump_x_shift => dirx, :dump_y_shift => 0, :use_dump => 1 } }
             r1.accesspath = [@rooms.last]
@@ -2270,45 +2282,41 @@ class DwarfAI
             rshaft.layout << { :item => :windmill, :x => 0, :y => (diry > 0 ? 1 : 0), :z => rshaft.h_z-1, :dig => :Channel }
 
             # main 'outside' room with minecart jump (ramp), air path, and way back on track (from trackstop channel)
-            # 1xYx2 dimensions + cheat with layout
+            # 2xYx2 dimensions + cheat with layout
             # fitting tightly within r1+rshaft
-            # use :dig => :Ramp hack to channel z+1 (will be flattened later before carving track)
-            r2 = Room.new(:cartway, :out, rx-dirx, rx-dirx, ry, ey, rz-1)
+            # use :dig => :Ramp hack to channel z+1
+            r2 = Room.new(:cartway, :out, rx-dirx, rx-2*dirx, ry, ey, rz-1)
             r2.z2 += 1
             r2.accesspath = [corr]
-            # z-1, side: stub back to main, channel fall reception
-            r2.layout << { :construction => :Track, :x => -dirx, :y => (diry > 0 ? -1 : r2.h ), :z => 0, :dig => :Ramp, :dir => [(diry > 0 ? :s : :n)] }
-            r2.layout << { :construction => :Track, :x => -dirx, :y => (diry > 0 ? 0 : r2.h-1), :z => 0, :dig => :Ramp, :dir => [:n, :s] }
-            r2.layout << { :construction => :Track, :x => -dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 0, :dig => :Ramp, :dir => [:n, :s] }
-            r2.layout << { :construction => :Track, :x => -dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 0, :dig => :Ramp, :dir => [(diry > 0 ? :n : :s), (dirx > 0 ? :e : :w)] }
-            # z-1: under jump, use Floors to remove ramps & seal foot level access to fortress
-            r2.layout << { :construction => :Floor, :x => 0, :y => (diry > 0 ? 0 : r2.h-1), :z => 0, :dig => :Ramp }
-            r2.layout << { :construction => :Floor, :x => 0, :y => (diry > 0 ? 1 : r2.h-2), :z => 0, :dig => :Ramp }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 0, :dig => :Ramp, :dir => [(diry > 0 ? :s : :n), (dirx > 0 ? :w : :e)] }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 0, :dir => [:n, :s] }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 4 : r2.h-5), :z => 0, :dir => [:n, :s] }
+            dx0 = (dirx>0 ? 0 : 1)
+            # part near fort
+            # air gap
+            r2.layout << { :construction => :NoRamp, :x =>   dx0, :y => (diry > 0 ? 0 : r2.h-1 ), :z => 0, :dig => :Ramp }
+            r2.layout << { :construction => :NoRamp, :x => 1-dx0, :y => (diry > 0 ? 0 : r2.h-1 ), :z => 0, :dig => :Ramp }
+            # z-1: channel fall reception
+            (1..3).each { |i|
+                r2.layout << { :construction => :Track,  :x =>   dx0, :y => (diry > 0 ? i : r2.h-1-i ), :z => 0, :dig => :Ramp, :dir => [:n, :s] }
+                r2.layout << { :construction => :NoRamp, :x => 1-dx0, :y => (diry > 0 ? i : r2.h-1-i ), :z => 0, :dig => :Ramp } if i < 3
+            }
             # z: jump
-            r2.layout << { :construction => :Wall, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 1, :dig => :No }
-            r2.layout << { :construction => :TrackRamp, :x => 0, :y => (diry > 0 ? 4 : r2.h-5), :z => 1, :dir => [:n, :s], :dig => :Ramp }
+            r2.layout << { :construction => :Wall, :x => 1-dx0, :y => (diry > 0 ? 3 : r2.h-4), :z => 1, :dig => :No }
+            r2.layout << { :construction => :TrackRamp, :x => 1-dx0, :y => (diry > 0 ? 4 : r2.h-5), :z => 1, :dir => [:n, :s], :dig => :Ramp }
             # z+1: airway
-            r2.layout << { :x => 0, :y => (diry > 0 ? 0 : r2.h-1), :z => 2, :dig => :Channel }
-            r2.layout << { :x => 0, :y => (diry > 0 ? 1 : r2.h-2), :z => 2, :dig => :Channel }
-            r2.layout << { :x => 0, :y => (diry > 0 ? 2 : r2.h-3), :z => 2, :dig => :Channel }
-            r2.layout << { :x => dirx, :y => (diry > 0 ? 1 : r2.h-2), :z => 2 } # access to dig preceding Channels from rshaft
-            r2.layout << { :x => dirx, :y => (diry > 0 ? 2 : r2.h-3), :z => 2 }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? 3 : r2.h-4), :z => 2, :dir => [:n, :s] }
+            r2.layout << { :x => 1-dx0, :y => (diry > 0 ? 0 : r2.h-1), :z => 2, :dig => :Channel }
+            r2.layout << { :x => 1-dx0, :y => (diry > 0 ? 1 : r2.h-2), :z => 2, :dig => :Channel }
+            r2.layout << { :x => 1-dx0, :y => (diry > 0 ? 2 : r2.h-3), :z => 2, :dig => :Channel }
+            r2.layout << { :x => (dirx>0 ? 2 : -1), :y => (diry > 0 ? 1 : r2.h-2), :z => 2 } # access to dig preceding Channels from rshaft
+            r2.layout << { :x => (dirx>0 ? 2 : -1), :y => (diry > 0 ? 2 : r2.h-3), :z => 2 }
+            r2.layout << { :construction => :Track, :x => 1-dx0, :y => (diry > 0 ? 3 : r2.h-4), :z => 2, :dir => [:n, :s] }
             # main track
-            (5..(r2.h-3)).each { |i|
-                r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 0, :dir => [:n, :s] }
-                r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? i : r2.h-1-i), :z => 1, :dir => [:n, :s] }
+            (5..(r2.h-2)).each { |i|
+                r2.layout << { :construction => :Track, :x =>   dx0, :y => (diry > 0 ? i : r2.h-1-i), :z => 0, :dir => [:n, :s] }
+                r2.layout << { :construction => :Track, :x => 1-dx0, :y => (diry > 0 ? i : r2.h-1-i), :z => 1, :dir => [:n, :s] }
             }
             # track termination + manual reset ramp
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-2 : 1), :z => 0, :dir => [(diry > 0 ? :n : :s), (dirx > 0 ? :w : :e)] }
-            r2.layout << { :construction => :Wall,  :x => 0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :No }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-2 : 1), :z => 1, :dir => [:n, :s] }
-            r2.layout << { :construction => :Track, :x => 0, :y => (diry > 0 ? r2.h-1 : 0), :z => 1, :dir => [(diry > 0 ? :n : :s)] }
-            r2.layout << { :x => -dirx, :y => (diry > 0 ? r2.h-2 : 1), :z => 0 }
-            r2.layout << { :construction => :Ramp, :x => -dirx, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :Ramp }
+            r2.layout << { :construction => :Ramp, :x =>   dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :Ramp }
+            r2.layout << { :construction => :Wall, :x => 1-dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :No }
+            r2.layout << { :construction => :Track, :x => 1-dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 1, :dir => [(diry > 0 ? :s : :n)] }
 
             # order matters to prevent unauthorized access to fortress (eg temporary ramps)
             @rooms << rshaft << r2 << r1
@@ -2344,6 +2352,7 @@ class DwarfAI
                     r.layout << { :construction => :Floor, :x => dx, :y => dy }
                 end
             } }
+            r.layout << { :construction => :Floor, :x => 3, :y => 1, :item => :hive }
             @rooms << r
         end
 
