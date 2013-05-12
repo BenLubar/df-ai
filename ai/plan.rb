@@ -3,7 +3,7 @@ class DwarfAI
         attr_accessor :ai, :tasks
         attr_accessor :manager_taskmax, :manager_maxbacklog,
             :dwarves_per_table, :dwarves_per_farmtile,
-            :wantdig_max, :spare_bedroom
+            :wantdig_max, :spare_bedroom, :past_initial_phase
         attr_accessor :onupdate_handle
 
         def initialize(ai)
@@ -136,12 +136,6 @@ class DwarfAI
             freebedroom(uid)
         end
 
-        # return true if the fort has basic features (rooms, primary workshops, etc)
-        def past_initial_phase
-            # never go back
-            @past_initial_phase ||= !find_room(:infirmary) { |r| r.status == :plan }
-        end
-        
         def checkidle
             return if digging?
 
@@ -171,6 +165,7 @@ class DwarfAI
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
+                   (@past_initial_phase = true ; false) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -935,6 +930,16 @@ class DwarfAI
                     bld = df.building_alloc(:Workshop, r.subtype)
                     df.building_position(bld, r)
                     df.building_construct(bld, [quern])
+                    r.misc[:bld_id] = bld.id
+                    @tasks << [:checkconstruct, r]
+                    true
+                end
+            when :TradeDepot
+                boulds = df.world.items.other[:BOULDER].find_all { |i| !df.ui.economic_stone[i.mat_index] and ai.stocks.is_item_free(i) }[0, 3]
+                if boulds.length == 3
+                    bld = df.building_alloc(:TradeDepot)
+                    df.building_position(bld, r)
+                    df.building_construct(bld, boulds)
                     r.misc[:bld_id] = bld.id
                     @tasks << [:checkconstruct, r]
                     true
@@ -2141,6 +2146,13 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
+            r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-6, @fort_entrance.x-2, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2-1)
+            r.layout << { :item => :door, :x => 5, :y => 2 }
+            r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
+            r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
+            r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
+            @rooms << r
+
             # Millstone, Siege, magma workshops/furnaces
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Loom,:Clothiers, :Dyers,:Bowyers, nil,:Kiln]
@@ -2294,7 +2306,7 @@ class DwarfAI
             r2.layout << { :construction => :NoRamp, :x =>   dx0, :y => (diry > 0 ? 0 : r2.h-1 ), :z => 0, :dig => :Ramp }
             r2.layout << { :construction => :NoRamp, :x => 1-dx0, :y => (diry > 0 ? 0 : r2.h-1 ), :z => 0, :dig => :Ramp }
             # z-1: channel fall reception
-            (1..3).each { |i|
+            (1..4).each { |i|
                 r2.layout << { :construction => :Track,  :x =>   dx0, :y => (diry > 0 ? i : r2.h-1-i ), :z => 0, :dig => :Ramp, :dir => [:n, :s] }
                 r2.layout << { :construction => :NoRamp, :x => 1-dx0, :y => (diry > 0 ? i : r2.h-1-i ), :z => 0, :dig => :Ramp } if i < 3
             }
@@ -2316,7 +2328,7 @@ class DwarfAI
             # track termination + manual reset ramp
             r2.layout << { :construction => :Ramp, :x =>   dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :Ramp }
             r2.layout << { :construction => :Wall, :x => 1-dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 0, :dig => :No }
-            r2.layout << { :construction => :Track, :x => 1-dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 1, :dir => [(diry > 0 ? :s : :n)] }
+            r2.layout << { :construction => :Track, :x => 1-dx0, :y => (diry > 0 ? r2.h-1 : 0), :z => 1, :dir => [(diry > 0 ? :n : :s)] }
 
             # order matters to prevent unauthorized access to fortress (eg temporary ramps)
             @rooms << rshaft << r2 << r1
@@ -2426,7 +2438,7 @@ class DwarfAI
 
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
-            cz = find_room(:workshop).z1
+            cz = find_room(:workshop) { |r| r.subtype == :Farmers }.z1
             ws_cor = Corridor.new(fx+3, cx+1, cy, cy, cz, cz)    # ws_corr.access_path ...
             @corridors << ws_cor
             farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
