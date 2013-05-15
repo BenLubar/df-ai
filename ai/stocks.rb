@@ -1027,11 +1027,11 @@ class DwarfAI
 
         def self.init_manager_subtype
             ManagerSubtype.update \
-                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_WHEELBARROW' }.subtype,
-                :MakeWoodenMinecart => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_MINECART' }.subtype,
-                :MakeRockNestbox => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_NEST_BOX' }.subtype,
-                :MakeRockHive => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_HIVE' }.subtype,
-                :MakeRockJug => df.world.raws.itemdefs.tools.find { |d| d.id == 'ITEM_TOOL_JUG' }.subtype,
+                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:HEAVY_ITEM_HAULING) }.subtype,
+                :MakeWoodenMinecart => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:TRACK_CART) }.subtype,
+                :MakeRockNestbox => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:NEST_BOX) }.subtype,
+                :MakeRockHive => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:HIVE) }.subtype,
+                :MakeRockJug => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:LIQUID_CONTAINER) }.subtype,
                 :MakeTrainingAxe => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_AXE_TRAINING' }.subtype,
                 :MakeTrainingShortSword => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SWORD_SHORT_TRAINING' }.subtype,
                 :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
