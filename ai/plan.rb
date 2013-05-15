@@ -1736,8 +1736,9 @@ class DwarfAI
 
             return unless @m_c_cistern.misc[:channeled]
 
-            # cistlvl = water level for the next-to-top floor
-            cistlvl = df.map_tile_at(@m_c_cistern).designation.flow_size
+            # cistlvl = water level for the top floor
+            # if it is flooded, reserve output tile is probably > 4 and prevents buildingdestroyers from messing with the floodgates
+            cistlvl = df.map_tile_at(@m_c_cistern).offset(0, 0, 1).designation.flow_size
             resvlvl = df.map_tile_at(@m_c_reserve).designation.flow_size
 
             if resvlvl <= 1
@@ -2147,7 +2148,6 @@ class DwarfAI
             @corridors << corridor_center2
 
             r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-6, @fort_entrance.x-2, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2-1)
-            r.layout << { :item => :door, :x => 5, :y => 2 }
             r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
             r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
             r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
@@ -2526,8 +2526,11 @@ class DwarfAI
             @corridors << cor
             old_cor = cor
 
-            2.times { |rrx|
-                5.times { |ry|
+            500.times { |ry|
+                break if (-1..19).find { |tx| (-1..4).find { |ty|
+                    not t = df.map_tile_at(fx+10+tx, fy-3-3*ry-ty, fz) or t.shape_basic != :Wall
+                } }
+                2.times { |rrx|
                     2.times { |rx|
                         ox = fx+10+5*rx + 9*rrx
                         oy = fy-3-3*ry

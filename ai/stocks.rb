@@ -724,11 +724,11 @@ class DwarfAI
                 amount = i_amount if amount > i_amount
             end
 
+            amount = 30 if amount > 30
+
             find_manager_orders(order).each { |o| amount -= o.amount_total }
 
             return if amount <= 0
-
-            amount = 30 if amount > 30
 
             @ai.debug "stocks: queue #{amount} #{order}"
             add_manager_order(order, amount)
