@@ -36,6 +36,7 @@ class DwarfAI
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :metal_ore => 6, :raw_coke => 2,
             :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5,
+            :honeycomb => 1,
         }
 
         attr_accessor :ai, :count
@@ -255,6 +256,8 @@ class DwarfAI
                     i.stockpile.id == -1 and
                     (!i.vehicle_tg or i.vehicle_tg.route_id == -1)
                 }
+            when :honeycomb
+                df.world.items.other[:TOOL].find_all { |i| i.subtype.id == 'ITEM_TOOL_HONEYCOMB' }
             when :quiver
                 df.world.items.other[:QUIVER]
             when :flask
@@ -717,6 +720,8 @@ class DwarfAI
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
 
+            when :honeycomb
+                order = :PressHoneycomb
             end
 
             if input
@@ -986,6 +991,7 @@ class DwarfAI
         ManagerRealOrder = {
             :MakeSoap => :CustomReaction,
             :MakePlasterPowder => :CustomReaction,
+            :PressHoneycomb => :CustomReaction,
             :MakeBag => :ConstructChest,
             :MakeRope => :MakeChain,
             :MakeWoodenWheelbarrow => :MakeTool,
@@ -1015,11 +1021,12 @@ class DwarfAI
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
-            :DyeCloth => -1, :MilkCreature => -1,
+            :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1,
         }
         ManagerCustom = {
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
             :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
+            :PressHoneycomb => 'PRESS_HONEYCOMB',
         }
         ManagerSubtype = {
             # depends on raws.itemdefs, wait until a world is loaded
@@ -1027,7 +1034,7 @@ class DwarfAI
 
         def self.init_manager_subtype
             ManagerSubtype.update \
-                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:HEAVY_ITEM_HAULING) }.subtype,
+                :MakeWoodenWheelbarrow => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:HEAVY_OBJECT_HAULING) }.subtype,
                 :MakeWoodenMinecart => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:TRACK_CART) }.subtype,
                 :MakeRockNestbox => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:NEST_BOX) }.subtype,
                 :MakeRockHive => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:HIVE) }.subtype,
