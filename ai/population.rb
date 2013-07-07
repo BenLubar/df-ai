@@ -287,6 +287,7 @@ class DwarfAI
                             u.profession != :CHILD and
                             u.profession != :BABY and
                             !unit_hasmilitaryduty(u) and
+                            !unit_shallnotworknow(u) and
                             (!u.job.current_job or !LaborWontWorkJob[u.job.current_job.job_type]) and
                             not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
                             not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
@@ -457,7 +458,6 @@ class DwarfAI
                             next if llb == lb
                             autolabor_unsetlabor(c, llb)
                         }
-                        @worker_labor[cid].freeze
                     end
                 }
 
@@ -548,6 +548,13 @@ class DwarfAI
             squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
             !curmonth.orders.empty?
+        end
+
+        def unit_shallnotworknow(u)
+            # manager shall not work when unvalidated jobs are pending
+            return true if df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
+                    df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
+            # TODO medical dwarf, broker
         end
 
         def unit_totalxp(u)
