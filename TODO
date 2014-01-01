@@ -1,7 +1,7 @@
 autobutcher
 autofarm
 move animals between pastures when no grass
-milking/shearing
+shearing
 non-cheaty farming with no soil
 engrave unburiable ghosts
 militia patrols
@@ -17,7 +17,6 @@ smelt goblinite
 robust miner pathfinding
 actual miner exploration, no cheat
 dig to find noneconomic stone when needed
-minecarts
 magma forges
 handle bad embark situations
  no water
@@ -26,11 +25,10 @@ handle bad embark situations
  glacier
  evil biomes
  caverns close to surface
-build trade depot
 trade with civs
 make whole map reachable (bridge over river)
 adaptative fortress plan
-save/resume from save
+save, resume from save
 burrows
 recover from cistern floodgate fail
 megaprojects
