@@ -698,6 +698,20 @@ class DwarfAI
                 if cst.flags[:LAYS_EGGS]
                     # TODO nest boxes
                 end
+
+                if cst.flags[:ADOPTS_OWNER]
+                    # keep only one
+                    oi = @pet.find_all { |i, t| t.include?(:ADOPTS_OWNER) }
+                    if oi.empty?
+                        @pet[u.id] << :ADOPTS_OWNER
+                    elsif u.caste != 0 and ou = df.unit_find(oi[0][0]) and ou.caste == 0 and !ou.flags2.slaughter
+                        # keep one male if possible
+                        @pet[u.id] << :ADOPTS_OWNER
+                        ou.flags2.slaughter = true
+                    else
+                        u.flags2.slaughter = true
+                    end
+                end
             }
 
             np.each_key { |id|
