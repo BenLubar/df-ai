@@ -211,11 +211,11 @@ class DwarfAI
                     s + i.material_amount[:Bone]
                 }
             when :wool
-                # XXX yarn ?
-                return df.world.items.other[:CORPSEPIECE].find_all { |i|
-                    i.corpse_flags.hair_wool
-                }.inject(0) { |s, i|
-                    s + i.material_amount[:HairWool]
+                df.world.items.other[:CORPSEPIECE].find_all { |i|
+                    i.corpse_flags.hair_wool or i.corpse_flags.yarn
+                #}.inject(0) { |s, i|
+		    # used for SpinThread which currently ignores the material_amount
+		    # note: if it didn't, use either HairWool or Yarn but not both
                 }
             when :bonebolts
                 df.world.items.other[:AMMO].find_all { |i|
