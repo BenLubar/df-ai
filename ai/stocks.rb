@@ -36,7 +36,7 @@ class DwarfAI
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :metal_ore => 6, :raw_coke => 2,
             :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5,
-            :honeycomb => 1,
+            :honeycomb => 1, :wool => 1,
         }
 
         attr_accessor :ai, :count
@@ -209,6 +209,13 @@ class DwarfAI
                 }.inject(0) { |s, i|
                     # corpsepieces uses this instead of i.stack_size
                     s + i.material_amount[:Bone]
+                }
+            when :wool
+                # XXX yarn ?
+                return df.world.items.other[:CORPSEPIECE].find_all { |i|
+                    i.corpse_flags.hair_wool
+                }.inject(0) { |s, i|
+                    s + i.material_amount[:HairWool]
                 }
             when :bonebolts
                 df.world.items.other[:AMMO].find_all { |i|
@@ -713,6 +720,9 @@ class DwarfAI
                     amount /= 2 if amount > 10
                     amount /= 2 if amount > 4
                 end
+
+            when :wool
+                order = :SpinThread
 
             when :cloth_nodye
                 order = :DyeCloth
