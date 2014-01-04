@@ -655,6 +655,7 @@ class DwarfAI
             
         def update_pets
             needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
+            needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
 
             np = @pet.dup
             df.world.units.active.each { |u|
@@ -669,6 +670,17 @@ class DwarfAI
                         end
                     end
 
+                    if @pet[u.id].include?(:SHEARABLE) and u.profession != :BABY and u.profession != :CHILD
+                        cst = u.race_tg.caste[u.caste]
+                        if cst.shearable_tissue_layer.find { |stl|
+                            stl.bp_modifiers_idx.find { |bpi|
+                                u.appearance.bp_modifiers[bpi] >= stl.length
+                            }
+                        }
+                            needshear += 1
+                        end
+                    end
+
                     np.delete u.id
                     next
                 end
@@ -680,7 +692,10 @@ class DwarfAI
                 if cst.flags[:MILKABLE]
                     @pet[u.id] << :MILKABLE
                 end
-                # TODO shear
+
+                if cst.shearable_tissue_layer.length > 0
+                    @pet[u.id] << :SHEARABLE
+                end
 
                 if cst.flags[:GRAZER]
                     @pet[u.id] << :GRAZER
@@ -721,6 +736,9 @@ class DwarfAI
 
             needmilk = 30 if needmilk > 30
             ai.stocks.add_manager_order(:MilkCreature, needmilk) if needmilk > 0
+
+            needshear = 30 if needshear > 30
+            ai.stocks.add_manager_order(:ShearCreature, needshear) if needshear > 0
         end
 
         def assign_unit_to_zone(u, bld)
