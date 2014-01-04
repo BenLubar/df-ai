@@ -671,8 +671,7 @@ class DwarfAI
                     end
 
                     if @pet[u.id].include?(:SHEARABLE) and u.profession != :BABY and u.profession != :CHILD
-                        cst = u.race_tg.caste[u.caste]
-                        if cst.shearable_tissue_layer.find { |stl|
+                        if u.caste_tg.shearable_tissue_layer.find { |stl|
                             stl.bp_modifiers_idx.find { |bpi|
                                 u.appearance.bp_modifiers[bpi] >= stl.length
                             }
@@ -687,7 +686,7 @@ class DwarfAI
 
                 @pet[u.id] = []
 
-                cst = u.race_tg.caste[u.caste]
+                cst = u.caste_tg
 
                 if cst.flags[:MILKABLE]
                     @pet[u.id] << :MILKABLE
