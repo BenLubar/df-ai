@@ -480,7 +480,7 @@ class DwarfAI
         end
 
         def getpasture(pet_id)
-            limit = 1000 - ((11*11*1000 / df.unit_find(id).caste_tg.misc.grazer) rescue 0) # 1000 = arbitrary, based on dfwiki?pasture
+            limit = 1000 - ((11*11*1000 / df.unit_find(pet_id).caste_tg.misc.grazer) rescue 0) # 1000 = arbitrary, based on dfwiki?pasture
             if r = find_room(:pasture) { |_r|
                 _r.misc[:users].empty? or
                 _r.misc[:users].inject(0) { |s, id|
