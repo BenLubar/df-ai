@@ -76,12 +76,16 @@ class DwarfAI
 
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
                     puts "AI: exit diplomat textviewerst (#{text.inspect})"
-                    df.curview.feed_keys(:LEAVESCREEN)
+                    timeout_sameview {
+                        df.curview.feed_keys(:LEAVESCREEN)
+                    }
 
                 elsif text =~ /A vile force of darkness has arrived!/
                     puts "AI: siege (#{text.inspect})"
-                    df.curview.feed_keys(:LEAVESCREEN)
-                    df.pause_state = false
+                    timeout_sameview {
+                        df.curview.feed_keys(:LEAVESCREEN)
+                        df.pause_state = false
+                    }
 
                 elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\./
                     puts "AI: you just lost the game:", text.inspect, "Exiting AI."
@@ -93,12 +97,16 @@ class DwarfAI
                 end
 
             when :viewscreen_topicmeetingst
-                df.curview.feed_keys(:OPTION1)
+                timeout_sameview {
+                    df.curview.feed_keys(:OPTION1)
+                }
                 #puts "AI: exit diplomat topicmeetingst"
 
             when :viewscreen_topicmeeting_takerequestsst, :viewscreen_requestagreementst
                 puts "AI: exit diplomat #{cvname}"
-                df.curview.feed_keys(:LEAVESCREEN)
+                timeout_sameview {
+                    df.curview.feed_keys(:LEAVESCREEN)
+                }
 
             else
                 @seen_cvname ||= { :viewscreen_dwarfmodest => true }
@@ -106,6 +114,20 @@ class DwarfAI
                 @seen_cvname[cvname] = true
             end
         end
+    end
+
+    def timeout_sameview(delay=8, &cb)
+        curscreen = df.curview._rtti_classname
+        timeoff = Time.now + delay
+
+        df.onupdate_register_once('timeout') {
+            next true if df.curview._rtti_classname != curscreen
+
+            if Time.now >= timeoff
+                cb.call
+                true
+            end
+        }
     end
 
     def onupdate_register
