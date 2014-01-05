@@ -480,8 +480,14 @@ class DwarfAI
         end
 
         def getpasture(pet_id)
-            pet_per_pasture = 3     # TODO tweak by appetite ?
-            if r = find_room(:pasture) { |_r| _r.misc[:users].length < pet_per_pasture }
+            limit = 1000 - ((11*11*1000 / df.unit_find(id).caste_tg.misc.grazer) rescue 0) # 1000 = arbitrary, based on dfwiki?pasture
+            if r = find_room(:pasture) { |_r|
+                _r.misc[:users].empty? or
+                _r.misc[:users].inject(0) { |s, id|
+                    # 11*11 == pasture dimensions
+                    s + ((11*11*1000 / df.unit_find(id).caste_tg.misc.grazer) rescue 0)
+                } < limit
+            }
                 r.misc[:users] << pet_id
                 construct_room(r) if not r.misc[:bld_id]
                 r.dfbuilding
