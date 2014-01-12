@@ -34,7 +34,7 @@ class DwarfAI
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
-            :metal_ore => 6, :raw_coke => 2,
+            :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
             :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5,
             :honeycomb => 1, :wool => 1,
         }
@@ -168,6 +168,8 @@ class DwarfAI
                 df.world.items.other[:BOULDER].find_all { |i| is_raw_coke(i) }
             when :gypsum
                 df.world.items.other[:BOULDER].find_all { |i| is_gypsum(i) }
+            when :raw_adamantine
+                df.world.items.other[:BOULDER].grep(df.decode_mat('INORGANIC:RAW_ADAMANTINE'))
             when :splint
                 df.world.items.other[:SPLINT]
             when :crutch
@@ -214,8 +216,8 @@ class DwarfAI
                 df.world.items.other[:CORPSEPIECE].find_all { |i|
                     i.corpse_flags.hair_wool or i.corpse_flags.yarn
                 #}.inject(0) { |s, i|
-		    # used for SpinThread which currently ignores the material_amount
-		    # note: if it didn't, use either HairWool or Yarn but not both
+                    # used for SpinThread which currently ignores the material_amount
+                    # note: if it didn't, use either HairWool or Yarn but not both
                 }
             when :bonebolts
                 df.world.items.other[:AMMO].find_all { |i|
@@ -688,6 +690,9 @@ class DwarfAI
                 queue_use_gems(amount)
                 return
 
+            when :raw_adamantine
+                order = :ExtractMetalStrands
+
             when :pigtail, :dimplecup, :quarrybush
                 order = {
                     :pigtail => :ProcessPlants,
@@ -772,7 +777,6 @@ class DwarfAI
             # make coke from bituminous coal has priority
             return if @count[:raw_coke] > WatchStock[:raw_coke] and @count[:coal] < 100
 
-            # TODO actively dig metal ore veins
             return if df.world.manager_orders.find { |mo| mo.job_type == :SmeltOre }
 
             i = df.world.items.other[:BOULDER].find { |_i| is_metal_ore(_i) and is_item_free(_i) }
