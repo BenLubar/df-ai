@@ -1117,6 +1117,7 @@ class DwarfAI
                             :mat_type => (type || (matcat ? -1 : 0)), :mat_index => -1, :amount_left => amount, :amount_total => amount)
                     o.material_category.send("#{matcat}=", true) if matcat
                     o.reaction_name = custom if custom
+                    o.mat_index = df.decode_mat('INORGANIC:RAW_ADAMANTINE').mat_index if _order == :ExtractMetalStrands
                     df.world.manager_orders << o
                 end
             else
