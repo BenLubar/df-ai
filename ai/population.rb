@@ -663,6 +663,7 @@ class DwarfAI
                 next if u.race == df.ui.race_id
                 next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
 
+begin
                 if @pet[u.id]
                     if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
                         if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
@@ -726,6 +727,9 @@ class DwarfAI
                         u.flags2.slaughter = true
                     end
                 end
+rescue
+    # prevent errors with old dfhack (shearable_tissue / caste_tg)
+end
             }
 
             np.each_key { |id|
