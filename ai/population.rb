@@ -144,7 +144,24 @@ class DwarfAI
             }
         end
 
-        # returns an unit newly assigned to a military squad
+
+        def military_find_commander_or_captain_pos(commander)
+            if commander
+                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
+                    if a.responsibilities[:MILITARY_STRATEGY] and a.flags[:SITE]=true
+                        return a.code
+                    end
+                end
+            else
+                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
+                    if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]=true
+                        return a.code
+                    end
+                end                
+            end
+        end
+        
+        # returns an unit newly assigned to a military squad        
         def military_find_new_soldier(unitlist)
             ns = unitlist.find_all { |u|
                 u.military.squad_id == -1
@@ -166,9 +183,9 @@ class DwarfAI
             ent = df.ui.main.fortress_entity
             if !ent.positions.assignments.find { |a| a.squad_id == squad_id }
                 if ent.assignments_by_type[:MILITARY_STRATEGY].empty?
-                    assign_new_noble('MILITIA_COMMANDER', ns).squad_id = squad_id
+                    assign_new_noble(military_find_commander_or_captain_pos(true), ns).squad_id = squad_id
                 else
-                    assign_new_noble('MILITIA_CAPTAIN', ns).squad_id = squad_id
+                    assign_new_noble(military_find_commander_or_captain_pos(false), ns).squad_id = squad_id
                 end
             end
 
