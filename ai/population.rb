@@ -564,6 +564,14 @@ class DwarfAI
             }
         end
 
+        def positionCode(responsibility)
+            df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
+                if a.responsibilities[responsibility]
+                    return a.code
+                end
+            end
+        end
+        
         def update_nobles
             cz = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find_all { |u| u.profession != :BABY and u.profession != :CHILD }
             ent = df.ui.main.fortress_entity
@@ -572,15 +580,15 @@ class DwarfAI
             if ent.assignments_by_type[:MANAGE_PRODUCTION].empty? and tg = cz.find { |u|
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
             } || cz.first
-                # TODO do not hardcode position name, check population caps, ...
-                assign_new_noble('MANAGER', tg)
+                # TODO do check population caps, ...
+                assign_new_noble(positionCode(:MANAGE_PRODUCTION), tg)
             end
 
 
             if ent.assignments_by_type[:ACCOUNTING].empty? and tg = cz.find { |u|
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id } and !u.status.labors[:MINE]
             }
-                assign_new_noble('BOOKKEEPER', tg)
+                assign_new_noble(positionCode(:ACCOUNTING), tg)
                 df.ui.bookkeeper_settings = 4
             end
 
@@ -589,7 +597,7 @@ class DwarfAI
                     hosp = ai.plan.find_room(:infirmary) and hosp.status != :plan and tg = cz.find { |u|
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
             }
-                assign_new_noble('CHIEF_MEDICAL_DWARF', tg)
+                assign_new_noble(positionCode(:HEALTH_MANAGEMENT), tg)
             elsif ass = ent.assignments_by_type[:HEALTH_MANAGEMENT].first and hf = df.world.history.figures.binsearch(ass.histfig) and doc = df.unit_find(hf.unit_id)
                 # doc => healthcare
                 LaborList.each { |lb|
@@ -604,7 +612,7 @@ class DwarfAI
             if ent.assignments_by_type[:TRADE].empty? and tg = cz.find { |u|
                 u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
             }
-                assign_new_noble('BROKER', tg)
+                assign_new_noble(positionCode(:TRADE), tg)
             end
 
             check_noble_appartments
