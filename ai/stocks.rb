@@ -197,7 +197,7 @@ class DwarfAI
                 mspec = 'PLANT:MUSHROOM_CUP_DIMPLE:MILL'
                 df.world.items.other[:POWDER_MISC].grep(df.decode_mat(mspec))
             when :leaves
-                df.world.items.other[:LEAVES]
+                df.world.items.other[:PLANT_GROWTH]
             when :block
                 df.world.items.other[:BLOCKS]
             when :skull

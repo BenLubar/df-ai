@@ -1155,7 +1155,7 @@ class DwarfAI
                     mt.organic_types[:Plants].length.times { |i|
                         # include MILL because the quern is near
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i] = (plant.flags[:THREAD] or plant.flags[:LEAVES] or plant.flags[:MILL]) if plant
+                        t.plants[i] = (plant.flags[:THREAD] or plant.flags[:MILL]) if plant
                     }
                 elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Still
                     mt.organic_types[:Plants].length.times { |i|
@@ -1478,7 +1478,7 @@ class DwarfAI
                         if isfirst
                             pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
                         else
-                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or p.flags[:LEAVES]
+                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK]
                         end
                     }
 
@@ -1790,7 +1790,7 @@ class DwarfAI
 
         # returns one tile of an outdoor river (if one exists)
         def scan_river
-            ifeat = df.world.cur_savegame.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }
+            ifeat = df.world.features.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }
             return if not ifeat
             feat = ifeat.feature
 

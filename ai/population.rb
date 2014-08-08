@@ -206,7 +206,7 @@ class DwarfAI
                     pos = DFHack::SquadPosition.cpp_new
                     [:Body, :Head, :Pants, :Gloves, :Shoes, :Shield, :Weapon].each { |t|
                         pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(:color => -1,
-                                :item_filter => {:item_type => item_type[t], :material_class => :Metal2,
+                                :item_filter => {:item_type => item_type[t], :material_class => :Armor,
                                     :mattype => -1, :matindex => -1})
                     }
                     pos.uniform[:Weapon][0].indiv_choice.melee = true
@@ -749,14 +749,14 @@ end
             # TODO remove existing chains/cages ?
             while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
                 ref = u.general_refs[ridx]
-                cidx = ref.building_tg.assigned_creature.index(u.id)
-                ref.building_tg.assigned_creature.delete_at(cidx)
+                cidx = ref.building_tg.assigned_units.index(u.id)
+                ref.building_tg.assigned_units.delete_at(cidx)
                 u.general_refs.delete_at(ridx)
                 df.free(ref._memaddr)
             end
 
             u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
-            bld.assigned_creature << u.id
+            bld.assigned_units << u.id
         end
 
         def status
