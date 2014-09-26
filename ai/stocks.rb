@@ -412,11 +412,12 @@ class DwarfAI
             when :wood
                 # dont bother if the last designated tree is not cut yet
                 return if @last_cutpos and @last_cutpos.offset(0, 0, 0).designation.dig == :Default
+                @log_per_tree = 6
 
                 amount *= 2
                 tl = tree_list
-                tl.each { |t| amount -= 1 if df.map_tile_at(t).designation.dig == :Default }
-                @last_cutpos = cuttrees(amount, tl) if amount > 0
+                tl.each { |t| amount -= @log_per_tree if df.map_tile_at(t).designation.dig == :Default }
+                @last_cutpos = cuttrees(amount/@log_per_tree, tl) if amount
                 return
 
             when :drink
@@ -1003,6 +1004,7 @@ class DwarfAI
         end
 
         ManagerRealOrder = {
+            :BrewDrink => :CustomReaction,
             :MakeSoap => :CustomReaction,
             :MakePlasterPowder => :CustomReaction,
             :PressHoneycomb => :CustomReaction,
@@ -1038,6 +1040,7 @@ class DwarfAI
             :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1,
         }
         ManagerCustom = {
+            :BrewDrink => 'BREW_DRINK_FROM_PLANT',
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
             :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
             :PressHoneycomb => 'PRESS_HONEYCOMB',
