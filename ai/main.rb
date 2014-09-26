@@ -70,7 +70,7 @@ class DwarfAI
         elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._rtti_classname
             when :viewscreen_textviewerst
-                text = df.curview.text_display.map { |t|
+                text = df.curview.formatted_text.map { |t|
                     t.text.to_s.strip.gsub(/\s+/, ' ')
                 }.join(' ')
 
