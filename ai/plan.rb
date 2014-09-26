@@ -653,7 +653,7 @@ class DwarfAI
             if tgtile.occupancy.building != :None
                 # TODO warn if this stays for too long?
                 false
-            elsif tgtile.shape == :RAMP or tgtile.shape == :TREE
+            elsif tgtile.shape == :RAMP or tgtile.tilemat == :TREE or tgtile.tilemat == :ROOT
                 tgtile.dig(f[:dig] || :Default)
                 false
             elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
@@ -837,7 +837,7 @@ class DwarfAI
 
             if t.occupancy.building != :None
                 return
-            elsif t.shape == :RAMP or t.shape == :TREE
+            elsif t.shape == :RAMP or t.tilemat == :TREE or t.tilemat == :ROOT
                 # XXX dont remove last access ramp ?
                 t.dig(:Default)
                 return
@@ -1374,7 +1374,7 @@ class DwarfAI
         def try_digcistern(r)
             issmooth = lambda { |t|
                 next if not t
-                next true if t.tilemat == :SOIL
+                next true if t.tilemat == :SOIL or t.tilemat == :ROOT
                 case t.shape_basic
                 when :Wall; next true if t.caption =~ /pillar|smooth/i
                 when :Open; next true
@@ -1730,7 +1730,7 @@ class DwarfAI
                     # channel surrounding tiles
                     gate.spiral_search(1, 1) { |tt|
                         tm = tt.tilemat
-                        next if tt.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
+                        next if tt.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT)
                         if tt.spiral_search(1) { |ttt| ttt.designation.feature_local }
                             tt.offset(0, 0, 1).dig(:Channel)
                         end
@@ -1833,7 +1833,7 @@ class DwarfAI
             @fort_entrance.layout.delete_if { |i|
                 t = df.map_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], @fort_entrance.z1+i[:z]-1)
                 tm = t.tilemat
-                t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL)
+                t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT)
             }
             list_map_veins
             puts 'AI: ready'
@@ -2052,7 +2052,7 @@ class DwarfAI
                 next unless t = surface_tile_at(t0)
                 (-1..1).all? { |_x|
                     (-2..2).all? { |_y|
-                        tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL) and
+                        tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT) and
                         ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
                          not ttt.designation.hidden and not df.building_find(ttt)
                     }
@@ -2094,13 +2094,13 @@ class DwarfAI
                     (-sz_x..sz_x).all? { |dx|
                         [-sz_y, sz_y].all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     } and
                     [-sz_x, sz_x].all? { |dx|
                         (-sz_y..sz_y).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     }
                 }  and
@@ -2109,7 +2109,7 @@ class DwarfAI
                     (-(sz_x-1)..(sz_x-1)).all? { |dx|
                         (-(sz_y-1)..(sz_y-1)).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and tm == :SOIL))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     }
                 }
@@ -2837,7 +2837,7 @@ class DwarfAI
         # check that tile is surrounded by solid rock/soil walls
         def map_tile_in_rock(tile)
             (-1..1).all? { |dx| (-1..1).all? { |dy|
-                t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+                t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT)
             } }
         end
 
@@ -2849,7 +2849,7 @@ class DwarfAI
                 if !t.designation.hidden
                     t.designation.flow_size < 4 and tm != :FROZEN_LIQUID
                 else
-                    t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL)
+                    t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT)
                 end
             } }
         end
@@ -2864,10 +2864,10 @@ class DwarfAI
             cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2)
 
             if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or
-                                        out.shape == :TREE or out.designation.flow_size != 0)
+                                        out.tilemat == :TREE or out.tilemat == :RAMP or out.designation.flow_size != 0)
                 out2 = spiral_search(out) { |t|
                     t = t.offset(0, 0, 1) while map_tile_in_rock(t)
-                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.shape != :TREE and t.designation.flow_size == 0)
+                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.tilemat != :TREE and t.designation.flow_size == 0)
                 }
 
                 if out.designation.flow_size > 0
@@ -2983,9 +2983,9 @@ class DwarfAI
                     if t = df.map_tile_at(x, y, z)
                         next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
-                        dm = :Default if dm != :No and t.shape == :TREE
+                        dm = :Default if dm != :No and t.tilemat == :TREE
                         t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or
-                                t.shape == :WALL or t.shape == :TREE
+                                t.shape == :WALL
                     end
                 } } }
                 return if plandig
@@ -2996,7 +2996,7 @@ class DwarfAI
                             t.dig f[:dig] if t.shape_basic == :Wall or (f[:dig] == :Channel and t.shape_basic != :Open)
                         else
                             dm = dig_mode(t.x, t.y, t.z)
-                            t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL or t.shape == :TREE
+                            t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL
                         end
                     end
                 }

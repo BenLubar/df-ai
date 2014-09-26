@@ -832,7 +832,7 @@ class DwarfAI
             br = nil
             list.each { |tree|
                 t = df.map_tile_at(tree)
-                next if t.shape != :TREE
+                next if t.tilemat != :TREE
                 next if t.designation.dig == :Default
                 next if list.length > 4*amount and rand(4) != 0
                 t.dig(:Default)
@@ -854,7 +854,7 @@ class DwarfAI
 
             @last_treelist = (df.world.plants.tree_dry.to_a + df.world.plants.tree_wet.to_a).find_all { |p|
                 t = df.map_tile_at(p) and
-                t.shape == :TREE and
+                t.tilemat == :TREE and
                 not t.designation.hidden
             }.sort_by { |p|
                 (p.pos.x-fe.x)**2 + (p.pos.y-fe.y)**2 + ((p.pos.z-fe.z2)*4)**2
