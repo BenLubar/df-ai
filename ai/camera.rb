@@ -4,7 +4,6 @@ class DwarfAI
         attr_accessor :onupdate_handle
         def initialize(ai)
             @ai = ai
-            @update_counter = 0
             @following = nil
         end
 
@@ -12,7 +11,7 @@ class DwarfAI
         end
 
         def onupdate_register
-            @onupdate_handle = df.onupdate_register('df-ai camera') { update }
+            @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
         end
 
         def onupdate_unregister
@@ -20,16 +19,20 @@ class DwarfAI
         end
 
         def update
-            if @update_counter % 1000 == 0
-                @following = df.unit_citizens.shuffle.first
-            end
-            @update_counter += 1
+            @following = df.unit_citizens.shuffle.first
 
-            df.center_viewscreen @following if @following && !df.pause_state
+            if @following && !df.pause_state
+                df.center_viewscreen @following
+                df.ui.follow_unit = @following.id
+            end
         end
 
         def status
-            "following #{@following} for #{(1000 - @update_counter % 1000) % 1000} more ticks"
+            if @following && df.ui.follow_unit == @following.id
+                "following #{@following}"
+            else
+                "inactive"
+            end
         end
     end
 end
