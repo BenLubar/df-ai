@@ -148,13 +148,13 @@ class DwarfAI
         def military_find_commander_or_captain_pos(commander)
             if commander
                 df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.responsibilities[:MILITARY_STRATEGY] and a.flags[:SITE]=true
+                    if a.responsibilities[:MILITARY_STRATEGY] and a.flags[:SITE]
                         return a.code
                     end
                 end
             else
                 df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]=true
+                    if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]
                         return a.code
                     end
                 end                
