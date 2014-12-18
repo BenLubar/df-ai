@@ -29,7 +29,7 @@ class DwarfAI
 
         def status
             if @following && df.ui.follow_unit == @following.id
-                "following #{@following}"
+                "following #{@following.name}"
             else
                 "inactive"
             end
