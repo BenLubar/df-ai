@@ -51,6 +51,18 @@ class DwarfAI
             end
             @bg_idx = 0
 
+            # from https://github.com/DFHack/dfhack/blob/master/scripts/unsuspend.rb
+            joblist = df.world.job_list.next
+
+            while joblist
+                job = joblist.item
+                joblist = joblist.next
+
+                if job.job_type == :ConstructBuilding
+                    job.flags.suspend = false
+                end
+            end
+
             @cache_nofurnish = {}
 
             @nrdig = @tasks.count { |t| t[0] == :digroom and (t[1].type != :corridor or t[1].h_z>1) }
