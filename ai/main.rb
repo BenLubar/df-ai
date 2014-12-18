@@ -2,21 +2,24 @@ class DwarfAI
     attr_accessor :plan
     attr_accessor :pop
     attr_accessor :stocks
+    attr_accessor :camera
 
     def initialize
         @pop = Population.new(self)
         @plan = Plan.new(self)
         @stocks = Stocks.new(self)
+        @camera = Camera.new(self)
     end
 
     def debug(str)
-	    puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+        puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
     end
 
     def startup
         @pop.startup
         @plan.startup
         @stocks.startup
+        @camera.startup
     end
 
     def handle_pause_event(announce)
@@ -134,6 +137,7 @@ class DwarfAI
         @pop.onupdate_register
         @plan.onupdate_register
         @stocks.onupdate_register
+        @camera.onupdate_register
         @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { puts status }
 
         df.onstatechange_register_once { |st|
@@ -150,6 +154,7 @@ class DwarfAI
     end
 
     def onupdate_unregister
+        @camera.onupdate_unregister
         @stocks.onupdate_unregister
         @plan.onupdate_unregister
         @pop.onupdate_unregister
@@ -157,6 +162,6 @@ class DwarfAI
     end
 
     def status
-        ["Plan: #{plan.status}", "Pop: #{pop.status}", "Stocks: #{stocks.status}"]
+        ["Plan: #{plan.status}", "Pop: #{pop.status}", "Stocks: #{stocks.status}", "Camera: #{camera.status}"]
     end
 end
