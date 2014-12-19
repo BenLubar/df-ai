@@ -38,3 +38,5 @@ else
         puts "AI not started (hint: ai start)"
     end
 end
+
+# vim: et:sw=4:ts=4

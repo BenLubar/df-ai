@@ -3075,3 +3075,5 @@ class DwarfAI
         end
     end
 end
+
+# vim: et:sw=4:ts=4

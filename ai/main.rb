@@ -166,3 +166,5 @@ class DwarfAI
         ["Plan: #{plan.status}", "Pop: #{pop.status}", "Stocks: #{stocks.status}", "Camera: #{camera.status}"]
     end
 end
+
+# vim: et:sw=4:ts=4
