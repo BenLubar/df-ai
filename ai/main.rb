@@ -59,6 +59,10 @@ class DwarfAI
             end
         end
 
+        current_popups = df.world.status.popups.to_a
+        timeout_sameview {
+            df.world.status.popups -= current_popups
+        } if df.announcements[la.type].DO_MEGA
         df.pause_state = false
     end
 
