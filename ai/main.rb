@@ -59,8 +59,8 @@ class DwarfAI
             end
         end
 
-	df.curview.feed_keys(:D_PAUSE)
-	df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+        df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+        df.pause_state = false
     end
 
     def statechanged(st)
