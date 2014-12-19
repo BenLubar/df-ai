@@ -19,12 +19,17 @@ class DwarfAI
         end
 
         def update
-            @following = df.unit_citizens.shuffle.first
+            targets = df.unit_citizens
+            @following = targets[rand(targets.length)]
 
             if @following && !df.pause_state
                 df.center_viewscreen @following
                 df.ui.follow_unit = @following.id
             end
+
+            df.world.status.flags.combat = false
+            df.world.status.flags.hunting = false
+            df.world.status.flags.sparring = false
         end
 
         def status
