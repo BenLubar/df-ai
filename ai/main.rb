@@ -41,7 +41,7 @@ class DwarfAI
         when :DIG_CANCEL_DAMP, :DIG_CANCEL_WARM; puts 'AI: lazy miners'
         when :BIRTH_CITIZEN; puts 'AI: newborn'
         when :BIRTH_ANIMAL
-        when :D_MIGRANTS_ARRIVAL, :D_MIGRANT_ARRIVAL, :MIGRANT_ARRIVAL, :NOBLE_ARRIVAL
+        when :D_MIGRANTS_ARRIVAL, :D_MIGRANT_ARRIVAL, :MIGRANT_ARRIVAL, :NOBLE_ARRIVAL, :FORT_POSITION_SUCCESSION
             puts 'AI: more minions'
         when :DIPLOMAT_ARRIVAL, :LIAISON_ARRIVAL, :CARAVAN_ARRIVAL, :TRADE_DIPLOMAT_ARRIVAL
             puts 'AI: visitors'
@@ -55,7 +55,7 @@ class DwarfAI
                 puts 'AI: an ambush!'
             else
                 puts "AI: unhandled pausing event #{announce.type.inspect} #{announce.inspect}"
-                return
+                #return
             end
         end
 
@@ -70,7 +70,9 @@ class DwarfAI
                     df.announcements.flags[a.type].PAUSE rescue nil
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
-
+        elsif st == :PAUSED
+            df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+            df.pause_state = false
         elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._rtti_classname
             when :viewscreen_textviewerst
