@@ -12,7 +12,6 @@ class DwarfAI
 
         def onupdate_register
             @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
-            df.enabler.set_fps(df.gview.original_fps) if (df.gview.original_fps || 0) > 0
             df.gview.supermovie_on = 1
             df.gview.currentblocksize = 0
             df.gview.nextfilepos = 0
@@ -23,7 +22,7 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            df.curview.breakdown_level = :BREAKDOWN_LEVEL_QUIT
+            df.curview.breakdown_level = :QUIT
             df.onupdate_unregister(@onupdate_handle)
         end
 
