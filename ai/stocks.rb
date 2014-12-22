@@ -27,7 +27,7 @@ class DwarfAI
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
-            :jug => 1, :stepladder => 1,
+            :jug => 1, :stepladder => 2,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
