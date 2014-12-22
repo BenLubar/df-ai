@@ -368,6 +368,8 @@ class DwarfAI
                                     @labor_needmore[:BONE_CARVE] += 1
                                 elsif job.material_category.cloth
                                     @labor_needmore[:CLOTHESMAKER] += 1
+                                elsif job.material_category.leather
+                                    @labor_needmore[:LEATHER] += 1
                                 elsif job.mat_type == 0
                                     # XXX metalcraft ?
                                     @labor_needmore[:MASON] += 1
