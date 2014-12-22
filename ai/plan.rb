@@ -51,18 +51,6 @@ class DwarfAI
             end
             @bg_idx = 0
 
-            # from https://github.com/DFHack/dfhack/blob/master/scripts/unsuspend.rb
-            joblist = df.world.job_list.next
-
-            while joblist
-                job = joblist.item
-                joblist = joblist.next
-
-                if job.job_type == :ConstructBuilding
-                    job.flags.suspend = false
-                end
-            end
-
             @cache_nofurnish = {}
 
             @nrdig = @tasks.count { |t| t[0] == :digroom and (t[1].type != :corridor or t[1].h_z>1) }
@@ -2851,7 +2839,8 @@ class DwarfAI
             ground = {}
             df.world.map.x_count.times do |x|
                 df.world.map.y_count.times do |y|
-                    z = surface_tile_at(x, y).z
+                    next unless t = surface_tile_at(x, y)
+                    z = t.z
                     ground[[z, x / 31, y / 31]] ||= {}
                     ground[[z, x / 31, y / 31]][[x % 31, y % 31]] = true
                 end
@@ -2862,6 +2851,9 @@ class DwarfAI
                 bld = df.building_alloc(:Civzone, :ActivityZone)
                 bld.zone_flags.active = true
                 bld.zone_flags.gather = true
+                bld.gather_flags.pick_trees = true
+                bld.gather_flags.pick_shrubs = true
+                bld.gather_flags.gather_fallen = true
                 w = 31
                 h = 31
                 w = df.world.map.x_count % 31 if cx * 31 + w > df.world.map.x_count
@@ -2961,8 +2953,16 @@ class DwarfAI
                 tx, ty = t.x, t.y 
             end
 
-            if sz = @rangez.find { |z| tt = df.map_tile_at(tx, ty, z) and tsb = tt.shape_basic and (tsb == :Floor or tsb == :Ramp) }
-                df.map_tile_at(tx, ty, sz)
+            tree = false
+            @rangez.each do |z|
+                next unless tt = df.map_tile_at(tx, ty, z)
+                next unless tsb = tt.shape_basic
+                next if tsb == :Open
+                if tsb == :Floor or tsb == :Ramp
+                    return tt if tt.tilemat != :TREE
+                end
+                tree = true if tt.tilemat == :TREE
+                return nil if tree and tt.tilemat != :TREE
             end
         end
 
