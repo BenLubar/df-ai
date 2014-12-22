@@ -2852,8 +2852,8 @@ class DwarfAI
             df.world.map.x_count.times do |x|
                 df.world.map.y_count.times do |y|
                     z = surface_tile_at(x, y).z
-                    ground[z] ||= []
-                    ground[z] << [x, y]
+                    ground[z] ||= {}
+                    ground[z][[x, y]] = true
                 end
             end
             ground.keys.each do |z|
@@ -2869,7 +2869,7 @@ class DwarfAI
                 bld.room.height = df.world.map.y_count
                 df.world.map.x_count.times do |x|
                     df.world.map.y_count.times do |y|
-                        bld.room.extents[x + df.world.map.x_count * y] = g.include?([x, y]) ? 1 : 0
+                        bld.room.extents[x + df.world.map.x_count * y] = g[[x, y]] ? 1 : 0
                     end
                 end
                 bld.is_room = 1
