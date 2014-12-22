@@ -278,9 +278,9 @@ class DwarfAI
         LaborSkill = DFHack::JobSkill::Labor.invert
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
-        LaborMax = Hash.new(8).update :FISH => 0
-        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30, :FISH => 1
-        LaborMaxPct = Hash.new(00).update :DETAIL => 40, :PLANT => 60, :FISH => 3
+        LaborMax = Hash.new(8).update :FISH => 1
+        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30, :FISH => 1, :HERBALISM => 15
+        LaborMaxPct = Hash.new(30).update :DETAIL => 40, :PLANT => 60, :FISH => 10, :HERBALISM => 75
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
                 LaborMinPct[lb] = 30
@@ -297,6 +297,9 @@ class DwarfAI
                 @idlers = []
                 @labor_needmore = Hash.new(0)
                 nonworkers = []
+
+                # herbalism is special in that it does not generate jobs without workers
+                @labor_needmore[:HERBALISM] += 1
 
                 citizen.each_value { |c|
                     next if not u = c.dfunit
