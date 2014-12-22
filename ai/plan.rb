@@ -2852,24 +2852,29 @@ class DwarfAI
             df.world.map.x_count.times do |x|
                 df.world.map.y_count.times do |y|
                     z = surface_tile_at(x, y).z
-                    ground[z] ||= {}
-                    ground[z][[x, y]] = true
+                    ground[[z, x / 31, y / 31]] ||= {}
+                    ground[[z, x / 31, y / 31]][[x % 31, y % 31]] = true
                 end
             end
-            ground.keys.each do |z|
-                g = ground[z]
+            ground.keys.each do |zxy|
+                z, cx, cy = zxy
+                g = ground[zxy]
                 bld = df.building_alloc(:Civzone, :ActivityZone)
                 bld.zone_flags.active = true
                 bld.zone_flags.gather = true
-                df.building_position(bld, [0, 0, z], df.world.map.x_count, df.world.map.y_count)
-                bld.room.extents = df.malloc(df.world.map.x_count * df.world.map.y_count)
-                bld.room.x = 0
-                bld.room.y = 0
-                bld.room.width = df.world.map.x_count
-                bld.room.height = df.world.map.y_count
-                df.world.map.x_count.times do |x|
-                    df.world.map.y_count.times do |y|
-                        bld.room.extents[x + df.world.map.x_count * y] = g[[x, y]] ? 1 : 0
+                w = 31
+                h = 31
+                w = df.world.map.x_count % 31 if cx * 31 + w > df.world.map.x_count
+                h = df.world.map.y_count % 31 if cy * 31 + h > df.world.map.y_count
+                df.building_position(bld, [cx * 31, cy * 31, z], w, h)
+                bld.room.extents = df.malloc(w * h)
+                bld.room.x = cx * 31
+                bld.room.y = cy * 31
+                bld.room.width = w
+                bld.room.height = h
+                w.times do |x|
+                    h.times do |y|
+                        bld.room.extents[x + w * y] = g[[x, y]] ? 1 : 0
                     end
                 end
                 bld.is_room = 1
