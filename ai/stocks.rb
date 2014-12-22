@@ -27,7 +27,7 @@ class DwarfAI
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
-            :jug => 1,
+            :jug => 1, :stepladder => 1,
             :leather => 0, :tallow => 0,
             #:rock_noeco => 10,
         }
@@ -258,7 +258,7 @@ class DwarfAI
                 df.world.items.other[:POWDER_MISC].find_all { |i|
                     mat = df.decode_mat(i) and mat.inorganic and mat.inorganic.id == 'PLASTER'
                 }
-            when :wheelbarrow, :minecart, :nestbox, :hive, :jug
+            when :wheelbarrow, :minecart, :nestbox, :hive, :jug, :stepladder
                 ord = FurnitureOrder[k]
                 df.world.items.other[:TOOL].find_all { |i|
                     i.subtype.subtype == ManagerSubtype[ord] and
@@ -1022,6 +1022,7 @@ class DwarfAI
             :MakeTrainingSpear => :MakeWeapon,
             :MakeGiantCorkscrew => :MakeTrapComponent,
             :ConstructWoodenBlocks => :ConstructBlocks,
+            :MakeWoodenStepladder => :MakeTool,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
@@ -1032,6 +1033,7 @@ class DwarfAI
             :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood, :ConstructWoodenBlocks => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
             :MakeQuiver => :leather, :MakeFlask => :leather, :MakeBackpack => :leather,
+            :MakeWoodenStepladder => :wood,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
@@ -1061,7 +1063,8 @@ class DwarfAI
                 :MakeTrainingSpear => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_SPEAR_TRAINING' }.subtype,
                 :MakeGiantCorkscrew => df.world.raws.itemdefs.trapcomps.find { |d| d.id == 'ITEM_TRAPCOMP_ENORMOUSCORKSCREW' }.subtype,
                 :MakeBoneBolt => df.world.raws.itemdefs.ammo.find { |d| d.id == 'ITEM_AMMO_BOLTS' }.subtype,
-                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype
+                :MakeBoneCrossbow => df.world.raws.itemdefs.weapons.find { |d| d.id == 'ITEM_WEAPON_CROSSBOW' }.subtype,
+                :MakeWoodenStepladder => df.world.raws.itemdefs.tools.find { |d| d.tool_use.include?(:STAND_AND_WORK_ABOVE) }.subtype
         end
 
         df.onstatechange_register { |st|
@@ -1161,7 +1164,8 @@ class DwarfAI
             :backpack => :MakeBackpack,
             :giant_corkscrew => :MakeGiantCorkscrew,
             :pipe_section => :MakePipeSection,
-            :coal => :MakeCharcoal
+            :coal => :MakeCharcoal,
+            :stepladder => :MakeWoodenStepladder
 
         FurnitureFind = Hash.new { |h, k|
             sym = "item_#{k}st".to_sym
@@ -1169,7 +1173,8 @@ class DwarfAI
         }.update :chest => lambda { |o| o._rtti_classname == :item_boxst and o.mat_type == 0 },
                  :hive => lambda { |o| o._rtti_classname == :item_toolst and o.subtype.subtype == ManagerSubtype[FurnitureOrder[:hive]] },
                  :nestbox => lambda { |o| o._rtti_classname == :item_toolst and o.subtype.subtype == ManagerSubtype[FurnitureOrder[:nestbox]] },
-                 :trap => lambda { |o| o._rtti_classname == :item_trappartsst }
+                 :trap => lambda { |o| o._rtti_classname == :item_trappartsst },
+                 :stepladder => lambda { |o| o._rtti_classname == :item_toolst and o.subtype.subtype == ManagerSubtype[FurnitureOrder[:stepladder]] }
 
         # find one item of this type (:bed, etc)
         def find_furniture_item(itm)
