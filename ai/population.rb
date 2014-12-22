@@ -489,6 +489,7 @@ class DwarfAI
                     maxpc = labormaxpct[lb] * @workers.length / 100
                     min = minpc if minpc > min
                     max = maxpc if maxpc > max
+                    max = 0 if lb == :FISH and fishery = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Fishery } and fishery.status == :plan
                     min = max if min > max
                     min = @workers.length if min > @workers.length
 
