@@ -511,7 +511,7 @@ class DwarfAI
                         (cnt-max).times {
                             cid = @labor_worker[lb].shift
                             autolabor_unsetlabor(citizen[cid], lb)
-                            @ai.debug "unassigning labor #{lb} from #{citizen[cid].dfunit.name} (too many dwarves)"
+                            @ai.debug "unassigning labor #{lb} from #{citizen[cid].dfunit.name} (too many dwarves)" if citizen[cid] and citizen[cid].dfunit
                         }
 
                     elsif cnt < min
@@ -530,21 +530,21 @@ class DwarfAI
                                 not @worker_labor[_c.id].include?(lb)
                             } || @workers.find { |_c| not exclusive[_c.id] and not @worker_labor[_c.id].include?(lb) }
 
-                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (not enough dwarves)"
+                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (not enough dwarves)" if c and c.dfunit
                             autolabor_setlabor(c, lb)
                         }
 
                     elsif not @idlers.empty?
                         if lb.to_s =~ /HAUL/ or lb == :DETAIL or lb == :HERBALISM
                             @idlers.each do |c|
-                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
+                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)" if c and c.dfunit
                                 autolabor_setlabor(c, lb)
                             end
                         else
                             @labor_needmore[lb].times do
                                 break if @labor_worker[lb].length >= max
                                 c = @idlers[rand(@idlers.length)]
-                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
+                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)" if c and c.dfunit
                                 autolabor_setlabor(c, lb)
                             end
                         end
