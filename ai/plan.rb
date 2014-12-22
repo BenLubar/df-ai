@@ -16,7 +16,7 @@ class DwarfAI
             @manager_taskmax = 4    # when stacking manager jobs, do not stack more than this
             @manager_maxbacklog = 10 # add new masonly if more that this much mason manager orders
             @dwarves_per_table = 3  # number of dwarves per dininghall table/chair
-            @dwarves_per_farmtile = 0.5   # number of dwarves per farmplot tile
+            @dwarves_per_farmtile = 1.5   # number of dwarves per farmplot tile
             @wantdig_max = 2    # dig at most this much wantdig rooms at a time
             @spare_bedroom = 3  # dig this much free bedroom in advance when idle
             categorize_all
