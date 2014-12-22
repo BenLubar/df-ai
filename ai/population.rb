@@ -421,6 +421,7 @@ class DwarfAI
                             @labor_worker[lb].delete c.id
                             ul[lb] = false
                             u.military.pickup_flags.update = true if LaborTool[lb]
+                            @ai.debug "unassigning labor #{lb} from #{u.name} (too many labors)"
                         end
                     }
                 end
@@ -512,6 +513,7 @@ class DwarfAI
                         (cnt-max).times {
                             cid = @labor_worker[lb].shift
                             autolabor_unsetlabor(citizen[cid], lb)
+                            @ai.debug "unassigning labor #{lb} from #{citizen[cid].dfunit.name} (too many dwarves)"
                         }
 
                     elsif cnt < min
@@ -530,6 +532,7 @@ class DwarfAI
                                 not @worker_labor[_c.id].include?(lb)
                             } || @workers.find { |_c| not exclusive[_c.id] and not @worker_labor[_c.id].include?(lb) }
 
+                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (not enough dwarves)"
                             autolabor_setlabor(c, lb)
                         }
 
@@ -537,6 +540,7 @@ class DwarfAI
                         @labor_needmore[lb].times {
                             break if @labor_worker[lb].length >= max
                             c = @idlers[rand(@idlers.length)]
+                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
                             autolabor_setlabor(c, lb)
                         }
                     end
