@@ -1848,6 +1848,7 @@ class DwarfAI
                 t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT)
             }
             list_map_veins
+            setup_outdoor_gathering_zones
             puts 'AI: ready'
         end
 
@@ -2844,6 +2845,36 @@ class DwarfAI
                     @rooms << r
                 }
             }
+        end
+
+        def setup_outdoor_gathering_zones
+            ground = {}
+            df.world.map.x_count.times do |x|
+                df.world.map.y_count.times do |y|
+                    z = surface_tile_at(x, y).z
+                    ground[z] ||= []
+                    ground[z] << [x, y]
+                end
+            end
+            ground.keys.each do |z|
+                g = ground[z]
+                bld = df.building_alloc(:Civzone, :ActivityZone)
+                bld.zone_flags.active = true
+                bld.zone_flags.gather = true
+                df.building_position(bld, [0, 0, z], df.world.map.x_count, df.world.map.y_count)
+                bld.room.extents = df.malloc(df.world.map.x_count * df.world.map.y_count)
+                bld.room.x = 0
+                bld.room.y = 0
+                bld.room.width = df.world.map.x_count
+                bld.room.height = df.world.map.y_count
+                df.world.map.x_count.times do |x|
+                    df.world.map.y_count.times do |y|
+                        bld.room.extents[x + df.world.map.x_count * y] = g.include?([x, y]) ? 1 : 0
+                    end
+                end
+                bld.is_room = 1
+                df.building_construct_abstract(bld)
+            end
         end
 
         # check that tile is surrounded by solid rock/soil walls
