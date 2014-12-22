@@ -20,6 +20,7 @@ class DwarfAI
             @ai = ai
             @citizen = {}
             @military = {}
+            @idlers = []
             @pet = {}
             @update_counter = 0
         end
@@ -298,9 +299,6 @@ class DwarfAI
                 @labor_needmore = Hash.new(0)
                 nonworkers = []
 
-                # herbalism is special in that it does not generate jobs without workers
-                @labor_needmore[:HERBALISM] += 1
-
                 citizen.each_value { |c|
                     next if not u = c.dfunit
                     if u.mood == :None and
@@ -537,12 +535,19 @@ class DwarfAI
                         }
 
                     elsif not @idlers.empty?
-                        @labor_needmore[lb].times {
-                            break if @labor_worker[lb].length >= max
-                            c = @idlers[rand(@idlers.length)]
-                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
-                            autolabor_setlabor(c, lb)
-                        }
+                        if lb.to_s =~ /HAUL/ or lb == :DETAIL or lb == :HERBALISM
+                            @idlers.each do |c|
+                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
+                                autolabor_setlabor(c, lb)
+                            end
+                        else
+                            @labor_needmore[lb].times do
+                                break if @labor_worker[lb].length >= max
+                                c = @idlers[rand(@idlers.length)]
+                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)"
+                                autolabor_setlabor(c, lb)
+                            end
+                        end
                     end
                 }
             end
@@ -795,7 +800,7 @@ end
         end
 
         def status
-            "#{@citizen.length} citizen, #{@pet.length} pets"
+            "#{@citizen.length} citizen, #{@military.length} military, #{@idlers.length} idle, #{@pet.length} pets"
         end
     end
 end
