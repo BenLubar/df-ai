@@ -280,13 +280,16 @@ class DwarfAI
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
         LaborMax = Hash.new(8).update :FISH => 1
-        LaborMinPct = Hash.new(10).update :DETAIL => 20, :PLANT => 30, :FISH => 1, :HERBALISM => 15
-        LaborMaxPct = Hash.new(30).update :DETAIL => 40, :PLANT => 60, :FISH => 10, :HERBALISM => 75
+        LaborMinPct = Hash.new(0).update :DETAIL => 20, :PLANT => 30, :FISH => 1, :HERBALISM => 15
+        LaborMaxPct = Hash.new(0).update :DETAIL => 40, :PLANT => 60, :FISH => 10, :HERBALISM => 75
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
                 LaborMinPct[lb] = 30
                 LaborMaxPct[lb] = 60
             end
+        }
+        HaulingLaborCount = LaborList.count { |lb|
+            lb.to_s =~ /HAUL/
         }
         LaborWontWorkJob = { :AttendParty => true, :Rest => true,
             :UpdateStockpileRecords => true }
@@ -408,6 +411,7 @@ class DwarfAI
                 # if one has too many labors, free him up (one per round)
                 lim = 4*LaborList.length/[@workers.length, 1].max
                 lim = 4 if lim < 4
+                lim += HaulingLaborCount
                 if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
                     c = citizen[cid]
                     u = c.dfunit

@@ -5,6 +5,7 @@ class DwarfAI
         def initialize(ai)
             @ai = ai
             @following = nil
+            @following_prev = []
         end
 
         def startup
@@ -27,8 +28,64 @@ class DwarfAI
         end
 
         def update
-            targets = df.unit_citizens
-            @following = targets[rand(targets.length)]
+            targets = df.unit_hostiles.shuffle.select do |u|
+                u.flags1.active_invader or u.flags2.visitor_uninvited
+            end + df.unit_citizens.shuffle.sort_by do |u|
+                unless u.job.current_job
+                    0
+                else
+                    case DFHack::JobType::Type[u.job.current_job.job_type]
+                    when :Misc
+                        -20
+                    when :Digging
+                        -50
+                    when :Building
+                        -20
+                    when :Hauling
+                        -30
+                    when :LifeSupport
+                        -10
+                    when :TidyUp
+                        -20
+                    when :Leisure
+                        -20
+                    when :Gathering
+                        -30
+                    when :Manufacture
+                        -10
+                    when :Improvement
+                        -10
+                    when :Crime
+                        -50
+                    when :LawEnforcement
+                        -30
+                    when :StrangeMood
+                        -20
+                    when :UnitHandling
+                        -30
+                    when :SiegeWeapon
+                        -50
+                    when :Medicine
+                        -50
+                    else
+                        0
+                    end
+                end
+            end
+
+            @following_prev << @following if @following and not @following_prev.include? @following
+            if @following_prev.length > 3
+                @following_prev = @following_prev[-3, 3]
+            end
+
+            if targets.empty?
+                @following = nil
+            else
+                while @following_prev.include? targets[0] and targets.length > 1
+                    targets = targets[1..-1]
+                end
+                @following = targets[0]
+            end
 
             if @following && !df.pause_state
                 df.center_viewscreen @following
@@ -42,9 +99,9 @@ class DwarfAI
 
         def status
             if @following && df.ui.follow_unit == @following.id
-                "following #{@following.name}"
+                "following #{@following.name} (previously: #{@following_prev.map(&:name).join(', ')})"
             else
-                "inactive"
+                "inactive (previously: #{@following_prev.map(&:name).join(', ')})"
             end
         end
     end
