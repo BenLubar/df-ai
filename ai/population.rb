@@ -326,6 +326,7 @@ class DwarfAI
                     ul = u.status.labors
                     LaborList.each { |lb|
                         if ul[lb]
+                            @ai.debug "unassigning labor #{lb} from #{u.name} (non-worker)"
                             # disable everything (may wait meeting)
                             ul[lb] = false
                             # free pick/axe/crossbow  XXX does it work?

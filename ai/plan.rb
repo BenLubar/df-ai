@@ -174,6 +174,7 @@ class DwarfAI
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 3 and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
                    find_room(:stockpile) { |_r| _r.status == :plan }
+                @ai.debug "checkidle #{@rooms.index(r)} #{r.type} #{r.subtype} #{r.status}"
                 wantdig(r)
                 if r.status == :finished
                     r.misc[:furnished] = true
@@ -1936,6 +1937,7 @@ class DwarfAI
 
             need_shaft = true
             todo = []
+            @ai.debug "do_dig_vein #{dxs.min}..#{dxs.max} #{dys.min}..#{dys.max}"
             (dxs.min..dxs.max).each { |dx| (dys.min..dys.max).each { |dy|
                 t = df.map_tile_at(bx+dx, by+dy, bz)
                 if t.designation.dig == :No
@@ -2958,6 +2960,7 @@ class DwarfAI
                 next unless tt = df.map_tile_at(tx, ty, z)
                 next unless tsb = tt.shape_basic
                 next if tsb == :Open
+                return nil if tt.tilemat == :Pool
                 if tsb == :Floor or tsb == :Ramp
                     return tt if tt.tilemat != :TREE
                 end
