@@ -35,7 +35,7 @@ class DwarfAI
 
         WatchStock = { :roughgem => 6, :pigtail => 10, :cloth_nodye => 10,
             :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
-            :quarrybush => 4, :skull => 2, :bone => 8, :leaves => 5,
+            :quarrybush => 4, :skull => 2, :bone => 8, :ingredients => 5,
             :honeycomb => 1, :wool => 1,
         }
 
@@ -53,6 +53,7 @@ class DwarfAI
         end
 
         def startup
+            update_kitchen
         end
 
         def onupdate_register
@@ -119,6 +120,43 @@ class DwarfAI
             }
         end
 
+        def update_kitchen
+            # ban cooking alcohol
+            df.world.raws.plants.all.each do |p|
+                p.material.each do |m|
+                    ban_cooking("PLANT:#{p.id}:#{m.id}", :DRINK) if m.flags[:ALCOHOL]
+                end
+            end
+            df.world.raws.creatures.all.each do |c|
+                c.material.each do |m|
+                    ban_cooking("CREATURE:#{c.creature_id}:#{m.id}", :DRINK) if m.flags[:ALCOHOL]
+                end
+            end
+            # ban cooking tallow
+            df.world.raws.creatures.all.each do |c|
+                c.material.each do |m|
+                    ban_cooking("CREATURE:#{c.creature_id}:#{m.id}", :GLOB) if m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
+                end
+            end
+        end
+
+        def ban_cooking(material, type, subtype=-1)
+            @ai.debug "ban_cooking #{material}"
+            material = df.decode_mat(material)
+            df.ui.kitchen.item_types.length.times do |i|
+                next if df.ui.kitchen.item_types[i]    != type
+                next if df.ui.kitchen.item_subtypes[i] != subtype
+                next if df.ui.kitchen.mat_types[i]     != material.mat_type
+                next if df.ui.kitchen.mat_indices[i]   != material.mat_index
+                return
+            end
+            df.ui.kitchen.item_types    << type
+            df.ui.kitchen.item_subtypes << subtype
+            df.ui.kitchen.mat_types     << material.mat_type
+            df.ui.kitchen.mat_indices   << material.mat_index
+            df.ui.kitchen.exc_types     << 1
+        end
+
         def act(key)
             if amount = Needed[key]
                 amount += (@ai.pop.citizen.length * NeededPerDwarf[key]).to_i
@@ -145,9 +183,17 @@ class DwarfAI
             when :bucket
                 df.world.items.other[:BUCKET]
             when :food
+                df.world.items.other[:ANY_GOOD_FOOD].find_all { |i|
+                    case i
+                    when DFHack::ItemFoodst
+                        true
+                    end
+                }
+            when :ingredients
                 df.world.items.other[:ANY_GOOD_FOOD].reject { |i|
                     case i
-                    when DFHack::ItemSeedsst, DFHack::ItemBoxst, DFHack::ItemFishRawst
+                    when DFHack::ItemFoodst, DFHack::ItemSeedsst, DFHack::ItemBoxst, DFHack::ItemFishRawst, DFHack::ItemDrinkst, DFHack::ItemGlobst
+                        # TODO: filter tallow specifically
                         true
                     end
                 }
@@ -196,8 +242,6 @@ class DwarfAI
             when :dimple_dye
                 mspec = 'PLANT:MUSHROOM_CUP_DIMPLE:MILL'
                 df.world.items.other[:POWDER_MISC].grep(df.decode_mat(mspec))
-            when :leaves
-                df.world.items.other[:PLANT_GROWTH]
             when :block
                 df.world.items.other[:BLOCKS]
             when :skull
@@ -278,7 +322,6 @@ class DwarfAI
             when :tallow
                 df.world.items.other[:GLOB].find_all { |i|
                     mat = df.decode_mat(i) and mat.material and mat.material.id == 'TALLOW'
-                    # TODO filter rotten
                 }
             when :giant_corkscrew
                 df.world.items.other[:TRAPCOMP].find_all { |i|
@@ -705,7 +748,7 @@ class DwarfAI
                 amount /= 2 if amount > 4
                 input = [:bag] if order == :MillPlants or order == :ProcessPlantsBag
 
-            when :leaves
+            when :ingredients
                 order = :PrepareMeal
                 amount = (amount + 4) / 5
 
