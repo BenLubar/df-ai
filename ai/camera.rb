@@ -13,23 +13,25 @@ class DwarfAI
 
         def onupdate_register
             @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
-            df.gview.supermovie_on = 1
-            df.gview.currentblocksize = 0
-            df.gview.nextfilepos = 0
-            df.gview.supermovie_pos = 0
-            df.gview.supermovie_delayrate = 0
-            df.gview.first_movie_write = 1
-            df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
+            unless $DEBUG
+                df.gview.supermovie_on = 1
+                df.gview.currentblocksize = 0
+                df.gview.nextfilepos = 0
+                df.gview.supermovie_pos = 0
+                df.gview.supermovie_delayrate = 0
+                df.gview.first_movie_write = 1
+                df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
+            end
         end
 
         def onupdate_unregister
-            df.curview.breakdown_level = :QUIT
+            df.curview.breakdown_level = :QUIT unless $DEBUG
             df.onupdate_unregister(@onupdate_handle)
         end
 
         def update
             targets = df.unit_hostiles.shuffle.select do |u|
-                u.flags1.active_invader or u.flags2.visitor_uninvited
+                u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited
             end + df.unit_citizens.shuffle.sort_by do |u|
                 unless u.job.current_job
                     0
