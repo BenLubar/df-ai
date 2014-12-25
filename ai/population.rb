@@ -302,6 +302,12 @@ class DwarfAI
                 @idlers = []
                 @labor_needmore = Hash.new(0)
                 nonworkers = []
+                medic = {}
+                df.ui.main.fortress_entity.assignments_by_type[:HEALTH_MANAGEMENT].each { |n|
+                    next unless hf = df.world.history.figures.binsearch(n.histfig)
+                    next unless u = df.unit_find(hf.unit_id)
+                    medic[u] = true
+                }
 
                 citizen.each_value { |c|
                     next if not u = c.dfunit
@@ -328,6 +334,11 @@ class DwarfAI
                     any = false
                     LaborList.each { |lb|
                         if ul[lb]
+                            case lb
+                            when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
+                                # don't unassign medical jobs from the chief medical dwarf
+                                next if medic[u]
+                            end
                             # disable everything (may wait meeting)
                             ul[lb] = false
                             u.military.pickup_flags.update = true if LaborTool[lb]
@@ -640,9 +651,9 @@ class DwarfAI
             elsif ass = ent.assignments_by_type[:HEALTH_MANAGEMENT].first and hf = df.world.history.figures.binsearch(ass.histfig) and doc = df.unit_find(hf.unit_id)
                 # doc => healthcare
                 LaborList.each { |lb|
-                    doc.status.labors[lb] = case lb
+                    case lb
                     when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
-                        true
+                        doc.status.labors[lb] = true
                     end
                 }
             end
