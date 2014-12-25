@@ -330,6 +330,7 @@ class DwarfAI
                         if ul[lb]
                             # disable everything (may wait meeting)
                             ul[lb] = false
+                            u.military.pickup_flags.update = true if LaborTool[lb]
                             any = true
                         end
                     }
@@ -429,6 +430,7 @@ class DwarfAI
                                 @worker_labor[c.id].delete lb
                                 @labor_worker[lb].delete c.id
                                 ul[lb] = false
+                                u.military.pickup_flags.update = true if LaborTool[lb]
                             end
                         }
                         @ai.debug "unassigned all labors from #{u.name} (too many labors)"
@@ -564,6 +566,7 @@ class DwarfAI
                 LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
             end
             u.status.labors[lb] = true
+            u.military.pickup_flags.update = true if LaborTool[lb]
             @ai.debug "assigning labor #{lb} to #{u.name} (#{reason})"
         end
 
@@ -574,6 +577,7 @@ class DwarfAI
             @worker_labor[c.id].delete lb
             u = c.dfunit
             u.status.labors[lb] = false
+            u.military.pickup_flags.update = true if LaborTool[lb]
             @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
         end
 
@@ -706,7 +710,6 @@ class DwarfAI
                 next if u.race == df.ui.race_id
                 next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
 
-begin
                 if @pet[u.id]
                     if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
                         if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
@@ -770,9 +773,6 @@ begin
                         u.flags2.slaughter = true
                     end
                 end
-rescue
-    # prevent errors with old dfhack (shearable_tissue / caste_tg)
-end
             }
 
             np.each_key { |id|
