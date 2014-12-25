@@ -278,6 +278,7 @@ class DwarfAI
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborSkill = DFHack::JobSkill::Labor.invert
+        LaborIdle = { :HERBALISM => true, :FISH => true, :DETAIL => true }
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
         LaborMax = Hash.new(8).update :FISH => 1
@@ -454,6 +455,8 @@ class DwarfAI
                 laborminpct = LaborMinPct
                 labormaxpct = LaborMaxPct
 
+                @ai.plan.idleidle if @labor_needmore.empty? and not @idlers.empty?
+
                 # handle low-number of workers + tool labors
                 mintool = LaborTool.keys.inject(0) { |s, lb| 
                     min = labormin[lb]
@@ -515,11 +518,13 @@ class DwarfAI
                     min = minpc if minpc > min
                     max = maxpc if maxpc > max
                     max = 0 if lb == :FISH and fishery = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Fishery } and fishery.status == :plan
+                    max = @workers.length if @labor_needmore.empty? and LaborIdle[lb]
                     min = max if min > max
                     min = @workers.length if min > @workers.length
 
                     cnt = @labor_worker[lb].length
                     if cnt > max
+                        next if @labor_needmore.empty?
                         sk = LaborSkill[lb]
                         @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
                             if sk
@@ -557,7 +562,9 @@ class DwarfAI
                         }
 
                     elsif not @idlers.empty?
-                        @labor_needmore[lb].times do
+                        more = @labor_needmore[lb]
+                        more = max - cnt if @labor_needmore.empty?
+                        more.times do
                             break if @labor_worker[lb].length >= max
                             c = @idlers[rand(@idlers.length)]
                             autolabor_setlabor(c, lb, 'idle')
