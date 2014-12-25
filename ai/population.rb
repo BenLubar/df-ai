@@ -542,7 +542,7 @@ class DwarfAI
                                 not @worker_labor[_c.id].include?(lb)
                             }
 
-                            autolabor_setlabor(c, lb, 'not enough dwarves') if c
+                            autolabor_setlabor(c, lb, 'not enough dwarves')
                         }
 
                     elsif not @idlers.empty?
