@@ -585,7 +585,7 @@ class DwarfAI
             return if u.military.squad_id == -1
             squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
-            !curmonth.orders.empty? or (curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
+            !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
         end
 
         def unit_shallnotworknow(u)
