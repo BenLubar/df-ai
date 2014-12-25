@@ -140,6 +140,7 @@ class DwarfAI
                     sc.orders.each { |so|
                         next unless so.order.kind_of?(DFHack::SquadOrderTrainst)
                         so.min_count = (soldier_count > 3 ? soldier_count-1 : soldier_count)
+                        so.min_count = 0 if r = ai.plan.find_room(:barracks) { |_r| _r.misc[:squad_id] == sq.id } and r.status != :finished
                     }
                 }
             }
@@ -278,9 +279,9 @@ class DwarfAI
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborSkill = DFHack::JobSkill::Labor.invert
 
-        LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
+        LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
         LaborMax = Hash.new(8).update :FISH => 1
-        LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 15
+        LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 10
         LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 50
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
@@ -580,12 +581,13 @@ class DwarfAI
             return if u.military.squad_id == -1
             squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
-            !curmonth.orders.empty?
+            !curmonth.orders.empty? or (curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
         end
 
         def unit_shallnotworknow(u)
             # manager shall not work when unvalidated jobs are pending
-            return true if df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
+            return true if df.unit_citizens.length >= 20 and
+                    df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
                     df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
             # TODO medical dwarf, broker
         end
