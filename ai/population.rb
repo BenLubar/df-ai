@@ -280,12 +280,12 @@ class DwarfAI
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4
         LaborMax = Hash.new(8).update :FISH => 1
-        LaborMinPct = Hash.new(0).update :DETAIL => 20, :PLANT => 30, :FISH => 1, :HERBALISM => 15
-        LaborMaxPct = Hash.new(0).update :DETAIL => 40, :PLANT => 60, :FISH => 10, :HERBALISM => 75
+        LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 15
+        LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 50
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
                 LaborMinPct[lb] = 30
-                LaborMaxPct[lb] = 60
+                LaborMaxPct[lb] = 100
             end
         }
         HaulingLaborCount = LaborList.count { |lb|
@@ -543,9 +543,6 @@ class DwarfAI
                         }
 
                     elsif not @idlers.empty?
-                        if lb == :DETAIL or lb == :HERBALISM
-                            @labor_needmore[lb] += 1
-                        end
                         @labor_needmore[lb].times do
                             break if @labor_worker[lb].length >= max
                             c = @idlers[rand(@idlers.length)]
