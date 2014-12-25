@@ -2838,41 +2838,62 @@ class DwarfAI
         end
 
         def setup_outdoor_gathering_zones
+            x = 0
+            y = 0
+            i = 0
             ground = {}
-            df.world.map.x_count.times do |x|
-                df.world.map.y_count.times do |y|
-                    next unless t = surface_tile_at(x, y)
-                    z = t.z
-                    ground[[z, x / 31, y / 31]] ||= {}
-                    ground[[z, x / 31, y / 31]][[x % 31, y % 31]] = true
-                end
-            end
-            ground.keys.each do |zxy|
-                z, cx, cy = zxy
-                g = ground[zxy]
-                bld = df.building_alloc(:Civzone, :ActivityZone)
-                bld.zone_flags.active = true
-                bld.zone_flags.gather = true
-                bld.gather_flags.pick_trees = true
-                bld.gather_flags.pick_shrubs = true
-                bld.gather_flags.gather_fallen = true
-                w = 31
-                h = 31
-                w = df.world.map.x_count % 31 if cx * 31 + w > df.world.map.x_count
-                h = df.world.map.y_count % 31 if cy * 31 + h > df.world.map.y_count
-                df.building_position(bld, [cx * 31, cy * 31, z], w, h)
-                bld.room.extents = df.malloc(w * h)
-                bld.room.x = cx * 31
-                bld.room.y = cy * 31
-                bld.room.width = w
-                bld.room.height = h
-                w.times do |x|
-                    h.times do |y|
-                        bld.room.extents[x + w * y] = g[[x, y]] ? 1 : 0
+            bg = df.onupdate_register('df-ai plan setup_outdoor_gathering_zones', 10) do
+                if i == [x+31, df.world.map.x_count].min
+                    ground.keys.each do |tz|
+                        g = ground[tz]
+                        bld = df.building_alloc(:Civzone, :ActivityZone)
+                        bld.zone_flags.active = true
+                        bld.zone_flags.gather = true
+                        bld.gather_flags.pick_trees = true
+                        bld.gather_flags.pick_shrubs = true
+                        bld.gather_flags.gather_fallen = true
+                        w = 31
+                        h = 31
+                        w = df.world.map.x_count % 31 if x + 31 > df.world.map.x_count
+                        h = df.world.map.y_count % 31 if y + 31 > df.world.map.y_count
+                        df.building_position(bld, [x, y, tz], w, h)
+                        bld.room.extents = df.malloc(w * h)
+                        bld.room.x = x
+                        bld.room.y = y
+                        bld.room.width = w
+                        bld.room.height = h
+                        w.times do |cx|
+                            h.times do |cy|
+                                bld.room.extents[cx + w * cy] = g[[cx, cy]] ? 1 : 0
+                            end
+                        end
+                        bld.is_room = 1
+                        df.building_construct_abstract(bld)
                     end
+
+                    ground.clear
+                    i = 0
+                    x += 31
+                    if x >= df.world.map.x_count
+                        x = 0
+                        y += 31
+                        if y >= df.world.map.y_count
+                            df.onupdate_unregister(bg)
+                            @ai.debug 'plan setup_outdoor_gathering_zones finished'
+                            next
+                        end
+                    end
+                    next
                 end
-                bld.is_room = 1
-                df.building_construct_abstract(bld)
+
+                tx = x + i
+                (y...([y+31, df.world.map.y_count].min)).each do |ty|
+                    next unless t = surface_tile_at(tx, ty)
+                    tz = t.z
+                    ground[tz] ||= {}
+                    ground[tz][[tx % 31, ty % 31]] = true
+                end
+                i += 1
             end
         end
 
@@ -2960,13 +2981,14 @@ class DwarfAI
                 next unless tt = df.map_tile_at(tx, ty, z)
                 next unless tsb = tt.shape_basic
                 next if tsb == :Open
-                return nil if tt.tilemat == :Pool
+                return nil if tt.tilemat == :POOL or tt.tilemat == :RIVER
                 if tsb == :Floor or tsb == :Ramp
                     return tt if tt.tilemat != :TREE
                 end
                 tree = true if tt.tilemat == :TREE
                 return nil if tree and tt.tilemat != :TREE
             end
+            return nil
         end
 
         def status
