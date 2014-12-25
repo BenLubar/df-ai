@@ -324,15 +324,15 @@ class DwarfAI
                 nonworkers.each { |c|
                     u = c.dfunit
                     ul = u.status.labors
+                    any = false
                     LaborList.each { |lb|
                         if ul[lb]
-                            @ai.debug "unassigning labor #{lb} from #{u.name} (non-worker)"
                             # disable everything (may wait meeting)
                             ul[lb] = false
-                            # free pick/axe/crossbow  XXX does it work?
-                            u.military.pickup_flags.update = true if LaborTool[lb]
+                            any = true
                         end
                     }
+                    @ai.debug "unassigned all labors from #{u.name} (non-worker)" if any
                 }
 
                 seen_workshop = {}
@@ -362,7 +362,11 @@ class DwarfAI
                             when :StoreItemInStockpile, :StoreItemInBag, :StoreItemInHospital,
                                     :StoreItemInChest, :StoreItemInCabinet, :StoreWeapon,
                                     :StoreArmor, :StoreItemInBarrel, :StoreItemInBin, :StoreItemInVehicle
-                                @labor_needmore[:HAUL_ITEM] += 1
+                                LaborList.each { |lb|
+                                    if lb.to_s =~ /HAUL/
+                                        @labor_needmore[lb] += 1
+                                    end
+                                }
                             else
                                 if job.material_category.wood
                                     @labor_needmore[:CARPENTER] += 1
@@ -386,7 +390,7 @@ class DwarfAI
 
                     if ref_bld
                         case ref_bld.building_tg
-                        when DFHack::BuildingFarmplotst
+                        when DFHack::BuildingFarmplotst, DFHack::BuildingStockpilest
                             # parallel work allowed
                         else
                             seen_workshop[ref_bld.building_id] = true
@@ -409,24 +413,25 @@ class DwarfAI
                     }
                 }
 
-                # if one has too many labors, free him up (one per round)
-                lim = 4*LaborList.length/[@workers.length, 1].max
-                lim = 4 if lim < 4
-                lim += HaulingLaborCount
-                if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
-                    c = citizen[cid]
-                    u = c.dfunit
-                    ul = u.status.labors
+                if @workers.length > 15
+                    # if one has too many labors, free him up (one per round)
+                    lim = 4*LaborList.length/[@workers.length, 1].max
+                    lim = 4 if lim < 4
+                    lim += HaulingLaborCount
+                    if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
+                        c = citizen[cid]
+                        u = c.dfunit
+                        ul = u.status.labors
 
-                    LaborList.each { |lb|
-                        if ul[lb]
-                            @worker_labor[c.id].delete lb
-                            @labor_worker[lb].delete c.id
-                            ul[lb] = false
-                            u.military.pickup_flags.update = true if LaborTool[lb]
-                            @ai.debug "unassigning labor #{lb} from #{u.name} (too many labors)"
-                        end
-                    }
+                        LaborList.each { |lb|
+                            if ul[lb]
+                                @worker_labor[c.id].delete lb
+                                @labor_worker[lb].delete c.id
+                                ul[lb] = false
+                            end
+                        }
+                        @ai.debug "unassigned all labors from #{u.name} (too many labors)"
+                    end
                 end
 
             when 4
@@ -482,7 +487,7 @@ class DwarfAI
                         c = citizen[cid]
                         @worker_labor[cid].dup.each { |llb|
                             next if llb == lb
-                            autolabor_unsetlabor(c, llb)
+                            autolabor_unsetlabor(c, llb, "has exclusive labor: #{lb}")
                         }
                     end
                 }
@@ -515,8 +520,7 @@ class DwarfAI
                         }
                         (cnt-max).times {
                             cid = @labor_worker[lb].shift
-                            autolabor_unsetlabor(citizen[cid], lb)
-                            @ai.debug "unassigning labor #{lb} from #{citizen[cid].dfunit.name} (too many dwarves)" if citizen[cid] and citizen[cid].dfunit
+                            autolabor_unsetlabor(citizen[cid], lb, 'too many dwarves')
                         }
 
                     elsif cnt < min
@@ -533,32 +537,26 @@ class DwarfAI
                                 next if exclusive[_c.id]
                                 next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
                                 not @worker_labor[_c.id].include?(lb)
-                            } || @workers.find { |_c| not exclusive[_c.id] and not @worker_labor[_c.id].include?(lb) }
+                            }
 
-                            @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (not enough dwarves)" if c and c.dfunit
-                            autolabor_setlabor(c, lb)
+                            autolabor_setlabor(c, lb, 'not enough dwarves') if c
                         }
 
                     elsif not @idlers.empty?
-                        if lb.to_s =~ /HAUL/ or lb == :DETAIL or lb == :HERBALISM
-                            @idlers.each do |c|
-                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)" if c and c.dfunit
-                                autolabor_setlabor(c, lb)
-                            end
-                        else
-                            @labor_needmore[lb].times do
-                                break if @labor_worker[lb].length >= max
-                                c = @idlers[rand(@idlers.length)]
-                                @ai.debug "assigning labor #{lb} to #{c.dfunit.name} (idle)" if c and c.dfunit
-                                autolabor_setlabor(c, lb)
-                            end
+                        if lb == :DETAIL or lb == :HERBALISM
+                            @labor_needmore[lb] += 1
+                        end
+                        @labor_needmore[lb].times do
+                            break if @labor_worker[lb].length >= max
+                            c = @idlers[rand(@idlers.length)]
+                            autolabor_setlabor(c, lb, 'idle')
                         end
                     end
                 }
             end
         end
 
-        def autolabor_setlabor(c, lb)
+        def autolabor_setlabor(c, lb, reason='no reason given')
             return if not c
             return if @worker_labor[c.id].include?(lb)
             @labor_worker[lb] << c.id
@@ -566,18 +564,19 @@ class DwarfAI
             u = c.dfunit
             if LaborTool[lb]
                 LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
-                u.military.pickup_flags.update = true
             end
             u.status.labors[lb] = true
+            @ai.debug "assigning labor #{lb} to #{u.name} (#{reason})"
         end
 
-        def autolabor_unsetlabor(c, lb)
+        def autolabor_unsetlabor(c, lb, reason='no reason given')
             return if not c
+            return if not @worker_labor[c.id].include?(lb)
             @labor_worker[lb].delete c.id
             @worker_labor[c.id].delete lb
             u = c.dfunit
             u.status.labors[lb] = false
-            u.military.pickup_flags.update = true if LaborTool[lb]
+            @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
         end
 
         def unit_hasmilitaryduty(u)
