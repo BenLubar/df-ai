@@ -174,7 +174,7 @@ class DwarfAI
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 3 and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
                    find_room(:stockpile) { |_r| _r.status == :plan }
-                @ai.debug "checkidle #{@rooms.index(r)} #{r.type} #{r.subtype} #{r.status}"
+                @ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
                 wantdig(r)
                 if r.status == :finished
                     r.misc[:furnished] = true
@@ -514,7 +514,7 @@ class DwarfAI
         # queue a room for digging when other dig jobs are finished
         def wantdig(r)
             return true if r.misc[:queue_dig] or r.status != :plan
-            @ai.debug "wantdig #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "wantdig #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
             r.dig(:plan)
             @tasks << [:wantdig, r]
@@ -522,7 +522,7 @@ class DwarfAI
 
         def digroom(r)
             return true if r.status != :plan
-            @ai.debug "digroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "digroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             r.misc.delete :queue_dig
             r.status = :dig
             r.dig
@@ -581,7 +581,7 @@ class DwarfAI
         end
 
         def construct_room(r)
-            @ai.debug "construct #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "construct #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             case r.type
             when :corridor
                 furnish_room(r)
@@ -659,7 +659,7 @@ class DwarfAI
                 false
             elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
                 return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
-                @ai.debug "furnish #{@rooms.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
+                @ai.debug "furnish #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
                 bld = df.building_alloc(bldn, subtype)
@@ -1461,10 +1461,27 @@ class DwarfAI
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
 
+            biomes = Hash.new(0)
+            (bld.x1..bld.x2).each do |x|
+                (bld.y1..bld.y2).each do |y|
+                    td = df.map_tile_at(x, y, bld.z).designation
+                    if td.subterranean
+                        biomes[:BIOME_SUBTERRANEAN_WATER] += 1
+                    else
+                        biomes[:"BIOME_#{DFHack::BiomeType::Enum[td.biome]}"] += 1
+                    end
+                end
+            end
+            if biomes.length != 1
+                puts "AI: multiple biomes for #{r.subtype} farm plot #{rooms.index(r)}: #{biomes}"
+                return true # we can't farm here
+            end
+            biome = biomes.keys.first
+
             may = []
             df.world.raws.plants.all.length.times { |i|
                 p = df.world.raws.plants.all[i]
-                next if not p.flags[:BIOME_SUBTERRANEAN_WATER]
+                next if not p.flags[biome]
                 may << i
             }
 
@@ -1478,15 +1495,23 @@ class DwarfAI
                         # season numbers are also the 1st 4 flags
                         next if not p.flags[season]
 
-                        pm = p.material[0]
+                        pm = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.index_basic_mat).material
                         if isfirst
                             pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
                         else
-                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK]
+                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or
+                            (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.index_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
+                            (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).flags and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
                         end
                     }
 
-                    bld.plant_id[season] = pids[rand(pids.length)] unless pids.empty?
+                    if pids.empty?
+                        @complained_about_no_plants ||= {}
+                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
+                    else
+                        bld.plant_id[season] = pids[rand(pids.length)]
+                    end
                 }
             else
                 threads = may.find_all { |i|
@@ -1503,14 +1528,21 @@ class DwarfAI
                         p = df.world.raws.plants.all[i]
                         p.flags[season]
                     }
-                    pids |= dyes.find_all { |i|
-                        # all plot gets dyes only if no thread candidate exists
-                        next if !pids.empty? #and isfirst
-                        p = df.world.raws.plants.all[i]
-                        p.flags[season]
-                    }
+                    # only grow dyes the first field if there is no cloth crop available
+                    unless pids.empty? and isfirst
+                        pids |= dyes.find_all { |i|
+                            p = df.world.raws.plants.all[i]
+                            p.flags[season]
+                        }
+                    end
 
-                    bld.plant_id[season] = pids[rand(pids.length)] unless pids.empty?
+                    if pids.empty?
+                        @complained_about_no_plants ||= {}
+                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
+                    else
+                        bld.plant_id[season] = pids[rand(pids.length)]
+                    end
                 }
 
                 # TODO repurpose fields if we have too much dimple dye or smth
@@ -1551,7 +1583,7 @@ class DwarfAI
             return true unless f[:makeroom]
             return unless r.dug?
 
-            @ai.debug "makeroom #{@rooms.index(r)} #{r.type} #{r.subtype}"
+            @ai.debug "makeroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
 
             df.free(bld.room.extents._getp) if bld.room.extents
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
