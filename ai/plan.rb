@@ -2059,6 +2059,10 @@ class DwarfAI
                         ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
                          not ttt.designation.hidden and not df.building_find(ttt)
                     }
+                } and (-3..3).all? { |_x|
+                    (-4..4).all? { |_y|
+                        surface_tile_at(t.x + _x, t.y + _y)
+                    }
                 }
             }
 
