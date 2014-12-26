@@ -303,11 +303,11 @@ class DwarfAI
                 @idlers = []
                 @labor_needmore = Hash.new(0)
                 nonworkers = []
-                medic = {}
+                @medic = {}
                 df.ui.main.fortress_entity.assignments_by_type[:HEALTH_MANAGEMENT].each { |n|
                     next unless hf = df.world.history.figures.binsearch(n.histfig)
                     next unless u = df.unit_find(hf.unit_id)
-                    medic[u] = true
+                    @medic[u] = true
                 }
 
                 citizen.each_value { |c|
@@ -338,7 +338,7 @@ class DwarfAI
                             case lb
                             when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
                                 # don't unassign medical jobs from the chief medical dwarf
-                                next if medic[u]
+                                next if @medic[u]
                             end
                             # disable everything (may wait meeting)
                             ul[lb] = false
@@ -591,9 +591,14 @@ class DwarfAI
         def autolabor_unsetlabor(c, lb, reason='no reason given')
             return if not c
             return if not @worker_labor[c.id].include?(lb)
+            u = c.dfunit
+            case lb
+            when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
+                # don't unassign medical jobs from the chief medical dwarf
+                return if @medic[u]
+            end
             @labor_worker[lb].delete c.id
             @worker_labor[c.id].delete lb
-            u = c.dfunit
             u.status.labors[lb] = false
             u.military.pickup_flags.update = true if LaborTool[lb]
             @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
