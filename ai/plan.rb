@@ -2066,12 +2066,8 @@ class DwarfAI
                 }
             }
 
-            if not ent0
-                puts 'AI: cant find fortress entrance spot'
-                ent = center
-            else
-                ent = surface_tile_at(ent0)
-            end
+            raise 'Can\'t find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.' unless ent0
+            ent = surface_tile_at(ent0)
 
             @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
             3.times { |i|
@@ -2122,7 +2118,7 @@ class DwarfAI
                 }
             }
 
-            raise 'Too many caverns, cant find room for fort. We need more minerals !' if not @fort_entrance.z1
+            raise 'Too many caverns, cant find room for fort. We need more minerals!' unless @fort_entrance.z1
         end
 
         # assign rooms in the space found by scan_fort_*
