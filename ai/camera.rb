@@ -30,9 +30,9 @@ class DwarfAI
         end
 
         def update
-            targets = df.unit_hostiles.shuffle.select do |u|
+            targets = df.world.units.active.find_all do |u|
                 u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited
-            end + df.unit_citizens.shuffle.sort_by do |u|
+            end.shuffle + df.unit_citizens.shuffle.sort_by do |u|
                 unless u.job.current_job
                     0
                 else
