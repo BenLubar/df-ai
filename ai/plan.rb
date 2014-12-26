@@ -1495,12 +1495,12 @@ class DwarfAI
                         # season numbers are also the 1st 4 flags
                         next if not p.flags[season]
 
-                        pm = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.index_basic_mat).material
+                        pm = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material
                         if isfirst
                             pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
                         else
                             pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or
-                            (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.index_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
+                            (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
                             (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).flags and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
                         end
                     }
