@@ -365,6 +365,7 @@ class DwarfAI
                             case job.job_type
                             when :ConstructBuilding, :DestroyBuilding
                                 # TODO
+                                @labor_needmore[:UNKNOWN_BUILDING_LABOR_PLACEHOLDER] += 1
                             when :PullLever
                             when :CustomReaction
                                 reac = df.world.raws.reactions.find { |r| r.code == job.reaction_name }
