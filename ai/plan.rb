@@ -1164,6 +1164,9 @@ class DwarfAI
                         t.plants[i] = plant.flags[:DRINK] if plant
                     }
                 elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
+                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
+                    mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
+                    mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
                     mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
                 elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
