@@ -1529,7 +1529,7 @@ class DwarfAI
                         p.flags[season]
                     }
                     # only grow dyes the first field if there is no cloth crop available
-                    unless pids.empty? and isfirst
+                    if pids.empty? or !isfirst
                         pids |= dyes.find_all { |i|
                             p = df.world.raws.plants.all[i]
                             p.flags[season]
