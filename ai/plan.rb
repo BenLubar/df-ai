@@ -3091,7 +3091,10 @@ class DwarfAI
                     if t = df.map_tile_at(x, y, z)
                         next if t.tilemat == :CONSTRUCTION
                         dm = mode || dig_mode(t.x, t.y, t.z)
-                        dm = :Default if dm != :No and t.tilemat == :TREE
+                        if dm != :No and t.tilemat == :TREE
+                            dm = :Default
+                            t = find_tree_base t
+                        end
                         t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or
                                 t.shape == :WALL
                     end
@@ -3108,6 +3111,18 @@ class DwarfAI
                         end
                     end
                 }
+            end
+
+            def find_tree_base(t)
+                df.map_tile_at((df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
+                    next unless tree.tree_info
+                    sx = tree.pos.x - tree.tree_info.dim_x / 2
+                    sy = tree.pos.y - tree.tree_info.dim_y / 2
+                    sz = tree.pos.z
+                    next if t.x < sx or t.y < sy or t.z < sz or t.x >= sx + tree.tree_info.dim_x or t.y >= sy + tree.tree_info.dim_y or t.x >= sz + tree.tree_info.body_height
+                    tile = tree.tree_info.body[(t.z - sz)][(t.x - sz) + tree.tree_info.dim_x * (t.y - sy)]
+                    tile._whole != 0 and not tile.blocked
+                })
             end
 
             def dig_mode(x, y, z)
