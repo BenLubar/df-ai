@@ -776,7 +776,7 @@ class DwarfAI
 
         def queue_need_coffin_bld(amount)
             # dont dig too early
-            return if not @ai.plan.past_initial_phase 
+            return if not @ai.plan.find_room(:cemetary) { |r| r.status != :plan }
 
             # count actually allocated (plan wise) coffin buildings
             return if @ai.plan.find_room(:cemetary) { |r|
