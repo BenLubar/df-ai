@@ -455,7 +455,7 @@ class DwarfAI
                 laborminpct = LaborMinPct
                 labormaxpct = LaborMaxPct
 
-                @ai.plan.idleidle if @labor_needmore.empty? and not @idlers.empty?
+                @ai.plan.idleidle if @labor_needmore.empty? and not @idlers.empty? and @ai.plan.past_initial_phase
 
                 # handle low-number of workers + tool labors
                 mintool = LaborTool.keys.inject(0) { |s, lb| 
