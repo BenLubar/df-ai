@@ -35,9 +35,10 @@ class DwarfAI
 
         WatchStock = {
             :roughgem => 6, :thread_plant => 10, :cloth_nodye => 10,
-            :mill_plant => 4, :bag_plant => 4,
+            :mill_plant => 4, :bag_plant => 4, :milk => 1,
             :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
-            :skull => 2, :bone => 8, :ingredients => 5,
+            :skull => 2, :bone => 8, :food_ingredients => 2,
+            :drink_plant => 5, :drink_fruit => 5, :honey => 1,
             :honeycomb => 1, :wool => 1,
         }
 
@@ -141,21 +142,45 @@ class DwarfAI
                     ban_cooking("CREATURE:#{c.creature_id}:#{m.id}", :GLOB) if m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
                 end
             end
+            # ban cooking honey (hard-coded in raws)
+            ban_cooking('CREATURE:HONEY_BEE:HONEY', :LIQUID_MISC)
         end
 
         def update_plants
+            DrinkPlants.clear
+            DrinkFruits.clear
             ThreadPlants.clear
             MillPlants.clear
             BagPlants.clear
             DyePlants.clear
             GrowPlants.clear
+            MilkCreatures.clear
             df.world.raws.plants.all.length.times do |i|
                 p = df.world.raws.plants.all[i]
+                p.material.length.times do |j|
+                    if p.material[j].reaction_product.id.include?('DRINK_MAT')
+                        if p.material[j].flags[:STRUCTURAL_PLANT_MAT]
+                            DrinkPlants[i] = j + 419
+                        elsif p.material[j].flags[:LEAF_MAT]
+                            DrinkFruits[i] = j + 419
+                        end
+                        break
+                    end
+                end
                 ThreadPlants[i] = p.material_defs.type_basic_mat if p.flags[:THREAD]
                 MillPlants[i]   = p.material_defs.type_basic_mat if p.flags[:MILL]
                 BagPlants[i]    = p.material_defs.type_basic_mat if df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material.reaction_product.id.include?('BAG_ITEM')
                 DyePlants[i]    = p.material_defs.type_mill      if p.flags[:MILL] and df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material.flags[:IS_DYE]
                 GrowPlants[i]   = p.material_defs.type_basic_mat if p.flags[:SEED] and p.flags[:BIOME_SUBTERRANEAN_WATER]
+            end
+            df.world.raws.creatures.all.length.times do |i|
+                c = df.world.raws.creatures.all[i]
+                c.material.length.times do |j|
+                    if c.material[j].reaction_product.id.include?('CHEESE_MAT')
+                        MilkCreatures[i] = j + 19
+                        break
+                    end
+                end
             end
         end
 
@@ -187,11 +212,14 @@ class DwarfAI
             end
         end
 
-        ThreadPlants = {} # plants that can be made into thread
-        MillPlants   = {} # plants that can be milled
-        BagPlants    = {} # plants that can be processed into a bag
-        DyePlants    = {} # plants that can be milled that are able to dye cloth
-        GrowPlants   = {} # plants that we can grow underground
+        DrinkPlants   = {} # plants that can be brewed in their basic form
+        DrinkFruits   = {} # plants that have a growth that can be brewed
+        ThreadPlants  = {} # plants that can be made into thread
+        MillPlants    = {} # plants that can be milled
+        BagPlants     = {} # plants that can be processed into a bag
+        DyePlants     = {} # plants that can be milled that are able to dye cloth
+        GrowPlants    = {} # plants that we can grow underground
+        MilkCreatures = {} # creatures that have milk that can be turned into cheese
 
         # count unused stocks of one type of item
         def count_stocks(k)
@@ -208,11 +236,12 @@ class DwarfAI
                 df.world.items.other[:BUCKET]
             when :food
                 df.world.items.other[:ANY_GOOD_FOOD].grep(DFHack::ItemFoodst)
-            when :ingredients
-                df.world.items.other[:ANY_GOOD_FOOD].reject { |i|
+            when :food_ingredients
+                df.world.items.other[:ANY_COOKABLE].reject { |i|
                     case i
-                    when DFHack::ItemFoodst, DFHack::ItemSeedsst, DFHack::ItemBoxst, DFHack::ItemFishRawst, DFHack::ItemDrinkst, DFHack::ItemGlobst
-                        # TODO: filter tallow specifically
+                    when DFHack::ItemGlobst
+                        m = df.decode_mat(i).material and m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
+                    when DFHack::ItemSeedsst, DFHack::ItemConstructed, DFHack::ItemFishRawst, DFHack::ItemDrinkst
                         true
                     end
                 }
@@ -243,14 +272,25 @@ class DwarfAI
                 df.world.items.other[:WEAPON].find_all { |i|
                     i.subtype.subtype == ManagerSubtype[:MakeBoneCrossbow]
                 }
-            when :thread_plant, :mill_plant, :bag_plant
+            when :drink_plant, :thread_plant, :mill_plant, :bag_plant
                 plant = {
+                    :drink_plant  => DrinkPlants,
                     :thread_plant => ThreadPlants,
                     :mill_plant   => MillPlants,
                     :bag_plant    => BagPlants,
                 }[k]
                 df.world.items.other[:PLANT].find_all do |i|
                     plant[i.mat_index] == i.mat_type
+                end
+            when :drink_fruit
+                df.world.items.other[:PLANT_GROWTH].find_all do |i|
+                    DrinkFruits[i.mat_index] == i.mat_type
+                end
+            when :honey
+                df.world.items.other[:LIQUID_MISC].grep(df.decode_mat('CREATURE:HONEY_BEE:HONEY'))
+            when :milk
+                df.world.items.other[:LIQUID_MISC].find_all do |i|
+                    MilkCreatures[i.mat_index] == i.mat_type
                 end
             when :dye_plant
                 df.world.items.other[:PLANT].find_all do |i|
@@ -489,17 +529,22 @@ class DwarfAI
                 @last_cutpos = cuttrees(amount/@log_per_tree, tl) if amount
                 return
 
+            when :honey
+                order = :PressHoneycomb
+                input = [:honeycomb, :jug]
+
             when :drink
-                if @count[:food] <= 0
-                    amount = 0
-                elsif false
-                    mt = df.world.raws.mat_table
-                    mt.organic_types[:Plants].length.times { |i|
-                        plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                        t.plants[i]= plant.flags[:DRINK] if plant
-                    }
-                    # TODO count brewable
-                end
+                orders = {
+                    :drink_plant => :BrewDrinkPlant,
+                    :drink_fruit => :BrewDrinkFruit,
+                    :honey       => :BrewMead,
+                }
+                input = [[:drink_plant, :drink_fruit, :honey].max_by{ |i|
+                    c = count[i] || count_stocks(i)
+                    find_manager_orders(orders[i]).each { |o| c -= o.amount_left }
+                    c
+                }, :barrel]
+                order = orders[input.first]
                 amount = (amount+4)/5  # accounts for brewer yield, but not for input stack size
 
             when :block
@@ -763,8 +808,10 @@ class DwarfAI
             when :raw_adamantine
                 order = :ExtractMetalStrands
 
-            when :thread_plant, :mill_plant, :bag_plant
+            when :drink_plant, :drink_fruit, :thread_plant, :mill_plant, :bag_plant
                 order = {
+                    :drink_plant  => :BrewDrinkPlant,
+                    :drink_fruit  => :BrewDrinkFruit,
                     :thread_plant => :ProcessPlants,
                     :mill_plant   => :MillPlants,
                     :bag_plant    => :ProcessPlantsBag,
@@ -772,9 +819,10 @@ class DwarfAI
                 # stuff may rot/be brewed before we can process it
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
+                input = [:barrel] if order == :BrewDrinkPlant or order == :BrewDrinkFruit
                 input = [:bag] if order == :MillPlants or order == :ProcessPlantsBag
 
-            when :ingredients
+            when :food_ingredients
                 order = :PrepareMeal
                 amount = (amount + 4) / 5
 
@@ -807,6 +855,14 @@ class DwarfAI
 
             when :honeycomb
                 order = :PressHoneycomb
+                input = [:jug]
+
+            when :honey
+                order = :BrewMead
+                input = [:barrel]
+
+            when :milk
+                order = :MakeCheese
             end
 
             @ai.debug "stocks: use #{amount} #{order} for #{what}"
@@ -1074,7 +1130,9 @@ class DwarfAI
         end
 
         ManagerRealOrder = {
-            :BrewDrink => :CustomReaction,
+            :BrewDrinkPlant => :CustomReaction,
+            :BrewDrinkFruit => :CustomReaction,
+            :BrewMead => :CustomReaction,
             :MakeSoap => :CustomReaction,
             :MakePlasterPowder => :CustomReaction,
             :PressHoneycomb => :CustomReaction,
@@ -1106,13 +1164,16 @@ class DwarfAI
             :MakeWoodenStepladder => :wood,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
-            :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrink => -1,
+            :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrinkPlant => -1,
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
-            :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1,
+            :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1, :BrewDrinkFruit => -1,
+            :BrewMead => -1, :MakeCheese => -1,
         }
         ManagerCustom = {
-            :BrewDrink => 'BREW_DRINK_FROM_PLANT',
+            :BrewDrinkPlant => 'BREW_DRINK_FROM_PLANT',
+            :BrewDrinkFruit => 'BREW_DRINK_FROM_PLANT_GROWTH',
+            :BrewMead => 'MAKE_MEAD',
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
             :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
             :PressHoneycomb => 'PRESS_HONEYCOMB',
@@ -1211,7 +1272,6 @@ class DwarfAI
             :bucket => :MakeBucket,
             :barrel => :MakeBarrel,
             :bin => :ConstructBin,
-            :drink => :BrewDrink,
             :crutch => :ConstructCrutch,
             :splint => :ConstructSplint,
             :bag => :MakeBag,
