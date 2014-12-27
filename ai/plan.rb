@@ -1501,7 +1501,7 @@ class DwarfAI
                         else
                             pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or
                             (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
-                            (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).flags and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
+                            (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).material and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
                         end
                     }
 
