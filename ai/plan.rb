@@ -160,7 +160,7 @@ class DwarfAI
                    find_room(:cistern)   { |_r| _r.status == :plan } ||
                    find_room(:well)      { |_r| _r.status == :plan } ||
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
-                   find_room(:cemetary)  { |_r| _r.status == :plan } ||
+                   (find_room(:cemetary) { |_r| _r.status == :plan } if not find_room(:cemetary) { |_r| _r.status != :plan }) ||
                    (st = @important_workshops2.shift and
                     find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
