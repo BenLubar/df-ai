@@ -1133,6 +1133,7 @@ class DwarfAI
             :BrewDrinkPlant => :CustomReaction,
             :BrewDrinkFruit => :CustomReaction,
             :BrewMead => :CustomReaction,
+            :ProcessPlantsBag => :CustomReaction,
             :MakeSoap => :CustomReaction,
             :MakePlasterPowder => :CustomReaction,
             :PressHoneycomb => :CustomReaction,
@@ -1171,6 +1172,7 @@ class DwarfAI
             :BrewMead => -1, :MakeCheese => -1,
         }
         ManagerCustom = {
+            :ProcessPlantsBag => 'PROCESS_PLANT_TO_BAG',
             :BrewDrinkPlant => 'BREW_DRINK_FROM_PLANT',
             :BrewDrinkFruit => 'BREW_DRINK_FROM_PLANT_GROWTH',
             :BrewMead => 'MAKE_MEAD',
