@@ -298,7 +298,7 @@ class DwarfAI
 
         def autolabors(step)
             case step
-            when 2
+            when 1
                 @workers = []
                 @idlers = []
                 @labor_needmore = Hash.new(0)
@@ -349,6 +349,7 @@ class DwarfAI
                     @ai.debug "unassigned all labors from #{u.name} (non-worker)" if any
                 }
 
+            when 2
                 seen_workshop = {}
                 df.world.job_list.each { |job|
                     ref_bld = job.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first
@@ -613,7 +614,7 @@ class DwarfAI
 
         def unit_shallnotworknow(u)
             # manager shall not work when unvalidated jobs are pending
-            return true if df.unit_citizens.length >= 20 and
+            return true if @citizen.length >= 20 and
                     df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
                     df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
             # TODO medical dwarf, broker
