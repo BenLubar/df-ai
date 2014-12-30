@@ -1081,11 +1081,11 @@ class DwarfAI
                     bld.settings.flags.furniture = true
                     bld.settings.furniture.sand_bags = true
                     s = bld.settings.furniture
-                    60.times { |i| s.type[i] = true }   # 33, hardcoded (28 ItemTypes, 4 ToolUses, 1 SandBags)
+                    DFHack::FurnitureType::ENUM.length.times { |i| s.type[i] = true }
                 when :finished_goods
                     bld.settings.flags.finished_goods = true
                     s = bld.settings.finished_goods
-                    150.times { |i| s.type[i] = true }  # 112 (== refuse)
+                    DFHack::ItemType::ENUM.length.times { |i| s.type[i] = true }
                     bld.max_bins = r.w*r.h if r
                 when :ammo
                     bld.settings.flags.ammo = true
@@ -1113,7 +1113,7 @@ class DwarfAI
                     s.unusable = true
                     bld.max_bins = r.w*r.h if r
                 end
-                30.times { |i| s.other_mats[i] = true }    # 10
+                30.times { |i| s.other_mats[i] = true }
                 df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
                 s.quality_core.map! { true }
                 s.quality_total.map! { true }
@@ -1127,23 +1127,24 @@ class DwarfAI
                 bld.settings.refuse.fresh_raw_hide = false
                 bld.settings.refuse.rotten_raw_hide = true
                 t = bld.settings.refuse
-                150.times { |i| t.type[i] = true }  # 112, ItemType enum + other stuff
                 if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
                     df.world.raws.creatures.all.length.times { |i|
                         t.corpses[i] = t.body_parts[i] = t.hair[i] = false
                         t.skulls[i] = t.bones[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
                     }
                 elsif subtype == :corpses
+                    DFHack::ItemType::ENUM.length.times { |i| t.type[i] = true }
+                    t.type[:REMAINS] = t.type[:PLANT] = t.type[:PLANT_GROWTH] = false
                     df.world.raws.creatures.all.length.times { |i|
-                        t.corpses[i] = true
-                        t.body_parts[i] = t.skulls[i] = t.bones[i] = t.hair[i] =
-                            t.shells[i] = t.teeth[i] = t.horns[i] = false
+                        t.body_parts[i] = t.corpses[i] = true
+                        t.skulls[i] = t.bones[i] = t.hair[i] = t.shells[i] = t.teeth[i] = t.horns[i] = false
                     }
                 else
+                    bld.settings.refuse.fresh_raw_hide = true
+                    bld.settings.refuse.rotten_raw_hide = false
                     df.world.raws.creatures.all.length.times { |i|
-                        t.corpses[i] = false
-                        t.body_parts[i] = t.skulls[i] = t.bones[i] = t.hair[i] =
-                            t.shells[i] = t.teeth[i] = t.horns[i] = true
+                        t.corpses[i] = t.body_parts[i] = false
+                        t.skulls[i] = t.bones[i] = t.hair[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
                     }
                 end
             when :food
@@ -1151,7 +1152,7 @@ class DwarfAI
                 bld.max_barrels = r.w*r.h if r
                 t = bld.settings.food
                 mt = df.world.raws.mat_table
-                   if r and r.misc[:workshop] and r.misc[:workshop].type == :farmplot
+                if r and r.misc[:workshop] and r.misc[:workshop].type == :farmplot
                     mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
                 elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
                     mt.organic_types[:Plants].length.times { |i|
@@ -1164,8 +1165,12 @@ class DwarfAI
                         plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
                         t.plants[i] = plant.flags[:DRINK] if plant
                     }
+                    mt.organic_types[:Leaf].length.times { |i|
+                        plant = df.decode_mat(mt.organic_types[:Leaf][i], mt.organic_indexes[:Leaf][i]).plant
+                        t.leaves[i] = plant.flags[:DRINK] if plant
+                    }
                 elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
-                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
+                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }
                     mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
                     mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
                     mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
@@ -1173,7 +1178,7 @@ class DwarfAI
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                 else
                     bld.settings.food.prepared_meals = true
-                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }    # XXX very big (10588)
+                    mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }
                     mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
                     mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
                     mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
@@ -1469,7 +1474,7 @@ class DwarfAI
                     if td.subterranean
                         biomes[:BIOME_SUBTERRANEAN_WATER] += 1
                     else
-                        biomes[:"BIOME_#{DFHack::BiomeType::Enum[td.biome]}"] += 1
+                        biomes[:"BIOME_#{DFHack::BiomeType::ENUM[td.biome]}"] += 1
                     end
                 end
             end
