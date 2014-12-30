@@ -3121,7 +3121,7 @@ class DwarfAI
 
             def find_tree_base(t)
                 df.map_tile_at((df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
-                    next unless tree.tree_info
+                    next unless tree.tree_info and tree.tree_info.body
                     sx = tree.pos.x - tree.tree_info.dim_x / 2
                     sy = tree.pos.y - tree.tree_info.dim_y / 2
                     sz = tree.pos.z
