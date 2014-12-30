@@ -1134,7 +1134,7 @@ class DwarfAI
                     }
                 elsif subtype == :corpses
                     DFHack::ItemType::ENUM.length.times { |i| t.type[i] = true }
-                    t.type[:REMAINS] = t.type[:PLANT] = t.type[:PLANT_GROWTH] = false
+                    t.type[DFHack::ItemType::NUME[:REMAINS]] = t.type[DFHack::ItemType::NUME[:PLANT]] = t.type[DFHack::ItemType::NUME[:PLANT_GROWTH]] = false
                     df.world.raws.creatures.all.length.times { |i|
                         t.body_parts[i] = t.corpses[i] = true
                         t.skulls[i] = t.bones[i] = t.hair[i] = t.shells[i] = t.teeth[i] = t.horns[i] = false
