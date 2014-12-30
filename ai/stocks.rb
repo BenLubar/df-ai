@@ -28,8 +28,6 @@ class DwarfAI
             :giant_corkscrew => 1, :pipe_section => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
             :jug => 1, :stepladder => 2,
-            :leather => 0, :tallow => 0, :dye_plant => 0,
-            #:rock_noeco => 10,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -39,7 +37,7 @@ class DwarfAI
             :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
             :skull => 2, :bone => 8, :food_ingredients => 2,
             :drink_plant => 5, :drink_fruit => 5, :honey => 1,
-            :honeycomb => 1, :wool => 1,
+            :honeycomb => 1, :wool => 1, :tallow => 1,
         }
 
         attr_accessor :ai, :count
@@ -468,6 +466,8 @@ class DwarfAI
 
         # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
+            return if amount <= 0
+
             case what
             when :weapon
                 return queue_need_weapon
@@ -575,16 +575,33 @@ class DwarfAI
 
             order ||= FurnitureOrder[what]
             @ai.debug "stocks: need #{amount} #{order} for #{what}"
-            amount = 30 if amount > 30
+
             if input
-                i_amount = input.map { |i| count[i] || count_stocks(i) }.min
-                amount = i_amount if amount > i_amount
+                i_amount = amount
+                input.each { |i|
+                    c = count[i] || count_stocks(i)
+                    i_amount = c if c < i_amount
+                    if c < amount and Needed[i]
+                        @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
+                        queue_need(i, (amount - c) / 2)
+                    end
+                }
+                amount = i_amount
             end
+
             if matcat = ManagerMatCategory[order]
                 i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
+                if i_amount < amount and Needed[matcat]
+                    @ai.debug "stocks: want #{amount - i_amount} more #{matcat} for #{i_amount}/#{amount} #{order}"
+                    queue_need(matcat, (amount - i_amount) / 2)
+                end
                 amount = i_amount if amount > i_amount
             end
-            find_manager_orders(order).each { |o| amount -= o.amount_left }
+
+            amount = 30 if amount > 30
+
+            find_manager_orders(order).each { |o| amount -= o.amount_total }
+
             return if amount <= 0
 
             add_manager_order(order, amount)
@@ -778,6 +795,7 @@ class DwarfAI
             # dont dig too early
             return if not @ai.plan.find_room(:cemetary) { |r| r.status != :plan }
 
+
             # count actually allocated (plan wise) coffin buildings
             return if @ai.plan.find_room(:cemetary) { |r|
                 r.layout.each { |f|
@@ -792,6 +810,8 @@ class DwarfAI
 
         # make it so the stocks of 'what' decrease by 'amount'
         def queue_use(what, amount)
+            return if amount <= 0
+
             case what
             when :metal_ore
                 queue_use_metal_ore(amount)
@@ -863,13 +883,25 @@ class DwarfAI
 
             when :milk
                 order = :MakeCheese
+
+            when :tallow
+                order = :MakeSoap
+                input = [:lye]
             end
 
             @ai.debug "stocks: use #{amount} #{order} for #{what}"
 
             if input
-                i_amount = input.map { |i| count[i] || count_stocks(i) }.min
-                amount = i_amount if amount > i_amount
+                i_amount = amount
+                input.each { |i|
+                    c = count[i] || count_stocks(i)
+                    i_amount = c if c < i_amount
+                    if c < amount and Needed[i]
+                        @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
+                        queue_need(i, (amount - c) / 2)
+                    end
+                }
+                amount = i_amount
             end
 
             amount = 30 if amount > 30
