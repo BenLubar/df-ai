@@ -3126,6 +3126,7 @@ class DwarfAI
                     sy = tree.pos.y - tree.tree_info.dim_y / 2
                     sz = tree.pos.z
                     next if t.x < sx or t.y < sy or t.z < sz or t.x >= sx + tree.tree_info.dim_x or t.y >= sy + tree.tree_info.dim_y or t.x >= sz + tree.tree_info.body_height
+                    next unless tree.tree_info.body[(t.z - sz)]
                     tile = tree.tree_info.body[(t.z - sz)][(t.x - sz) + tree.tree_info.dim_x * (t.y - sy)]
                     tile._whole != 0 and not tile.blocked
                 })
