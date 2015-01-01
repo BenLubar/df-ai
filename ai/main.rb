@@ -59,8 +59,15 @@ class DwarfAI
             end
         end
 
-        df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
-        df.pause_state = false
+        if df.announcements.flags[announce.type].DO_MEGA
+            timeout_sameview {
+                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+                df.pause_state = false
+            }
+        else
+            df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+            df.pause_state = false
+        end
     end
 
     def statechanged(st)
@@ -73,6 +80,7 @@ class DwarfAI
         elsif st == :PAUSED
             df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
             df.pause_state = false
+            puts_err "AI: warning: pause without an event"
         elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._rtti_classname
             when :viewscreen_textviewerst
@@ -122,7 +130,7 @@ class DwarfAI
         end
     end
 
-    def timeout_sameview(delay=8, &cb)
+    def timeout_sameview(delay=5, &cb)
         curscreen = df.curview._rtti_classname
         timeoff = Time.now + delay
 
