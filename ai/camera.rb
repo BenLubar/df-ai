@@ -30,6 +30,15 @@ class DwarfAI
         end
 
         def update
+            if (not @following and df.ui.follow_unit != -1) or (@following and @following != df.ui.follow_unit)
+                if df.ui.follow_unit == -1
+                    @following = nil
+                else
+                    @following = df.ui.follow_unit
+                end
+                return
+            end
+
             targets = df.world.units.active.find_all do |u|
                 u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited
             end.shuffle + df.unit_citizens.shuffle.sort_by do |u|
@@ -75,7 +84,7 @@ class DwarfAI
                 end
             end
 
-            @following_prev << @following if @following and not @following_prev.include? @following
+            @following_prev << @following if @following
             if @following_prev.length > 3
                 @following_prev = @following_prev[-3, 3]
             end
@@ -83,15 +92,15 @@ class DwarfAI
             if targets.empty?
                 @following = nil
             else
-                while @following_prev.include? targets[0] and targets.length > 1
+                while @following_prev.include? targets[0].id and targets.length > 1
                     targets = targets[1..-1]
                 end
-                @following = targets[0]
+                @following = targets[0].id
             end
 
-            if @following && !df.pause_state
-                df.center_viewscreen @following
-                df.ui.follow_unit = @following.id
+            if @following and not df.pause_state
+                df.center_viewscreen(df.unit_find(@following))
+                df.ui.follow_unit = @following
             end
 
             df.world.status.flags.combat = false
@@ -100,10 +109,10 @@ class DwarfAI
         end
 
         def status
-            if @following && df.ui.follow_unit == @following.id
-                "following #{@following.name} (previously: #{@following_prev.map(&:name).join(', ')})"
+            if @following and df.ui.follow_unit == @following
+                "following #{df.unit_find(@following).name} (previously: #{@following_prev.map{ |u| df.unit_find(u).name }.join(', ')})"
             else
-                "inactive (previously: #{@following_prev.map(&:name).join(', ')})"
+                "inactive (previously: #{@following_prev.map{ |u| df.unit_find(u).name }.join(', ')})"
             end
         end
     end
