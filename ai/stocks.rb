@@ -583,7 +583,7 @@ class DwarfAI
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
                         @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
-                        queue_need(i, (amount - c) / 2)
+                        queue_need(i, amount - c)
                     end
                 }
                 amount = i_amount
@@ -593,7 +593,7 @@ class DwarfAI
                 i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
                 if i_amount < amount and Needed[matcat]
                     @ai.debug "stocks: want #{amount - i_amount} more #{matcat} for #{i_amount}/#{amount} #{order}"
-                    queue_need(matcat, (amount - i_amount) / 2)
+                    queue_need(matcat, amount - i_amount)
                 end
                 amount = i_amount if amount > i_amount
             end
@@ -898,7 +898,7 @@ class DwarfAI
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
                         @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
-                        queue_need(i, (amount - c) / 2)
+                        queue_need(i, amount - c)
                     end
                 }
                 amount = i_amount
