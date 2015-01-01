@@ -3120,7 +3120,8 @@ class DwarfAI
             end
 
             def find_tree_base(t)
-                df.map_tile_at((df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
+                tree = (df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
+                    next true if tree.pos.x == t.x and tree.pos.y == t.y and tree.pos.z == t.z
                     next unless tree.tree_info and tree.tree_info.body
                     sx = tree.pos.x - tree.tree_info.dim_x / 2
                     sy = tree.pos.y - tree.tree_info.dim_y / 2
@@ -3129,7 +3130,13 @@ class DwarfAI
                     next unless tree.tree_info.body[(t.z - sz)]
                     tile = tree.tree_info.body[(t.z - sz)][(t.x - sz) + tree.tree_info.dim_x * (t.y - sy)]
                     tile._whole != 0 and not tile.blocked
-                })
+                }
+                if tree
+                    df.map_tile_at(tree)
+                else
+                    puts_err "AI: #{df.cur_year}:#{df.cur_year_tick} failed to find tree at #{t.inspect}"
+                    t
+                end
             end
 
             def dig_mode(x, y, z)
