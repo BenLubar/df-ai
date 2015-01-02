@@ -115,6 +115,13 @@ class DwarfAI
                 "inactive (previously: #{@following_prev.map{ |u| df.unit_find(u).name }.join(', ')})"
             end
         end
+
+        def serialize
+            {
+                :following      => @following,
+                :following_prev => @following_prev,
+            }
+        end
     end
 end
 

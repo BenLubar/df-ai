@@ -1,15 +1,17 @@
 class DwarfAI
     class Population
         class Citizen
-            attr_accessor :id, :role, :idlecounter, :entitypos
+            attr_accessor :id
             def initialize(id)
                 @id = id
-                @idlecounter = 0
-                @entitypos = []
             end
 
             def dfunit
                 df.unit_find(@id)
+            end
+
+            def serialize
+                id
             end
         end
 
@@ -79,7 +81,6 @@ class DwarfAI
             df.unit_citizens.each { |u|
                 next if u.profession == :BABY
                 @citizen[u.id] ||= new_citizen(u.id)
-                @citizen[u.id].entitypos = df.unit_entitypositions(u)
                 old.delete u.id
             }
 
@@ -548,7 +549,7 @@ class DwarfAI
                         (min-cnt).times {
                             c = @workers.sort_by { |_c|
                                 malus = @worker_labor[_c.id].length * 10
-                                malus += _c.entitypos.length * 40
+                                malus += df.unit_entitypositions(_c.dfunit).length * 40
                                 if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
                                     malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
                                 end
@@ -828,6 +829,14 @@ class DwarfAI
 
         def status
             "#{@citizen.length} citizen, #{@military.length} military, #{@idlers.length} idle, #{@pet.length} pets"
+        end
+
+        def serialize
+            {
+                :citizen  => Hash[@citizen.map{ |k, v| [k, v.serialize] }],
+                :military => Hash[@military.map{ |k, v| [k, v.serialize] }],
+                :pet      => @pet,
+            }
         end
     end
 end

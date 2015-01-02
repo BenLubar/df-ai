@@ -1358,6 +1358,10 @@ class DwarfAI
             puts_err "df-ai stocks: cannot itemcount #{itm.inspect}", $!, $!.backtrace
             0
         end
+
+        def serialize
+            {} # we don't need to save any state
+        end
     end
 end
 

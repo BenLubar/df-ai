@@ -175,6 +175,15 @@ class DwarfAI
     def status
         ["Plan: #{plan.status}", "Pop: #{pop.status}", "Stocks: #{stocks.status}", "Camera: #{camera.status}"]
     end
+
+    def serialize
+        {
+            :plan   => plan.serialize,
+            :pop    => pop.serialize,
+            :stocks => stocks.serialize,
+            :camera => camera.serialize,
+        }
+    end
 end
 
 # vim: et:sw=4:ts=4

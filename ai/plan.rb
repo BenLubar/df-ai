@@ -3062,6 +3062,22 @@ class DwarfAI
             end
         end
 
+        def serialize
+            {
+                :rooms     => @rooms.map(&:serialize),
+                :corridors => @corridors.map(&:serialize),
+                :tasks     => @tasks.map{ |t| t.map{ |v|
+                    if i = $dwarfAI.plan.instance_variable_get(:@rooms).index(v) # XXX
+                        [:room, i]
+                    elsif i = $dwarfAI.plan.instance_variable_get(:@corridors).index(v) # XXX
+                        [:corridor, i]
+                    else
+                        v
+                    end
+                } },
+            }
+        end
+
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
             attr_accessor :owner, :subtype
@@ -3183,6 +3199,38 @@ class DwarfAI
                     return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
                     # TODO check actual tile shape vs construction type
                     return if t.shape_basic == :Open
+                }
+            end
+
+            def serialize
+                {
+                    :x1         => x1,
+                    :x2         => x2,
+                    :y1         => y1,
+                    :y2         => y2,
+                    :z1         => z1,
+                    :z2         => z2,
+                    :accesspath => accesspath.map{ |ap|
+                        if i = $dwarfAI.plan.instance_variable_get(:@rooms).index(ap) # XXX
+                            [:room, i]
+                        elsif i = $dwarfAI.plan.instance_variable_get(:@corridors).index(ap) # XXX
+                            [:corridor, i]
+                        else
+                            raise "access path #{ap.inspect} not in @rooms or @corridors"
+                        end
+                    },
+                    :status     => status,
+                    :layout     => layout,
+                    :type       => type,
+                    :owner      => owner,
+                    :subtype    => subtype,
+                    :misc       => Hash[misc.map{ |k, v|
+                        if k == :workshop
+                            [k, $dwarfAI.plan.instance_variable_get(:@rooms).index(v)] # XXX
+                        else
+                            [k, v]
+                        end
+                    }],
                 }
             end
         end
