@@ -279,7 +279,7 @@ class DwarfAI
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborSkill = DFHack::JobSkill::Labor.invert
-        LaborIdle = { :HERBALISM => true, :FISH => true, :DETAIL => true }
+        LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
         LaborMax = Hash.new(8).update :FISH => 1
