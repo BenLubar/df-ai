@@ -27,7 +27,7 @@ class DwarfAI
             :coal => 3, :raw_coke => 1, :gypsum => 1,
             :giant_corkscrew => 1, :pipe_section => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
-            :jug => 1, :stepladder => 2,
+            :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -353,6 +353,10 @@ class DwarfAI
                 return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner and !bld.burial_mode.no_pets }.length
             when :weapon
                 return count_stocks_weapon
+            when :pick
+                return count_stocks_weapon(:MINING)
+            when :axe
+                return count_stocks_weapon(:AXE)
             when :armor
                 return count_stocks_armor
             when :clothes
@@ -405,11 +409,12 @@ class DwarfAI
         end
 
         # return the minimum of the number of free weapons for each subtype used by current civ
-        def count_stocks_weapon
+        def count_stocks_weapon(skill=nil)
             ue = df.ui.main.fortress_entity.entity_raw.equipment
             [[:WEAPON, ue.digger_tg],
              [:WEAPON, ue.weapon_tg]].map { |oidx, idefs|
                 idefs.to_a.map { |idef|
+                    next if skill and idef.skill_melee != skill
                     next if idef.flags[:TRAINING]
                     df.world.items.other[oidx].find_all { |i|
                         i.subtype.subtype == idef.subtype and
@@ -470,7 +475,11 @@ class DwarfAI
 
             case what
             when :weapon
-                return queue_need_weapon
+                return queue_need_weapon(Needed[:weapon])
+            when :pick
+                return queue_need_weapon(Needed[:pick], :MINING)
+            when :axe
+                return queue_need_weapon(Needed[:axe], :AXE)
             when :armor
                 return queue_need_armor
             when :clothes
@@ -608,7 +617,9 @@ class DwarfAI
         end
 
         # forge weapons
-        def queue_need_weapon
+        def queue_need_weapon(needed, skill=nil)
+            return if not skill and (@count[:pick] == 0 or @count[:axe] == 0)
+
             bars = Hash.new(0)
             coal_bars = @count[:coal]
             coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
@@ -643,9 +654,10 @@ class DwarfAI
             [[ue.digger_tg, @metal_digger_pref],
              [ue.weapon_tg, @metal_weapon_pref]].each { |idefs, pref|
                 idefs.each { |idef|
+                    next if skill and idef.skill_melee != skill
                     next if idef.flags[:TRAINING]
 
-                    cnt = Needed[:weapon]
+                    cnt = needed
                     cnt -= df.world.items.other[:WEAPON].find_all { |i|
                         i.subtype.subtype == idef.subtype and is_item_free(i)
                     }.length
