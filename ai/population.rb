@@ -457,6 +457,14 @@ class DwarfAI
                 laborminpct = LaborMinPct
                 labormaxpct = LaborMaxPct
 
+                LaborList.each { |lb|
+                    max = labormax[lb]
+                    maxpc = labormaxpct[lb] * @workers.length / 100
+                    max = maxpc if maxpc > max
+
+                    @labor_needmore.delete lb if @labor_worker[lb].length >= max
+                }
+
                 @ai.plan.idleidle if @labor_needmore.empty? and not @idlers.empty? and @ai.plan.past_initial_phase
 
                 # handle low-number of workers + tool labors
