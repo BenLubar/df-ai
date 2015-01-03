@@ -496,6 +496,7 @@ class DwarfAI
                     [:CARPENTER, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Carpenters and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
                     [:MINE, lambda { ai.plan.digging? }],
                     [:MASON, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Masons and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
+                    [:CUTWOOD, lambda { ai.stocks.cutting_trees? }],
                 ].each { |lb, test|
                     if @workers.length > exclusive.length+2 and test[]
                         # keep last run's choice

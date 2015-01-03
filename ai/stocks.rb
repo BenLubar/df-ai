@@ -520,13 +520,13 @@ class DwarfAI
 
             when :wood
                 # dont bother if the last designated tree is not cut yet
-                return if @last_cutpos and @last_cutpos.offset(0, 0, 0).designation.dig == :Default
-                @log_per_tree = 6
+                return if @last_cutpos and t = df.map_tile_at(@last_cutpos[0], @last_cutpos[1], @last_cutpos[2]) and t.designation and t.designation.dig == :Default
 
                 amount *= 2
+                amount = 30 if amount > 30
                 tl = tree_list
-                tl.each { |t| amount -= @log_per_tree if df.map_tile_at(t).designation.dig == :Default }
-                @last_cutpos = cuttrees(amount/@log_per_tree, tl) if amount
+                tl.each { |t| amount -= 6 if df.map_tile_at(t[0], t[1], t[2]).designation.dig == :Default }
+                @last_cutpos = cuttrees(amount/6, tl) if amount > 6
                 return
 
             when :honey
@@ -990,13 +990,13 @@ class DwarfAI
             # return the bottom-rightest designated tree
             br = nil
             list.each { |tree|
-                t = df.map_tile_at(tree)
+                t = df.map_tile_at(tree[0], tree[1], tree[2])
                 next if t.tilemat != :TREE
                 next if t.designation.dig == :Default
                 next if list.length > 4*amount and rand(4) != 0
                 t.dig(:Default)
-                br = t if not br or (br.x & -16) < (t.x & -16) or
-                        ((br.x & -16) == (t.x & -16) and (br.y & -16) < (t.y & -16))
+                br = [t.x, t.y, t.z] if not br or (br[0] & -16) < (t.x & -16) or
+                        ((br[0] & -16) == (t.x & -16) and (br[1] & -16) < (t.y & -16))
                 amount -= 1
                 break if amount <= 0
             }
@@ -1017,6 +1017,8 @@ class DwarfAI
                 not t.designation.hidden
             }.sort_by { |p|
                 (p.pos.x-fe.x)**2 + (p.pos.y-fe.y)**2 + ((p.pos.z-fe.z2)*4)**2
+            }.map { |p|
+                [p.pos.x, p.pos.y, p.pos.z]
             }
         end
 
@@ -1357,6 +1359,14 @@ class DwarfAI
         rescue
             puts_err "df-ai stocks: cannot itemcount #{itm.inspect}", $!, $!.backtrace
             0
+        end
+
+        def cutting_trees?
+            return true if @last_cutpos and t = df.map_tile_at(@last_cutpos[0], @last_cutpos[1], @last_cutpos[2]) and t.designation and t.designation.dig == :Default
+
+            tree_list.any? { |t|
+                df.map_tile_at(t[0], t[1], t[2]).designation.dig == :Default
+            }
         end
 
         def serialize
