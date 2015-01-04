@@ -479,7 +479,10 @@ class DwarfAI
                     @labor_needmore.delete lb if @labor_worker[lb].length >= max
                 }
 
-                @ai.plan.idleidle if @labor_needmore.empty? and not @idlers.empty? and @ai.plan.past_initial_phase
+                if @labor_needmore.empty? and not @idlers.empty? and @ai.plan.past_initial_phase and (not @last_idle_year or @last_idle_year != df.cur_year)
+                    @ai.plan.idleidle
+                    @last_idle_year = df.cur_year
+                end
 
                 # handle low-number of workers + tool labors
                 mintool = LaborTool.keys.inject(0) { |s, lb| 
