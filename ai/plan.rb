@@ -1323,19 +1323,23 @@ class DwarfAI
         end
 
         def smooth_cistern(r)
-            smooth_room_access(r)
+            r.accesspath.each { |a| smooth_room_access(a) }
 
-            ((r.z1+1)..r.z2).each { |z|
-                (r.x1..r.x2).each { |x|
-                    (r.y1..r.y2).each { |y|
+            (r.z1..r.z2).each { |z|
+                ((r.x1-1)..(r.x2+1)).each { |x|
+                    next if z != r.z1 and r.x1 <= x and r.x2 >= x
+                    ((r.y1-1)..(r.y2+1)).each { |y|
+                        next if z != r.z1 and r.y1 <= y and r.y2 >= y
                         next unless t = df.map_tile_at(x, y, z)
-                        t.designation.smooth = 0
+                        next if t.designation.hidden
+                        next if t.designation.dig != :No
+                        next if t.special == :TRACK
+                        case t.shape_basic
+                        when :Wall, :Floor
+                            t.dig :Smooth
+                        end
                     }
                 }
-            }
-
-            ai.pop.worker_labor.each { |w, wl|
-                df.unit_find(w).status.labors[:DETAIL] = !wl.include?(:MINE)
             }
         end
 
@@ -2884,7 +2888,8 @@ class DwarfAI
             i = 0
             ground = {}
             bg = df.onupdate_register('df-ai plan setup_outdoor_gathering_zones', 10) do
-                if i == [x+31, df.world.map.x_count].min
+                bg.description = "df-ai plan setup_outdoor_gathering_zones #{i}"
+                if x+i == [x+31, df.world.map.x_count].min
                     ground.keys.each do |tz|
                         g = ground[tz]
                         bld = df.building_alloc(:Civzone, :ActivityZone)
