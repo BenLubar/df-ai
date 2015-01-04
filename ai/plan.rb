@@ -3022,17 +3022,25 @@ class DwarfAI
                 tx, ty = t.x, t.y 
             end
 
+            dx, dy = tx & 15, ty & 15
+
             tree = false
             @rangez.each do |z|
-                next unless tt = df.map_tile_at(tx, ty, z)
-                next unless tsb = tt.shape_basic
+                next unless b = df.map_block_at(tx, ty, z)
+                next unless tt = b.tiletype[dx][dy]
+                next unless ts = DFHack::Tiletype::Shape[tt]
+                next unless tsb = DFHack::TiletypeShape::BasicShape[ts]
                 next if tsb == :Open
-                return nil if tt.tilemat == :POOL or tt.tilemat == :RIVER
+                next unless tm = DFHack::Tiletype::Material[tt]
+                return nil if tm == :POOL or tm == :RIVER
                 if tsb == :Floor or tsb == :Ramp
-                    return tt if tt.tilemat != :TREE
+                    return df.map_tile_at(tx, ty, z) if tm != :TREE
                 end
-                tree = true if tt.tilemat == :TREE
-                return nil if tree and tt.tilemat != :TREE
+                if tm == :TREE
+                    tree = true
+                elsif tree
+                    return nil
+                end
             end
             return nil
         end
