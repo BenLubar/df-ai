@@ -529,12 +529,14 @@ class DwarfAI
 
             when :wood
                 # dont bother if the last designated tree is not cut yet
-                return if @last_cutpos and t = df.map_tile_at(@last_cutpos[0], @last_cutpos[1], @last_cutpos[2]) and t.designation and t.designation.dig == :Default
+                return if @last_cutpos and t = df.map_tile_at(*@last_cutpos) and t.designation and t.designation.dig == :Default
 
                 amount *= 2
                 amount = 30 if amount > 30
                 tl = tree_list
-                tl.each { |t| amount -= 6 if df.map_tile_at(t[0], t[1], t[2]).designation.dig == :Default }
+                tl.each { |t|
+                    amount -= 6 if tile = df.map_tile_at(*t) and tile.designation and tile.designation.dig == :Default
+                }
                 @last_cutpos = cuttrees(amount/6, tl) if amount > 6
                 return
 
@@ -1374,11 +1376,17 @@ class DwarfAI
         end
 
         def cutting_trees?
-            return true if @last_cutpos and t = df.map_tile_at(@last_cutpos[0], @last_cutpos[1], @last_cutpos[2]) and t.designation and t.designation.dig == :Default
+            return false if not @last_cutpos
+            return true if t = df.map_tile_at(*@last_cutpos) and t.designation and t.designation.dig == :Default
 
-            tree_list.any? { |t|
-                df.map_tile_at(t[0], t[1], t[2]).designation.dig == :Default
+            if tree = tree_list.find { |t|
+                tile = df.map_tile_at(*t) and tile.designation and tile.designation.dig == :Default
             }
+                @last_cutpos = tree
+                return true
+            end
+            @last_cutpos = nil
+            false
         end
 
         def serialize
