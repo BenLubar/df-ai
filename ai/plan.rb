@@ -26,9 +26,11 @@ class DwarfAI
             setup_blueprint
             categorize_all
 
-            digroom find_room(:workshop) { |r| r.subtype == :Masons }
-            digroom find_room(:workshop) { |r| r.subtype == :Carpenters }
-            find_room(:workshop) { |r| !r.subtype }.subtype = :Masons
+            digroom find_room(:workshop) { |r| r.subtype == :Masons and r.misc[:workshop_level] == 0 }
+            digroom find_room(:workshop) { |r| r.subtype == :Carpenters and r.misc[:workshop_level] == 0 }
+            find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 0 }.subtype = :Masons
+            find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 1 }.subtype = :Masons
+            find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 2 }.subtype = :Masons
             
             dig_garbagedump
         end
@@ -156,15 +158,15 @@ class DwarfAI
             freebed = @spare_bedroom
             if r =
                    (st = @important_workshops.shift and
-                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
+                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan and _r.misc[:workshop_level] == 0 }) ||
                    find_room(:cistern)   { |_r| _r.status == :plan } ||
                    find_room(:well)      { |_r| _r.status == :plan } ||
                    find_room(:infirmary) { |_r| _r.status == :plan } ||
                    (find_room(:cemetary) { |_r| _r.status == :plan } if not find_room(:cemetary) { |_r| _r.status != :plan }) ||
                    (st = @important_workshops2.shift and
-                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan }) ||
+                    find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan and _r.misc[:workshop_level] == 0 }) ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
-                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 0 } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    (@past_initial_phase = true ; false) ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
@@ -174,7 +176,8 @@ class DwarfAI
                    ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 3 and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
-                   find_room(:stockpile) { |_r| _r.status == :plan }
+                   find_room(:stockpile) { |_r| _r.status == :plan } ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan }
                 @ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
                 wantdig(r)
                 if r.status == :finished
@@ -536,7 +539,7 @@ class DwarfAI
                 @tasks << [:furnish, r, f]
             }
 
-            if r.type == :workshop
+            if r.type == :workshop and r.misc[:workshop_level] == 0
                 # add minimal stockpile in front of workshop
                 if sptype = {:Masons => :stone, :Carpenters => :wood, :Craftsdwarfs => :refuse,
                         :Farmers => :food, :Fishery => :food, :Jewelers => :gems, :Loom => :cloth,
@@ -1059,7 +1062,7 @@ class DwarfAI
             when :stone
                 bld.settings.flags.stone = true
                 t = bld.settings.stone.mats
-                   if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
+                if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
                     df.world.raws.inorganics.length.times { |i|
                         t[i] = (df.ui.economic_stone[i] ? 0 : 1)
                     }
@@ -2213,6 +2216,7 @@ class DwarfAI
             @corridors << corridor_center2
 
             r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-6, @fort_entrance.x-2, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2-1)
+            r.misc[:workshop_level] = 0
             r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
             r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
             r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
@@ -2240,16 +2244,40 @@ class DwarfAI
                         # stuff a quern&screwpress near the farmers'
                         @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy+1, fy+1, fz)
                         @rooms.last.accesspath = [cor_x]
+                        @rooms.last.misc[:workshop_level] = 0
+
                         @rooms << Room.new(:workshop, :ScrewPress, cx-2, cx-2, fy-1, fy-1, fz)
                         @rooms.last.accesspath = [cor_x]
+                        @rooms.last.misc[:workshop_level] = 0
                     end
 
-                    @rooms << Room.new(:workshop, types.shift, cx-1, cx+1, fy-5, fy-3, fz)
-                    @rooms << Room.new(:workshop, types.shift, cx-1, cx+1, fy+3, fy+5, fz)
-                    @rooms[-2, 2].each { |r|
-                        r.accesspath = [cor_x]
-                        r.layout << {:item => :door, :x => 1, :y => 1-2*(r.y<=>fy)}
-                    }
+                    t = types.shift
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-5, fy-3, fz)
+                    @rooms.last.accesspath = [cor_x]
+                    @rooms.last.layout << {:item => :door, :x => 1, :y => 3}
+                    @rooms.last.misc[:workshop_level] = 0
+
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-8, fy-6, fz)
+                    @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
+                    @rooms.last.misc[:workshop_level] = 1
+
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-11, fy-9, fz)
+                    @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
+                    @rooms.last.misc[:workshop_level] = 2
+
+                    t = types.shift
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+3, fy+5, fz)
+                    @rooms.last.accesspath = [cor_x]
+                    @rooms.last.layout << {:item => :door, :x => 1, :y => -1}
+                    @rooms.last.misc[:workshop_level] = 0
+
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+6, fy+8, fz)
+                    @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
+                    @rooms.last.misc[:workshop_level] = 1
+
+                    @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+9, fy+11, fz)
+                    @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
+                    @rooms.last.misc[:workshop_level] = 2
                 }
             }
         end
