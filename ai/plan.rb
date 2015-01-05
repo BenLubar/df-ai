@@ -1323,6 +1323,12 @@ class DwarfAI
         end
 
         def smooth_cistern(r)
+            # don't smooth the cistern if there are smoothing jobs up since
+            # we probably already marked it all to be smoothed.
+            return if df.world.job_list.find { |j|
+                j.job_type == :DetailWall or j.job_type == :DetailFloor
+            }
+
             r.accesspath.each { |a| smooth_room_access(a) }
 
             (r.z1..r.z2).each { |z|
@@ -1399,15 +1405,19 @@ class DwarfAI
             cnt = 0
             acc_y = r.accesspath[0].y1
             ((r.z1+1)..r.z2).each { |z|
-                (r.x1..r.x2).each { |x|
+                (r.x1..r.x2).to_a.reverse.each { |x|
+                    stop = false
                     (r.y1..r.y2).each { |y|
                         next unless t = df.map_tile_at(x, y, z)
                         case t.shape_basic
                         when :Floor
-                            next unless issmooth[df.map_tile_at(x+1, y-1, z)]
-                            next unless issmooth[df.map_tile_at(x+1, y, z)]
-                            next unless issmooth[df.map_tile_at(x+1, y+1, z)]
-                            next unless nt01 = df.map_tile_at(x-1, y, z)
+                            if not issmooth[df.map_tile_at(x+1, y-1, z)] or
+                                not issmooth[df.map_tile_at(x+1, y, z)] or
+                                not issmooth[df.map_tile_at(x+1, y+1, z)] or
+                                not nt01 = df.map_tile_at(x-1, y, z)
+                                stop = true
+                                next
+                            end
                             if nt01.shape_basic == :Floor
                                 t.dig :Channel
                             else
@@ -1422,6 +1432,7 @@ class DwarfAI
                             cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
                         end
                     }
+                    break if stop
                 }
             }
 
