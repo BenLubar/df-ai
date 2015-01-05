@@ -1393,17 +1393,20 @@ class DwarfAI
             }
         end
 
+        def smooth?(t)
+            return if not t
+            return true if t.tilemat == :SOIL or t.tilemat == :ROOT
+
+            case t.shape_basic
+            when :Wall
+                t.caption =~ /pillar|smooth/i
+            when :Open
+                true
+            end
+        end
+
         # check smoothing progress, channel intermediate floors when done
         def try_digcistern(r)
-            issmooth = lambda { |t|
-                next if not t
-                next true if t.tilemat == :SOIL or t.tilemat == :ROOT
-                case t.shape_basic
-                when :Wall; next true if t.caption =~ /pillar|smooth/i
-                when :Open; next true
-                end
-            }
-
             # XXX hardcoded layout..
             cnt = 0
             acc_y = r.accesspath[0].y1
@@ -1414,9 +1417,9 @@ class DwarfAI
                         next unless t = df.map_tile_at(x, y, z)
                         case t.shape_basic
                         when :Floor
-                            if not issmooth[df.map_tile_at(x+1, y-1, z)] or
-                                not issmooth[df.map_tile_at(x+1, y, z)] or
-                                not issmooth[df.map_tile_at(x+1, y+1, z)] or
+                            if not smooth?(df.map_tile_at(x+1, y-1, z)) or
+                                not smooth?(df.map_tile_at(x+1, y, z)) or
+                                not smooth?(df.map_tile_at(x+1, y+1, z)) or
                                 not nt01 = df.map_tile_at(x-1, y, z)
                                 stop = true
                                 next
@@ -1429,7 +1432,7 @@ class DwarfAI
                                 next unless nt12 = df.map_tile_at(x, y+1, z)
                                 next unless nt00 = df.map_tile_at(x-1, y-1, z)
                                 next unless nt02 = df.map_tile_at(x-1, y+1, z)
-                                t.dig :Channel if (y > acc_y ? issmooth[nt12] && issmooth[nt02] : issmooth[nt10] && issmooth[nt00])
+                                t.dig :Channel if (y > acc_y ? smooth?(nt12) && smooth?(nt02) : smooth?(nt10) && smooth?(nt00))
                             end
                         when :Open
                             cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
@@ -1769,8 +1772,8 @@ class DwarfAI
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
                         todo.concat r.accesspath
-                        empty = false if (r.x1..r.x2).find { |x| (r.y1..r.y2).find { |y| (r.z1..r.z2).find { |z|
-                            t = df.map_tile_at(x, y, z) and (t.designation.smooth == 1 or t.occupancy.unit)
+                        empty = false if ((r.x1-1)..(r.x2+1)).find { |x| ((r.y1-1)..(r.y2+1)).find { |y| (r.z1..r.z2).find { |z|
+                            t = df.map_tile_at(x, y, z) and (not smooth?(t) or t.occupancy.unit)
                         } } }
                     end
 
