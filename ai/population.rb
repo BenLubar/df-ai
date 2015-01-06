@@ -246,19 +246,21 @@ class DwarfAI
                 else
                     # we don't want all the axes being used up by the military.
                     weapons = df.ui.main.fortress_entity.entity_raw.equipment.weapon_tg.find_all { |idef|
+                        next if idef.skill_melee == :MINING
                         next if idef.skill_melee == :AXE
                         next if idef.skill_ranged != :NONE
                         next if idef.flags[:TRAINING]
                         true
                     }
-                    weapon = weapons[rand(weapons.length)].subtype unless weapons.empty?
-                    squad.positions.each { |pos|
-                        if weapon
-                            pos.uniform[:Weapon][0].item_filter.item_subtype = weapon
-                        else
+                    if weapons.empty?
+                        squad.positions.each { |pos|
                             pos.uniform[:Weapon][0].indiv_choice.melee = true
-                        end
-                    }
+                        }
+                    else
+                        squad.positions.each { |pos|
+                            pos.uniform[:Weapon][0].item_filter.item_subtype = weapons[rand(weapons.length)].subtype
+                        }
+                    end
                 end
 
                 # schedule
