@@ -1418,9 +1418,9 @@ class DwarfAI
             return if not t
             t.tilemat == :SOIL or
             t.tilemat == :ROOT or
-            tile.special == :TRACK or
-            tile.special == :SMOOTH or
-            tile.tiletype == :FORTIFICATION or
+            t.special == :TRACK or
+            t.special == :SMOOTH or
+            t.tiletype == :FORTIFICATION or
             t.shape_basic == :Open
         end
 
