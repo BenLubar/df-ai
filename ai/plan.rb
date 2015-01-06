@@ -209,17 +209,14 @@ class DwarfAI
                 tab << r
             }
 
-            df.onupdate_register_once('df-ai plan idleidle', 4) {
+            bg = df.onupdate_register_once('df-ai plan idleidle', 4) {
                 if r = tab.shift
+                    bg.description = "df-ai plan idleidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
                     smooth_room(r)
                     false
                 else
                     true
                 end
-            }
-
-            ai.pop.worker_labor.each { |w, wl|
-                df.unit_find(w).status.labors[:DETAIL] = true
             }
         end
 
@@ -559,21 +556,7 @@ class DwarfAI
 
             if r.type == :cistern and r.subtype == :well
                 # preorder wall smoothing to speedup floor channeling
-                ((r.z1+1)..r.z2).each { |z|
-                    ((r.x1-1)..(r.x2+1)).each { |x|
-                        ((r.y1-1)..(r.y2+1)).each { |y|
-                            next if not t = df.map_tile_at(x, y, z) or t.designation.dig != :No
-                            case t.shape_basic
-                            when :Wall, :Floor
-                                t.designation.smooth = 1 if t.caption !~ /pillar|smooth/i
-                            end
-                        }
-                    }
-                }
-
-                ai.pop.worker_labor.each { |w, wl|
-                    df.unit_find(w).status.labors[:DETAIL] = !wl.include?(:MINE)
-                }
+                smooth_xyz!((r.x1-1)..(r.x2+1), (r.y1-1)..(r.y2+1), (r.z1+1)..(r.z2))
             end
 
             if r.type != :corridor or r.h_z > 1
@@ -1303,20 +1286,7 @@ class DwarfAI
         end
 
         def smooth_room(r)
-            (r.z1..r.z2).each { |z|
-                ((r.x1-1)..(r.x2+1)).each { |x|
-                    ((r.y1-1)..(r.y2+1)).each { |y|
-                        next unless t = df.map_tile_at(x, y, z)
-                        next if t.designation.hidden
-                        next if t.designation.dig != :No
-                        next if t.special == :TRACK
-                        case t.shape_basic
-                        when :Wall, :Floor
-                            t.dig :Smooth
-                        end
-                    }
-                }
-            }
+            smooth_xyz!((r.x1-1)..(r.x2+1), (r.y1-1)..(r.y2+1), (r.z1)..(r.z2))
         end
 
         # smooth a room and its accesspath corridors (recursive)
@@ -1334,22 +1304,18 @@ class DwarfAI
 
             r.accesspath.each { |a| smooth_room_access(a) }
 
+            tiles = []
             (r.z1..r.z2).each { |z|
                 ((r.x1-1)..(r.x2+1)).each { |x|
                     next if z != r.z1 and r.x1 <= x and r.x2 >= x
                     ((r.y1-1)..(r.y2+1)).each { |y|
                         next if z != r.z1 and r.y1 <= y and r.y2 >= y
                         next unless t = df.map_tile_at(x, y, z)
-                        next if t.designation.hidden
-                        next if t.designation.dig != :No
-                        next if t.special == :TRACK
-                        case t.shape_basic
-                        when :Wall, :Floor
-                            t.dig :Smooth
-                        end
+                        tiles << t
                     }
                 }
             }
+            smooth!(*tiles)
         end
 
         def construct_cistern(r)
@@ -1393,16 +1359,69 @@ class DwarfAI
             }
         end
 
+        def smooth_xyz!(xs, ys, zs)
+            tiles = []
+            xs.each { |x|
+                ys.each { |y|
+                    zs.each { |z|
+                        tiles << [x, y, z]
+                    }
+                }
+            }
+            smooth!(*tiles)
+        end
+
+        def smooth!(*tiles)
+            # get df tile references
+            tiles = tiles.map { |tile|
+                if Array === tile
+                    df.map_tile_at(*tile)
+                else
+                    df.map_tile_at(tile)
+                end
+            }
+
+            # remove tiles that are not smoothable
+            tiles = tiles.reject { |tile|
+                next true unless tile
+
+                # not a smoothable material
+                next true if tile.tilemat != :STONE and tile.tilemat != :MINERAL
+
+                # already designated for something
+                next true if tile.designation.dig != :No or tile.designation.smooth != 0 or tile.designation.hidden
+
+                # already smooth
+                next true if smooth?(tile)
+
+                # wrong shape
+                next true if tile.shape_basic != :Wall and tile.shape_basic != :Floor
+            }
+
+            # remove tiles that are already being smoothed
+            df.world.job_list.each { |j|
+                if j.job_type == :DetailWall or j.job_type == :DetailFloor
+                    tiles = tiles.reject { |tile|
+                        df.same_pos?(j, tile)
+                    }
+                end
+            }
+
+            # mark the tiles to be smoothed!
+            tiles.each { |tile|
+                tile.designation.smooth = 1
+                tile.mapblock.flags.designated = true
+            }
+        end
+
         def smooth?(t)
             return if not t
-            return true if t.tilemat == :SOIL or t.tilemat == :ROOT
-
-            case t.shape_basic
-            when :Wall
-                t.caption =~ /pillar|smooth/i
-            when :Open
-                true
-            end
+            t.tilemat == :SOIL or
+            t.tilemat == :ROOT or
+            tile.special == :TRACK or
+            tile.special == :SMOOTH or
+            tile.tiletype == :FORTIFICATION or
+            t.shape_basic == :Open
         end
 
         # check smoothing progress, channel intermediate floors when done
