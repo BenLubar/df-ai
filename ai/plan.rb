@@ -603,7 +603,8 @@ class DwarfAI
         FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
             :gear_assembly => :GearAssembly,
             :vertical_axle => :AxleVertical,
-            :traction_bench => :TractionBench
+            :traction_bench => :TractionBench,
+            :nestbox => :NestBox
 
         def try_furnish(r, f)
             return true if f[:bld_id]
@@ -1296,12 +1297,6 @@ class DwarfAI
         end
 
         def smooth_cistern(r)
-            # don't smooth the cistern if there are smoothing jobs up since
-            # we probably already marked it all to be smoothed.
-            return if df.world.job_list.find { |j|
-                j.job_type == :DetailWall or j.job_type == :DetailFloor
-            }
-
             r.accesspath.each { |a| smooth_room_access(a) }
 
             tiles = []
@@ -2278,6 +2273,9 @@ class DwarfAI
                     @rooms.last.accesspath = [cor_x]
                     @rooms.last.layout << {:item => :door, :x => 1, :y => 3}
                     @rooms.last.misc[:workshop_level] = 0
+                    if dirx == -1 and dx == 1
+                        @rooms.last.layout << {:item => :nestbox, :x => -1, :y => 4}
+                    end
 
                     @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-8, fy-6, fz)
                     @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
@@ -2292,6 +2290,9 @@ class DwarfAI
                     @rooms.last.accesspath = [cor_x]
                     @rooms.last.layout << {:item => :door, :x => 1, :y => -1}
                     @rooms.last.misc[:workshop_level] = 0
+                    if dirx == -1 and dx == 1
+                        @rooms.last.layout << {:item => :nestbox, :x => -1, :y => -2}
+                    end
 
                     @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+6, fy+8, fz)
                     @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
@@ -2783,7 +2784,7 @@ class DwarfAI
             up = find_corridor_tosurface(p)
             r.accesspath << up[0]
 
-            dst = up[-1].maptile2.offset(0, 0, -1)
+            dst = up[-1].maptile2.offset(0, 0, -2)
             dst = df.map_tile_at(dst.x, dst.y, src.z) if src.z < dst.z
             move_river[dst]
 
