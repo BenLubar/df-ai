@@ -529,7 +529,7 @@ class DwarfAI
 
             when :wood
                 # dont bother if the last designated tree is not cut yet
-                return if @last_cutpos and t = df.map_tile_at(*@last_cutpos) and t.designation and t.designation.dig == :Default
+                return if cutting_trees?
 
                 amount *= 2
                 amount = 30 if amount > 30
