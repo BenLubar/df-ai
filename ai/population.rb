@@ -520,10 +520,11 @@ class DwarfAI
                 # list of dwarves with an exclusive labor
                 exclusive = {}
                 [
-                    [:CARPENTER, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Carpenters and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
+                    [:CARPENTER, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Carpenters and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
                     [:MINE, lambda { ai.plan.digging? }],
-                    [:MASON, lambda { r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Masons and _r.dfbuilding } and not r.dfbuilding.jobs.empty? }],
+                    [:MASON, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Masons and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
                     [:CUTWOOD, lambda { ai.stocks.cutting_trees? }],
+                    [:DETAIL, lambda { r = ai.plan.find_room(:cistern) { |_r| _r.subtype == :well } and not r.misc[:channeled] }],
                 ].each { |lb, test|
                     if @workers.length > exclusive.length+2 and test[]
                         # keep last run's choice
