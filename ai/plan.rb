@@ -1302,9 +1302,8 @@ class DwarfAI
             tiles = []
             (r.z1..r.z2).each { |z|
                 ((r.x1-1)..(r.x2+1)).each { |x|
-                    next if z != r.z1 and r.x1 <= x and r.x2 >= x
                     ((r.y1-1)..(r.y2+1)).each { |y|
-                        next if z != r.z1 and r.y1 <= y and r.y2 >= y
+                        next if z != r.z1 and r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y
                         next unless t = df.map_tile_at(x, y, z)
                         tiles << t
                     }
