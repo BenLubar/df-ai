@@ -142,6 +142,18 @@ class DwarfAI
             end
             # ban cooking honey (hard-coded in raws)
             ban_cooking('CREATURE:HONEY_BEE:HONEY', :LIQUID_MISC)
+            # ban cooking plants that have seeds
+            df.world.raws.plants.all.each do |p|
+                m = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material
+                ban_cooking("PLANT:#{p.id}:#{p.material_defs.str_basic_mat[1]}", :PLANT) if m.reaction_product and m.reaction_product.id and m.reaction_product.id.include?('SEED_MAT')
+
+                if not p.flags[:TREE]
+                    p.growths.each do |g|
+                        m = df.decode_mat(g).material
+                        ban_cooking("PLANT:#{p.id}:#{m.id}", :PLANT_GROWTH) if m.reaction_product and m.reaction_product.id and m.reaction_product.id.include?('SEED_MAT')
+                    end
+                end
+            end
         end
 
         def update_plants
