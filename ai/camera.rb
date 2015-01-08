@@ -84,6 +84,10 @@ class DwarfAI
                 end
             end
 
+            targets.reject! do |u|
+                u.flags1.dead
+            end
+
             @following_prev << @following if @following
             if @following_prev.length > 3
                 @following_prev = @following_prev[-3, 3]
