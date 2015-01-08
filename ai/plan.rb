@@ -1411,11 +1411,15 @@ class DwarfAI
         def smooth?(t)
             return if not t
             t.tilemat == :SOIL or
+            t.tilemat == :GRASS_LIGHT or
+            t.tilemat == :GRASS_DARK or
+            t.tilemat == :PLANT or
             t.tilemat == :ROOT or
             t.special == :TRACK or
             t.special == :SMOOTH or
             t.tiletype == :FORTIFICATION or
-            t.shape_basic == :Open
+            t.shape_basic == :Open or
+            t.shape_basic == :Stair
         end
 
         # check smoothing progress, channel intermediate floors when done
@@ -2806,17 +2810,20 @@ class DwarfAI
             # TODO check that 'channel' is easily channelable (eg river in a hole)
 
             if (dst.x - out.x).abs > 1
-                cor = Corridor.new(dst.x+(out.x<=>dst.x), out.x, dst.y, dst.y, dst.z, dst.z)
+                cor = Corridor.new(dst.x+(out.x<=>dst.x), out.x-(out.x<=>dst.x), dst.y, dst.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
                 r = cor
             end
 
             if (dst.y - out.y).abs > 1
-                cor = Corridor.new(out.x, out.x, dst.y+(out.y<=>dst.y), out.y, dst.z, dst.z)
+                cor = Corridor.new(out.x-(out.x<=>dst.x), out.x-(out.x<=>dst.x), dst.y+(out.y<=>dst.y), out.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
             end
+
+            up = find_corridor_tosurface(df.map_tile_at(out.x, out.y, dst.z))
+            r.accesspath << up[0]
 
             reserve.misc[:channel_enable] = [channel.x, channel.y, channel.z] if channel
         end
