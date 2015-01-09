@@ -1896,7 +1896,6 @@ class DwarfAI
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
-            # TODO connect all parts of the map (eg river splitting north/south)
             puts 'AI: setting up fort blueprint...'
             # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
@@ -1917,7 +1916,46 @@ class DwarfAI
             }
             list_map_veins
             setup_outdoor_gathering_zones
+            make_map_walkable
             puts 'AI: ready'
+        end
+
+        def make_map_walkable
+            df.onupdate_register_once('df-ai plan make_map_walkable') {
+                # if we don't have a river, we're fine
+                next true unless river = scan_river
+
+                # find a safe place for the first tile
+                t1 = spiral_search(river) { |t| map_tile_in_rock(t) and st = surface_tile_at(t) and map_tile_in_rock(st.offset(0, 0, -1)) }
+                t1 = surface_tile_at(t1)
+
+                # if the game hasn't done any pathfinding yet, wait until the next frame and try again
+                next false if (t1w = t1.mapblock.walkable[t1.x & 15][t1.y & 15]) == 0
+
+                # find the second tile
+                t2 = spiral_search(t1) { |t| tw = t.mapblock.walkable[t.x & 15][t.y & 15] and tw != 0 and tw != t1w }
+                t2w = t2.mapblock.walkable[t2.x & 15][t2.y & 15]
+
+                # make sure the second tile is in a safe place
+                t2 = spiral_search(t2) { |t| t.mapblock.walkable[t.x & 15][t.y & 15] == t2w and map_tile_in_rock(t.offset(0, 0, -1)) }
+
+                # find the bottom of the staircases
+                z = df.world.features.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }.feature.min_map_z.min - 1
+
+                # make the corridors
+                cor = []
+                cor << Corridor.new(t1.x, t1.x, t1.y, t1.y, t1.z, z)
+                cor << Corridor.new(t2.x, t2.x, t2.y, t2.y, t2.z, z)
+                cor << Corridor.new(t1.x + (t1.x <=> t2.x), t2.x + (t2.x <=> t1.x), t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1
+                cor << Corridor.new(t2.x, t2.x, t1.y + (t1.x <=> t2.x), t2.y + (t2.x <=> t1.x), z, z) if (t1.y - t2.y).abs > 1
+
+                cor.each do |c|
+                    @corridors << c
+                    wantdig c
+                end
+
+                true
+            }
         end
 
         attr_accessor :map_veins
@@ -1944,7 +1982,7 @@ class DwarfAI
                 end
             }
         end
-   
+
         # mark a vein of a mat for digging, return expected boulder count
         def dig_vein(mat, want_boulders = 1)
             # mat => [x, y, z, dig_mode] marked for to dig
