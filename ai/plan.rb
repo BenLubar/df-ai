@@ -1609,7 +1609,7 @@ class DwarfAI
                 bld.burial_mode.no_citizens = false
                 bld.burial_mode.no_pets = true
             when :door
-                bld.door_flags.pet_passable = true if r.type == :corridor
+                bld.door_flags.pet_passable = true
                 bld.door_flags.internal = true if f[:internal]
             when :trap
                 return setup_lever(r, f) if f[:subtype] == :lever
