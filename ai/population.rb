@@ -49,6 +49,7 @@ class DwarfAI
             when 4; update_military
             when 5; update_pets
             when 6; update_deads
+            when 7; update_caged
             end
             @onupdate_handle.description = "df-ai pop"
 
@@ -99,6 +100,35 @@ class DwarfAI
 
         def update_deads
             # TODO engrave slabs for ghosts
+        end
+
+        def update_caged
+            count = 0
+            df.world.items.other[:CAGE].each do |cage|
+                next if not cage.flags.on_ground
+                cage.general_refs.each do |ref|
+                    case ref
+                    when DFHack::GeneralRefContainsItemst
+                        next if ref.item_tg.flags.dump
+                        count += 1
+                        ref.item_tg.flags.dump = true
+
+                    when DFHack::GeneralRefContainsUnitst
+                        u = ref.unit_tg
+
+                        if df.ui.main.fortress_entity.histfig_ids.include?(u.hist_figure_id)
+                            # TODO rescue caged dwarves
+                        else
+                            u.inventory.each do |it|
+                                next if it.item.flags.dump
+                                count += 1
+                                it.item.flags.dump = true
+                            end
+                        end
+                    end
+                end
+            end
+            @ai.debug "pop: dumped #{count} items from cages" if count > 0
         end
 
         def update_military
