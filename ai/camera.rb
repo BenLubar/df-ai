@@ -85,7 +85,7 @@ class DwarfAI
             end
 
             targets.reject! do |u|
-                u.flags1.dead
+                u.flags1.dead or u.flags1.caged
             end
 
             @following_prev << @following if @following
