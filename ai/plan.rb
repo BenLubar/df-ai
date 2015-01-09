@@ -1946,8 +1946,9 @@ class DwarfAI
                 cor = []
                 cor << Corridor.new(t1.x, t1.x, t1.y, t1.y, t1.z, z)
                 cor << Corridor.new(t2.x, t2.x, t2.y, t2.y, t2.z, z)
-                cor << Corridor.new(t1.x + (t1.x <=> t2.x), t2.x + (t2.x <=> t1.x), t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1
-                cor << Corridor.new(t2.x, t2.x, t1.y + (t1.x <=> t2.x), t2.y + (t2.x <=> t1.x), z, z) if (t1.y - t2.y).abs > 1
+                cor << Corridor.new(t1.x - (t1.x <=> t2.x), t2.x - (t2.x <=> t1.x), t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1
+                cor << Corridor.new(t2.x, t2.x, t1.y - (t1.x <=> t2.x), t2.y - (t2.x <=> t1.x), z, z) if (t1.y - t2.y).abs > 1
+                cor << Corridor.new(t2.x, t2.x, t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1 and (t1.y - t2.y).abs > 1
 
                 cor.each do |c|
                     @corridors << c
@@ -2848,14 +2849,14 @@ class DwarfAI
             # TODO check that 'channel' is easily channelable (eg river in a hole)
 
             if (dst.x - out.x).abs > 1
-                cor = Corridor.new(dst.x+(out.x<=>dst.x), out.x-(out.x<=>dst.x), dst.y, dst.y, dst.z, dst.z)
+                cor = Corridor.new(dst.x - (dst.x <=> out.x), out.x - (out.x <=> dst.x), dst.y, dst.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
                 r = cor
             end
 
             if (dst.y - out.y).abs > 1
-                cor = Corridor.new(out.x-(out.x<=>dst.x), out.x-(out.x<=>dst.x), dst.y+(out.y<=>dst.y), out.y, dst.z, dst.z)
+                cor = Corridor.new(out.x - (out.x <=> dst.x), out.x - (out.x <=> dst.x), dst.y + (out.y <=> dst.y), out.y, dst.z, dst.z)
                 @corridors << cor
                 r.accesspath << cor
             end
