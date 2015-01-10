@@ -1928,6 +1928,12 @@ class DwarfAI
                 # if we don't have a river, we're fine
                 next true unless river = scan_river
 
+                river = spiral_search(river) { |t|
+                    # TODO rooms outline
+                    (t.y < @fort_entrance.y-30-16 or t.y > @fort_entrance.y+30) and
+                    t.designation.feature_local
+                }
+
                 # find a safe place for the first tile
                 t1 = spiral_search(river) { |t| map_tile_in_rock(t) and st = surface_tile_at(t) and map_tile_in_rock(st.offset(0, 0, -1)) }
                 t1 = surface_tile_at(t1)
