@@ -253,6 +253,14 @@ class DwarfAI
                 end
 
                 df.world.items.other[:ANY_COOKABLE].reject do |item|
+                    item.kind_of?(DFHack::ItemFlaskst) or
+                    item.kind_of?(DFHack::ItemCagest) or
+                    item.kind_of?(DFHack::ItemBarrelst) or
+                    item.kind_of?(DFHack::ItemBucketst) or
+                    item.kind_of?(DFHack::ItemAnimaltrapst) or
+                    item.kind_of?(DFHack::ItemBoxst) or
+                    item.kind_of?(DFHack::ItemFishRawst) or
+                    item.kind_of?(DFHack::ItemToolst) or
                     forbidden[[item.getType, item.getSubtype, item.getMaterial, item.getMaterialIndex]]
                 end
             when :drink
