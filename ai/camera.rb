@@ -25,7 +25,7 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            df.curview.breakdown_level = :QUIT unless $DEBUG
+            df.curview.breakdown_level = :QUIT
             df.onupdate_unregister(@onupdate_handle)
         end
 
@@ -39,9 +39,10 @@ class DwarfAI
                 return
             end
 
-            targets = df.world.units.active.find_all do |u|
+            targets1 = df.world.units.active.find_all do |u|
                 u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited
-            end.shuffle + df.unit_citizens.shuffle.sort_by do |u|
+            end.shuffle
+            targets2 = df.unit_citizens.shuffle.sort_by do |u|
                 unless u.job.current_job
                     0
                 else
@@ -84,8 +85,11 @@ class DwarfAI
                 end
             end
 
-            targets.reject! do |u|
-                u.flags1.dead or u.flags1.caged
+            targets1.reject! do |u|
+                u.flags1.dead
+            end
+            targets2.reject! do |u|
+                u.flags1.dead
             end
 
             @following_prev << @following if @following
@@ -93,10 +97,22 @@ class DwarfAI
                 @following_prev = @following_prev[-3, 3]
             end
 
+            targets1_count = [2, targets1.length].min
+            unless targets2.empty?
+                targets1.each do |u|
+                    if @following_prev.include?(u.id)
+                        targets1_count -= 1
+                        break if targets1_count == 0
+                    end
+                end
+            end
+
+            targets = targets1[0, targets1_count] + targets2
+
             if targets.empty?
                 @following = nil
             else
-                while @following_prev.include? targets[0].id and targets.length > 1
+                while (@following_prev.include?(targets[0].id) or targets[0].flags1.caged) and targets.length > 1
                     targets = targets[1..-1]
                 end
                 @following = targets[0].id
