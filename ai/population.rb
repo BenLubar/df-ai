@@ -673,6 +673,9 @@ class DwarfAI
         end
 
         def unit_shallnotworknow(u)
+            # caged dwarves can't exactly do much, now, can they?
+            return true if u.flags1.caged
+
             # manager shall not work when unvalidated jobs are pending
             return true if @citizen.length >= 20 and
                     df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
