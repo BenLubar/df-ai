@@ -165,6 +165,7 @@ class DwarfAI
                    (find_room(:cemetary) { |_r| _r.status == :plan } if not find_room(:cemetary) { |_r| _r.status != :plan }) ||
                    (st = @important_workshops2.shift and
                     find_room(:workshop) { |_r| _r.subtype == st and _r.status == :plan and _r.misc[:workshop_level] == 0 }) ||
+                   find_room(:pitcage) { |_r| _r.status == :plan } ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 1 and _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 0 } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
@@ -583,7 +584,7 @@ class DwarfAI
                 construct_cistern(r)
             when :cemetary
                 furnish_room(r)
-            when :infirmary, :pasture
+            when :infirmary, :pasture, :pitcage
                 construct_activityzone(r)
             when :dininghall
                 if t = find_room(:dininghall) { |_r| _r.misc[:temporary] } and not r.misc[:temporary]
@@ -1027,6 +1028,8 @@ class DwarfAI
             when :pasture
                 bld.zone_flags.pen_pasture = true
                 # pit_flags |= 2
+            when :pitcage
+                bld.zone_flags.pit_pond = true
             end
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -2509,8 +2512,7 @@ class DwarfAI
 
         def setup_blueprint_pitcage
             return if not gpit = find_room(:garbagepit)
-            r = Room.new(:stockpile, :animals, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+3)
-            r.misc[:stockpile_level] = 0
+            r = Room.new(:pitcage, nil, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+3)
             r.layout << { :construction => :UpStair, :x => -1, :y => 1, :z => -3 }
             r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -2 }
             r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -1 }
@@ -2524,6 +2526,10 @@ class DwarfAI
             } }
             r.layout << { :construction => :Floor, :x => 3, :y => 1, :item => :hive }
             @rooms << r
+            stockpile = Room.new(:stockpile, :animals, r.x1, r.x2, r.y1, r.y2, r.z1)
+            stockpile.misc[:stockpile_level] = 0
+            stockpile.accesspath = [r]
+            @rooms << stockpile
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
