@@ -359,25 +359,37 @@ class DwarfAI
 
                 citizen.each_value { |c|
                     next if not u = c.dfunit
-                    if u.mood == :None and
-                            u.profession != :CHILD and
-                            u.profession != :BABY and
-                            !unit_hasmilitaryduty(u) and
-                            !unit_shallnotworknow(u) and
-                            (!u.job.current_job or !LaborWontWorkJob[u.job.current_job.job_type]) and
-                            not u.status.misc_traits.find { |mt| mt.id == :OnBreak } and
-                            not u.specific_refs.find { |sr| sr.type == :ACTIVITY }
-                            # TODO filter nobles that will not work
+                    if u.mood != :None
+                        nonworkers << [c, 'has strange mood']
+                    elsif u.profession == :CHILD
+                        nonworkers << [c, 'is a child']
+                    elsif u.profession == :BABY
+                        nonworkers << [c, 'is a baby']
+                    elsif unit_hasmilitaryduty(u)
+                        nonworkers << [c, 'has military duty']
+                    elsif u.flags1.caged
+                        nonworkers << [c, 'caged']
+                    elsif @citizen.length >= 20 and
+                        df.world.manager_orders.last and
+                        df.world.manager_orders.last.is_validated == 0 and
+                        df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
+                        nonworkers << [c, 'validating work orders']
+                    elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
+                        nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
+                    elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
+                        nonworkers << [c, 'on break']
+                    elsif u.specific_refs.find { |sr| sr.type == :ACTIVITY }
+                        nonworkers << [c, 'has activity']
+                    else
+                        # TODO filter nobles that will not work
                         @workers << c
                         @idlers << c if not u.job.current_job
-                    else
-                        nonworkers << c
                     end
                 }
 
                 # free non-workers
                 nonworkers.each { |c|
-                    u = c.dfunit
+                    u = c[0].dfunit
                     ul = u.status.labors
                     any = false
                     LaborList.each { |lb|
@@ -393,7 +405,7 @@ class DwarfAI
                             any = true
                         end
                     }
-                    @ai.debug "unassigned all labors from #{u.name} (non-worker)" if any
+                    @ai.debug "unassigned all labors from #{u.name} (non-worker: #{c[1]})" if any
                 }
 
             when 2
@@ -670,17 +682,6 @@ class DwarfAI
             squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
             !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
-        end
-
-        def unit_shallnotworknow(u)
-            # caged dwarves can't exactly do much, now, can they?
-            return true if u.flags1.caged
-
-            # manager shall not work when unvalidated jobs are pending
-            return true if @citizen.length >= 20 and
-                    df.world.manager_orders.last and df.world.manager_orders.last.is_validated == 0 and
-                    df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
-            # TODO medical dwarf, broker
         end
 
         def unit_totalxp(u)
