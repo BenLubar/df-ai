@@ -247,14 +247,14 @@ class DwarfAI
             when :food
                 df.world.items.other[:ANY_GOOD_FOOD].grep(DFHack::ItemFoodst)
             when :food_ingredients
-                df.world.items.other[:ANY_COOKABLE].reject { |i|
-                    case i
-                    when DFHack::ItemGlobst
-                        m = df.decode_mat(i).material and m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
-                    when DFHack::ItemSeedsst, DFHack::ItemConstructed, DFHack::ItemFishRawst, DFHack::ItemDrinkst
-                        true
-                    end
-                }
+                forbidden = {}
+                df.ui.kitchen.item_types.to_a.zip(df.ui.kitchen.item_subtypes.to_a, df.ui.kitchen.mat_types.to_a, df.ui.kitchen.mat_indices.to_a).each do |x|
+                    forbidden[x] = true
+                end
+
+                df.world.items.other[:ANY_COOKABLE].reject do |item|
+                    forbidden[[item.getType, item.getSubtype, item.getMaterial, item.getMaterialIndex]]
+                end
             when :drink
                 df.world.items.other[:DRINK]
             when :soap, :coal, :ash
