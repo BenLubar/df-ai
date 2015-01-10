@@ -2623,7 +2623,7 @@ class DwarfAI
                     soilcnt[z] = scnt
                 end
             }
-            cz2 = soilcnt.index(soilcnt.values.max)
+            cz2 = soilcnt.index(soilcnt.values.max) || cz
 
             farm_stairs.z2 = cz2
             cor = Corridor.new(cx, cx+1, cy, cy, cz2, cz2)
