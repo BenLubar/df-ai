@@ -97,7 +97,7 @@ class DwarfAI
                 @following_prev = @following_prev[-3, 3]
             end
 
-            targets1_count = [2, targets1.length].min
+            targets1_count = [3, targets1.length].min
             unless targets2.empty?
                 targets1.each do |u|
                     if @following_prev.include?(u.id)
