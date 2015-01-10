@@ -556,7 +556,7 @@ class DwarfAI
                     [:CUTWOOD, lambda { ai.stocks.cutting_trees? }],
                     [:DETAIL, lambda { r = ai.plan.find_room(:cistern) { |_r| _r.subtype == :well } and not r.misc[:channeled] }],
                 ].each { |lb, test|
-                    if @workers.length > exclusive.length+2 and test[]
+                    if @workers.length > exclusive.length+2 and @labor_needmore[lb] > 0 and test[]
                         # keep last run's choice
                         cid = @labor_worker[lb].sort_by { |i| @worker_labor[i].length }.first
                         next if not cid
