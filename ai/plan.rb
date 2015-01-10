@@ -2651,8 +2651,20 @@ class DwarfAI
             # TODO ensure flat space, no pools/tree, ...
             r = Room.new(:garbagedump, nil, cx+5, cx+5, cy, cy, cz)
             r.z2 = r.z1 += 1 until df.map_tile_at(r).shape_basic != :Wall
+            tile = spiral_search(df.map_tile_at(r)) { |t|
+                t.x >= cx + 5 and
+                map_tile_in_rock(t.offset(0, 0, -1)) and
+                map_tile_in_rock(t.offset(2, 0, -1)) and
+                t.shape_basic == :Floor and
+                t.offset(1, 0, 0).shape_basic == :Floor and
+                t.offset(2, 0, 0).shape_basic == :Floor and
+                (t.offset(1, 1, 0).shape_basic == :Floor or
+                t.offset(1, -1, 0).shape_basic == :Floor)
+            }
+            r.x1 = r.x2 = tile.x
+            r.y1 = r.y2 = tile.y
             @rooms << r
-            r = Room.new(:garbagepit, nil, cx+6, cx+7, cy, cy, @rooms.last.z)
+            r = Room.new(:garbagepit, nil, @rooms.last.x + 1, @rooms.last.x + 2, @rooms.last.y, @rooms.last.y, @rooms.last.z)
             @rooms << r
 
             # infirmary
