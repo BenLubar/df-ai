@@ -2530,7 +2530,6 @@ class DwarfAI
             stockpile = Room.new(:stockpile, :animals, r.x1, r.x2, r.y1, r.y2, r.z1)
             stockpile.misc[:stockpile_level] = 0
             stockpile.layout = r.layout
-            stockpile.accesspath = [r]
             @rooms << stockpile
         end
 
