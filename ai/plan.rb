@@ -754,6 +754,8 @@ class DwarfAI
                 return
             end
 
+            return if df.building_find(t)
+
             if block = df.world.items.other[:BLOCKS].find { |i| ai.stocks.is_item_free(i) }
                 bld = df.building_alloc(:Construction, ctype)
                 df.building_position(bld, t)
