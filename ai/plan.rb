@@ -1013,6 +1013,8 @@ class DwarfAI
         end
 
         def construct_activityzone(r)
+            return if not r.dug?
+            return if not r.constructions_done?
             bld = df.building_alloc(:Civzone, :ActivityZone)
             bld.zone_flags.active = true
             case r.type
