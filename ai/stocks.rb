@@ -1076,7 +1076,7 @@ class DwarfAI
                  !is_item_free(ir.item_tg, true) })) and
             (!i.flags.in_building or !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefBuildingHolderst) and    # is not part of a building construction materials
              ir.building_tg.contained_items.find { |bi| bi.use_mode == 2 and bi.item == i } }) and
-             (!i.flags.on_ground or !df.map_tile_at(i).designation.hidden)      # i.flags.unk11?
+            (!i.flags.on_ground or (!df.map_tile_at(i).designation.hidden and df.map_tile_at(i).designation.flow_size < 4))
         end
 
 
