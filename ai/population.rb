@@ -331,22 +331,23 @@ class DwarfAI
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborSkill = DFHack::JobSkill::Labor.invert
         LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
+        LaborMedical = { :DIAGNOSE => true, :SURGERY => true, :BONE_SETTING => true, :SUTURING => true, :DRESSING_WOUNDS => true, :FEED_WATER_CIVILIANS => true }
+        LaborHauling = { :FEED_WATER_CIVILIANS => true }
+        LaborList.each { |lb|
+            if lb.to_s =~ /HAUL/
+                LaborHauling[lb] = true
+            end
+        }
 
         LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
         LaborMax = Hash.new(8).update :FISH => 1
         LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 10
-        LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 50
-        LaborList.each { |lb|
-            if lb.to_s =~ /HAUL/
-                LaborMinPct[lb] = 30
-                LaborMaxPct[lb] = 100
-            end
+        LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 30
+        LaborHauling.keys.each { |lb|
+            LaborMinPct[lb] = 30
+            LaborMaxPct[lb] = 100
         }
-        HaulingLaborCount = LaborList.count { |lb|
-            lb.to_s =~ /HAUL/
-        }
-        LaborWontWorkJob = { :AttendParty => true, :Rest => true,
-            :UpdateStockpileRecords => true }
+        LaborWontWorkJob = { :AttendParty => true, :Rest => true, :UpdateStockpileRecords => true }
 
         def autolabors(step)
             case step
@@ -358,8 +359,7 @@ class DwarfAI
                 @medic = {}
                 df.ui.main.fortress_entity.assignments_by_type[:HEALTH_MANAGEMENT].each { |n|
                     next unless hf = df.world.history.figures.binsearch(n.histfig)
-                    next unless u = df.unit_find(hf.unit_id)
-                    @medic[u] = true
+                    @medic[hf.unit_id] = true
                 }
 
                 citizen.each_value { |c|
@@ -396,21 +396,20 @@ class DwarfAI
                 nonworkers.each { |c|
                     u = c[0].dfunit
                     ul = u.status.labors
-                    any = false
                     LaborList.each { |lb|
-                        if ul[lb]
-                            case lb
-                            when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
-                                # don't unassign medical jobs from the chief medical dwarf
-                                next if @medic[u]
+                        if LaborHauling[lb]
+                            if not ul[lb]
+                                ul[lb] = true
+                                u.military.pickup_flags.update = true if LaborTool[lb]
+                                @ai.debug "assigning labor #{lb} to #{u.name} (non-worker: #{c[1]})"
                             end
-                            # disable everything (may wait meeting)
+                        elsif ul[lb]
+                            next if LaborMedical[lb] and @medic[u.id]
                             ul[lb] = false
                             u.military.pickup_flags.update = true if LaborTool[lb]
-                            any = true
+                            @ai.debug "unassigning labor #{lb} from #{u.name} (non-worker: #{c[1]})"
                         end
                     }
-                    @ai.debug "unassigned all labors from #{u.name} (non-worker: #{c[1]})" if any
                 }
 
             when 2
@@ -441,10 +440,8 @@ class DwarfAI
                             when :StoreItemInStockpile, :StoreItemInBag, :StoreItemInHospital,
                                     :StoreItemInChest, :StoreItemInCabinet, :StoreWeapon,
                                     :StoreArmor, :StoreItemInBarrel, :StoreItemInBin, :StoreItemInVehicle
-                                LaborList.each { |lb|
-                                    if lb.to_s =~ /HAUL/
-                                        @labor_needmore[lb] += 1
-                                    end
+                                LaborHauling.keys.each { |lb|
+                                    @labor_needmore[lb] += 1
                                 }
                             else
                                 if job.material_category.wood
@@ -496,7 +493,7 @@ class DwarfAI
                     # if one has too many labors, free him up (one per round)
                     lim = 4*LaborList.length/[@workers.length, 1].max
                     lim = 4 if lim < 4
-                    lim += HaulingLaborCount
+                    lim += LaborHauling.length
                     if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
                         c = citizen[cid]
                         u = c.dfunit
@@ -504,6 +501,7 @@ class DwarfAI
 
                         LaborList.each { |lb|
                             if ul[lb]
+                                next if LaborMedical[lb] and @medic[u.id]
                                 @worker_labor[c.id].delete lb
                                 @labor_worker[lb].delete c.id
                                 ul[lb] = false
@@ -640,12 +638,12 @@ class DwarfAI
                         }
 
                     elsif not @idlers.empty?
-                        more = @labor_needmore[lb]
-                        more = max - cnt if @labor_needmore.empty?
+                        more, desc = @labor_needmore[lb], 'idle'
+                        more, desc = max - cnt, 'idleidle' if @labor_needmore.empty?
                         more.times do
                             break if @labor_worker[lb].length >= max
                             c = @idlers[rand(@idlers.length)]
-                            autolabor_setlabor(c, lb, 'idle')
+                            autolabor_setlabor(c, lb, desc)
                         end
                     end
                 }
@@ -670,11 +668,7 @@ class DwarfAI
             return if not c
             return if not @worker_labor[c.id].include?(lb)
             u = c.dfunit
-            case lb
-            when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
-                # don't unassign medical jobs from the chief medical dwarf
-                return if @medic[u]
-            end
+            return if LaborMedical[lb] and @medic[u.id]
             @labor_worker[lb].delete c.id
             @worker_labor[c.id].delete lb
             u.status.labors[lb] = false
