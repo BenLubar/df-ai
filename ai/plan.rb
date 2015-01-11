@@ -2006,7 +2006,9 @@ class DwarfAI
             if q = @map_vein_queue[mat]
                 q.delete_if { |x, y, z, dd|
                     t = df.map_tile_at(x, y, z)
-                    if t.shape_basic != :Wall
+                    if t.shape_basic == :Open
+                        try_furnish_construction(nil, {:construction => dd == :Default ? :Floor : dd}, t)
+                    elsif t.shape_basic != :Wall
                         true
                     else
                         t.dig(dd) if t.designation.dig == :No     # warm/wet tile
@@ -2096,23 +2098,7 @@ class DwarfAI
                 # TODO minecarts?
 
                 # avoid giant vertical runs: slalom x+-1 every z%16
-                vertshift = lambda { |t| t.offset(((t.z%32) >= 16 ? 1 : -1), 0) }
 
-                shaftop = df.map_tile_at(@fort_entrance.x, @fort_entrance.y, bz)
-                if by > @fort_entrance.y
-                    shaftop = shaftop.offset(0, 30)
-                else
-                    shaftop = shaftop.offset(0, -30)
-                end
-                shaftop = shaftop.offset(0, 0, 1) while vertshift[shaftop].designation.hidden
-                if map_tile_nocavern(vertshift[shaftop])
-                    if vertshift[shaftop].shape_passablelow
-                        shaftop = nil
-                    end
-                end
-
-
-                
                 if by > @fort_entrance.y
                     vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
                 else
