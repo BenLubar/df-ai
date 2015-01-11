@@ -614,7 +614,7 @@ class DwarfAI
             return if not tgtile
             if f[:construction]
                 if try_furnish_construction(r, f, tgtile)
-                   return true if not f[:item]
+                    return true if not f[:item]
                 else
                     return  # dont try to furnish item before construction is done
                 end
@@ -754,7 +754,12 @@ class DwarfAI
                 return
             end
 
-            return if df.building_find(t)
+            return if df.world.buildings.all.any? { |b|
+                b.z == t.z and
+                not b.room.extents and
+                b.x1 <= t.x and b.x2 >= t.x and
+                b.y1 <= t.y and b.y2 >= t.y
+            }
 
             if block = df.world.items.other[:BLOCKS].find { |i| ai.stocks.is_item_free(i) }
                 bld = df.building_alloc(:Construction, ctype)
