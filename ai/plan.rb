@@ -1958,7 +1958,7 @@ class DwarfAI
                 cor << Corridor.new(t1.x, t1.x, t1.y, t1.y, t1.z, z)
                 cor << Corridor.new(t2.x, t2.x, t2.y, t2.y, t2.z, z)
                 cor << Corridor.new(t1.x - (t1.x <=> t2.x), t2.x - (t2.x <=> t1.x), t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1
-                cor << Corridor.new(t2.x, t2.x, t1.y - (t1.x <=> t2.x), t2.y - (t2.x <=> t1.x), z, z) if (t1.y - t2.y).abs > 1
+                cor << Corridor.new(t2.x, t2.x, t1.y - (t1.y <=> t2.y), t2.y - (t2.y <=> t1.y), z, z) if (t1.y - t2.y).abs > 1
                 cor << Corridor.new(t2.x, t2.x, t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1 and (t1.y - t2.y).abs > 1
 
                 cor.each do |c|
