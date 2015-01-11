@@ -74,7 +74,7 @@ class DwarfAI
                 when :wantdig
                     digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
                 when :digroom
-                    if t[1].dug?
+                    if t[1].dug? and t[1].constructions_done?
                         t[1].status = :dug
                         construct_room(t[1])
                         want_reupdate = true    # wantdig asap
@@ -555,11 +555,6 @@ class DwarfAI
                 end
             end
 
-            if r.type == :cistern and r.subtype == :well
-                # preorder wall smoothing to speedup floor channeling
-                smooth_xyz!((r.x1-1)..(r.x2+1), (r.y1-1)..(r.y2+1), (r.z1+1)..(r.z2))
-            end
-
             if r.type != :corridor or r.h_z > 1
                 @nrdig += 1
                 @nrdig += 1 if r.w*r.h*r.h_z >= 10
@@ -969,8 +964,6 @@ class DwarfAI
         end
 
         def try_construct_stockpile(r)
-            return if not r.dug?
-            return if not r.constructions_done?
             bld = df.building_alloc(:Stockpile)
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -1018,8 +1011,6 @@ class DwarfAI
         end
 
         def construct_activityzone(r)
-            return if not r.dug?
-            return if not r.constructions_done?
             bld = df.building_alloc(:Civzone, :ActivityZone)
             bld.zone_flags.active = true
             case r.type
