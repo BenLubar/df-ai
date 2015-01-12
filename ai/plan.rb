@@ -74,7 +74,7 @@ class DwarfAI
                 when :wantdig
                     digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
                 when :digroom
-                    if t[1].dug? and t[1].constructions_done?
+                    if t[1].dug?
                         t[1].status = :dug
                         construct_room(t[1])
                         want_reupdate = true    # wantdig asap
@@ -84,6 +84,8 @@ class DwarfAI
                     try_construct_workshop(t[1])
                 when :construct_stockpile
                     try_construct_stockpile(t[1])
+                when :construct_activityzone
+                    try_construct_activityzone(t[1])
                 when :setup_farmplot
                     try_setup_farmplot(t[1])
                 when :furnish
@@ -533,7 +535,7 @@ class DwarfAI
 
             r.layout.each { |f|
                 next if f[:item] == :floodgate 
-                next if f[:construction] or f[:dig]
+                next if f[:dig]
                 @tasks << [:furnish, r, f]
             }
 
@@ -580,7 +582,8 @@ class DwarfAI
             when :cemetary
                 furnish_room(r)
             when :infirmary, :pasture, :pitcage
-                construct_activityzone(r)
+                furnish_room(r)
+                @tasks << [:construct_activityzone, r]
             when :dininghall
                 if t = find_room(:dininghall) { |_r| _r.misc[:temporary] } and not r.misc[:temporary]
                     move_dininghall_fromtemp(r, t)
@@ -847,6 +850,8 @@ class DwarfAI
         end
 
         def try_construct_workshop(r)
+            return unless r.constructions_done?
+
             case r.subtype
             when :Dyers
                 # barrel, bucket
@@ -964,6 +969,8 @@ class DwarfAI
         end
 
         def try_construct_stockpile(r)
+            return unless r.constructions_done?
+
             bld = df.building_alloc(:Stockpile)
             df.building_position(bld, r)
             bld.room.extents = df.malloc(r.w*r.h)
@@ -1010,7 +1017,9 @@ class DwarfAI
             true
         end
 
-        def construct_activityzone(r)
+        def try_construct_activityzone(r)
+            return unless r.constructions_done?
+
             bld = df.building_alloc(:Civzone, :ActivityZone)
             bld.zone_flags.active = true
             case r.type
@@ -1041,7 +1050,8 @@ class DwarfAI
             bld.is_room = 1
             df.building_construct_abstract(bld)
             r.misc[:bld_id] = bld.id
-            furnish_room(r)
+
+            true
         end
 
         def setup_stockpile_settings(subtype, bld, r=nil)
