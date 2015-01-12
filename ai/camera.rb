@@ -27,7 +27,7 @@ class DwarfAI
         def onupdate_unregister
             ai.timeout_sameview(60) do
                 df.curview.breakdown_level = :QUIT
-            end
+            end unless $NO_QUIT
             df.onupdate_unregister(@onupdate_handle)
         end
 

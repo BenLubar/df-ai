@@ -472,7 +472,6 @@ class DwarfAI
                             seen_workshop[ref_bld.building_id] = true
                         end
                     end
-
                 }
 
             when 3
@@ -580,6 +579,7 @@ class DwarfAI
                         c = citizen[cid]
                         @worker_labor[cid].dup.each { |llb|
                             next if llb == lb
+                            next if LaborTool[llb]
                             autolabor_unsetlabor(c, llb, "has exclusive labor: #{lb}")
                         }
                     end
@@ -646,6 +646,18 @@ class DwarfAI
                             autolabor_setlabor(c, lb, desc)
                         end
                     end
+                }
+
+                $WorkerStatus ||= []
+                $WorkerStatus << {
+                    :Citizens => Hash[@citizen.map { |i, c|
+                        u = c.dfunit
+                        j = u.job.current_job if u
+                        jt = j.job_type if j
+                        [i, jt]
+                    }],
+                    :Idlers   => @idlers.map(&:id),
+                    :NeedMore => @labor_needmore.dup
                 }
             end
         end

@@ -1500,7 +1500,7 @@ class DwarfAI
                 t.dig(:Default) if t.shape_basic == :Ramp
                 @rooms.each { |r|
                     if r.type == :garbagedump and r.status == :plan
-                        construct_activityzone(r)
+                        try_construct_activityzone(r)
                     end
                 }
             else
