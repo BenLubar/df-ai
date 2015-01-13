@@ -25,7 +25,7 @@ class DwarfAI
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
             :coal => 3, :raw_coke => 1, :gypsum => 1,
-            :giant_corkscrew => 1, :pipe_section => 1,
+            :giant_corkscrew => 1, :pipe_section => 1, :anvil => 1,
             :quern => 1, :minecart => 1, :nestbox => 1, :hive => 1,
             :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
         }
@@ -420,6 +420,8 @@ class DwarfAI
             when :quern
                 # include used in building
                 return df.world.items.other[:QUERN].length
+            when :anvil
+                df.world.items.other[:ANVIL]
             else
                 return find_furniture_itemcount(k)
 
@@ -1366,7 +1368,8 @@ class DwarfAI
             :giant_corkscrew => :MakeGiantCorkscrew,
             :pipe_section => :MakePipeSection,
             :coal => :MakeCharcoal,
-            :stepladder => :MakeWoodenStepladder
+            :stepladder => :MakeWoodenStepladder,
+            :anvil => :ForgeAnvil
 
         FurnitureFind = Hash.new { |h, k|
             sym = "item_#{k}st".to_sym

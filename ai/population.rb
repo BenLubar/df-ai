@@ -647,18 +647,6 @@ class DwarfAI
                         end
                     end
                 }
-
-                $WorkerStatus ||= []
-                $WorkerStatus << {
-                    :Citizens => Hash[@citizen.map { |i, c|
-                        u = c.dfunit
-                        j = u.job.current_job if u
-                        jt = j.job_type if j
-                        [i, jt]
-                    }],
-                    :Idlers   => @idlers.map(&:id),
-                    :NeedMore => @labor_needmore.dup
-                }
             end
         end
 
