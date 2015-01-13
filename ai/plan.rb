@@ -1920,7 +1920,7 @@ class DwarfAI
             @ai.debug 'blueprint found rooms'
             # ensure traps are on the surface
             @fort_entrance.layout.each { |i|
-                i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y]).z-@fort_entrance.z1
+                i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], true).z-@fort_entrance.z1
             }
             @fort_entrance.layout.delete_if { |i|
                 t = df.map_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], @fort_entrance.z1+i[:z]-1)
@@ -1940,7 +1940,7 @@ class DwarfAI
 
                 river = spiral_search(river) { |t|
                     # TODO rooms outline
-                    (t.y < @fort_entrance.y-30-16 or t.y > @fort_entrance.y+30) and
+                    (t.y < @fort_entrance.y+MinY or t.y > @fort_entrance.y+MaxY) and
                     t.designation.feature_local
                 }
 
@@ -2053,7 +2053,7 @@ class DwarfAI
             fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
             if bz >= fort_minz
                 # TODO rooms outline
-                if by > @fort_entrance.y-30-16 and by < @fort_entrance.y+30
+                if by > @fort_entrance.y+MinY and by < @fort_entrance.y+MaxY
                     return count
                 end
             end
@@ -2163,12 +2163,15 @@ class DwarfAI
             nil
         end
 
+        MinX, MinY, MinZ = -48, -22, -5
+        MaxX, MaxY, MaxZ = 35, 22, 1
+
         # search a valid tile for fortress entrance
         def scan_fort_entrance
             # map center
             cx = df.world.map.x_count / 2
             cy = df.world.map.y_count / 2
-            center = surface_tile_at(cx, cy)
+            center = surface_tile_at(cx, cy, true)
             rangez = (0...df.world.map.z_count).to_a.reverse
             cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and tsb = t.shape_basic and (tsb == :Floor or tsb == :Ramp) }
             center = df.map_tile_at(cx, cy, cz)
@@ -2176,6 +2179,10 @@ class DwarfAI
             ent0 = center.spiral_search { |t0|
                 # test the whole map for 3x5 clear spots
                 next unless t = surface_tile_at(t0)
+
+                # make sure we're not too close to the edge of the map.
+                next unless t.offset(MinX, MinY, MinZ) and t.offset(MaxX, MaxY, MaxZ)
+
                 (-1..1).all? { |_x|
                     (-2..2).all? { |_y|
                         tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT) and
@@ -2184,7 +2191,7 @@ class DwarfAI
                     }
                 } and (-3..3).all? { |_x|
                     (-4..4).all? { |_y|
-                        surface_tile_at(t.x + _x, t.y + _y)
+                        surface_tile_at(t.x + _x, t.y + _y, true)
                     }
                 }
             }
@@ -2213,27 +2220,26 @@ class DwarfAI
         def scan_fort_body
             # use a hardcoded fort layout
             cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
-            sz_x, sz_y, sz_z = 35, 22, 5
             @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
-                (-sz_z..1).all? { |dz|
+                (MinZ..MaxZ).all? { |dz|
                     # scan perimeter first to quickly eliminate caverns / bad rock layers
-                    (-sz_x..sz_x).all? { |dx|
-                        [-sz_y, sz_y].all? { |dy|
+                    (MinX..MaxX).all? { |dx|
+                        [MinY, MaxY].all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
                             not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     } and
-                    [-sz_x, sz_x].all? { |dx|
-                        (-sz_y..sz_y).all? { |dy|
+                    [MinX, MaxX].all? { |dx|
+                        (MinY..MaxY).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
                             not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     }
                 }  and
                 # perimeter ok, full scan
-                (-sz_z..1).all? { |dz|
-                    (-(sz_x-1)..(sz_x-1)).all? { |dx|
-                        (-(sz_y-1)..(sz_y-1)).all? { |dy|
+                (MinZ..MaxZ).all? { |dz|
+                    ((MinX+1)..(MaxX-1)).all? { |dx|
+                        ((MinY+1)..(MaxY-1)).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
                             not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
@@ -3061,7 +3067,7 @@ class DwarfAI
 
                 tx = x + i
                 (y...([y+31, df.world.map.y_count].min)).each do |ty|
-                    next unless t = surface_tile_at(tx, ty)
+                    next unless t = surface_tile_at(tx, ty, true)
                     tz = t.z
                     ground[tz] ||= {}
                     ground[tz][[tx % 31, ty % 31]] = true
@@ -3140,7 +3146,7 @@ class DwarfAI
 
         end
 
-        def surface_tile_at(t, ty=nil)
+        def surface_tile_at(t, ty=nil, allow_trees=false)
             @rangez ||= (0...df.world.map.z_count).to_a.reverse
 
             if ty
@@ -3159,17 +3165,18 @@ class DwarfAI
                 next unless tsb = DFHack::TiletypeShape::BasicShape[ts]
                 next if tsb == :Open
                 next unless tm = DFHack::Tiletype::Material[tt]
-                return nil if tm == :POOL or tm == :RIVER
+                return if tm == :POOL or tm == :RIVER
                 if tsb == :Floor or tsb == :Ramp
                     return df.map_tile_at(tx, ty, z) if tm != :TREE
                 end
                 if tm == :TREE
                     tree = true
                 elsif tree
-                    return nil
+                    return df.map_tile_at(tx, ty, z + 1) if allow_trees
+                    return
                 end
             end
-            return nil
+            return
         end
 
         def status
