@@ -2614,8 +2614,8 @@ class DwarfAI
             soilcnt = {}
             (cz...df.world.map.z_count).each { |z|
                 scnt = 0
-                if (-1..(nrfarms*farm_w/2)).all? { |dx|
-                    (-(2*farm_h+2)..(2*farm_h+2)).all? { |dy|
+                if (-1..(nrfarms*farm_w/3)).all? { |dx|
+                    (-(3*farm_h+farm_h-1)..(3*farm_h+farm_h-1)).all? { |dy|
                         t = df.map_tile_at(cx+dx, cy+dy, z)
                         next if not t or t.shape != :WALL
                         scnt += 1 if t.tilemat == :SOIL
@@ -2634,8 +2634,8 @@ class DwarfAI
             types = [:food, :cloth]
             [-1, 1].each { |dy|
                 st = types.shift
-                (nrfarms/2).times { |dx|
-                    2.times { |ddy|
+                (nrfarms/3).times { |dx|
+                    3.times { |ddy|
                         r = Room.new(:farmplot, st, cx+farm_w*dx, cx+farm_w*dx+farm_w-1, cy+dy*2+dy*ddy*farm_h, cy+dy*(2+farm_h-1)+dy*ddy*farm_h, cz2)
                         r.misc[:users] = []
                         if dx == 0 and ddy == 0
