@@ -88,7 +88,7 @@ class DwarfAI
             end
 
             targets1.reject! do |u|
-                u.flags1.dead
+                u.flags1.dead or df.map_tile_at(u).designation.hidden
             end
             targets2.reject! do |u|
                 u.flags1.dead
