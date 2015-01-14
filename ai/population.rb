@@ -332,7 +332,7 @@ class DwarfAI
         LaborSkill = DFHack::JobSkill::Labor.invert
         LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
         LaborMedical = { :DIAGNOSE => true, :SURGERY => true, :BONE_SETTING => true, :SUTURING => true, :DRESSING_WOUNDS => true, :FEED_WATER_CIVILIANS => true }
-        LaborHauling = { :FEED_WATER_CIVILIANS => true }
+        LaborHauling = { :FEED_WATER_CIVILIANS => true, :RECOVER_WOUNDED => true }
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
                 LaborHauling[lb] = true
