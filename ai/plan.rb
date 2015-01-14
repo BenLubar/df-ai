@@ -2220,6 +2220,9 @@ class DwarfAI
         def scan_fort_body
             # use a hardcoded fort layout
             cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
+            if river = scan_river and river = surface_tile_at(river) and cz >= river.z
+                cz = river.z - 1
+            end
             @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
                 (MinZ..MaxZ).all? { |dz|
                     # scan perimeter first to quickly eliminate caverns / bad rock layers
@@ -2520,8 +2523,15 @@ class DwarfAI
 
         def setup_blueprint_pitcage
             return if not gpit = find_room(:garbagepit)
-            r = Room.new(:pitcage, nil, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+3)
-            r.layout << { :construction => :UpStair, :x => -1, :y => 1, :z => -3 }
+            r = Room.new(:pitcage, nil, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+10)
+            r.layout << { :construction => :UpStair, :x => -1, :y => 1, :z => -10 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -9 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -8 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -7 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -6 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -5 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -4 }
+            r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -3 }
             r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -2 }
             r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -1 }
             r.layout << { :construction => :DownStair, :x => -1, :y => 1, :z => 0 }
