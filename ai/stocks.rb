@@ -37,7 +37,7 @@ class DwarfAI
             :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
             :skull => 2, :bone => 8, :food_ingredients => 2,
             :drink_plant => 5, :drink_fruit => 5, :honey => 1,
-            :honeycomb => 1, :wool => 1, :tallow => 1,
+            :honeycomb => 1, :wool => 1, :tallow => 1, :shell => 1,
         }
 
         attr_accessor :ai, :count
@@ -339,6 +339,13 @@ class DwarfAI
                 }.inject(0) { |s, i|
                     # corpsepieces uses this instead of i.stack_size
                     s + i.material_amount[:Bone]
+                }
+            when :shell
+                return df.world.items.other[:CORPSEPIECE].find_all { |i|
+                    i.corpse_flags.shell and not i.corpse_flags.unbutchered
+                }.inject(0) { |s, i|
+                    # corpsepieces uses this instead of i.stack_size
+                    s + i.material_amount[:Shell]
                 }
             when :wool
                 df.world.items.other[:CORPSEPIECE].find_all { |i|
@@ -900,6 +907,9 @@ class DwarfAI
                     amount /= 2 if amount > 4
                 end
 
+            when :shell
+                order = :DecorateWithShell
+
             when :wool
                 order = :SpinThread
 
@@ -1223,6 +1233,7 @@ class DwarfAI
             :MakeGiantCorkscrew => :MakeTrapComponent,
             :ConstructWoodenBlocks => :ConstructBlocks,
             :MakeWoodenStepladder => :MakeTool,
+            :DecorateWithShell => :DecorateWith,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
@@ -1233,7 +1244,7 @@ class DwarfAI
             :MakeGiantCorkscrew => :wood, :MakePipeSection => :wood, :ConstructWoodenBlocks => :wood,
             :MakeBoneBolt => :bone, :MakeBoneCrossbow => :bone,
             :MakeQuiver => :leather, :MakeFlask => :leather, :MakeBackpack => :leather,
-            :MakeWoodenStepladder => :wood,
+            :MakeWoodenStepladder => :wood, :DecorateWithShell => :shell,
         }
         ManagerType = {   # no MatCategory => mat_type = 0 (ie generic rock), unless specified here
             :ProcessPlants => -1, :ProcessPlantsBag => -1, :MillPlants => -1, :BrewDrinkPlant => -1,
