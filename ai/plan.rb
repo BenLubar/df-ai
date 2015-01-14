@@ -2863,7 +2863,7 @@ class DwarfAI
             r.accesspath << up[0]
 
             dst = up[-1].maptile2.offset(0, 0, -2)
-            dst = df.map_tile_at(dst.x, dst.y, src.z) if src.z < dst.z
+            dst = df.map_tile_at(dst.x, dst.y, src.z - 1) if src.z <= dst.z
             move_river[dst]
 
             if (dst.x - src.x).abs > 1
