@@ -362,6 +362,10 @@ class DwarfAI
                     @medic[hf.unit_id] = true
                 }
 
+                merchant = df.world.units.all.any? { |u|
+                    u.flags1.merchant and not u.flags1.dead
+                }
+
                 citizen.each_value { |c|
                     next if not u = c.dfunit
                     if u.mood != :None
@@ -379,6 +383,9 @@ class DwarfAI
                         df.world.manager_orders.last.is_validated == 0 and
                         df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
                         nonworkers << [c, 'validating work orders']
+                    elsif merchant and df.unit_entitypositions(u).find { |n| n.responsibilities[:TRADE] }
+                        nonworkers << [c, 'trading']
+                        set_up_trading
                     elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
                         nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
                     elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
@@ -674,6 +681,23 @@ class DwarfAI
             u.status.labors[lb] = false
             u.military.pickup_flags.update = true if LaborTool[lb]
             @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
+        end
+
+        def set_up_trading
+            return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
+            return unless bld = r.dfbuilding
+            return if bld.trade_flags.trader_requested
+
+            bld.trade_flags.trader_requested = true
+
+            ref = DFHack::GeneralRefBuildingHolderst.cpp_new
+            ref.building_id = bld.id
+
+            job = DFHack::Job.cpp_new
+            job.job_type = :TradeAtDepot
+            job.general_refs << ref
+            bld.jobs << job
+            df.job_link job
         end
 
         def unit_hasmilitaryduty(u)
