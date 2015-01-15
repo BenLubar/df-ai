@@ -292,11 +292,19 @@ class DwarfAI
         end
 
         def getdiningroom(id)
-            if r = find_room(:farmplot) { |_r| _r.subtype == :food and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+            if r = find_room(:farmplot) { |_r| _r.subtype == :food and not _r.misc[:outdoor] and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
                 wantdig(r)
                 r.misc[:users] << id
             end
-            if r = find_room(:farmplot) { |_r| _r.subtype == :cloth and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+            if r = find_room(:farmplot) { |_r| _r.subtype == :cloth and not _r.misc[:outdoor] and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+                wantdig(r)
+                r.misc[:users] << id
+            end
+            if r = find_room(:farmplot) { |_r| _r.subtype == :food and _r.misc[:outdoor] and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
+                wantdig(r)
+                r.misc[:users] << id
+            end
+            if r = find_room(:farmplot) { |_r| _r.subtype == :cloth and _r.misc[:outdoor] and _r.misc[:users].length < _r.w*_r.h*@dwarves_per_farmtile }
                 wantdig(r)
                 r.misc[:users] << id
             end
@@ -1518,92 +1526,7 @@ class DwarfAI
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
 
-            biomes = Hash.new(0)
-            (bld.x1..bld.x2).each do |x|
-                (bld.y1..bld.y2).each do |y|
-                    td = df.map_tile_at(x, y, bld.z).designation
-                    if td.subterranean
-                        biomes[:BIOME_SUBTERRANEAN_WATER] += 1
-                    else
-                        biomes[:"BIOME_#{DFHack::BiomeType::ENUM[td.biome]}"] += 1
-                    end
-                end
-            end
-            if biomes.length != 1
-                puts "AI: multiple biomes for #{r.subtype} farm plot #{rooms.index(r)}: #{biomes}"
-                return true # we can't farm here
-            end
-            biome = biomes.keys.first
-
-            may = []
-            df.world.raws.plants.all.length.times { |i|
-                p = df.world.raws.plants.all[i]
-                next if not p.flags[biome]
-                may << i
-            }
-
-            # XXX 1st plot = the one with a door
-            isfirst = !r.layout.empty?
-            if r.subtype == :food
-                4.times { |season|
-                    pids = may.find_all { |i|
-                        p = df.world.raws.plants.all[i]
-
-                        # season numbers are also the 1st 4 flags
-                        next if not p.flags[season]
-
-                        pm = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material
-                        if isfirst
-                            pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
-                        else
-                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or
-                            (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
-                            (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).material and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
-                        end
-                    }
-
-                    if pids.empty?
-                        @complained_about_no_plants ||= {}
-                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
-                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
-                    else
-                        bld.plant_id[season] = pids[rand(pids.length)]
-                    end
-                }
-            else
-                threads = may.find_all { |i|
-                    p = df.world.raws.plants.all[i]
-                    p.flags[:THREAD]
-                }
-                dyes = may.find_all { |i|
-                    p = df.world.raws.plants.all[i]
-                    p.flags[:MILL] and df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material.flags[:IS_DYE]
-                }
-
-                4.times { |season|
-                    pids = threads.find_all { |i|
-                        p = df.world.raws.plants.all[i]
-                        p.flags[season]
-                    }
-                    # only grow dyes the first field if there is no cloth crop available
-                    if pids.empty? or !isfirst
-                        pids |= dyes.find_all { |i|
-                            p = df.world.raws.plants.all[i]
-                            p.flags[season]
-                        }
-                    end
-
-                    if pids.empty?
-                        @complained_about_no_plants ||= {}
-                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
-                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
-                    else
-                        bld.plant_id[season] = pids[rand(pids.length)]
-                    end
-                }
-
-                # TODO repurpose fields if we have too much dimple dye or smth
-            end
+            ai.stocks.farmplot(r)
 
             true
         end
@@ -2776,6 +2699,7 @@ class DwarfAI
             }
 
             setup_blueprint_pastures
+            setup_blueprint_outdoor_farms
         end
 
         def setup_blueprint_cistern_fromsource(src, fx, fy, fz)
@@ -2907,11 +2831,11 @@ class DwarfAI
         # scan for 11x11 flat areas with grass
         def setup_blueprint_pastures
             want = 36
-            @fort_entrance.maptile.spiral_search(df.world.map.x_count, 12, 12) { |_t|
+            @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 12, 12) { |_t|
                 next unless sf = surface_tile_at(_t)
                 grasstile = 0
                 if (-5..5).all? { |dx| (-5..5).all? { |dy|
-                    if tt = sf.offset(dx, dy) and tt.shape_basic == :Floor and
+                    if tt = sf.offset(dx, dy) and (tt.shape_basic == :Floor or tt.tilemat == :TREE) and
                             tt.designation.flow_size == 0 and tt.tilemat != :FROZEN_LIQUID
                         grasstile += 1 if tt.mapblock.block_events.find { |be|
                             be.kind_of?(DFHack::BlockSquareEventGrassst) and be.amount[tt.dx][tt.dy] > 0
@@ -2921,6 +2845,31 @@ class DwarfAI
                 } } and grasstile >= 70
                     @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
                     @rooms.last.misc[:users] = []
+                    want -= 1
+                    true if want == 0
+                end
+            }
+        end
+
+        # scan for 3x3 flat areas with soil
+        def setup_blueprint_outdoor_farms
+            want = 100
+            @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 10, 3) { |_t|
+                next unless sf = surface_tile_at(_t)
+                sd = sf.designation
+                if (-1..1).all? { |dx| (-1..1).all? { |dy|
+                    tt = sf.offset(dx, dy) and
+                    td = tt.designation and
+                    ((sd.subterranean and td.subterranean) or
+                    (not sd.subterranean and not td.subterranean and
+                        sd.biome == td.biome)) and
+                    tt.shape_basic == :Floor and
+                    tt.designation.flow_size == 0 and
+                    [:GRASS_DARK, :GRASS_LIGHT, :SOIL].include?(tt.tilemat)
+                } }
+                    @rooms << Room.new(:farmplot, [:food, :cloth][want % 2], sf.x-1, sf.x+1, sf.y-1, sf.y+1, sf.z)
+                    @rooms.last.misc[:users] = []
+                    @rooms.last.misc[:outdoor] = true
                     want -= 1
                     true if want == 0
                 end

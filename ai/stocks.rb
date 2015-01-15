@@ -51,6 +51,9 @@ class DwarfAI
             @updating = []
             @lastupdating = 0
             @count = {}
+            @farmplots = Hash.new(0)
+            @seeds = Hash.new(0)
+            @plants = Hash.new(0)
         end
 
         def startup
@@ -105,16 +108,34 @@ class DwarfAI
 
             @updating = Needed.keys | WatchStock.keys
             @updating_count = @updating.dup
+            @updating_seeds = true
+            @updating_plants = true
+            @updating_farmplots = []
+
+            ai.plan.find_room(:farmplot) { |r|
+                @updating_farmplots << r if r.dfbuilding
+                false # search all farm plots
+            }
+
             @ai.debug 'updating stocks'
 
             # do stocks accounting 'in the background' (ie one bit at a time)
             cb_bg = df.onupdate_register('df-ai stocks bg', 8) {
-                if key = @updating_count.shift
+                if @updating_seeds
+                    cb_bg.description = 'df-ai stocks bg count_seeds'
+                    count_seeds
+                elsif @updating_plants
+                    cb_bg.description = 'df-ai stocks bg count_plants'
+                    count_plants
+                elsif key = @updating_count.shift
                     cb_bg.description = "df-ai stocks bg count #{key}"
                     @count[key] = count_stocks(key)
                 elsif key = @updating.shift
                     cb_bg.description = "df-ai stocks bg act #{key}"
                     act(key)
+                elsif r = @updating_farmplots.shift
+                    cb_bg.description = "df-ai stocks bg farmplot #{r.subtype} #{ai.plan.rooms.index(r)}"
+                    farmplot(r, false)
                 else
                     # finished, dismiss callback
                     df.onupdate_unregister(cb_bg)
@@ -192,6 +213,35 @@ class DwarfAI
                     end
                 end
             end
+        end
+
+        def count_seeds
+            @farmplots = Hash.new(0)
+            ai.plan.find_room(:farmplot) { |r|
+                next unless bld = r.dfbuilding
+
+                4.times { |season|
+                    @farmplots[[season, bld.plant_id[season]]] += 1
+                }
+
+                false # search all farm plots
+            }
+            @seeds = Hash.new(0)
+            df.world.items.other[:SEEDS].each { |i|
+                @seeds[i.mat_index] += i.stack_size if is_item_free(i)
+            }
+            @updating_seeds = false
+        end
+
+        def count_plants
+            @plants = Hash.new(0)
+            df.world.items.other[:PLANT].each { |i|
+                @plants[i.mat_index] += i.stack_size if is_item_free(i)
+            }
+            df.world.items.other[:PLANT_GROWTH].each { |i|
+                @plants[i.mat_index] += i.stack_size if is_item_free(i)
+            }
+            @updating_plants = false
         end
 
         def ban_cooking(material, type, subtype=-1)
@@ -1473,6 +1523,108 @@ class DwarfAI
             end
             @last_cutpos = nil
             false
+        end
+
+        def farmplot(r, initial=true)
+            return unless bld = r.dfbuilding
+
+            biomes = Hash.new(0)
+            (bld.x1..bld.x2).each do |x|
+                (bld.y1..bld.y2).each do |y|
+                    td = df.map_tile_at(x, y, bld.z).designation
+                    if td.subterranean
+                        biomes[:BIOME_SUBTERRANEAN_WATER] += 1
+                    else
+                        biomes[:"BIOME_#{DFHack::BiomeType::ENUM[td.biome]}"] += 1
+                    end
+                end
+            end
+            if biomes.length != 1
+                puts "AI: multiple biomes for #{r.subtype} farm plot #{ai.plan.rooms.index(r)}: #{biomes}"
+                return true # we can't farm here
+            end
+            biome = biomes.keys.first
+
+            may = []
+            df.world.raws.plants.all.length.times { |i|
+                p = df.world.raws.plants.all[i]
+                next if not p.flags[biome]
+                next if p.flags[:TREE]
+                may << i
+            }
+
+            # XXX 1st plot = the one with a door
+            isfirst = !r.layout.empty?
+            if r.subtype == :food
+                4.times { |season|
+                    pids = may.find_all { |i|
+                        p = df.world.raws.plants.all[i]
+
+                        # season numbers are also the 1st 4 flags
+                        next if not p.flags[season]
+
+                        pm = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material
+                        if isfirst
+                            pm.flags[:EDIBLE_RAW] and p.flags[:DRINK]
+                        else
+                            pm.flags[:EDIBLE_RAW] or pm.flags[:EDIBLE_COOKED] or p.flags[:DRINK] or
+                            (p.flags[:MILL] and mm = df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material and (mm.flags[:EDIBLE_RAW] or mm.flags[:EDIBLE_COOKED])) or
+                            (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).material and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
+                        end
+                    }.sort_by { |i|
+                        @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]
+                    }
+
+                    if pids.empty?
+                        @complained_about_no_plants ||= {}
+                        puts "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
+                    else
+                        @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial
+                        bld.plant_id[season] = pids.first
+                        @farmplots[[season, pids.first]] += 1 unless initial
+                    end
+                }
+            else
+                threads = may.find_all { |i|
+                    p = df.world.raws.plants.all[i]
+                    p.flags[:THREAD]
+                }
+                dyes = may.find_all { |i|
+                    p = df.world.raws.plants.all[i]
+                    p.flags[:MILL] and df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material.flags[:IS_DYE]
+                }
+
+                4.times { |season|
+                    pids = threads.find_all { |i|
+                        p = df.world.raws.plants.all[i]
+                        p.flags[season]
+                    }
+                    # only grow dyes the first field if there is no cloth crop available
+                    if pids.empty? or !isfirst
+                        pids |= dyes.find_all { |i|
+                            p = df.world.raws.plants.all[i]
+                            p.flags[season]
+                        }
+                    end
+
+                    pids = pids.sort_by { |i|
+                        @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]
+                    }
+
+                    if pids.empty?
+                        @complained_about_no_plants ||= {}
+                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
+                    else
+                        @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial
+                        bld.plant_id[season] = pids.first
+                        @farmplots[[season, pids.first]] += 1 unless initial
+                    end
+                }
+
+                # TODO repurpose fields if we have too much dimple dye or smth
+            end
         end
 
         def serialize
