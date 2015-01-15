@@ -127,7 +127,7 @@ class DwarfAI
 
                             if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
                                 assign_unit_to_zone(u, r.dfbuilding)
-                                @ai.debug "pop: marked #{u.name} for pitting"
+                                @ai.debug "pop: marked #{u.name || 'unnamed'} #{u.race_tg.name[0]} for pitting"
                             end
                         end
                     end
