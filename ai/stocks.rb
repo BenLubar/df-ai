@@ -511,6 +511,8 @@ class DwarfAI
                 return queue_need_weapon(Needed[:axe], :AXE)
             when :armor
                 return queue_need_armor
+            when :anvil
+                return queue_need_anvil
             when :clothes
                 return queue_need_clothes
             when :coffin_bld
@@ -784,10 +786,64 @@ class DwarfAI
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
                         coal_bars -= nw
-                        cnt -= nw 
+                        cnt -= nw
                         break if may_forge_cache[mi]
                     }
                 }
+            }
+        end
+
+        def queue_need_anvil
+            bars = Hash.new(0)
+            coal_bars = @count[:coal]
+            coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
+
+            df.world.items.other[:BAR].each { |i|
+                bars[i.mat_index] += i.stack_size if i.mat_type == 0
+            }
+
+            # rough account of already queued jobs consumption
+            df.world.manager_orders.each { |mo|
+                if mo.mat_type == 0 and bars.has_key?(mo.mat_index)
+                    bars[mo.mat_index] -= 4*mo.amount_total
+                    coal_bars -= mo.amount_total
+                end
+            }
+
+            @metal_anvil_pref ||= (0...df.world.raws.inorganics.length).find_all { |mi|
+                df.world.raws.inorganics[mi].material.flags[:ITEMS_ANVIL]
+            }
+
+            may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
+
+            job = DFHack::JobType::Item.index(oidx)
+
+            cnt = Needed[:armor]
+            cnt -= df.world.items.other[oidx].find_all { |i|
+                i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
+            }.length / div
+
+            df.world.manager_orders.each { |mo|
+                cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
+            }
+            next if cnt <= 0
+
+            need_bars = 1
+
+            @metal_anvil_pref.each { |mi|
+                break if bars[mi] < need_bars and may_forge_cache[mi]
+                nw = bars[mi] / need_bars
+                nw = coal_bars if nw > coal_bars
+                nw = cnt if nw > cnt
+                next if nw <= 0
+
+                @ai.debug "stocks: queue #{nw} ForgeAnvil #{df.world.raws.inorganics[mi].id}"
+                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :ForgeAnvil, :unk_2 => -1,
+                    :item_subtype => -1, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
+                bars[mi] -= nw * need_bars
+                coal_bars -= nw
+                cnt -= nw
+                break if may_forge_cache[mi]
             }
         end
 
@@ -1379,8 +1435,7 @@ class DwarfAI
             :giant_corkscrew => :MakeGiantCorkscrew,
             :pipe_section => :MakePipeSection,
             :coal => :MakeCharcoal,
-            :stepladder => :MakeWoodenStepladder,
-            :anvil => :ForgeAnvil
+            :stepladder => :MakeWoodenStepladder
 
         FurnitureFind = Hash.new { |h, k|
             sym = "item_#{k}st".to_sym
