@@ -1937,6 +1937,7 @@ class DwarfAI
             df.onupdate_register_once('df-ai plan make_map_walkable') {
                 # if we don't have a river, we're fine
                 next true unless river = scan_river
+                next true if surface_tile_at(river).tilemat == :BROOK
 
                 river = spiral_search(river) { |t|
                     # TODO rooms outline
