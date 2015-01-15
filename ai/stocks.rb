@@ -816,17 +816,13 @@ class DwarfAI
 
             may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
 
-            job = DFHack::JobType::Item.index(oidx)
-
-            cnt = Needed[:armor]
-            cnt -= df.world.items.other[oidx].find_all { |i|
-                i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
-            }.length / div
+            cnt = Needed[:anvil]
+            cnt -= @count[:anvil]
 
             df.world.manager_orders.each { |mo|
-                cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
+                cnt -= mo.amount_total if mo.job_type == :ForgeAnvil
             }
-            next if cnt <= 0
+            return if cnt <= 0
 
             need_bars = 1
 
