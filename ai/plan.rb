@@ -172,15 +172,16 @@ class DwarfAI
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 0 } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    (@past_initial_phase = true ; false) ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 1 } ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    find_room(:bedroom)   { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
                    ifplan[find_room(:dininghall) { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                    ifplan[find_room(:barracks)   { |_r| _r.layout.find { |f| f[:users] and f[:users].empty? } }] ||
                    find_room(:stockpile) { |_r| _r.misc[:stockpile_level] <= 3 and _r.status == :plan } ||
+                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
-                   find_room(:stockpile) { |_r| _r.status == :plan } ||
-                   find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan }
+                   find_room(:stockpile) { |_r| _r.status == :plan }
                 @ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
                 wantdig(r)
                 if r.status == :finished
@@ -2242,6 +2243,14 @@ class DwarfAI
                         @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy+1, fy+1, fz)
                         @rooms.last.accesspath = [cor_x]
                         @rooms.last.misc[:workshop_level] = 0
+
+                        @rooms << Room.new(:workshop, :Quern, cx-6, cx-6, fy+1, fy+1, fz)
+                        @rooms.last.accesspath = [cor_x]
+                        @rooms.last.misc[:workshop_level] = 1
+
+                        @rooms << Room.new(:workshop, :Quern, cx+2, cx+2, fy+1, fy+1, fz)
+                        @rooms.last.accesspath = [cor_x]
+                        @rooms.last.misc[:workshop_level] = 2
 
                         @rooms << Room.new(:workshop, :ScrewPress, cx-2, cx-2, fy-1, fy-1, fz)
                         @rooms.last.accesspath = [cor_x]
