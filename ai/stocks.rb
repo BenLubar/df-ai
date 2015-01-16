@@ -38,6 +38,7 @@ class DwarfAI
             :skull => 2, :bone => 8, :food_ingredients => 2,
             :drink_plant => 5, :drink_fruit => 5, :honey => 1,
             :honeycomb => 1, :wool => 1, :tallow => 1, :shell => 1,
+            :raw_fish => 1,
         }
 
         attr_accessor :ai, :count
@@ -309,7 +310,6 @@ class DwarfAI
                     item.kind_of?(DFHack::ItemBucketst) or
                     item.kind_of?(DFHack::ItemAnimaltrapst) or
                     item.kind_of?(DFHack::ItemBoxst) or
-                    item.kind_of?(DFHack::ItemFishRawst) or
                     item.kind_of?(DFHack::ItemToolst) or
                     forbidden[[item.getType, item.getSubtype, item.getMaterial, item.getMaterialIndex]]
                 end
@@ -332,6 +332,8 @@ class DwarfAI
                 df.world.items.other[:BOULDER].find_all { |i| is_gypsum(i) }
             when :raw_adamantine
                 df.world.items.other[:BOULDER].grep(df.decode_mat('INORGANIC:RAW_ADAMANTINE'))
+            when :raw_fish
+                df.world.items.other[:FISH_RAW]
             when :splint
                 df.world.items.other[:SPLINT]
             when :crutch
@@ -1021,6 +1023,9 @@ class DwarfAI
                 amount /= 2 if amount > 10
                 amount /= 2 if amount > 4
 
+            when :raw_fish
+                order = :PrepareRawFish
+
             when :honeycomb
                 order = :PressHoneycomb
                 input = [:jug]
@@ -1353,7 +1358,7 @@ class DwarfAI
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
             :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1, :BrewDrinkFruit => -1,
-            :BrewMead => -1, :MakeCheese => -1,
+            :BrewMead => -1, :MakeCheese => -1, :PrepareRawFish => -1,
         }
         ManagerCustom = {
             :ProcessPlantsBag => 'PROCESS_PLANT_TO_BAG',
