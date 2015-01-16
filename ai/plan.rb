@@ -2540,7 +2540,7 @@ class DwarfAI
             farm_h = 3
             farm_w = 3
             dpf = (@dwarves_per_farmtile * farm_h * farm_w).to_i
-            nrfarms = (200+dpf-1)/dpf
+            nrfarms = (220+dpf-1)/dpf
 
             cx = fx+4*6       # end of workshop corridor (last ws door)
             cy = fy
@@ -2699,7 +2699,7 @@ class DwarfAI
             }
 
             setup_blueprint_pastures
-            setup_blueprint_outdoor_farms
+            setup_blueprint_outdoor_farms(nrfarms * 2)
         end
 
         def setup_blueprint_cistern_fromsource(src, fx, fy, fz)
@@ -2852,8 +2852,7 @@ class DwarfAI
         end
 
         # scan for 3x3 flat areas with soil
-        def setup_blueprint_outdoor_farms
-            want = 100
+        def setup_blueprint_outdoor_farms(want)
             @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 10, 3) { |_t|
                 next unless sf = surface_tile_at(_t)
                 sd = sf.designation

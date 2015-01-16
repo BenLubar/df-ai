@@ -1540,7 +1540,7 @@ class DwarfAI
                 end
             end
             if biomes.length != 1
-                puts "AI: multiple biomes for #{r.subtype} farm plot #{ai.plan.rooms.index(r)}: #{biomes}"
+                puts_err "AI: multiple biomes for #{r.subtype} farm plot #{ai.plan.rooms.index(r)}: #{biomes}"
                 return true # we can't farm here
             end
             biome = biomes.keys.first
@@ -1577,7 +1577,7 @@ class DwarfAI
 
                     if pids.empty?
                         @complained_about_no_plants ||= {}
-                        puts "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        puts_err "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
                         @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
                     else
                         @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial
@@ -1614,7 +1614,7 @@ class DwarfAI
 
                     if pids.empty?
                         @complained_about_no_plants ||= {}
-                        puts "AI: no legal plants for #{r.subtype} farm plot #{rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        puts_err "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
                         @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
                     else
                         @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial
