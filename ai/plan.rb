@@ -1636,6 +1636,8 @@ class DwarfAI
             return if not bld or bld.getBuildStage < bld.getMaxBuildStage
             tbld = df.building_find(dst[:bld_id])
             return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
+            return if bld.general_refs.find { |ref| ref.kind_of?(DFHack::GeneralRefBuildingTriggertargetst) and
+                    ref.building_id == tbld.id }
             return if bld.jobs.find { |j| j.job_type == :LinkBuildingToTrigger and
                 j.general_refs.find { |ref| ref.kind_of?(DFHack::GeneralRefBuildingTriggertargetst) and
                     ref.building_id == tbld.id }
