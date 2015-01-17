@@ -2862,7 +2862,7 @@ class DwarfAI
 
         # scan for 3x3 flat areas with soil
         def setup_blueprint_outdoor_farms(want)
-            @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 10, 3) { |_t|
+            @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 9, 3) { |_t|
                 next unless sf = surface_tile_at(_t)
                 sd = sf.designation
                 if (-1..1).all? { |dx| (-1..1).all? { |dy|

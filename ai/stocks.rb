@@ -1533,28 +1533,13 @@ class DwarfAI
         def farmplot(r, initial=true)
             return unless bld = r.dfbuilding
 
-            biomes = Hash.new(0)
-            (bld.x1..bld.x2).each do |x|
-                (bld.y1..bld.y2).each do |y|
-                    td = df.map_tile_at(x, y, bld.z).designation
-                    if td.subterranean
-                        biomes[:BIOME_SUBTERRANEAN_WATER] += 1
-                    else
-                        biomes[:"BIOME_#{DFHack::BiomeType::ENUM[td.biome]}"] += 1
-                    end
-                end
-            end
-            if biomes.length != 1
-                puts_err "AI: multiple biomes for #{r.subtype} farm plot #{ai.plan.rooms.index(r)}: #{biomes}"
-                return true # we can't farm here
-            end
-            biome = biomes.keys.first
+            subterranean = df.map_tile_at(r).designation.subterranean
 
             may = []
             df.world.raws.plants.all.length.times { |i|
                 p = df.world.raws.plants.all[i]
-                next if not p.flags[biome]
-                next if p.flags[:TREE]
+                next if p.flags[:BIOME_SUBTERRANEAN_WATER] != subterranean
+                next if p.flags[:TREE] or not p.flags[:SEED]
                 may << i
             }
 
@@ -1577,7 +1562,7 @@ class DwarfAI
                             (bi = pm.reaction_product.id.index('BAG_ITEM') and bm = df.decode_mat(pm.reaction_product.material.mat_type[bi], pm.reaction_product.material.mat_index[bi]).material and (bm.flags[:EDIBLE_RAW] or bm.flags[:EDIBLE_COOKED]))
                         end
                     }.sort_by { |i|
-                        @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]
+                        [[-@seeds[i], -1].max, @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]]
                     }
 
                     if pids.empty?
@@ -1614,7 +1599,7 @@ class DwarfAI
                     end
 
                     pids = pids.sort_by { |i|
-                        @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]
+                        [[-@seeds[i], -50].max, @plants[i] - @seeds[i] + 18 * @farmplots[[season, i]]]
                     }
 
                     if pids.empty?
