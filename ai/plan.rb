@@ -2779,7 +2779,7 @@ class DwarfAI
             @ai.debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
 
             # XXX hardcoded layout again
-            if src.x <= p1.x+16
+            if src.x <= p1.x
                 p = p1
                 r = reserve
             else
