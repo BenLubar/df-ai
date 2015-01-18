@@ -2001,6 +2001,8 @@ class DwarfAI
                 end
             } }
 
+            return count if dxs.empty?
+
             need_shaft = true
             todo = []
             @ai.debug "do_dig_vein #{dxs.min}..#{dxs.max} #{dys.min}..#{dys.max}"
