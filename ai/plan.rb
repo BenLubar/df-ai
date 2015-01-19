@@ -2611,9 +2611,10 @@ class DwarfAI
             # garbage dump
             # TODO ensure flat space, no pools/tree, ...
             r = Room.new(:garbagedump, nil, cx+5, cx+5, cy, cy, cz)
-            r.z2 = r.z1 += 1 until df.map_tile_at(r).shape_basic != :Wall
             tile = spiral_search(df.map_tile_at(r)) { |t|
-                t.x >= cx + 5 and
+                t = surface_tile_at(t) and
+                (t.x >= cx + 5 or
+                (t.z > cz + 2 and t.x > fx + 5)) and
                 map_tile_in_rock(t.offset(0, 0, -1)) and
                 map_tile_in_rock(t.offset(2, 0, -1)) and
                 t.shape_basic == :Floor and
@@ -2624,6 +2625,7 @@ class DwarfAI
             }
             r.x1 = r.x2 = tile.x
             r.y1 = r.y2 = tile.y
+            r.z2 = r.z1 = surface_tile_at(tile).z
             @rooms << r
             r = Room.new(:garbagepit, nil, @rooms.last.x + 1, @rooms.last.x + 2, @rooms.last.y, @rooms.last.y, @rooms.last.z)
             @rooms << r
@@ -3050,7 +3052,7 @@ class DwarfAI
 
         # check that tile is surrounded by solid rock/soil walls
         def map_tile_in_rock(tile)
-            (-1..1).all? { |dx| (-1..1).all? { |dy|
+            tile and (-1..1).all? { |dx| (-1..1).all? { |dy|
                 t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT)
             } }
         end
