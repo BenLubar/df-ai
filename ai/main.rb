@@ -3,12 +3,14 @@ class DwarfAI
     attr_accessor :pop
     attr_accessor :stocks
     attr_accessor :camera
+    attr_accessor :random_embark
 
     def initialize
         @pop = Population.new(self)
         @plan = Plan.new(self)
         @stocks = Stocks.new(self)
         @camera = Camera.new(self)
+        @random_embark = RandomEmbark.new(self)
     end
 
     def debug(str)
@@ -20,6 +22,7 @@ class DwarfAI
         @plan.startup
         @stocks.startup
         @camera.startup
+        @random_embark.startup
     end
 
     def handle_pause_event(announce)
@@ -149,6 +152,7 @@ class DwarfAI
         @plan.onupdate_register
         @stocks.onupdate_register
         @camera.onupdate_register
+        @random_embark.onupdate_register
         @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { puts status }
 
         df.onstatechange_register_once { |st|
@@ -165,6 +169,7 @@ class DwarfAI
     end
 
     def onupdate_unregister
+        @random_embark.onupdate_unregister
         @camera.onupdate_unregister
         @stocks.onupdate_unregister
         @plan.onupdate_unregister
