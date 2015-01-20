@@ -366,6 +366,8 @@ class DwarfAI
                     u.flags1.merchant and not u.flags1.dead
                 }
 
+                set_up_trading(false) unless merchant
+
                 citizen.each_value { |c|
                     next if not u = c.dfunit
                     if u.mood != :None
@@ -385,7 +387,7 @@ class DwarfAI
                         nonworkers << [c, 'validating work orders']
                     elsif merchant and df.unit_entitypositions(u).find { |n| n.responsibilities[:TRADE] }
                         nonworkers << [c, 'trading']
-                        set_up_trading
+                        set_up_trading(true)
                     elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
                         nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
                     elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
@@ -683,21 +685,17 @@ class DwarfAI
             @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
         end
 
-        def set_up_trading
+        def set_up_trading(should_be_trading)
             return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
             return unless bld = r.dfbuilding
-            return if bld.trade_flags.trader_requested
+            return unless bld.trade_flags.trader_requested == should_be_trading
+            return unless view = df.curview and view._raw_rtti_classname == 'viewscreen_dwarfmodest'
 
-            bld.trade_flags.trader_requested = true
-
-            ref = DFHack::GeneralRefBuildingHolderst.cpp_new
-            ref.building_id = bld.id
-
-            job = DFHack::Job.cpp_new
-            job.job_type = :TradeAtDepot
-            job.general_refs << ref
-            bld.jobs << job
-            df.job_link job
+            view.feed_keys(:D_BUILDJOB)
+            df.center_viewscreen(r)
+            view.feed_keys(:CURSOR_LEFT)
+            view.feed_keys(:BUILDJOB_DEPOT_REQUEST_TRADER)
+            view.feed_keys(:LEAVESCREEN)
         end
 
         def unit_hasmilitaryduty(u)
