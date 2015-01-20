@@ -94,6 +94,7 @@ class DwarfAI
                     view.feed_keys(:LEAVESCREEN)
                 elsif df.world.worldgen_status.state == 0
                     ai.debug 'choosing "Generate World"'
+                    view.world_size = 1
                     view.feed_keys(:MENU_CONFIRM)
                 elsif df.world.worldgen_status.state == 10
                     ai.debug "world gen finished, save name is #{df.world.cur_savegame.save_dir}"
@@ -116,6 +117,38 @@ class DwarfAI
                     elsif view.finder.finder_state == 2
                         ai.debug 'choosing "Embark"'
                         view.feed_keys(:LEAVESCREEN)
+                        sx, sy = view.location.region_pos.x, view.location.region_pos.y
+                        dx, dy, score = sx, sy, df.world.world_data.region_map[sx][sy].finder_rank
+                        df.world.world_data.world_width.times do |x|
+                            df.world.world_data.world_height.times do |y|
+                                s = df.world.world_data.region_map[x][y].finder_rank
+                                dx, dy, score = x, y, s if s > score
+                            end
+                        end
+                        dx -= sx
+                        dy -= sy
+                        raise 'no good embarks but site finder exited with success' if score == -1
+
+                        if dx >= 0
+                            dx.times do
+                                view.feed_keys(:CURSOR_RIGHT)
+                            end
+                        else
+                            (-dx).times do
+                                view.feed_keys(:CURSOR_LEFT)
+                            end
+                        end
+
+                        if dy >= 0
+                            dy.times do
+                                view.feed_keys(:CURSOR_DOWN)
+                            end
+                        else
+                            (-dy).times do
+                                view.feed_keys(:CURSOR_UP)
+                            end
+                        end
+
                         view.feed_keys(:SETUP_EMBARK)
                     else
                         ai.debug 'leaving embark selector (no good embarks)'
