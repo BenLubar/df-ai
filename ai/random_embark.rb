@@ -15,10 +15,8 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            return
-
             if $AI_RANDOM_EMBARK
-                timeout_sameview(60) do
+                ai.timeout_sameview(60) do
                     df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
 
                     # reset
@@ -42,6 +40,7 @@ class DwarfAI
 
         def update
             view = df.curview
+            return if not view or view.breakdown_level != :NONE
             case view
             when DFHack::ViewscreenTitlest
                 case view.sel_subpage
@@ -71,7 +70,7 @@ class DwarfAI
                     end
                 when :StartSelectMode
                     if view.submenu_line_id.include?(0)
-                        view.sel_submenu_line = view.submenu_line_id.index(0)
+                        view.sel_menu_line = view.submenu_line_id.index(0)
                         view.feed_keys(:SELECT)
                     else
                         $AI_RANDOM_EMBARK_WORLD = nil
@@ -79,6 +78,8 @@ class DwarfAI
                     end
                 end
             when DFHack::ViewscreenNewRegionst
+                return if $AI_RANDOM_EMBARK_WORLD
+
                 if not view.unk_33.empty?
                     view.feed_keys(:LEAVESCREEN)
                 elsif df.world.worldgen_status.state == 0
@@ -87,6 +88,36 @@ class DwarfAI
                     $AI_RANDOM_EMBARK_WORLD = df.world.cur_savegame.save_dir
                     view.feed_keys(:SELECT)
                 end
+            when DFHack::ViewscreenChooseStartSitest
+                if view.finder.finder_state == -1
+                    view.feed_keys(:SETUP_FIND)
+                    view.finder.options[:DimensionX] = 3
+                    view.finder.options[:DimensionY] = 2
+                    view.finder.options[:Aquifer] = 0
+                    view.finder.options[:River] = 1
+                    view.feed_keys(:SELECT)
+                elsif view.finder.search_x == -1
+                    if view.in_embark_salt # XXX
+                        view.feed_keys(:SELECT)
+                    elsif view.finder.finder_state == 2
+                        view.feed_keys(:LEAVESCREEN)
+                        view.feed_keys(:SETUP_EMBARK)
+                    else
+                        # no good embarks
+                        $AI_RANDOM_EMBARK_WORLD = nil
+                        view.breakdown_level = :TOFIRST
+                    end
+                end
+            when DFHack::ViewscreenSetupdwarfgamest
+                view.feed_keys(:SELECT)
+                # TODO custom embark loadout
+            when DFHack::ViewscreenTextviewerst
+                ai.timeout_sameview do
+                    df.curview.feed_keys(:LEAVESCREEN)
+                    df.ui_area_map_width = 3
+                    df.ui_menu_width = 3
+                end
+                return true
             end
             false
         end
