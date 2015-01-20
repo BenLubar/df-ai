@@ -12,6 +12,7 @@ class DwarfAI
         end
 
         def onupdate_register
+            df.gps.display_frames = 1 if $DEBUG
             @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
             unless $DEBUG
                 df.gview.supermovie_on = 1
@@ -25,6 +26,7 @@ class DwarfAI
         end
 
         def onupdate_unregister
+            df.gps.display_frames = 0 if $DEBUG
             ai.timeout_sameview(60) do
                 df.curview.breakdown_level = :QUIT
             end unless $NO_QUIT or $AI_RANDOM_EMBARK
