@@ -192,9 +192,9 @@ class DwarfAI
                 p.material.length.times do |j|
                     if p.material[j].reaction_product.id.include?('DRINK_MAT')
                         if p.material[j].flags[:STRUCTURAL_PLANT_MAT]
-                            DrinkPlants[i] = j + 419
+                            DrinkPlants[i] = j + DFHack::MaterialInfo::PLANT_BASE
                         elsif p.material[j].flags[:LEAF_MAT]
-                            DrinkFruits[i] = j + 419
+                            DrinkFruits[i] = j + DFHack::MaterialInfo::PLANT_BASE
                         end
                         break
                     end
@@ -209,7 +209,7 @@ class DwarfAI
                 c = df.world.raws.creatures.all[i]
                 c.material.length.times do |j|
                     if c.material[j].reaction_product.id.include?('CHEESE_MAT')
-                        MilkCreatures[i] = j + 19
+                        MilkCreatures[i] = j + DFHack::MaterialInfo::CREATURE_BASE
                         break
                     end
                 end
