@@ -1729,7 +1729,7 @@ class DwarfAI
                     while empty and r = todo.shift
                         todo.concat r.accesspath
                         empty = false if ((r.x1-1)..(r.x2+1)).find { |x| ((r.y1-1)..(r.y2+1)).find { |y| (r.z1..r.z2).find { |z|
-                            t = df.map_tile_at(x, y, z) and (not smooth?(t) or t.occupancy.unit)
+                            t = df.map_tile_at(x, y, z) and (not smooth?(t) or t.occupancy.unit or t.occupancy.unit_grounded or t.occupancy.item)
                         } } }
                     end
 
