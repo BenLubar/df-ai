@@ -170,6 +170,7 @@ class DwarfAI
                     df.curview.feed_keys(:LEAVESCREEN)
                     df.ui_area_map_width = 3
                     df.ui_menu_width = 3
+                    df.standing_orders_job_cancel_announce = 0 unless $DEBUG
                 end
                 return true
             end

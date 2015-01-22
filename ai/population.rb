@@ -463,7 +463,7 @@ class DwarfAI
                                 elsif job.mat_type == 0
                                     # XXX metalcraft ?
                                     @labor_needmore[:MASON] += 1
-                                elsif $DEBUG
+                                else
                                     @seen_badwork ||= {}
                                     @ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
                                     @seen_badwork[job.job_type] = true

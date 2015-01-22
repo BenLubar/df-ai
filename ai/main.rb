@@ -110,7 +110,7 @@ class DwarfAI
                     # dont unpause, to allow for 'die'
 
                 else
-                    puts "AI: paused in unknown textviewerst #{text.inspect}" if $DEBUG
+                    debug "AI: paused in unknown textviewerst #{text.inspect}"
                 end
 
             when :viewscreen_topicmeetingst
@@ -127,7 +127,7 @@ class DwarfAI
 
             else
                 @seen_cvname ||= { :viewscreen_dwarfmodest => true }
-                puts "AI: paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname] and $DEBUG
+                debug "AI: paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname]
                 @seen_cvname[cvname] = true
             end
         end

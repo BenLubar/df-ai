@@ -2,6 +2,7 @@ class DwarfAI
     class Camera
         attr_accessor :ai
         attr_accessor :onupdate_handle
+        attr_accessor :onstatechange_handle
         def initialize(ai)
             @ai = ai
             @following = nil
@@ -12,9 +13,14 @@ class DwarfAI
         end
 
         def onupdate_register
-            df.gps.display_frames = 1 if $DEBUG
+            df.gps.display_frames = 1
             @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
-            unless $DEBUG
+            @onstatechange_handle = df.onstatechange_register { |mode|
+                if mode == :VIEWSCREEN_CHANGED
+                    df.gps.display_frames = df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest' ? 1 : 0
+                end
+            }
+            if $RECORD_MOVIE and df.gview.supermovie_on == 0
                 df.gview.supermovie_on = 1
                 df.gview.currentblocksize = 0
                 df.gview.nextfilepos = 0
@@ -26,11 +32,12 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            df.gps.display_frames = 0 if $DEBUG
+            df.gps.display_frames = 0
             ai.timeout_sameview(60) do
                 df.curview.breakdown_level = :QUIT
-            end unless $NO_QUIT or $AI_RANDOM_EMBARK
+            end if $RECORD_MOVIE and not $NO_QUIT
             df.onupdate_unregister(@onupdate_handle)
+            df.onstatechange_unregister(@onstatechange_handle)
         end
 
         def update
