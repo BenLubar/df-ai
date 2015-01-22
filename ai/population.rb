@@ -373,9 +373,9 @@ class DwarfAI
                     if u.mood != :None
                         nonworkers << [c, 'has strange mood']
                     elsif u.profession == :CHILD
-                        nonworkers << [c, 'is a child']
+                        nonworkers << [c, 'is a child', true]
                     elsif u.profession == :BABY
-                        nonworkers << [c, 'is a baby']
+                        nonworkers << [c, 'is a baby', true]
                     elsif unit_hasmilitaryduty(u)
                         nonworkers << [c, 'has military duty']
                     elsif u.flags1.caged
@@ -406,7 +406,7 @@ class DwarfAI
                     ul = u.status.labors
                     LaborList.each { |lb|
                         if LaborHauling[lb]
-                            if not ul[lb]
+                            if not ul[lb] and not c[2]
                                 ul[lb] = true
                                 u.military.pickup_flags.update = true if LaborTool[lb]
                                 @ai.debug "assigning labor #{lb} to #{u.name} (non-worker: #{c[1]})"
