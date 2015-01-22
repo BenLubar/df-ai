@@ -15,7 +15,7 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            if $AI_RANDOM_EMBARK
+            if $AI_RANDOM_EMBARK and $NO_QUIT
                 ai.debug 'game over. restarting in 1 minute.'
                 ai.timeout_sameview(60) do
                     ai.debug 'restarting.'
