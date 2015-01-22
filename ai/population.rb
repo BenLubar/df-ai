@@ -366,7 +366,7 @@ class DwarfAI
                     u.flags1.merchant and not u.flags1.dead
                 }
 
-                set_up_trading(false) unless merchant
+                set_up_trading(merchant)
 
                 citizen.each_value { |c|
                     next if not u = c.dfunit
@@ -387,7 +387,6 @@ class DwarfAI
                         nonworkers << [c, 'validating work orders']
                     elsif merchant and df.unit_entitypositions(u).find { |n| n.responsibilities[:TRADE] }
                         nonworkers << [c, 'trading']
-                        set_up_trading(true)
                     elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
                         nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
                     elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
@@ -688,7 +687,7 @@ class DwarfAI
         def set_up_trading(should_be_trading)
             return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
             return unless bld = r.dfbuilding
-            return unless bld.trade_flags.trader_requested == should_be_trading
+            return if bld.trade_flags.trader_requested == should_be_trading
             return unless view = df.curview and view._raw_rtti_classname == 'viewscreen_dwarfmodest'
 
             view.feed_keys(:D_BUILDJOB)
