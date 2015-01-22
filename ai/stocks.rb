@@ -241,7 +241,7 @@ class DwarfAI
                 if items.length > 1
                     items[1...items.length].each { |i|
                         items.first.stack_size += i.stack_size
-                        i.flags.removed = true
+                        i.flags.removed = i.flags.garbage_collect = true
                     }
                     ai.debug "combined #{items.length} stacks of #{df.decode_mat(items.first)}"
                 end
