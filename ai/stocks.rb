@@ -228,8 +228,23 @@ class DwarfAI
                 false # search all farm plots
             }
             @seeds = Hash.new(0)
+            bags = Hash.new { |h, k| h[k] = [] }
             df.world.items.other[:SEEDS].each { |i|
-                @seeds[i.mat_index] += i.stack_size if is_item_free(i)
+                if is_item_free(i)
+                    @seeds[i.mat_index] += i.stack_size
+
+                    bag = i.general_refs.grep(DFHack::GeneralRefContainedInItemst).first
+                    bags[[bag.item_id, i.mat_index]] << i if bag
+                end
+            }
+            bags.values.each { |items|
+                if items.length > 1
+                    items[1...items.length].each { |i|
+                        items.first.stack_size += i.stack_size
+                        i.flags.removed = true
+                    }
+                    ai.debug "combined #{items.length} stacks of #{df.decode_mat(items.first)}"
+                end
             }
             @updating_seeds = false
         end
@@ -1612,8 +1627,6 @@ class DwarfAI
                         @farmplots[[season, pids.first]] += 1 unless initial
                     end
                 }
-
-                # TODO repurpose fields if we have too much dimple dye or smth
             end
         end
 
