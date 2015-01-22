@@ -24,7 +24,7 @@ class DwarfAI
             :splint => 1, :crutch => 1, :rope => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
             :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
-            :coal => 3, :raw_coke => 1, :gypsum => 1,
+            :coal => 3, :raw_coke => 1, :gypsum => 1, :slab => 1,
             :giant_corkscrew => 1, :pipe_section => 1, :anvil => 1,
             :quern => 3, :minecart => 1, :nestbox => 1, :hive => 1,
             :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
@@ -496,6 +496,10 @@ class DwarfAI
                 return df.world.items.other[:QUERN].length
             when :anvil
                 df.world.items.other[:ANVIL]
+            when :slab
+                df.world.items.other[:SLAB].find_all { |i|
+                    i.engraving_type == :Slab
+                }
             else
                 return find_furniture_itemcount(k)
 
