@@ -1634,6 +1634,15 @@ class DwarfAI
             end
         end
 
+        def queue_slab(histfig_id)
+            return if df.world.manager_orders.any? { |mo|
+                mo.job_type == :EngraveSlab and mo.hist_figure_id == histfig_id
+            }
+            o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :unk_2 => -1, :item_subtype => -1,
+                :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
+            df.world.manager_orders << o
+        end
+
         def serialize
             {} # we don't need to save any state
         end

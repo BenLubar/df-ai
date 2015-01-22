@@ -99,7 +99,9 @@ class DwarfAI
         end
 
         def update_deads
-            # TODO engrave slabs for ghosts
+            df.world.units.all.each { |u|
+                ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly and not u.flags1.dead
+            }
         end
 
         def update_caged
