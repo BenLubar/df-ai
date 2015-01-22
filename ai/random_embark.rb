@@ -117,10 +117,7 @@ class DwarfAI
                     view.finder.options[:River] = 1
                     view.feed_keys(:SELECT)
                 elsif view.finder.search_x == -1
-                    if view.in_embark_salt # XXX
-                        ai.debug 'choosing "YES I WANT TO EMBARK PJSalt"'
-                        view.feed_keys(:SELECT)
-                    elsif view.finder.finder_state == 2
+                    if view.finder.finder_state == 2
                         ai.debug 'choosing "Embark"'
                         view.feed_keys(:LEAVESCREEN)
                         sx, sy = view.location.region_pos.x, view.location.region_pos.y
@@ -156,6 +153,7 @@ class DwarfAI
                         end
 
                         view.feed_keys(:SETUP_EMBARK)
+                        view.feed_keys(:SELECT) # dismiss warnings
                     else
                         ai.debug 'leaving embark selector (no good embarks)'
                         $AI_RANDOM_EMBARK_WORLD = nil
