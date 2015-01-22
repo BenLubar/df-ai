@@ -1870,9 +1870,11 @@ class DwarfAI
                     (t.y < @fort_entrance.y+MinY or t.y > @fort_entrance.y+MaxY) and
                     t.designation.feature_local
                 }
+                next true unless river
 
                 # find a safe place for the first tile
                 t1 = spiral_search(river) { |t| map_tile_in_rock(t) and st = surface_tile_at(t) and map_tile_in_rock(st.offset(0, 0, -1)) }
+                next true unless t1
                 t1 = surface_tile_at(t1)
 
                 # if the game hasn't done any pathfinding yet, wait until the next frame and try again
@@ -1880,6 +1882,7 @@ class DwarfAI
 
                 # find the second tile
                 t2 = spiral_search(t1) { |t| tw = t.mapblock.walkable[t.x & 15][t.y & 15] and tw != 0 and tw != t1w }
+                next true unless t2
                 t2w = t2.mapblock.walkable[t2.x & 15][t2.y & 15]
 
                 # make sure the second tile is in a safe place
