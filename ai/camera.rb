@@ -33,9 +33,7 @@ class DwarfAI
 
         def onupdate_unregister
             df.gps.display_frames = 0
-            ai.timeout_sameview(60) do
-                df.curview.breakdown_level = :QUIT
-            end if $RECORD_MOVIE and not $NO_QUIT
+            ai.timeout_sameview(60) { df.curview.breakdown_level = :QUIT } unless $NO_QUIT
             df.onupdate_unregister(@onupdate_handle)
             df.onstatechange_unregister(@onstatechange_handle)
         end
