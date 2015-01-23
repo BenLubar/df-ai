@@ -21,7 +21,7 @@ class DwarfAI
                     ai.debug 'restarting.'
                     df.curview.feed_keys(:LEAVESCREEN)
 
-                    df.onupdate_register_oncew('df-ai restart wait') {
+                    df.onupdate_register_once('df-ai restart wait') {
                         next unless df.curview._raw_rtti_classname == 'viewscreen_titlest'
 
                         # reset
