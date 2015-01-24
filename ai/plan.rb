@@ -3279,17 +3279,22 @@ class DwarfAI
                 end
             end
 
+            def include?(x, y, z)
+                x1 <= x and x2 >= x and y1 <= y and y2 >= y and z1 <= z and z2 >= z
+            end
+
             def dig_mode(x, y, z)
                 return :Default if @type != :corridor
-                wantup = wantdown = false
-                wantup = true if z < z2 and x >= x1 and x <= x2 and y >= y1 and y <= y2
-                wantdown = true if z > z1 and x >= x1 and x <= x2 and y >= y1 and y <= y2
-                wantup = true if accesspath.find { |r|
-                    r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z2 > z
+                wantup = include?(x, y, z+1)
+                wantdown = include?(x, y, z-1)
+                # XXX
+                wantup ||= $dwarfAI.plan.instance_variable_get(:@corridors).any? { |r|
+                    (accesspath.include?(r) or r.z1 != r.z2) and r.include?(x, y, z+1)
                 }
-                wantdown = true if accesspath.find { |r|
-                    r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y and r.z1 < z
+                wantdown ||= $dwarfAI.plan.instance_variable_get(:@corridors).any? { |r|
+                    (accesspath.include?(r) or r.z1 != r.z2) and r.include?(x, y, z-1)
                 }
+
                 if wantup
                     wantdown ? :UpDownStair : :UpStair
                 else
