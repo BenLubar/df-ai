@@ -18,7 +18,7 @@ when 'start'
                 $dwarfAI.startup
                 df.curview.feed_keys(:D_PAUSE) if df.pause_state
             rescue Exception
-                puts $!, $!.backtrace
+                puts_err $!, $!.backtrace
             end
             true
         end
