@@ -115,6 +115,7 @@ class DwarfAI
                     view.finder.options[:DimensionY] = 2
                     view.finder.options[:Aquifer] = 0
                     view.finder.options[:River] = 1
+                    view.finder.options[:Savagery] = 2
                     view.feed_keys(:SELECT)
                 elsif view.finder.search_x == -1
                     if view.finder.finder_state == 2
