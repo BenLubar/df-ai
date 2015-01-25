@@ -2220,13 +2220,6 @@ class DwarfAI
             corridor_center2.accesspath = entr
             @corridors << corridor_center2
 
-            r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-6, @fort_entrance.x-2, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2-1)
-            r.misc[:workshop_level] = 0
-            r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
-            r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
-            r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
-            @rooms << r
-
             # Millstone, Siege, magma workshops/furnaces
             types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
                 :Loom,:Clothiers, :Dyers,:Bowyers, nil,:Kiln]
@@ -2299,6 +2292,37 @@ class DwarfAI
                     @rooms.last.misc[:workshop_level] = 2
                 }
             }
+
+            depot_center = spiral_search(df.map_tile_at(@fort_entrance.x - 4, @fort_entrance.y, @fort_entrance.z2 - 1)) { |t|
+                (-2..2).all? { |dx| (-2..2).all? { |dy|
+                    tt = t.offset(dx, dy, 0) and
+                    map_tile_in_rock(tt) and
+                    not map_tile_intersects_room(tt)
+                } } and (-1..1).all? { |dy|
+                    tt = t.offset(-3, dy, 0) and
+                    map_tile_in_rock(tt) and
+                    ttt = tt.offset(0, 0, 1) and
+                    ttt.shape_basic == :Floor and
+                    not map_tile_intersects_room(tt) and
+                    not map_tile_intersects_room(ttt)
+                }
+            }
+
+            if depot_center
+                r = Room.new(:workshop, :TradeDepot, depot_center.x-2, depot_center.x+2, depot_center.y-2, depot_center.y+2, depot_center.z)
+                r.misc[:workshop_level] = 0
+                r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
+                r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
+                r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
+                @rooms << r
+            else
+                r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-7, @fort_entrance.x-3, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2)
+                r.misc[:workshop_level] = 0
+                5.times { |x| 5.times { |y|
+                    r.layout << { :construction => :Floor, :x => x, :y => y }
+                } }
+                @rooms << r
+            end
         end
 
         def setup_blueprint_stockpiles(fx, fy, fz, entr)
@@ -3202,6 +3226,15 @@ class DwarfAI
             }
         end
 
+        def map_tile_intersects_room(t)
+            x, y, z = t.x, t.y, t.z
+            @rooms.any? { |r|
+                r.safe_include?(x, y, z)
+            } or @corridors.any? { |r|
+                r.safe_include?(x, y, z)
+            }
+        end
+
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
             attr_accessor :owner, :subtype
@@ -3281,6 +3314,14 @@ class DwarfAI
 
             def include?(x, y, z)
                 x1 <= x and x2 >= x and y1 <= y and y2 >= y and z1 <= z and z2 >= z
+            end
+
+            def safe_include?(x, y, z)
+                (x1 - 1 <= x and x2 + 1 >= x and y1 - 1 <= y and y2 + 1 >= y and z1 <= z and z2 >= z) or
+                layout.any? { |f|
+                    fx, fy, fz = x1 + f[:x].to_i, y1 + f[:y].to_i, z1 + f[:z].to_i
+                    fx - 1 <= x and fx + 1 >= x and fy - 1 <= y and fy + 1 >= y and fz == z
+                }
             end
 
             def dig_mode(x, y, z)
