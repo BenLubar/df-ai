@@ -228,23 +228,8 @@ class DwarfAI
                 false # search all farm plots
             }
             @seeds = Hash.new(0)
-            bags = Hash.new { |h, k| h[k] = [] }
             df.world.items.other[:SEEDS].each { |i|
-                if is_item_free(i)
-                    @seeds[i.mat_index] += i.stack_size
-
-                    bag = i.general_refs.grep(DFHack::GeneralRefContainedInItemst).first
-                    bags[[bag.item_id, i.mat_index]] << i if bag
-                end
-            }
-            bags.values.each { |items|
-                if items.length > 1
-                    items[1...items.length].each { |i|
-                        items.first.stack_size += i.stack_size
-                        i.flags.removed = i.flags.garbage_collect = true
-                    }
-                    ai.debug "combined #{items.length} stacks of #{df.decode_mat(items.first)}"
-                end
+                @seeds[i.mat_index] += i.stack_size if is_item_free(i)
             }
             @updating_seeds = false
         end
