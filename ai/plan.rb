@@ -1263,24 +1263,25 @@ class DwarfAI
             end
         end
 
+        MudType  = DFHack::BuiltinMats::NUME[:MUD]
+        MudIndex = -1
+
         def construct_farmplot(r)
-            if df.map_tile_at(r).tilemat != :SOIL
-                puts "AI: cheat: mud invocation"
-                (r.x1..r.x2).each { |x| (r.y1..r.y2).each { |y|
-                    t = df.map_tile_at(x, y, r.z)
-                    if t.tilemat != :SOIL
-                        if not e = t.mapblock.block_events.find { |_e|
-                            _e.kind_of?(DFHack::BlockSquareEventMaterialSpatterst) and df.decode_mat(_e).to_s == 'MUD'
-                        }
-                            mud = df.decode_mat('MUD')
-                            e = DFHack::BlockSquareEventMaterialSpatterst.cpp_new(:mat_type => mud.mat_type, :mat_index => mud.mat_index)
-                            e.min_temperature = e.max_temperature = 60001
-                            t.mapblock.block_events << e
-                        end
-                        e.amount[t.dx][t.dy] = 50   # small pile of mud
+            (r.x1..r.x2).each { |x| (r.y1..r.y2).each { |y| (r.z1..r.z2).each { |z|
+                if t = df.map_tile_at(x, y, z) and not [:GRASS_DARK, :GRASS_LIGHT, :SOIL].include?(t.tilemat)
+                    if not e = t.mapblock.block_events.find { |_e|
+                        _e.kind_of?(DFHack::BlockSquareEventMaterialSpatterst) and _e.mat_type == MudType and _e.mat_index == MudIndex
+                    }
+                        e = DFHack::BlockSquareEventMaterialSpatterst.cpp_new(:mat_type => MudType, :mat_index => MudIndex)
+                        e.min_temperature = e.max_temperature = 60001
+                        t.mapblock.block_events << e
                     end
-                } }
-            end
+                    if e.amount[t.dx][t.dy] < 50
+                        ai.debug "cheat: mud invocation #{x} #{y} #{z}"
+                        e.amount[t.dx][t.dy] = 50 # small pile of mud
+                    end
+                end
+            } } }
 
             bld = df.building_alloc(:FarmPlot)
             df.building_position(bld, r)
