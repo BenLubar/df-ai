@@ -158,7 +158,7 @@ class DwarfAI
                     else
                         ai.debug 'leaving embark selector (no good embarks)'
                         $AI_RANDOM_EMBARK_WORLD = nil
-                        view.breakdown_level = :TOFIRST
+                        view.breakdown_level = :QUIT
                     end
                 end
             when DFHack::ViewscreenSetupdwarfgamest
