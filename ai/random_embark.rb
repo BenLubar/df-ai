@@ -58,6 +58,7 @@ class DwarfAI
                         view.sel_menu_line = view.menu_line_id.index(1)
                         view.feed_keys(:SELECT)
                     else
+                        $AI_RANDOM_EMBARK_WORLD = nil
                         ai.debug 'choosing "New World"'
                         view.sel_menu_line = view.menu_line_id.index(2)
                         view.feed_keys(:SELECT)
@@ -118,7 +119,9 @@ class DwarfAI
                     view.finder.options[:Savagery] = 2
                     view.feed_keys(:SELECT)
                 elsif view.finder.search_x == -1
-                    if view.finder.finder_state == 2
+                    if @selected_embark
+                        return
+                    elsif view.finder.finder_state == 2
                         ai.debug 'choosing "Embark"'
                         view.feed_keys(:LEAVESCREEN)
                         sx, sy = view.location.region_pos.x, view.location.region_pos.y
@@ -153,8 +156,12 @@ class DwarfAI
                             end
                         end
 
-                        view.feed_keys(:SETUP_EMBARK)
-                        view.feed_keys(:SELECT) # dismiss warnings
+                        @selected_embark = true
+
+                        ai.timeout_sameview(15) do
+                            view.feed_keys(:SETUP_EMBARK)
+                            view.feed_keys(:SELECT) # dismiss warnings
+                        end
                     else
                         ai.debug 'leaving embark selector (no good embarks)'
                         $AI_RANDOM_EMBARK_WORLD = nil
