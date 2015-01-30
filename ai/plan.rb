@@ -1856,7 +1856,7 @@ class DwarfAI
             @fort_entrance.layout.delete_if { |i|
                 t = df.map_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], @fort_entrance.z1+i[:z]-1)
                 tm = t.tilemat
-                t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT)
+                t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT and (not @allow_ice or tm != :FROZEN_LIQUID))
             }
             list_map_veins
             setup_outdoor_gathering_zones
@@ -2133,6 +2133,30 @@ class DwarfAI
                 }
             }
 
+            if not ent0
+                @allow_ice = true
+
+                ent0 = center.spiral_search { |t0|
+                    # test the whole map for 3x5 clear spots
+                    next unless t = surface_tile_at(t0)
+
+                    # make sure we're not too close to the edge of the map.
+                    next unless t.offset(MinX, MinY, MinZ) and t.offset(MaxX, MaxY, MaxZ)
+
+                    (-1..1).all? { |_x|
+                        (-2..2).all? { |_y|
+                            tt = t.offset(_x, _y, -1) and tt.shape == :WALL and
+                            ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
+                             not ttt.designation.hidden and not df.building_find(ttt)
+                        }
+                    } and (-3..3).all? { |_x|
+                        (-4..4).all? { |_y|
+                            surface_tile_at(t.x + _x, t.y + _y, true)
+                        }
+                    }
+                }
+            end
+
             raise 'Can\'t find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.' unless ent0
             ent = surface_tile_at(ent0)
 
@@ -2173,13 +2197,13 @@ class DwarfAI
                     (MinX..MaxX).all? { |dx|
                         [MinY, MaxY].all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     } and
                     [MinX, MaxX].all? { |dx|
                         (MinY..MaxY).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     }
                 }  and
@@ -2188,7 +2212,7 @@ class DwarfAI
                     ((MinX+1)..(MaxX-1)).all? { |dx|
                         ((MinY+1)..(MaxY-1)).all? { |dy|
                             t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
+                            not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
                         }
                     }
                 }
@@ -2579,14 +2603,14 @@ class DwarfAI
                 }
             }
 
-
-            if river = scan_river
+            if @allow_ice
+                puts "AI: icy embark, no well"
+            elsif river = scan_river
                 setup_blueprint_cistern_fromsource(river, fx, fy, fz)
             else
                 # TODO pool, pumps, etc
                 puts "AI: no river, no well"
             end
-
 
             # farm plots
             farm_h = 3
@@ -3092,7 +3116,7 @@ class DwarfAI
         # check that tile is surrounded by solid rock/soil walls
         def map_tile_in_rock(tile)
             tile and (-1..1).all? { |dx| (-1..1).all? { |dy|
-                t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT)
+                t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or (@allow_ice and tm == :FROZEN_LIQUID))
             } }
         end
 
@@ -3102,9 +3126,9 @@ class DwarfAI
                 next if not t = tile.offset(dx, dy)
                 tm = t.tilemat
                 if !t.designation.hidden
-                    t.designation.flow_size < 4 and tm != :FROZEN_LIQUID
+                    t.designation.flow_size < 4 and (@allow_ice or tm != :FROZEN_LIQUID)
                 else
-                    t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT)
+                    t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or (@allow_ice and tm == :FROZEN_LIQUID))
                 end
             } }
         end
