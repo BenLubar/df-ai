@@ -2157,10 +2157,17 @@ class DwarfAI
         def scan_fort_body
             # use a hardcoded fort layout
             cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
-            if river = scan_river and river = surface_tile_at(river) and cz >= river.z
-                cz = river.z - 1
-            end
+
             @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
+                # stop searching if we hit a cavern or an aquifer inside our main staircase
+                break unless (0..0).all? { |dx|
+                    (-1..1).all? { |dy|
+                        t = df.map_tile_at(cx+dx, cy+dy, cz1+MaxZ) and
+                        map_tile_nocavern(t) and
+                        not t.designation.water_table
+                    }
+                }
+
                 (MinZ..MaxZ).all? { |dz|
                     # scan perimeter first to quickly eliminate caverns / bad rock layers
                     (MinX..MaxX).all? { |dx|

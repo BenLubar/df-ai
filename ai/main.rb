@@ -108,7 +108,7 @@ class DwarfAI
                         df.pause_state = false
                     }
 
-                elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\./
+                elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
                     puts "AI: you just lost the game:", text.inspect, "Exiting AI."
                     onupdate_unregister
                     # dont unpause, to allow for 'die'
@@ -135,6 +135,16 @@ class DwarfAI
                 @seen_cvname[cvname] = true
             end
         end
+    end
+
+    def abandon!(view=df.curview)
+        return unless $AI_RANDOM_EMBARK
+        view.child = DFHack::ViewscreenOptionst.cpp_new(:parent => view, :options => [6])
+        view = view.child
+        view.feed_keys(:SELECT)
+        view.feed_keys(:MENU_CONFIRM)
+        # current view switches to a textviewer at this point
+        df.curview.feed_keys(:SELECT)
     end
 
     def timeout_sameview(delay=5, &cb)
