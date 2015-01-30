@@ -703,6 +703,10 @@ class DwarfAI
         end
 
         def try_furnish_construction(r, f, t)
+            if t.tilemat == :TREE
+                DwarfAI::Plan.find_tree_base(t).dig
+                return
+            end
             case ctype = f[:construction]
             when :NoRamp
                 t.dig if t.shape_basic == :Ramp 
@@ -3240,6 +3244,26 @@ class DwarfAI
             }
         end
 
+        def self.find_tree_base(t)
+            tree = (df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
+                next true if tree.pos.x == t.x and tree.pos.y == t.y and tree.pos.z == t.z
+                next unless tree.tree_info and tree.tree_info.body
+                sx = tree.pos.x - tree.tree_info.dim_x / 2
+                sy = tree.pos.y - tree.tree_info.dim_y / 2
+                sz = tree.pos.z
+                next if t.x < sx or t.y < sy or t.z < sz or t.x >= sx + tree.tree_info.dim_x or t.y >= sy + tree.tree_info.dim_y or t.z >= sz + tree.tree_info.body_height
+                next unless tree.tree_info.body[(t.z - sz)]
+                tile = tree.tree_info.body[(t.z - sz)][(t.x - sz) + tree.tree_info.dim_x * (t.y - sy)]
+                tile._whole != 0 and not tile.blocked
+            }
+            if tree
+                df.map_tile_at(tree)
+            else
+                puts_err "AI: #{df.cur_year}:#{df.cur_year_tick} failed to find tree at #{t.inspect}"
+                t
+            end
+        end
+
         class Corridor
             attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
             attr_accessor :owner, :subtype
@@ -3277,7 +3301,7 @@ class DwarfAI
                         dm = mode || dig_mode(t.x, t.y, t.z)
                         if dm != :No and t.tilemat == :TREE
                             dm = :Default
-                            t = find_tree_base t
+                            t = DwarfAI::Plan::find_tree_base(t)
                         end
                         t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or
                                 t.shape == :WALL
@@ -3295,26 +3319,6 @@ class DwarfAI
                         end
                     end
                 }
-            end
-
-            def find_tree_base(t)
-                tree = (df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
-                    next true if tree.pos.x == t.x and tree.pos.y == t.y and tree.pos.z == t.z
-                    next unless tree.tree_info and tree.tree_info.body
-                    sx = tree.pos.x - tree.tree_info.dim_x / 2
-                    sy = tree.pos.y - tree.tree_info.dim_y / 2
-                    sz = tree.pos.z
-                    next if t.x < sx or t.y < sy or t.z < sz or t.x >= sx + tree.tree_info.dim_x or t.y >= sy + tree.tree_info.dim_y or t.z >= sz + tree.tree_info.body_height
-                    next unless tree.tree_info.body[(t.z - sz)]
-                    tile = tree.tree_info.body[(t.z - sz)][(t.x - sz) + tree.tree_info.dim_x * (t.y - sy)]
-                    tile._whole != 0 and not tile.blocked
-                }
-                if tree
-                    df.map_tile_at(tree)
-                else
-                    puts_err "AI: #{df.cur_year}:#{df.cur_year_tick} failed to find tree at #{t.inspect}"
-                    t
-                end
             end
 
             def include?(x, y, z)
