@@ -64,10 +64,16 @@ class DwarfAI
 
         if df.announcements.flags[announce.type].DO_MEGA
             timeout_sameview {
-                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+                until df.world.status.popups.empty?
+                    df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+                end
+                df.pause_state = false
             }
         else
-            df.curview.feed_keys(:D_PAUSE)
+            until df.world.status.popups.empty?
+                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+            end
+            df.pause_state = false
         end
     end
 
