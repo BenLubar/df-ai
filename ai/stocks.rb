@@ -1623,6 +1623,9 @@ class DwarfAI
             return if df.world.manager_orders.any? { |mo|
                 mo.job_type == :EngraveSlab and mo.hist_figure_id == histfig_id
             }
+            return if df.world.items.other[:SLAB].any? { |sl|
+                sl.engraving_type == :Memorial and sl.topic == histfig_id
+            }
             o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :unk_2 => -1, :item_subtype => -1,
                 :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
             df.world.manager_orders << o

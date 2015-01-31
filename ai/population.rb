@@ -100,7 +100,7 @@ class DwarfAI
 
         def update_deads
             df.world.units.all.each { |u|
-                ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly and not u.flags1.dead
+                ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly
             }
         end
 
