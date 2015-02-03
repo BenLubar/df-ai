@@ -67,6 +67,7 @@ class DwarfAI
                     df.gview.first_movie_write = 1
                     df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
                 end
+
                 case view.sel_subpage
                 when :None
                     if $AI_RANDOM_EMBARK_WORLD and view.menu_line_id.include?(1)
@@ -141,16 +142,18 @@ class DwarfAI
                         ai.debug 'choosing "Embark"'
                         view.feed_keys(:LEAVESCREEN)
                         sx, sy = view.location.region_pos.x, view.location.region_pos.y
-                        dx, dy, score = sx, sy, df.world.world_data.region_map[sx][sy].finder_rank
+                        sites = []
                         df.world.world_data.world_width.times do |x|
                             df.world.world_data.world_height.times do |y|
                                 s = df.world.world_data.region_map[x][y].finder_rank
-                                dx, dy, score = x, y, s if s > score
+                                sites << [x, y] if s >= 10000
                             end
                         end
+                        raise 'no good embarks but site finder exited with success' if sites.empty?
+                        site = sites[rand(sites.length)]
+                        dx, dy = site[0], site[1]
                         dx -= sx
                         dy -= sy
-                        raise 'no good embarks but site finder exited with success' if score == -1
 
                         if dx >= 0
                             dx.times do
