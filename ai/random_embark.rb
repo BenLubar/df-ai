@@ -15,7 +15,7 @@ class DwarfAI
         end
 
         def onupdate_unregister
-            if $AI_RANDOM_EMBARK and $NO_QUIT
+            if $AI_RANDOM_EMBARK
                 ai.debug 'game over. restarting in 1 minute.'
                 ai.timeout_sameview(60) do
                     ai.debug 'restarting.'
@@ -23,6 +23,11 @@ class DwarfAI
 
                     df.onupdate_register_once('df-ai restart wait') {
                         next unless df.curview._raw_rtti_classname == 'viewscreen_titlest'
+
+                        unless $NO_QUIT
+                            df.curview.breakdown_level = :QUIT
+                            next true
+                        end
 
                         # reset
                         $dwarfAI = DwarfAI.new
