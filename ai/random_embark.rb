@@ -58,6 +58,15 @@ class DwarfAI
             return if not view or view.breakdown_level != :NONE
             case view
             when DFHack::ViewscreenTitlest
+                if $RECORD_MOVIE and df.gview.supermovie_on == 0
+                    df.gview.supermovie_on = 1
+                    df.gview.currentblocksize = 0
+                    df.gview.nextfilepos = 0
+                    df.gview.supermovie_pos = 0
+                    df.gview.supermovie_delayrate = 0
+                    df.gview.first_movie_write = 1
+                    df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
+                end
                 case view.sel_subpage
                 when :None
                     if $AI_RANDOM_EMBARK_WORLD and view.menu_line_id.include?(1)
