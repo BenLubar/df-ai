@@ -689,6 +689,7 @@ class DwarfAI
         def set_up_trading(should_be_trading)
             return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
             return unless bld = r.dfbuilding
+            return if bld.getBuildStage < bld.getMaxBuildStage
             return if bld.trade_flags.trader_requested == should_be_trading
             return unless view = df.curview and view._raw_rtti_classname == 'viewscreen_dwarfmodest'
 
