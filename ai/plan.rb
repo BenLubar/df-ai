@@ -2418,6 +2418,8 @@ class DwarfAI
         end
 
         def setup_blueprint_minecarts
+            return # disabled 2015-02-04 BenLubar
+
             last_stone = @rooms.find_all { |r| r.type == :stockpile and r.subtype == :stone }.last
             return if not last_stone
 
