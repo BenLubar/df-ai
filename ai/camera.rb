@@ -49,7 +49,11 @@ class DwarfAI
             end
 
             targets1 = df.world.units.active.find_all do |u|
-                u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited
+                u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited or u.syndromes.active.any? { |us|
+                    us.type_tg.ce.any? { |ce|
+                        ce.kind_of?(DFHack::CreatureInteractionEffectBodyTransformationst)
+                    }
+                } or not u.status.attacker_ids.empty?
             end.shuffle
             targets2 = df.unit_citizens.shuffle.sort_by do |u|
                 unless u.job.current_job
