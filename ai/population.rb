@@ -830,7 +830,7 @@ class DwarfAI
                     if cst.body_size_2.last <= age and # full grown
                         u.profession != :TRAINED_HUNTER and # not trained
                         u.profession != :TRAINED_WAR and # not trained
-                        u.relations_pet_owner_id == -1 # not owned
+                        u.relations.pet_owner_id == -1 # not owned
 
                         if (u.body.wounds.any? { |w| w.parts.any? { |p| p.flags2.gelded } } or # gelded
                             (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
