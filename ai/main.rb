@@ -85,7 +85,9 @@ class DwarfAI
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
         elsif st == :PAUSED
-            df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+            until df.world.status.popups.empty?
+                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+            end
             df.pause_state = false
             puts_err "AI: warning: pause without an event"
         elsif st == :VIEWSCREEN_CHANGED
