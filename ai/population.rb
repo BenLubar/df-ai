@@ -815,13 +815,36 @@ class DwarfAI
             needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
             needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
 
+            forSlaughter = Hash.new { |h, k| h[k] = [] }
+
             np = @pet.dup
             df.world.units.active.each { |u|
                 next if u.civ_id != df.ui.civ_id
                 next if u.race == df.ui.race_id
-                next if u.flags1.dead or u.flags1.merchant or u.flags1.forest
+                next if u.flags1.dead or u.flags1.merchant or u.flags1.forest or u.flags2.slaughter
+
+                cst = u.caste_tg
+                age = (df.cur_year - u.relations.birth_year) * 12 * 28 + (df.cur_year_tick - u.relations.birth_time) / 1200 # days
 
                 if @pet[u.id]
+                    if cst.body_size_2.last <= age and # full grown
+                        u.profession != :TRAINED_HUNTER and # not trained
+                        u.profession != :TRAINED_WAR and # not trained
+                        u.relations_pet_owner_id == -1 # not owned
+
+                        if (u.body.wounds.any? { |w| w.parts.any? { |p| p.flags2.gelded } } or # gelded
+                            (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
+                            (cst.gender == 0 and not u.status.current_soul.orientation_flags.marry_female)) # gay
+
+                            # animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
+                            u.flags2.slaughter = true
+                            ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (can't reproduce)"
+                            next
+                        end
+
+                        forSlaughter[u.caste_tg] << [age, u]
+                    end
+
                     if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
                         if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
                             needmilk += 1
@@ -829,7 +852,7 @@ class DwarfAI
                     end
 
                     if @pet[u.id].include?(:SHEARABLE) and u.profession != :BABY and u.profession != :CHILD
-                        if u.caste_tg.shearable_tissue_layer.find { |stl|
+                        if cst.shearable_tissue_layer.find { |stl|
                             stl.bp_modifiers_idx.find { |bpi|
                                 u.appearance.bp_modifiers[bpi] >= stl.length
                             }
@@ -844,14 +867,16 @@ class DwarfAI
 
                 @pet[u.id] = []
 
-                cst = u.caste_tg
-
                 if cst.flags[:MILKABLE]
                     @pet[u.id] << :MILKABLE
                 end
 
                 if cst.shearable_tissue_layer.length > 0
                     @pet[u.id] << :SHEARABLE
+                end
+
+                if cst.flags[:HUNTS_VERMIN]
+                    @pet[u.id] << :HUNTS_VERMIN
                 end
 
                 if cst.flags[:GRAZER]
@@ -864,6 +889,7 @@ class DwarfAI
                         # TODO slaughter best candidate, keep this one
                         # also avoid killing named pets
                         u.flags2.slaughter = true
+                        ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (no pasture)"
                     end
                 end
             }
@@ -871,6 +897,18 @@ class DwarfAI
             np.each_key { |id|
                 @ai.plan.freepasture(id)
                 @pet.delete id
+            }
+
+            forSlaughter.each { |cst, candidates|
+                # we have reproductively viable animals, but there are more than 5 of this sex (full-grown). kill the oldest ones for meat/leather/bones.
+
+                candidates = candidates.sort_by(&:first)
+                while candidates.length > 5
+                    candidate = candidates.pop
+                    age, u = candidate[0], candidate[1]
+                    u.flags2.slaughter = true
+                    ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (too many adults)"
+                end
             }
 
             needmilk = 30 if needmilk > 30
