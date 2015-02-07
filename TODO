@@ -1,8 +1,5 @@
-autobutcher
-autofarm
 move animals between pastures when no grass
 non-cheaty farming with no soil
-engrave unburiable ghosts
 militia patrols
 militia actions (siege, ambush, megabeast)
 watch towers
@@ -10,8 +7,7 @@ animal taming
 war training
 fortress guards
 justice
-way to empty cages
-stripcaged
+rescue caged dwarves
 smelt goblinite
 robust miner pathfinding
 actual miner exploration, no cheat
@@ -25,12 +21,11 @@ handle bad embark situations
  evil biomes
  caverns close to surface
 trade with civs
-make whole map reachable (bridge over river)
 adaptative fortress plan
 save, resume from save
 burrows
 recover from cistern floodgate fail
 megaprojects
-
 fix layout furnish bug
 handle ethics in bone count
+harvest from caverns
