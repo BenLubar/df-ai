@@ -25,7 +25,7 @@ class DwarfAI
             @logger = open('df-ai.log', 'a')
             @logger.sync = true
         end
-        @logger.puts "#{ts} #{str.gsub("\n", "\n                 ")}"
+        @logger.puts "#{ts} #{str.to_s.gsub("\n", "\n                 ")}"
     end
 
     def startup
