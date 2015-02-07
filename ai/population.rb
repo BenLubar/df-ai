@@ -833,8 +833,8 @@ class DwarfAI
                         u.relations.pet_owner_id == -1 # not owned
 
                         if (u.body.wounds.any? { |w| w.parts.any? { |p| p.flags2.gelded } } or # gelded
-                            (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
-                            (cst.gender == 0 and not u.status.current_soul.orientation_flags.marry_female)) # gay
+                            (cst.gender == 0 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
+                            (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_female)) # gay
 
                             # animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
                             u.flags2.slaughter = true
