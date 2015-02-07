@@ -149,8 +149,8 @@ class DwarfAI
                 end
             }
 
-            @important_workshops ||= [:Still, :Mechanics, :Farmers, :Quern]
-            @important_workshops2 ||= [:Kitchen, :Tanners, :Butchers, :Craftsdwarfs, :Loom, :WoodFurnace, :Smelter]
+            @important_workshops ||= [:Still, :Mechanics, :Farmers, :Quern, :Butchers]
+            @important_workshops2 ||= [:Kitchen, :Tanners, :Craftsdwarfs, :Loom, :WoodFurnace, :Smelter]
             # [:Fishery,:Leatherworks,:Clothiers,:Jewelers,:MetalsmithsForge,:SoapMaker,:GlassFurnace]
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
