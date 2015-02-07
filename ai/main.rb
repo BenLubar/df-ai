@@ -14,7 +14,13 @@ class DwarfAI
     end
 
     def debug(str)
-        puts "AI: #{df.cur_year}:#{df.cur_year_tick} #{str}" if $DEBUG
+        ts = "#{df.cur_year.to_s.rjust(5, '0')}-#{(df.cur_year_tick / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(df.cur_year_tick / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(df.cur_year_tick % 24 * 50).to_s.rjust(4, '0')}"
+        puts "AI: #{ts} #{str}" if $DEBUG
+        unless @logger
+            @logger = open('df-ai.log', 'a')
+            @logger.sync = true
+        end
+        @logger.puts "#{ts} #{str}"
     end
 
     def startup
@@ -89,7 +95,7 @@ class DwarfAI
                 df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
             end
             df.pause_state = false
-            puts_err "AI: warning: pause without an event"
+            #puts_err "AI: warning: pause without an event"
         elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._rtti_classname
             when :viewscreen_textviewerst
@@ -176,6 +182,10 @@ class DwarfAI
             when :WORLD_UNLOADED
                 puts 'AI: world unloaded, disabling self'
                 onupdate_unregister
+                if @logger
+                    @logger.close
+                    @logger = nil
+                end
                 true
             else
                 statechanged(st)
