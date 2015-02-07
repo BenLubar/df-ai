@@ -593,7 +593,7 @@ class DwarfAI
                 # XXX fish/hunt/cook ?
                 @last_warn_food ||= Time.now-610    # warn every 10mn
                 if @last_warn_food < Time.now-600
-                    puts "AI: need #{amount} more food"
+                    ai.debug "AI: need #{amount} more food"
                     @last_warn_food = Time.now
                 end
                 return
@@ -1516,7 +1516,9 @@ class DwarfAI
                     DFHack::JobType::Item.fetch(ManagerRealOrder[FurnitureOrder[itm]], :IN_PLAY))
             df.world.items.other[oidx].find_all { |i| find[i] and df.item_isfree(i) }.length
         rescue
-            puts_err "df-ai stocks: cannot itemcount #{itm.inspect}", $!, $!.backtrace
+            ai.debug "df-ai stocks: cannot itemcount #{itm.inspect}"
+            ai.debug $!
+            ai.debug $!.backtrace
             0
         end
 
@@ -1571,7 +1573,7 @@ class DwarfAI
 
                     if pids.empty?
                         @complained_about_no_plants ||= {}
-                        puts_err "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        ai.debug "no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
                         @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
                     else
                         @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial
@@ -1608,7 +1610,7 @@ class DwarfAI
 
                     if pids.empty?
                         @complained_about_no_plants ||= {}
-                        puts_err "AI: no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
+                        ai.debug "no legal plants for #{r.subtype} farm plot #{ai.plan.rooms.index(r)} in #{biome} season #{season}" unless @complained_about_no_plants[[r.subtype, biome, season]]
                         @complained_about_no_plants[[r.subtype, biome, season]] = true unless isfirst
                     else
                         @farmplots[[season, bld.plant_id[season]]] -= 1 unless initial

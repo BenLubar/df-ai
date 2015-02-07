@@ -13,14 +13,18 @@ class DwarfAI
         @random_embark = RandomEmbark.new(self)
     end
 
+    def timestamp(y=df.cur_year, t=df.cur_year_tick)
+        "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
+    end
+
     def debug(str)
-        ts = "#{df.cur_year.to_s.rjust(5, '0')}-#{(df.cur_year_tick / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(df.cur_year_tick / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(df.cur_year_tick % 24 * 50).to_s.rjust(4, '0')}"
+        ts = timestamp
         puts "AI: #{ts} #{str}" if $DEBUG
         unless @logger
             @logger = open('df-ai.log', 'a')
             @logger.sync = true
         end
-        @logger.puts "#{ts} #{str}"
+        @logger.puts "#{ts} #{str.gsub("\n", "\n                 ")}"
     end
 
     def startup
@@ -29,6 +33,13 @@ class DwarfAI
         @stocks.startup
         @camera.startup
         @random_embark.startup
+    end
+
+    def unpause!
+        until df.world.status.popups.empty?
+            df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
+        end
+        df.curview.feed_keys(:D_PAUSE) if df.pause_state
     end
 
     def handle_pause_event(announce)
@@ -40,46 +51,38 @@ class DwarfAI
             break if not announce
             fulltext = announce.text + ' ' + fulltext
         end
-        puts " #{df.cur_year}:#{df.cur_year_tick} #{fulltext.inspect}"
+        debug "pause: #{fulltext.inspect}"
 
         case announce.type
-        when :MEGABEAST_ARRIVAL; puts 'AI: uh oh, megabeast...'
-        when :BERSERK_CITIZEN; puts 'AI: berserk'
-        when :UNDEAD_ATTACK; puts 'AI: i see dead people'
-        when :CAVE_COLLAPSE; puts 'AI: kevin?'
-        when :DIG_CANCEL_DAMP, :DIG_CANCEL_WARM; puts 'AI: lazy miners'
-        when :BIRTH_CITIZEN; puts 'AI: newborn'
+        when :MEGABEAST_ARRIVAL; debug 'pause: uh oh, megabeast...'
+        when :BERSERK_CITIZEN; debug 'pause: berserk'
+        when :UNDEAD_ATTACK; debug 'pause: i see dead people'
+        when :CAVE_COLLAPSE; debug 'pause: kevin?'
+        when :DIG_CANCEL_DAMP, :DIG_CANCEL_WARM; debug 'pause: lazy miners'
+        when :BIRTH_CITIZEN; debug 'pause: newborn'
         when :BIRTH_ANIMAL
         when :D_MIGRANTS_ARRIVAL, :D_MIGRANT_ARRIVAL, :MIGRANT_ARRIVAL, :NOBLE_ARRIVAL, :FORT_POSITION_SUCCESSION
-            puts 'AI: more minions'
+            debug 'pause: more minions'
         when :DIPLOMAT_ARRIVAL, :LIAISON_ARRIVAL, :CARAVAN_ARRIVAL, :TRADE_DIPLOMAT_ARRIVAL
-            puts 'AI: visitors'
+            debug 'pause: visitors'
         when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
-            puts 'AI: mood'
-        when :FEATURE_DISCOVERY, :STRUCK_DEEP_METAL; puts 'AI: dig dig dig'
-        when :TRAINING_FULL_REVERSION; puts 'AI: born to be wild'
-        when :NAMED_ARTIFACT; puts 'AI: hallo'
+            debug 'pause: mood'
+        when :FEATURE_DISCOVERY, :STRUCK_DEEP_METAL; debug 'pause: dig dig dig'
+        when :TRAINING_FULL_REVERSION; debug 'pause: born to be wild'
+        when :NAMED_ARTIFACT; debug 'pause: hallo'
         else
             if announce.type.to_s =~ /^AMBUSH/
-                puts 'AI: an ambush!'
+                debug 'pause: an ambush!'
             else
-                puts "AI: unhandled pausing event #{announce.type.inspect} #{announce.inspect}"
+                debug "pause: unhandled pausing event #{announce.type.inspect} #{announce.inspect}"
                 #return
             end
         end
 
         if df.announcements.flags[announce.type].DO_MEGA
-            timeout_sameview {
-                until df.world.status.popups.empty?
-                    df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
-                end
-                df.pause_state = false
-            }
+            timeout_sameview { unpause! }
         else
-            until df.world.status.popups.empty?
-                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
-            end
-            df.pause_state = false
+            unpause!
         end
     end
 
@@ -91,11 +94,8 @@ class DwarfAI
                 } and la.year == df.cur_year and la.time == df.cur_year_tick
             handle_pause_event(la)
         elsif st == :PAUSED
-            until df.world.status.popups.empty?
-                df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
-            end
-            df.pause_state = false
-            #puts_err "AI: warning: pause without an event"
+            unpause!
+            debug "pause without an event"
         elsif st == :VIEWSCREEN_CHANGED
             case cvname = df.curview._rtti_classname
             when :viewscreen_textviewerst
@@ -104,42 +104,44 @@ class DwarfAI
                 }.join(' ')
 
                 if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
-                    puts "AI: exit diplomat textviewerst (#{text.inspect})"
+                    debug "exit diplomat textviewerst (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
                     }
 
                 elsif text =~ /A vile force of darkness has arrived!/
-                    puts "AI: siege (#{text.inspect})"
+                    debug "siege (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
-                        df.pause_state = false
+                        unpause!
                     }
 
                 elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
-                    puts "AI: you just lost the game:", text.inspect, "Exiting AI."
+                    debug 'you just lost the game:'
+                    debug text.inspect
+                    debug 'Exiting AI.'
                     onupdate_unregister
                     # dont unpause, to allow for 'die'
 
                 else
-                    debug "AI: paused in unknown textviewerst #{text.inspect}"
+                    debug "paused in unknown textviewerst #{text.inspect}"
                 end
 
             when :viewscreen_topicmeetingst
                 timeout_sameview {
                     df.curview.feed_keys(:OPTION1)
                 }
-                #puts "AI: exit diplomat topicmeetingst"
+                debug "exit diplomat topicmeetingst"
 
             when :viewscreen_topicmeeting_takerequestsst, :viewscreen_requestagreementst
-                puts "AI: exit diplomat #{cvname}"
+                debug "exit diplomat #{cvname}"
                 timeout_sameview {
                     df.curview.feed_keys(:LEAVESCREEN)
                 }
 
             else
                 @seen_cvname ||= { :viewscreen_dwarfmodest => true }
-                debug "AI: paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname]
+                debug "paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname]
                 @seen_cvname[cvname] = true
             end
         end
@@ -175,12 +177,12 @@ class DwarfAI
         @stocks.onupdate_register
         @camera.onupdate_register
         @random_embark.onupdate_register
-        @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { puts status }
+        @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { debug status }
 
         df.onstatechange_register_once { |st|
             case st
             when :WORLD_UNLOADED
-                puts 'AI: world unloaded, disabling self'
+                debug 'world unloaded, disabling self'
                 onupdate_unregister
                 if @logger
                     @logger.close

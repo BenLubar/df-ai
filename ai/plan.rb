@@ -288,7 +288,7 @@ class DwarfAI
                     furnish_room(r)
                 end
             else
-                puts "AI cant getbedroom(#{id})"
+                debug "AI cant getbedroom(#{id})"
             end
         end
 
@@ -358,7 +358,7 @@ class DwarfAI
             if not r = find_room(:barracks) { |_r| _r.misc[:squad_id] == squad_id }
                 r = find_room(:barracks) { |_r| not _r.misc[:squad_id] }
                 if not r
-                    puts "AI: no free barracks"
+                    debug "no free barracks"
                     return
                 end
 
@@ -575,7 +575,7 @@ class DwarfAI
         end
 
         def construct_room(r)
-            @ai.debug "construct #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "construct #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             case r.type
             when :corridor
                 furnish_room(r)
@@ -655,7 +655,7 @@ class DwarfAI
                 false
             elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
                 return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
-                @ai.debug "furnish #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
+                ai.debug "furnish #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
                 subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
                 bld = df.building_alloc(bldn, subtype)
@@ -1526,10 +1526,7 @@ class DwarfAI
 
         def try_setup_farmplot(r)
             bld = r.dfbuilding
-            if not bld
-                puts "MOO"
-                return true
-            end
+            return true if not bld
             return if bld.getBuildStage < bld.getMaxBuildStage
 
             ai.stocks.farmplot(r)
@@ -1540,7 +1537,7 @@ class DwarfAI
         def try_endfurnish(r, f)
             bld = df.building_find(f[:bld_id]) if f[:bld_id]
             if not bld
-                #puts "AI: destroyed building ? #{r.inspect} #{f.inspect}"
+                #ai.debug "AI: destroyed building ? #{r.inspect} #{f.inspect}"
                 return true
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
@@ -1569,7 +1566,7 @@ class DwarfAI
             return true unless f[:makeroom]
             return unless r.dug?
 
-            @ai.debug "makeroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "makeroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
 
             df.free(bld.room.extents._getp) if bld.room.extents
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
@@ -1669,7 +1666,7 @@ class DwarfAI
         def pull_lever(f)
             bld = df.building_find(f[:bld_id])
             return if not bld
-            @ai.debug "pull lever #{f[:way]}"
+            ai.debug "pull lever #{f[:way]}"
 
             ref = DFHack::GeneralRefBuildingHolderst.cpp_new
             ref.building_id = bld.id
@@ -1728,7 +1725,7 @@ class DwarfAI
 
                 gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
                 if gate.shape_basic == :Wall
-                    @ai.debug 'cistern: test channel'
+                    ai.debug 'cistern: test channel'
                     empty = true
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
@@ -1739,7 +1736,7 @@ class DwarfAI
                     end
 
                     if empty and !dump_items_access(@m_c_reserve)
-                        @ai.debug 'cistern: do channel'
+                        ai.debug 'cistern: do channel'
                         gate.offset(0, 0, 1).dig(:Channel)
                         pull_lever(@m_c_lever_in) if f_in_closed
                         pull_lever(@m_c_lever_out) if not f_out_closed
@@ -1840,15 +1837,15 @@ class DwarfAI
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
-            puts 'AI: setting up fort blueprint...'
+            ai.debug 'AI: setting up fort blueprint...'
             # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
-            @ai.debug 'blueprint found entrance'
+            ai.debug 'blueprint found entrance'
             # TODO if no room for fort body, make surface fort
             scan_fort_body
-            @ai.debug 'blueprint found body'
+            ai.debug 'blueprint found body'
             setup_blueprint_rooms
-            @ai.debug 'blueprint found rooms'
+            ai.debug 'blueprint found rooms'
             # ensure traps are on the surface
             @fort_entrance.layout.each { |i|
                 i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], true).z-@fort_entrance.z1
@@ -1861,7 +1858,7 @@ class DwarfAI
             list_map_veins
             setup_outdoor_gathering_zones
             make_map_walkable
-            puts 'AI: ready'
+            ai.debug 'AI: ready'
         end
 
         def make_map_walkable
@@ -2606,12 +2603,12 @@ class DwarfAI
             }
 
             if @allow_ice
-                puts "AI: icy embark, no well"
+                ai.debug "AI: icy embark, no well"
             elsif river = scan_river
                 setup_blueprint_cistern_fromsource(river, fx, fy, fz)
             else
                 # TODO pool, pumps, etc
-                puts "AI: no river, no well"
+                ai.debug "AI: no river, no well"
             end
 
             # farm plots
@@ -3292,7 +3289,7 @@ class DwarfAI
             if tree
                 df.map_tile_at(tree)
             else
-                puts_err "AI: #{df.cur_year}:#{df.cur_year_tick} failed to find tree at #{t.inspect}"
+                ai.debug "failed to find tree at #{t.inspect}"
                 t
             end
         end
