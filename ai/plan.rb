@@ -260,7 +260,7 @@ class DwarfAI
                     next if f[:ignore]
                     t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
                     if (f[:bld_id] and not df.building_find(f[:bld_id]))
-                        df.add_announcement("AI: fix furniture #{f[:item]} in #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = t }
+                        ai.debug("fix furniture #{f[:item]} in #{r.type} #{r.subtype}", t)
                         f.delete :bld_id
                         @tasks << [:furnish, r, f]
                     end
@@ -270,7 +270,7 @@ class DwarfAI
                 }
                 # tantrumed building
                 if r.misc[:bld_id] and not r.dfbuilding
-                    df.add_announcement("AI: rebuild #{r.type} #{r.subtype}", 7, false) { |ann| ann.pos = r }
+                    ai.debug("rebuild #{r.type} #{r.subtype}", r)
                     r.misc.delete :bld_id
                     construct_room(r)
                 end
@@ -283,7 +283,7 @@ class DwarfAI
                 wantdig(r)
                 set_owner(r, id)
                 name = ((u = df.unit_find(id)) ? u.name : '?')
-                df.add_announcement("AI: assigned a bedroom to #{name}", 7, false) { |ann| ann.pos = r }
+                ai.debug("assigned a bedroom to #{name}", r)
                 if r.status == :finished
                     furnish_room(r)
                 end
@@ -363,7 +363,7 @@ class DwarfAI
                 end
 
                 r.misc[:squad_id] = squad_id
-                df.add_announcement("AI: new barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
+                ai.debug("new barracks #{r.misc[:squad_id]}", r)
                 wantdig(r)
                 if r.misc[:bld_id] and bld = r.dfbuilding
                     assign_barrack_squad(bld, squad_id)
@@ -425,7 +425,7 @@ class DwarfAI
         def freebedroom(id)
             if r = find_room(:bedroom) { |_r| _r.owner == id }
                 name = ((u = df.unit_find(id)) ? u.name : '?')
-                df.add_announcement("AI: freed bedroom of #{name}", 7, false) { |ann| ann.pos = r }
+                ai.debug("freed bedroom of #{name}", r)
                 set_owner(r, nil)
                 r.layout.each { |f|
                     next if f[:ignore]
@@ -469,7 +469,7 @@ class DwarfAI
                                 r.misc.delete(:bld_id)
 
                                 if r.misc[:squad_id]
-                                    df.add_announcement("AI: freed barracks #{r.misc[:squad_id]}", 7, false) { |ann| ann.pos = r }
+                                    ai.debug("freed barracks #{r.misc[:squad_id]}", r)
                                     r.misc.delete :squad_id
                                 end
                             end

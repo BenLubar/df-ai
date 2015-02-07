@@ -18,7 +18,8 @@ class DwarfAI
         "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
     end
 
-    def debug(str)
+    def debug(str, announce=nil)
+        df.add_announcement("AI: #{str}", 7, false) { |ann| ann.pos = announce } if announce
         ts = timestamp
         puts "AI: #{ts} #{str}" if $DEBUG
         unless @logger
