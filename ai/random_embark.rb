@@ -125,6 +125,8 @@ class DwarfAI
                     $AI_RANDOM_EMBARK_WORLD = df.world.cur_savegame.save_dir
                     view.feed_keys(:SELECT)
                 end
+            when DFHack::ViewscreenUpdateRegionst
+                ai.debug "updating world, goal: #{ai.timestamp(view.year, view.year_tick)}"
             when DFHack::ViewscreenChooseStartSitest
                 if view.finder.finder_state == -1
                     ai.debug 'choosing "Site Finder"'
@@ -150,6 +152,7 @@ class DwarfAI
                             end
                         end
                         raise 'no good embarks but site finder exited with success' if sites.empty?
+                        ai.debug "found sites count: #{sites.length}"
                         site = sites[rand(sites.length)]
                         dx, dy = site[0], site[1]
                         dx -= sx
@@ -186,6 +189,8 @@ class DwarfAI
                         $AI_RANDOM_EMBARK_WORLD = nil
                         view.breakdown_level = :QUIT
                     end
+                else
+                    ai.debug "searching for a site (#{view.finder.search_x}/#{df.world.world_data.world_width / 16}, #{view.finder.search_y}/#{df.world.world_data.world_height / 16})"
                 end
             when DFHack::ViewscreenSetupdwarfgamest
                 ai.debug 'choosing "Play Now"'

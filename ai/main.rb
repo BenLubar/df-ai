@@ -14,6 +14,7 @@ class DwarfAI
     end
 
     def timestamp(y=df.cur_year, t=df.cur_year_tick)
+        return '?????-??-??:????' if y == 0 and t == 0
         "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
     end
 
