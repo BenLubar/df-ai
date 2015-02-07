@@ -592,7 +592,7 @@ class DwarfAI
                 furnish_room(r)
             when :infirmary, :pasture, :pitcage
                 furnish_room(r)
-                @tasks << [:construct_activityzone, r]
+                @tasks << [:construct_activityzone, r] unless try_construct_activityzone(r)
             when :dininghall
                 if t = find_room(:dininghall) { |_r| _r.misc[:temporary] } and not r.misc[:temporary]
                     move_dininghall_fromtemp(r, t)
