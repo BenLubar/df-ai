@@ -172,6 +172,7 @@ class DwarfAI
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 0 } ||
                    (@fort_entrance if not @fort_entrance.misc[:furnished]) ||
                    (@past_initial_phase = true ; false) ||
+                   find_room(:outpost)   { |_r| _r.subtype == :cavern and _r.status == :plan } ||
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan and _r.misc[:workshop_level] == 1 } ||
                    find_room(:bedroom)   { |_r| not _r.owner and ((freebed -= 1) >= 0) and _r.status == :plan } ||
                    find_room(:nobleroom) { |_r| _r.status == :finished and not _r.misc[:furnished] } ||
@@ -192,8 +193,14 @@ class DwarfAI
                 end
                 false
             elsif idle?
-                idleidle
-                true
+                if setup_blueprint_caverns
+                    ai.debug 'found next cavern'
+                    categorize_all
+                    false
+                else
+                    idleidle
+                    true
+                end
             end
         end
 
@@ -1267,7 +1274,7 @@ class DwarfAI
             end
         end
 
-        MudType  = DFHack::BuiltinMats::NUME[:MUD]
+        MudType  = DFHack::BuiltinMats.int(:MUD)
         MudIndex = -1
 
         def construct_farmplot(r)
@@ -1857,6 +1864,7 @@ class DwarfAI
             }
             list_map_veins
             setup_outdoor_gathering_zones
+            setup_blueprint_caverns
             make_map_walkable
             ai.debug 'AI: ready'
         end
@@ -3112,6 +3120,56 @@ class DwarfAI
             end
         end
 
+        def setup_blueprint_caverns
+            # find a hidden floor tile
+            target = nil
+            return unless (0...df.world.map.z_count).to_a.reverse.any? { |z|
+                (0...df.world.map.x_count).any? { |x|
+                    (0...df.world.map.y_count).any? { |y|
+                        t = df.map_tile_at(x, y, z) and
+                        map_tile_cavernfloor(t) and
+                        target = t
+                    }
+                }
+            }
+
+            # find a nearby wall that isn't under a room
+            return unless wall = spiral_search(target) { |t|
+                @rooms.all? { |r|
+                    not r.safe_include?(t.x, t.y, r.z)
+                } and @corridors.all? { |r|
+                    not r.safe_include?(t.x, t.y, r.z)
+                } and map_tile_in_rock(t)
+            }
+
+            # find a floor next to the wall
+            return unless target = spiral_search(wall) { |t|
+                map_tile_cavernfloor(t)
+            }
+
+            r = Room.new(:outpost, :cavern, target.x, target.x, target.y, target.y, target.z)
+
+            if (wall.x - target.x).abs > 1
+                cor = Corridor.new(wall.x - (wall.x <=> target.x), target.x - (target.x <=> wall.x), wall.y, wall.y, wall.z, wall.z)
+                @corridors << cor
+                r.accesspath << cor
+                r = cor
+            end
+
+            if (wall.y - target.y).abs > 1
+                cor = Corridor.new(target.x - (target.x <=> wall.x), target.x - (target.x <=> wall.x), wall.y + (target.y <=> wall.y), target.y, wall.z, wall.z)
+                @corridors << cor
+                r.accesspath << cor
+            end
+
+            up = find_corridor_tosurface(wall)
+            r.accesspath << up[0]
+
+            @rooms << r
+
+            true
+        end
+
         # check that tile is surrounded by solid rock/soil walls
         def map_tile_in_rock(tile)
             tile and (-1..1).all? { |dx| (-1..1).all? { |dy|
@@ -3132,6 +3190,16 @@ class DwarfAI
             } }
         end
 
+        # check tile is a hidden floor
+        def map_tile_cavernfloor(t)
+            td = t.designation and
+            td.hidden and
+            td.flow_size == 0 and
+            tm = t.tilemat and
+            (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT) and
+            t.shape_basic == :Floor
+        end
+
         # create a new Corridor from origin to surface, through rock
         # may create multiple chunks to avoid obstacles, all parts are added to @corridors
         # returns an array of Corridors, 1st = origin, last = surface
@@ -3139,13 +3207,12 @@ class DwarfAI
             cor1 = Corridor.new(origin.x, origin.x, origin.y, origin.y, origin.z, origin.z)
             @corridors << cor1
 
-            cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2)
+            cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2) and not map_tile_intersects_room(cor1.maptile2.offset(0, 0, 1))
 
-            if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or
-                                        out.tilemat == :TREE or out.tilemat == :RAMP or out.designation.flow_size != 0)
+            if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or out.tilemat == :TREE or out.tilemat == :RAMP or out.designation.flow_size != 0 or out.designation.hidden)
                 out2 = spiral_search(out) { |t|
                     t = t.offset(0, 0, 1) while map_tile_in_rock(t)
-                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.tilemat != :TREE and t.designation.flow_size == 0)
+                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.tilemat != :TREE and t.designation.flow_size == 0 and not t.designation.hidden and not map_tile_intersects_room(t))
                 }
 
                 if out.designation.flow_size > 0
@@ -3179,7 +3246,6 @@ class DwarfAI
             else
                 [cor1]
             end
-
         end
 
         def surface_tile_at(t, ty=nil, allow_trees=false)
