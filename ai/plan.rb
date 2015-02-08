@@ -3547,6 +3547,7 @@ class DwarfAI
                 s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
                 s << " (#{misc[:workshop_level]})" if misc[:workshop_level]
                 s << " (#{misc[:workshop]})" if misc[:workshop]
+                s << " (#{misc[:users].length} users)" if misc[:users]
                 s << " (#{status})"
                 s
             end
