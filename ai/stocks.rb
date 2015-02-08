@@ -78,7 +78,7 @@ class DwarfAI
         def update
             if not @updating.empty? and @lastupdating != @updating.length + @updating_count.length
                 # avoid stall if cb_bg crashed and was unregistered
-                @ai.debug 'not updating stocks'
+                ai.debug 'not updating stocks'
                 @lastupdating = @updating.length + @updating_count.length
                 return
             end
@@ -118,7 +118,7 @@ class DwarfAI
                 false # search all farm plots
             }
 
-            @ai.debug 'updating stocks'
+            ai.debug 'updating stocks'
 
             # do stocks accounting 'in the background' (ie one bit at a time)
             cb_bg = df.onupdate_register('df-ai stocks bg', 8) {
@@ -246,7 +246,7 @@ class DwarfAI
         end
 
         def ban_cooking(material, type, subtype=-1)
-            @ai.debug "ban_cooking #{material}"
+            ai.debug "ban_cooking #{material}"
             material = df.decode_mat(material)
             df.ui.kitchen.item_types.length.times do |i|
                 next if df.ui.kitchen.item_types[i]    != type
@@ -264,7 +264,7 @@ class DwarfAI
 
         def act(key)
             if amount = Needed[key]
-                amount += (@ai.pop.citizen.length * NeededPerDwarf[key]).to_i
+                amount += (ai.pop.citizen.length * NeededPerDwarf[key]).to_i
                 queue_need(key, amount*3/2-@count[key]) if @count[key] < amount
             end
             
@@ -580,13 +580,13 @@ class DwarfAI
                 end
                 return
             when :raw_coke
-                if @ai.plan.past_initial_phase and raw = @ai.plan.map_veins.keys.find { |k| is_raw_coke(k) }
-                    @ai.plan.dig_vein(raw)
+                if ai.plan.past_initial_phase and raw = ai.plan.map_veins.keys.find { |k| is_raw_coke(k) }
+                    ai.plan.dig_vein(raw)
                 end
                 return
             when :gypsum
-                if @ai.plan.past_initial_phase and raw = @ai.plan.map_veins.keys.find { |k| is_gypsum(k) }
-                    @ai.plan.dig_vein(raw)
+                if ai.plan.past_initial_phase and raw = ai.plan.map_veins.keys.find { |k| is_gypsum(k) }
+                    ai.plan.dig_vein(raw)
                 end
                 return
             when :food
@@ -672,7 +672,7 @@ class DwarfAI
             end
 
             order ||= FurnitureOrder[what]
-            @ai.debug "stocks: need #{amount} #{order} for #{what}"
+            ai.debug "stocks: need #{amount} #{order} for #{what}"
 
             if input
                 i_amount = amount
@@ -680,7 +680,7 @@ class DwarfAI
                     c = count[i] || count_stocks(i)
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
-                        @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
+                        ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
                         queue_need(i, amount - c)
                     end
                 }
@@ -690,7 +690,7 @@ class DwarfAI
             if matcat = ManagerMatCategory[order]
                 i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
                 if i_amount < amount and Needed[matcat]
-                    @ai.debug "stocks: want #{amount - i_amount} more #{matcat} for #{i_amount}/#{amount} #{order}"
+                    ai.debug "stocks: want #{amount - i_amount} more #{matcat} for #{i_amount}/#{amount} #{order}"
                     queue_need(matcat, amount - i_amount)
                 end
                 amount = i_amount if amount > i_amount
@@ -765,7 +765,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        @ai.debug "stocks: queue #{nw} MakeWeapon #{df.world.raws.inorganics[mi].id} #{idef.id}"
+                        ai.debug "stocks: queue #{nw} MakeWeapon #{df.world.raws.inorganics[mi].id} #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -837,7 +837,7 @@ class DwarfAI
                         nw = cnt if nw > cnt
                         next if nw <= 0
 
-                        @ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
+                        ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
@@ -889,7 +889,7 @@ class DwarfAI
                 nw = cnt if nw > cnt
                 next if nw <= 0
 
-                @ai.debug "stocks: queue #{nw} ForgeAnvil #{df.world.raws.inorganics[mi].id}"
+                ai.debug "stocks: queue #{nw} ForgeAnvil #{df.world.raws.inorganics[mi].id}"
                 df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :ForgeAnvil, :unk_2 => -1,
                     :item_subtype => -1, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                 bars[mi] -= nw * need_bars
@@ -931,7 +931,7 @@ class DwarfAI
                     cnt = available_cloth if cnt > available_cloth
                     next if cnt <= 0
 
-                    @ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
+                    ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
                     df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
                             :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
                             :material_category => { :cloth => true },
@@ -944,11 +944,11 @@ class DwarfAI
 
         def queue_need_coffin_bld(amount)
             # dont dig too early
-            return if not @ai.plan.find_room(:cemetary) { |r| r.status != :plan }
+            return if not ai.plan.find_room(:cemetary) { |r| r.status != :plan }
 
 
             # count actually allocated (plan wise) coffin buildings
-            return if @ai.plan.find_room(:cemetary) { |r|
+            return if ai.plan.find_room(:cemetary) { |r|
                 r.layout.each { |f|
                     amount -= 1 if f[:item] == :coffin and not f[:bld_id] and not f[:ignore]
                 }
@@ -1001,7 +1001,7 @@ class DwarfAI
                 order = :MakeTotem
 
             when :bone
-                nhunters = @ai.pop.labor_worker[:HUNT].length if @ai.pop.labor_worker
+                nhunters = ai.pop.labor_worker[:HUNT].length if ai.pop.labor_worker
                 return if not nhunters
                 need_crossbow = nhunters + 1 - count_stocks(:crossbow)
                 if need_crossbow > 0
@@ -1046,7 +1046,7 @@ class DwarfAI
                 input = [:lye]
             end
 
-            @ai.debug "stocks: use #{amount} #{order} for #{what}"
+            ai.debug "stocks: use #{amount} #{order} for #{what}"
 
             if input
                 i_amount = amount
@@ -1054,7 +1054,7 @@ class DwarfAI
                     c = count[i] || count_stocks(i)
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
-                        @ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
+                        ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
                         queue_need(i, amount - c)
                     end
                 }
@@ -1082,7 +1082,7 @@ class DwarfAI
             amount = amount*3/4 if amount >= 10
             amount = 30 if amount > 30
 
-            @ai.debug "stocks: queue #{amount} CutGems #{df.decode_mat(i)}"
+            ai.debug "stocks: queue #{amount} CutGems #{df.decode_mat(i)}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -1108,7 +1108,7 @@ class DwarfAI
                 return if amount <= 0
             end
 
-            @ai.debug "stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}"
+            ai.debug "stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :SmeltOre, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
@@ -1135,7 +1135,7 @@ class DwarfAI
                 return if @count[:coal] <= 0
             end
 
-            @ai.debug "stocks: queue #{amount} #{reaction}"
+            ai.debug "stocks: queue #{amount} #{reaction}"
             df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1, :item_subtype => -1,
                     :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount, :reaction_name => reaction)
         end
@@ -1164,7 +1164,7 @@ class DwarfAI
         # lists only visible trees, sorted by distance from the fort entrance
         # expensive method, dont call often
         def tree_list
-            fe = @ai.plan.fort_entrance
+            fe = ai.plan.fort_entrance
             # avoid re-scanning full map if there was no visible tree last time
             return [] if @last_treelist and @last_treelist.empty? and rand(6) > 0
 
@@ -1250,9 +1250,9 @@ class DwarfAI
                 is_metal_ore(i) and moc[i.mat_index] and is_item_free(i)
             }.length
 
-            @ai.plan.map_veins.keys.find { |k|
-                can_melt += @ai.plan.dig_vein(k) if moc[k]
-            } if can_melt < WatchStock[:metal_ore] and @ai.plan.past_initial_phase 
+            ai.plan.map_veins.keys.find { |k|
+                can_melt += ai.plan.dig_vein(k) if moc[k]
+            } if can_melt < WatchStock[:metal_ore] and ai.plan.past_initial_phase 
 
             if can_melt > WatchStock[:metal_ore]
                 return 4*150*(can_melt - WatchStock[:metal_ore])
@@ -1287,8 +1287,8 @@ class DwarfAI
                             has += 1
                         end
                     }
-                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1 and @ai.plan.past_initial_phase 
-                        has += @ai.plan.dig_vein(rr.mat_index)
+                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1 and ai.plan.past_initial_phase 
+                        has += ai.plan.dig_vein(rr.mat_index)
                         future = true if has > 0
                     end
                     has /= rr.quantity
@@ -1310,7 +1310,7 @@ class DwarfAI
                     if not future and not df.world.manager_orders.find { |mo|
                         mo.job_type == :CustomReaction and mo.reaction_name == r.code
                     }
-                        @ai.debug "stocks: queue #{can_reaction} #{r.code}"
+                        ai.debug "stocks: queue #{can_reaction} #{r.code}"
                         df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1,
                             :item_subtype => -1, :reaction_name => r.code, :mat_type => -1, :mat_index => -1,
                             :amount_left => can_reaction, :amount_total => can_reaction)
@@ -1425,7 +1425,7 @@ class DwarfAI
         end
 
         def add_manager_order(order, amount=1, maxmerge=30)
-            @ai.debug "add_manager #{order} #{amount}"
+            ai.debug "add_manager #{order} #{amount}"
             _order = ManagerRealOrder[order] || order
             matcat = ManagerMatCategory[order]
             type = ManagerType[order]

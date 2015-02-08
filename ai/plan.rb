@@ -182,7 +182,7 @@ class DwarfAI
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
                    find_room(:stockpile) { |_r| _r.status == :plan }
-                @ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
+                ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
                 wantdig(r)
                 if r.status == :finished
                     r.misc[:furnished] = true
@@ -198,7 +198,7 @@ class DwarfAI
         end
 
         def idleidle
-            @ai.debug 'smooth fort'
+            ai.debug 'smooth fort'
             tab = []
             @rooms.each { |r|
                 next if r.status == :plan or r.status == :dig
@@ -527,7 +527,7 @@ class DwarfAI
         # queue a room for digging when other dig jobs are finished
         def wantdig(r)
             return true if r.misc[:queue_dig] or r.status != :plan
-            @ai.debug "wantdig #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "wantdig #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             r.misc[:queue_dig] = true
             r.dig(:plan)
             @tasks << [:wantdig, r]
@@ -535,7 +535,7 @@ class DwarfAI
 
         def digroom(r)
             return true if r.status != :plan
-            @ai.debug "digroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "digroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             r.misc.delete :queue_dig
             r.status = :dig
             r.dig
@@ -653,7 +653,7 @@ class DwarfAI
             elsif tgtile.shape == :RAMP or tgtile.tilemat == :TREE or tgtile.tilemat == :ROOT
                 tgtile.dig(f[:dig] || :Default)
                 false
-            elsif itm ||= @ai.stocks.find_furniture_item(f[:item])
+            elsif itm ||= ai.stocks.find_furniture_item(f[:item])
                 return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
                 ai.debug "furnish #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
                 bldn = FurnitureBuilding[f[:item]]
@@ -1980,7 +1980,7 @@ class DwarfAI
         end
 
         def do_dig_vein(mat, bx, by, bz)
-            @ai.debug "dig_vein #{df.world.raws.inorganics[mat].id}"
+            ai.debug "dig_vein #{df.world.raws.inorganics[mat].id}"
             count = 0
             fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
             if bz >= fort_minz
@@ -2010,7 +2010,7 @@ class DwarfAI
 
             need_shaft = true
             todo = []
-            @ai.debug "do_dig_vein #{dxs.min}..#{dxs.max} #{dys.min}..#{dys.max}"
+            ai.debug "do_dig_vein #{dxs.min}..#{dxs.max} #{dys.min}..#{dys.max}"
             (dxs.min..dxs.max).each { |dx| (dys.min..dys.max).each { |dy|
                 t = df.map_tile_at(bx+dx, by+dy, bz)
                 if t.designation.dig == :No
@@ -2844,7 +2844,7 @@ class DwarfAI
             # 1st end: reservoir input
             p1 = df.map_tile_at(cx-16, fy, fz)
             move_river[p1]
-            @ai.debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
+            ai.debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
 
             # XXX hardcoded layout again
             if src.x <= p1.x
@@ -2882,7 +2882,7 @@ class DwarfAI
             } || spiral_search(out, 1, 1) { |t|
                 t.spiral_search(1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
             }
-            @ai.debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
+            ai.debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
 
             # TODO check that 'channel' is easily channelable (eg river in a hole)
 
@@ -3094,7 +3094,7 @@ class DwarfAI
                         y += 31
                         if y >= df.world.map.y_count
                             df.onupdate_unregister(bg)
-                            @ai.debug 'plan setup_outdoor_gathering_zones finished'
+                            ai.debug 'plan setup_outdoor_gathering_zones finished'
                             next
                         end
                     end

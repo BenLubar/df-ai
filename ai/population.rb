@@ -129,13 +129,13 @@ class DwarfAI
 
                             if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
                                 assign_unit_to_zone(u, r.dfbuilding)
-                                @ai.debug "pop: marked #{u.name || 'unnamed'} #{u.race_tg.name[0]} for pitting"
+                                ai.debug "pop: marked #{u.name || 'unnamed'} #{u.race_tg.name[0]} for pitting"
                             end
                         end
                     end
                 end
             end
-            @ai.debug "pop: dumped #{count} items from cages" if count > 0
+            ai.debug "pop: dumped #{count} items from cages" if count > 0
         end
 
         def update_military
@@ -411,13 +411,13 @@ class DwarfAI
                             if not ul[lb] and not c[2]
                                 ul[lb] = true
                                 u.military.pickup_flags.update = true if LaborTool[lb]
-                                @ai.debug "assigning labor #{lb} to #{u.name} (non-worker: #{c[1]})"
+                                ai.debug "assigning labor #{lb} to #{u.name} (non-worker: #{c[1]})"
                             end
                         elsif ul[lb]
                             next if LaborMedical[lb] and @medic[u.id]
                             ul[lb] = false
                             u.military.pickup_flags.update = true if LaborTool[lb]
-                            @ai.debug "unassigning labor #{lb} from #{u.name} (non-worker: #{c[1]})"
+                            ai.debug "unassigning labor #{lb} from #{u.name} (non-worker: #{c[1]})"
                         end
                     }
                 }
@@ -467,7 +467,7 @@ class DwarfAI
                                     @labor_needmore[:MASON] += 1
                                 else
                                     @seen_badwork ||= {}
-                                    @ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
+                                    ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
                                     @seen_badwork[job.job_type] = true
                                 end
                             end
@@ -517,7 +517,7 @@ class DwarfAI
                                 u.military.pickup_flags.update = true if LaborTool[lb]
                             end
                         }
-                        @ai.debug "unassigned all labors from #{u.name} (too many labors)"
+                        ai.debug "unassigned all labors from #{u.name} (too many labors)"
                     end
                 end
 
@@ -535,8 +535,8 @@ class DwarfAI
                     @labor_needmore.delete lb if @labor_worker[lb].length >= max
                 }
 
-                if @labor_needmore.empty? and not @idlers.empty? and @ai.plan.past_initial_phase and (not @last_idle_year or @last_idle_year != df.cur_year)
-                    @ai.plan.idleidle
+                if @labor_needmore.empty? and not @idlers.empty? and ai.plan.past_initial_phase and (not @last_idle_year or @last_idle_year != df.cur_year)
+                    ai.plan.idleidle
                     @last_idle_year = df.cur_year
                 end
 
@@ -671,7 +671,7 @@ class DwarfAI
             end
             u.status.labors[lb] = true
             u.military.pickup_flags.update = true if LaborTool[lb]
-            @ai.debug "assigning labor #{lb} to #{u.name} (#{reason})"
+            ai.debug "assigning labor #{lb} to #{u.name} (#{reason})"
         end
 
         def autolabor_unsetlabor(c, lb, reason='no reason given')
@@ -683,7 +683,7 @@ class DwarfAI
             @worker_labor[c.id].delete lb
             u.status.labors[lb] = false
             u.military.pickup_flags.update = true if LaborTool[lb]
-            @ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
+            ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
         end
 
         def set_up_trading(should_be_trading)
@@ -779,7 +779,7 @@ class DwarfAI
                 }
             }
 
-            @ai.plan.attribute_noblerooms(noble_ids)
+            ai.plan.attribute_noblerooms(noble_ids)
         end
 
         def assign_new_noble(pos_code, unit)
@@ -882,7 +882,7 @@ class DwarfAI
                 if cst.flags[:GRAZER]
                     @pet[u.id] << :GRAZER
 
-                    if bld = @ai.plan.getpasture(u.id)
+                    if bld = ai.plan.getpasture(u.id)
                         assign_unit_to_zone(u, bld)
                         # TODO monitor grass levels
                     else
@@ -895,7 +895,7 @@ class DwarfAI
             }
 
             np.each_key { |id|
-                @ai.plan.freepasture(id)
+                ai.plan.freepasture(id)
                 @pet.delete id
             }
 
