@@ -111,7 +111,7 @@ class DwarfAI
                         df.curview.feed_keys(:LEAVESCREEN)
                     }
 
-                elsif text =~ /A vile force of darkness has arrived!/
+                elsif text =~ /A vile force of darkness has arrived!|The .* have brought the full forces of their lands against you\.|The enemy have come and are laying siege to the fortress\.|The dead walk\. Hide while you still can!/
                     debug "siege (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
