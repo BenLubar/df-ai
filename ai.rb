@@ -20,7 +20,7 @@ when 'start'
                 view.feed_keys(:D_PAUSE) if df.pause_state
             rescue Exception
                 $dwarfAI.debug $!
-                $dwarfAI.debug $!.backtrace
+                $dwarfAI.debug $!.backtrace.join("\n")
                 $dwarfAI.abandon!(view)
             end
             true
