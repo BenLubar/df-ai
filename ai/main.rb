@@ -105,20 +105,27 @@ class DwarfAI
                     t.text.to_s.strip.gsub(/\s+/, ' ')
                 }.join(' ')
 
-                if text =~ /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
+                case text
+                when /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
                     debug "exit diplomat textviewerst (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
                     }
 
-                elsif text =~ /A vile force of darkness has arrived!|The .* have brought the full forces of their lands against you\.|The enemy have come and are laying siege to the fortress\.|The dead walk\. Hide while you still can!/
+                when /A vile force of darkness has arrived!|The .* have brought the full forces of their lands against you\.|The enemy have come and are laying siege to the fortress\.|The dead walk\. Hide while you still can!/
                     debug "siege (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
                         unpause!
                     }
 
-                elsif text =~ /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
+                when /.*: You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind\. Further abuse cannot be tolerated\. Let this be a warning to you\./
+                    debug "elves speak for the trees (#{text.inspect})"
+                    timeout_sameview {
+                        df.curview.feed_keys(:LEAVESCREEN)
+                    }
+
+                when /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
                     debug 'you just lost the game:'
                     debug text.inspect
                     debug 'Exiting AI.'
