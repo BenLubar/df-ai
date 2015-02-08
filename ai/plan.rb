@@ -3226,48 +3226,58 @@ class DwarfAI
         # may create multiple chunks to avoid obstacles, all parts are added to @corridors
         # returns an array of Corridors, 1st = origin, last = surface
         def find_corridor_tosurface(origin)
-            cor1 = Corridor.new(origin.x, origin.x, origin.y, origin.y, origin.z, origin.z)
-            @corridors << cor1
+            cors = []
+            while true
+                cor = Corridor.new(origin.x, origin.x, origin.y, origin.y, origin.z, origin.z)
+                cors.last.accesspath << cor unless cors.empty?
+                cors << cor
 
-            cor1.z2 += 1 while map_tile_in_rock(cor1.maptile2) and not map_tile_intersects_room(cor1.maptile2.offset(0, 0, 1))
+                cor.z2 += 1 while map_tile_in_rock(cor.maptile2) and not map_tile_intersects_room(cor.maptile2.offset(0, 0, 1))
 
-            if out = cor1.maptile2 and ((out.shape_basic != :Ramp and out.shape_basic != :Floor) or out.tilemat == :TREE or out.tilemat == :RAMP or out.designation.flow_size != 0 or out.designation.hidden)
-                out2 = spiral_search(out) { |t|
-                    t = t.offset(0, 0, 1) while map_tile_in_rock(t)
-                    ((t.shape_basic == :Ramp or t.shape_basic == :Floor) and t.tilemat != :TREE and t.designation.flow_size == 0 and not t.designation.hidden and not map_tile_intersects_room(t))
-                }
+                if out = cor.maptile2 and (
+                    (out.shape_basic != :Ramp and out.shape_basic != :Floor) or
+                    out.tilemat == :TREE or
+                    out.tilemat == :RAMP or
+                    out.designation.flow_size != 0 or
+                    out.designation.hidden)
 
-                if out.designation.flow_size > 0
-                    # damp stone located
-                    cor1.z2 -= 2
-                    out2 = out2.offset(0, 0, -2)
+                    out2 = spiral_search(out) { |t|
+                        t = t.offset(0, 0, 1) while map_tile_in_rock(t)
+
+                        (t.shape_basic == :Ramp or t.shape_basic == :Floor) and
+                        t.tilemat != :TREE and t.designation.flow_size == 0 and
+                        not t.designation.hidden and
+                        not map_tile_intersects_room(t)
+                    }
+
+                    if out.designation.flow_size > 0
+                        # damp stone located
+                        cor.z2 -= 2
+                        out2 = out2.offset(0, 0, -2)
+                    else
+                        cor.z2 -= 1
+                        out2 = out2.offset(0, 0, -1)
+                    end
+
+                    if (out2.x - out.x).abs > 1
+                        cor = Corridor.new(out2.x - (out2.x <=> out.x), out.x - (out.x <=> out2.x), out2.y, out2.y, out2.z, out2.z)
+                        cors.last.accesspath << cor
+                        cors << cor
+                    end
+
+                    if (out2.y - out.y).abs > 1
+                        cor = Corridor.new(out.x - (out.x <=> out2.x), out.x - (out.x <=> out2.x), out2.y + (out.y <=> out2.y), out.y, out2.z, out2.z)
+                        cors.last.accesspath << cor
+                        cors << cor
+                    end
+
+                    origin = out2
                 else
-                    cor1.z2 -= 1
-                    out2 = out2.offset(0, 0, -1)
+                    break
                 end
-
-                cors2 = find_corridor_tosurface(out2)
-
-                if (out2.x - cor1.x).abs > 1 or (out2.y - cor1.y).abs > 1
-                    # TODO safe L shape
-                    dx = (cor1.x <=> out2.x)
-                    dx = 0 if (out2.x - cor1.x).abs <= 1
-                    dy = (cor1.y <=> out2.y)
-                    dy = 0 if (out2.y - cor1.y).abs <= 1
-                    cort = Corridor.new(cor1.x-dx, out2.x+dx, cor1.y-dy, out2.y+dy, cor1.z2, cor1.z2)
-                    @corridors << cort
-                    cor1.accesspath = [cort]
-                    cort.accesspath = [cors2[0]]
-
-                    [cor1, cort, *cors2]
-                else
-                    cor1.accesspath = [cors2[0]]
-
-                    [cor1, *cors2]
-                end
-            else
-                [cor1]
             end
+            @corridors += cors
+            cors
         end
 
         def surface_tile_at(t, ty=nil, allow_trees=false)
