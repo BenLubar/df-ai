@@ -183,7 +183,7 @@ class DwarfAI
                    find_room(:workshop)  { |_r| _r.subtype and _r.status == :plan } ||
                    find_room(:cartway)   { |_r| _r.status == :plan } ||
                    find_room(:stockpile) { |_r| _r.status == :plan }
-                ai.debug "checkidle #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{r.status}"
+                ai.debug "checkidle #{describe_room(r)}"
                 wantdig(r)
                 if r.status == :finished
                     r.misc[:furnished] = true
@@ -267,7 +267,7 @@ class DwarfAI
                     next if f[:ignore]
                     t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
                     if (f[:bld_id] and not df.building_find(f[:bld_id]))
-                        ai.debug("fix furniture #{f[:item]} in #{r.type} #{r.subtype}", t)
+                        ai.debug("fix furniture #{f[:item]} in #{describe_room(r)}", t)
                         f.delete :bld_id
                         @tasks << [:furnish, r, f]
                     end
@@ -277,7 +277,7 @@ class DwarfAI
                 }
                 # tantrumed building
                 if r.misc[:bld_id] and not r.dfbuilding
-                    ai.debug("rebuild #{r.type} #{r.subtype}", r)
+                    ai.debug("rebuild #{describe_room(r)}", r)
                     r.misc.delete :bld_id
                     construct_room(r)
                 end
@@ -295,7 +295,7 @@ class DwarfAI
                     furnish_room(r)
                 end
             else
-                debug "AI cant getbedroom(#{id})"
+                ai.debug "AI cant getbedroom(#{id})"
             end
         end
 
@@ -365,12 +365,12 @@ class DwarfAI
             if not r = find_room(:barracks) { |_r| _r.misc[:squad_id] == squad_id }
                 r = find_room(:barracks) { |_r| not _r.misc[:squad_id] }
                 if not r
-                    debug "no free barracks"
+                    ai.debug "no free barracks"
                     return
                 end
 
                 r.misc[:squad_id] = squad_id
-                ai.debug("new barracks #{r.misc[:squad_id]}", r)
+                ai.debug("new barracks for squad #{r.misc[:squad_id]}", r)
                 wantdig(r)
                 if r.misc[:bld_id] and bld = r.dfbuilding
                     assign_barrack_squad(bld, squad_id)
@@ -476,7 +476,7 @@ class DwarfAI
                                 r.misc.delete(:bld_id)
 
                                 if r.misc[:squad_id]
-                                    ai.debug("freed barracks #{r.misc[:squad_id]}", r)
+                                    ai.debug("freed barracks of squad #{r.misc[:squad_id]}", r)
                                     r.misc.delete :squad_id
                                 end
                             end
@@ -534,7 +534,7 @@ class DwarfAI
         # queue a room for digging when other dig jobs are finished
         def wantdig(r)
             return true if r.misc[:queue_dig] or r.status != :plan
-            ai.debug "wantdig #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "wantdig #{describe_room(r)}"
             r.misc[:queue_dig] = true
             r.dig(:plan)
             @tasks << [:wantdig, r]
@@ -542,7 +542,7 @@ class DwarfAI
 
         def digroom(r)
             return true if r.status != :plan
-            ai.debug "digroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "digroom #{describe_room(r)}"
             r.misc.delete :queue_dig
             r.status = :dig
             r.fixup_open
@@ -583,7 +583,7 @@ class DwarfAI
         end
 
         def construct_room(r)
-            ai.debug "construct #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "construct #{describe_room(r)}"
             case r.type
             when :corridor
                 furnish_room(r)
@@ -663,7 +663,7 @@ class DwarfAI
                 false
             elsif itm ||= ai.stocks.find_furniture_item(f[:item])
                 return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
-                ai.debug "furnish #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype} #{f[:item]}"
+                ai.debug "furnish #{f[:item]} in #{describe_room(r)}"
                 bldn = FurnitureBuilding[f[:item]]
                 subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
                 bld = df.building_alloc(bldn, subtype)
@@ -1289,7 +1289,7 @@ class DwarfAI
                         t.mapblock.block_events << e
                     end
                     if e.amount[t.dx][t.dy] < 50
-                        ai.debug "cheat: mud invocation #{x} #{y} #{z}"
+                        ai.debug "cheat: mud invocation (#{x}, #{y}, #{z})"
                         e.amount[t.dx][t.dy] = 50 # small pile of mud
                     end
                 end
@@ -1575,7 +1575,7 @@ class DwarfAI
             return true unless f[:makeroom]
             return unless r.dug?
 
-            ai.debug "makeroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
+            ai.debug "makeroom #{describe_room(r)}"
 
             df.free(bld.room.extents._getp) if bld.room.extents
             bld.room.extents = df.malloc((r.w+2)*(r.h+2))
@@ -1675,7 +1675,7 @@ class DwarfAI
         def pull_lever(f)
             bld = df.building_find(f[:bld_id])
             return if not bld
-            ai.debug "pull lever #{f[:way]}"
+            ai.debug "cistern: pull lever #{f[:way]}"
 
             ref = DFHack::GeneralRefBuildingHolderst.cpp_new
             ref.building_id = bld.id
@@ -1866,7 +1866,7 @@ class DwarfAI
         attr_accessor :fort_entrance, :rooms, :corridors
         def setup_blueprint
             # TODO use existing fort facilities (so we can relay the user or continue from a save)
-            ai.debug 'AI: setting up fort blueprint...'
+            ai.debug 'setting up fort blueprint...'
             # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
             scan_fort_entrance
             ai.debug 'blueprint found entrance'
@@ -1888,7 +1888,7 @@ class DwarfAI
             setup_outdoor_gathering_zones
             setup_blueprint_caverns
             make_map_walkable
-            ai.debug 'AI: ready'
+            ai.debug 'LET THE GAME BEGIN!'
         end
 
         def make_map_walkable
@@ -3321,6 +3321,10 @@ class DwarfAI
             } if @room_category[:stockpile]
         end
 
+        def describe_room(r)
+            "#{@rooms.index(r) or @corridors.index(r)} #{r}"
+        end
+
         def find_room(type, &b)
             if @room_category.empty?
                 if b
@@ -3532,6 +3536,17 @@ class DwarfAI
                     # TODO check actual tile shape vs construction type
                     return if t.shape_basic == :Open
                 }
+            end
+
+            def to_s
+                s = type.to_s
+                s << " (#{subtype})" if subtype
+                s << " (owned by #{u.name})" if u = df.unit_find(owner)
+                s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
+                s << " (#{misc[:workshop_level]})" if misc[:workshop_level]
+                s << " (#{misc[:workshop]})" if misc[:workshop]
+                s << " (#{status})"
+                s
             end
 
             def serialize
