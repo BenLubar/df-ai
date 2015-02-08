@@ -201,7 +201,7 @@ class DwarfAI
             end
         end
         
-        # returns an unit newly assigned to a military squad        
+        # returns an unit newly assigned to a military squad
         def military_find_new_soldier(unitlist)
             ns = unitlist.find_all { |u|
                 u.military.squad_id == -1
@@ -240,15 +240,16 @@ class DwarfAI
 
             if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < squad_sz }
 
-                # create a new squad from scratch
-                squad_id = df.squad_next_id
-                df.squad_next_id = squad_id+1
+                # create a new squad using the UI
+                df.curview.feed_keys(:D_MILITARY)
+                df.curview.feed_keys(:D_MILITARY_CREATE_SQUAD)
+                df.curview.feed_keys(:STANDARDSCROLL_UP)
+                df.curview.feed_keys(:SELECT)
+                df.curview.feed_keys(:LEAVESCREEN)
 
-                squad = DFHack::Squad.cpp_new :id => squad_id
-
-                squad.name.first_name = "AI squad #{squad_id}"
-                squad.name.unknown = -1
-                squad.name.has_name = true
+                # get the squad and its id
+                squad_id = df.ui.main.fortress_entity.squads.last
+                squad    = df.ui.main.fortress_entity.squads_tg.last
 
                 squad.cur_alert_idx = 1     # train
                 squad.uniform_priority = 2
@@ -318,11 +319,6 @@ class DwarfAI
                         end
                     }
                 }
-                
-                # link squad into world
-                df.world.squads.all << squad
-                df.ui.squads.list << squad
-                df.ui.main.fortress_entity.squads << squad.id
             end
 
             squad_id
