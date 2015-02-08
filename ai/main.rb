@@ -107,7 +107,7 @@ class DwarfAI
                 }.join(' ')
 
                 case text
-                when /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\./
+                when /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\.|You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind\. Further abuse cannot be tolerated\. Let this be a warning to you\.|Greetings from the woodlands\. We have much to discuss\.|Although we do not always see eye to eye \(ha!\), I bid you farewell\. May you someday embrace nature as you embrace the rocks and mud\./
                     debug "exit diplomat textviewerst (#{text.inspect})"
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
@@ -118,12 +118,6 @@ class DwarfAI
                     timeout_sameview {
                         df.curview.feed_keys(:LEAVESCREEN)
                         unpause!
-                    }
-
-                when /.*: You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind\. Further abuse cannot be tolerated\. Let this be a warning to you\./
-                    debug "elves speak for the trees (#{text.inspect})"
-                    timeout_sameview {
-                        df.curview.feed_keys(:LEAVESCREEN)
                     }
 
                 when /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
