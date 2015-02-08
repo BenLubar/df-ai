@@ -1738,20 +1738,40 @@ class DwarfAI
                     todo = [@m_c_reserve]
                     while empty and r = todo.shift
                         todo.concat r.accesspath
-                        empty = false if ((r.x1-1)..(r.x2+1)).find { |x| ((r.y1-1)..(r.y2+1)).find { |y| (r.z1..r.z2).find { |z|
-                            t = df.map_tile_at(x, y, z) and (not smooth?(t) or t.occupancy.unit or t.occupancy.unit_grounded or t.occupancy.item)
+                        empty = false if ((r.x1-1)..(r.x2+1)).any? { |x| ((r.y1-1)..(r.y2+1)).any? { |y| (r.z1..r.z2).any? { |z|
+                            next unless t = df.map_tile_at(x, y, z)
+                            if not smooth?(t)
+                                ai.debug "cistern: unsmoothed #{t.inspect}"
+                                true
+                            elsif t.occupancy.unit or t.occupancy.unit_grounded
+                                ai.debug "cistern: unit #{t.inspect}"
+                                true
+                            elsif t.occupancy.item
+                                ai.debug "cistern: item #{t.inspect}"
+                                true
+                            else
+                                false
+                            end
                         } } }
                     end
 
                     if empty and !dump_items_access(@m_c_reserve)
-                        ai.debug 'cistern: do channel'
-                        gate.offset(0, 0, 1).dig(:Channel)
-                        pull_lever(@m_c_lever_in) if f_in_closed
-                        pull_lever(@m_c_lever_out) if not f_out_closed
+                        if not f_out_closed
+                            # avoid floods. wait for the output to be closed.
+                            pull_lever(@m_c_lever_out)
+                            @m_c_testgate_delay = 4
+                        else
+                            pull_lever(@m_c_lever_in) if f_in_closed
+                            ai.debug 'cistern: do channel'
+                            gate.offset(0, 0, 1).dig(:Channel)
+                        end
                     elsif find_room(:well).maptile1.offset(-2, find_room(:well).h/2).designation.flow_size == 7
                         # something went not as planned, but we have a water source
                         @m_c_testgate_delay = nil
                     else
+                        # make sure we can actually access the cistern
+                        pull_lever(@m_c_lever_in) if f_in_closed
+                        pull_lever(@m_c_lever_out) if f_out_closed
                         @m_c_testgate_delay = 16
                     end
                 else
