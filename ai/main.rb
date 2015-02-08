@@ -19,6 +19,7 @@ class DwarfAI
     end
 
     def debug(str, announce=nil)
+        str = str.join("\n") if Array === str
         df.add_announcement("AI: #{str}", 7, false) { |ann| ann.pos = announce } if announce
         ts = timestamp
         puts "AI: #{ts} #{str}" if $DEBUG
