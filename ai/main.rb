@@ -186,10 +186,6 @@ class DwarfAI
             when :WORLD_UNLOADED
                 debug 'world unloaded, disabling self'
                 onupdate_unregister
-                if @logger
-                    @logger.close
-                    @logger = nil
-                end
                 true
             else
                 statechanged(st)

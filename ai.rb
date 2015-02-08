@@ -19,7 +19,8 @@ when 'start'
                 $dwarfAI.startup
                 view.feed_keys(:D_PAUSE) if df.pause_state
             rescue Exception
-                puts_err $!, $!.backtrace
+                $dwarfAI.debug $!
+                $dwarfAI.debug $!.backtrace
                 $dwarfAI.abandon!(view)
             end
             true
