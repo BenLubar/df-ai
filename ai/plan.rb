@@ -545,6 +545,7 @@ class DwarfAI
             ai.debug "digroom #{@rooms.index(r) or @corridors.index(r)} #{r.type} #{r.subtype}"
             r.misc.delete :queue_dig
             r.status = :dig
+            r.fixup_open
             r.dig
             @tasks << [:digroom, r]
             r.accesspath.each { |ap| digroom(ap) }
@@ -3415,6 +3416,41 @@ class DwarfAI
                         end
                     end
                 }
+            end
+
+            def fixup_open
+                (x1..x2).each { |x| (y1..y2).each { |y| (z1..z2).each { |z|
+                    if f = layout.find { |f|
+                        fx, fy, fz = x1 + f[:x].to_i, y1 + f[:y].to_i, z1 + f[:z].to_i
+                        fx == x and fy == y and fz == z
+                    }
+                        fixup_open_tile(x, y, z, f[:dig] || :Default, f) unless f[:construction]
+                    else
+                        fixup_open_tile(x, y, z, dig_mode(x, y, z))
+                    end
+                } } }
+            end
+
+            def fixup_open_tile(x, y, z, d, f=nil)
+                return unless t = df.map_tile_at(x, y, z)
+                case d
+                when :Channel, :No
+                    # do nothing
+                when :Default
+                     fixup_open_helper(x, y, z, :Floor, f) if t.shape_basic == :Open
+                when :UpDownStair, :UpStair, :Ramp
+                     fixup_open_helper(x, y, z, d, f) if t.shape_basic == :Open or t.shape_basic == :Floor
+                when :DownStair
+                     fixup_open_helper(x, y, z, d, f) if t.shape_basic == :Open
+                end
+            end
+
+            def fixup_open_helper(x, y, z, c, f=nil)
+                unless f
+                    f = {:x => x - x1, :y => y - y1, :z => z - z1}
+                    layout << f
+                end
+                f[:construction] = c
             end
 
             def include?(x, y, z)
