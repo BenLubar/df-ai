@@ -3541,7 +3541,9 @@ class DwarfAI
             def to_s
                 s = type.to_s
                 s << " (#{subtype})" if subtype
-                s << " (owned by #{u.name})" if u = df.unit_find(owner)
+                if owner and u = df.unit_find(owner)
+                    s << " (owned by #{u.name})"
+                end
                 s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
                 s << " (#{misc[:workshop_level]})" if misc[:workshop_level]
                 s << " (#{misc[:workshop]})" if misc[:workshop]
