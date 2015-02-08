@@ -128,12 +128,6 @@ class DwarfAI
                 end
             when DFHack::ViewscreenUpdateRegionst
                 ai.debug "updating world, goal: #{ai.timestamp(view.year, view.year_tick)}"
-                # make sure we land within the first month of the year (Granite, early spring).
-                if view.year_tick >= 28 * 1200
-                    view.year += 1
-                    view.year_tick %= 1200
-                    ai.debug "changed goal to #{ai.timestamp(view.year, view.year_tick)}"
-                end
             when DFHack::ViewscreenChooseStartSitest
                 if view.finder.finder_state == -1
                     ai.debug 'choosing "Site Finder"'
