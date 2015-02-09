@@ -3389,7 +3389,7 @@ class DwarfAI
             if tree
                 df.map_tile_at(tree)
             else
-                ai.debug "failed to find tree at #{t.inspect}"
+                $dwarfAI.debug "failed to find tree at #{t.inspect}"
                 t
             end
         end
@@ -3553,7 +3553,7 @@ class DwarfAI
                     s << " (owned by #{u.name})"
                 end
                 if misc[:squad_id] and squad = df.world.squads.all.binsearch(misc[:squad_id])
-                    s << " (used by #{squad.name})"
+                    s << " (used by #{squad.name.to_s(true)})"
                 end
                 s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
                 s << " (#{misc[:workshop_level]})" if misc[:workshop_level]

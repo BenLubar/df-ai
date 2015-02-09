@@ -256,31 +256,47 @@ class DwarfAI
                 squad.carry_food = 2
                 squad.carry_water = 2
 
-                item_type = { :Body => :ARMOR, :Head => :HELM, :Pants => :PANTS,
-                        :Gloves => :GLOVES, :Shoes => :SHOES, :Shield => :SHIELD,
-                        :Weapon => :WEAPON }
+                item_type = {
+                    :Body => :ARMOR,
+                    :Head => :HELM,
+                    :Pants => :PANTS,
+                    :Gloves => :GLOVES,
+                    :Shoes => :SHOES,
+                    :Shield => :SHIELD,
+                    :Weapon => :WEAPON
+                }
                 # uniform
-                10.times {
-                    pos = DFHack::SquadPosition.cpp_new
+                squad.positions.each { |pos|
                     [:Body, :Head, :Pants, :Gloves, :Shoes, :Shield, :Weapon].each { |t|
-                        pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(:color => -1,
-                                :item_filter => {:item_type => item_type[t], :material_class => :Armor,
-                                    :mattype => -1, :matindex => -1})
+                        pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(
+                            :color => -1,
+                            :item_filter => {
+                                :item_type => item_type[t],
+                                :material_class => :Armor,
+                                :mattype => -1,
+                                :matindex => -1
+                            })
                     }
                     pos.uniform[:Weapon][0].item_filter.material_class = :None
                     pos.flags.exact_matches = true
-                    pos.unk_118 = pos.unk_11c = -1
-                    squad.positions << pos
                 }
 
-                if df.ui.main.fortress_entity.squads.length % 3 == 2
+                if df.ui.main.fortress_entity.squads.length % 3 == 0
                     # ranged squad
                     squad.positions.each { |pos|
                         pos.uniform[:Weapon][0].indiv_choice.ranged = true
                     }
-                    squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(:item_filter => { :item_type => :AMMO,
-                                        :item_subtype => 0, :material_class => :None}, # subtype = bolts
-                                :amount => 500, :flags => { :use_combat => true, :use_training => true })
+                    squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(
+                        :item_filter => {
+                            :item_type => :AMMO,
+                            :item_subtype => 0, # subtype = bolts
+                            :material_class => :None
+                        },
+                        :amount => 500,
+                        :flags => {
+                            :use_combat => true,
+                            :use_training => true
+                        })
                 else
                     # we don't want all the axes being used up by the military.
                     weapons = df.ui.main.fortress_entity.entity_raw.equipment.weapon_tg.find_all { |idef|
@@ -301,24 +317,24 @@ class DwarfAI
                     end
                 end
 
-                # schedule
-                df.ui.alerts.list.each { |alert|
-                    # squad.schedule.index = alerts.list.index (!= alert.id)
-                    squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
-                    12.times { |i|
-                        scm = squad.schedule.last[i]
-                        scm._cpp_init
-                        10.times { scm.order_assignments << -1 }
-
-                        case squad.schedule.length  # currently definied alert + 1
-                        when 2
-                            # train for 2 month, free the 3rd
-                            next if i % 3 == df.ui.main.fortress_entity.squads.length % 3
-                            scm.orders << DFHack::SquadScheduleOrder.cpp_new(:min_count => 0,
-                                    :positions => [false]*10, :order => DFHack::SquadOrderTrainst.cpp_new)
-                        end
-                    }
-                }
+                ## schedule
+                #df.ui.alerts.list.each { |alert|
+                #    # squad.schedule.index = alerts.list.index (!= alert.id)
+                #    squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
+                #    12.times { |i|
+                #        scm = squad.schedule.last[i]
+                #        scm._cpp_init
+                #        10.times { scm.order_assignments << -1 }
+                #
+                #        case squad.schedule.length  # currently definied alert + 1
+                #        when 2
+                #            # train for 2 month, free the 3rd
+                #            next if i % 3 == df.ui.main.fortress_entity.squads.length % 3
+                #            scm.orders << DFHack::SquadScheduleOrder.cpp_new(:min_count => 0,
+                #                    :positions => [false]*10, :order => DFHack::SquadOrderTrainst.cpp_new)
+                #        end
+                #    }
+                #}
             end
 
             squad_id
