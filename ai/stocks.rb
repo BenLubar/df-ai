@@ -187,7 +187,7 @@ class DwarfAI
 
             # ban cooking tallow
             df.world.raws.creatures.all.each_with_index do |c, i|
-                c.material.each_with_index do |m, i|
+                c.material.each_with_index do |m, j|
                     if m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
                         ban_cooking[j + DFHack::MaterialInfo::CREATURE_BASE, i, :GLOB]
                     end
