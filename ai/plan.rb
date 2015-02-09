@@ -3143,7 +3143,7 @@ class DwarfAI
         def setup_blueprint_caverns
             # find a hidden floor tile
             target = nil
-            return unless (0...df.world.map.z_count).to_a.reverse.any? { |z|
+            unless (0...df.world.map.z_count).to_a.reverse.any? { |z|
                 (0...df.world.map.x_count).any? { |x|
                     (0...df.world.map.y_count).any? { |y|
                         t = df.map_tile_at(x, y, z) and
@@ -3152,20 +3152,29 @@ class DwarfAI
                     }
                 }
             }
+                ai.debug 'outpost: could not find an initial cavern floor tile'
+                return
+            end
 
             # find a nearby wall that isn't under a room
-            return unless wall = spiral_search(target) { |t|
+            unless wall = spiral_search(target) { |t|
                 @rooms.all? { |r|
                     not r.safe_include?(t.x, t.y, r.z)
                 } and @corridors.all? { |r|
                     not r.safe_include?(t.x, t.y, r.z)
                 } and map_tile_in_rock(t)
             }
+                ai.debug 'outpost: could not find a cavern wall tile'
+                return
+            end
 
             # find a floor next to the wall
-            return unless target = spiral_search(wall) { |t|
+            unless target = spiral_search(wall) { |t|
                 map_tile_cavernfloor(t)
             }
+                ai.debug 'outpost: could not find a cavern floor tile'
+                return
+            end
 
             r = Room.new(:outpost, :cavern, target.x, target.x, target.y, target.y, target.z)
 
@@ -3173,7 +3182,6 @@ class DwarfAI
                 cor = Corridor.new(wall.x - (wall.x <=> target.x), target.x - (target.x <=> wall.x), wall.y, wall.y, wall.z, wall.z)
                 @corridors << cor
                 r.accesspath << cor
-                r = cor
             end
 
             if (wall.y - target.y).abs > 1
