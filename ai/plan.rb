@@ -1743,10 +1743,10 @@ class DwarfAI
                                 ai.debug "cistern: unsmoothed #{t.inspect}"
                                 true
                             elsif t.occupancy.unit or t.occupancy.unit_grounded
-                                ai.debug "cistern: unit #{t.inspect}"
+                                ai.debug "cistern: unit #{t.inspect} #{DwarfAI::describe_unit(df.unit_find(t))}"
                                 true
                             elsif t.occupancy.item
-                                ai.debug "cistern: item #{t.inspect}"
+                                ai.debug "cistern: item #{t.inspect} #{DwarfAI::describe_item(df.item_find(t))}"
                                 true
                             else
                                 false

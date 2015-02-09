@@ -18,8 +18,19 @@ class DwarfAI
         "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
     end
 
+    def self.describe_item(i)
+        s = DFHack::StlString.cpp_new
+        i.getItemDescription(s, 0)
+        str = s.str.to_s
+        s._cpp_delete
+        str
+    end
+
     def self.describe_unit(u)
-        "#{capitalize_all(u.name)}, #{profession(u)}"
+        s = capitalize_all(u.name)
+        s << ', ' unless s.empty?
+        s << profession(u)
+        s
     end
 
     def self.capitalize_all(s)
