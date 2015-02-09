@@ -3314,8 +3314,7 @@ class DwarfAI
         def status
             status = @tasks.inject(Hash.new(0)) { |h, t| h[t[0]] += 1; h }.map { |t, n| "#{t}: #{n}" }.join(', ')
             if task = digging?
-                status << ", digging: #{task[1].type}"
-                status << " (#{task[1].subtype})" if task[1].subtype and task[1].type != task[1].subtype
+                status << ", digging: #{describe_room(task[1])}"
             end
         end
 
