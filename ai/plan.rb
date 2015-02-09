@@ -3550,10 +3550,10 @@ class DwarfAI
                 s = type.to_s
                 s << " (#{subtype})" if subtype
                 if owner and u = df.unit_find(owner)
-                    s << " (owned by #{u.name})"
+                    s << " (owned by #{DwarfAI::describe_unit(u)})"
                 end
                 if misc[:squad_id] and squad = df.world.squads.all.binsearch(misc[:squad_id])
-                    s << " (used by #{squad.name.to_s(true)})"
+                    s << " (used by #{DwarfAI::capitalize_all(squad.name.to_s(true))})"
                 end
                 s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
                 s << " (#{misc[:workshop_level]})" if misc[:workshop_level]

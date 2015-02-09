@@ -127,7 +127,7 @@ class DwarfAI
                     view.feed_keys(:SELECT)
                 end
             when DFHack::ViewscreenUpdateRegionst
-                ai.debug "updating world, goal: #{ai.timestamp(view.year, view.year_tick)}"
+                ai.debug "updating world, goal: #{DwarfAI.timestamp(view.year, view.year_tick)}"
             when DFHack::ViewscreenChooseStartSitest
                 if view.finder.finder_state == -1
                     ai.debug 'choosing "Site Finder"'

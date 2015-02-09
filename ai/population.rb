@@ -129,7 +129,7 @@ class DwarfAI
 
                             if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
                                 assign_unit_to_zone(u, r.dfbuilding)
-                                ai.debug "pop: marked #{u.name || 'unnamed'} #{u.race_tg.name[0]} for pitting"
+                                ai.debug "pop: marked #{DwarfAI::describe_unit(u)} for pitting"
                             end
                         end
                     end
@@ -423,13 +423,13 @@ class DwarfAI
                             if not ul[lb] and not c[2]
                                 ul[lb] = true
                                 u.military.pickup_flags.update = true if LaborTool[lb]
-                                ai.debug "assigning labor #{lb} to #{u.name} (non-worker: #{c[1]})"
+                                ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
                             end
                         elsif ul[lb]
                             next if LaborMedical[lb] and @medic[u.id]
                             ul[lb] = false
                             u.military.pickup_flags.update = true if LaborTool[lb]
-                            ai.debug "unassigning labor #{lb} from #{u.name} (non-worker: #{c[1]})"
+                            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
                         end
                     }
                 }
@@ -529,7 +529,7 @@ class DwarfAI
                                 u.military.pickup_flags.update = true if LaborTool[lb]
                             end
                         }
-                        ai.debug "unassigned all labors from #{u.name} (too many labors)"
+                        ai.debug "unassigned all labors from #{DwarfAI::describe_unit(u)} (too many labors)"
                     end
                 end
 
@@ -683,7 +683,7 @@ class DwarfAI
             end
             u.status.labors[lb] = true
             u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "assigning labor #{lb} to #{u.name} (#{reason})"
+            ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (#{reason})"
         end
 
         def autolabor_unsetlabor(c, lb, reason='no reason given')
@@ -695,7 +695,7 @@ class DwarfAI
             @worker_labor[c.id].delete lb
             u.status.labors[lb] = false
             u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "unassigning labor #{lb} from #{u.name} (#{reason})"
+            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (#{reason})"
         end
 
         def set_up_trading(should_be_trading)

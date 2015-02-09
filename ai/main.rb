@@ -13,15 +13,120 @@ class DwarfAI
         @random_embark = RandomEmbark.new(self)
     end
 
-    def timestamp(y=df.cur_year, t=df.cur_year_tick)
+    def self.timestamp(y=df.cur_year, t=df.cur_year_tick)
         return '?????-??-??:????' if y == 0 and t == 0
         "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
+    end
+
+    def self.describe_unit(u)
+        "#{capitalize_all(u.name)}, #{profession(u)}"
+    end
+
+    def self.capitalize_all(s)
+        s.to_s.split(' ').map { |w|
+            if w == 'of' or w == 'the'
+                w
+            else
+                w.sub(/^[a-z]/) { |s| s.upcase }
+            end
+        }.join(' ')
+    end
+
+    # converted from dfhack's C++ api
+    def self.profession(u, ignore_noble=false, plural=false)
+        prof = u.custom_profession
+        return prof unless prof.empty?
+
+        if not ignore_noble and np = df.unit_entitypositions(u) and not np.empty?
+            case u.sex
+            when 0
+                prof = np[0].name_female[plural ? 1 : 0]
+            when 1
+                prof = np[0].name_male[plural ? 1 : 0]
+            end
+
+            prof = np[0].name[plural ? 1 : 0] if prof.empty?
+            return prof unless prof.empty?
+        end
+
+        current_race = df.ui.race_id
+        use_race_prefix = u.race != current_race
+
+        caste = u.caste_tg
+        race_prefix = caste.caste_name[0]
+
+        if plural
+            prof = caste.caste_profession_name.plural[u.profession]
+        else
+            prof = caste.caste_profession_name.singular[u.profession]
+        end
+
+        if prof.empty?
+            case u.profession
+            when :CHILD
+                prof = caste.child_name[plural ? 1 : 0]
+                use_race_prefix = prof.empty?
+            when :BABY
+                prof = caste.baby_name[plural ? 1 : 0]
+                use_race_prefix = prof.empty?
+            end
+        end
+
+        race = u.race_tg
+        race_prefix = race.name[0] if race_prefix.empty?
+
+        if prof.empty?
+            if plural
+                prof = race.profession_name.plural[u.profession]
+            else
+                prof = race.profession_name.singular[u.profession]
+            end
+
+            if prof.empty?
+                case u.profession
+                when :CHILD
+                    prof = race.general_child_name[plural ? 1 : 0]
+                    use_race_prefix = prof.empty?
+                when :BABY
+                    prof = race.general_baby_name[plural ? 1 : 0]
+                    use_race_prefix = prof.empty?
+                end
+            end
+        end
+
+        race_prefix = 'Animal' if race_prefix.empty?
+
+        if prof.empty?
+            case u.profession
+            when :TRAINED_WAR
+                prof = "War #{use_race_prefix ? race_prefix : 'Peasant'}"
+                use_race_prefix = false
+            when :TRAINED_HUNTER
+                prof = "Hunting #{use_race_prefix ? race_prefix : 'Peasant'}"
+                use_race_prefix = false
+            when :STANDARD
+                prof = 'Peasant' unless use_race_prefix
+            else
+                if caption = DFHack::Profession::Caption[u.profession]
+                    prof = caption
+                else
+                    prof = u.profession.to_s.downcase
+                end
+            end
+        end
+
+        if use_race_prefix
+            race_prefix << " " unless prof.empty?
+            prof = race_prefix + prof
+        end
+
+        capitalize_all(prof)
     end
 
     def debug(str, announce=nil)
         str = str.join("\n") if Array === str
         df.add_announcement("AI: #{str}", 7, false) { |ann| ann.pos = announce } if announce
-        ts = timestamp
+        ts = DwarfAI.timestamp
         puts "AI: #{ts} #{str}" if $DEBUG
         unless @logger
             @logger = open('df-ai.log', 'a')

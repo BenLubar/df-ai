@@ -142,10 +142,13 @@ class DwarfAI
         end
 
         def status
+            fp = @following_prev.map { |id|
+                DwarfAI::describe_unit(df.unit_find(id))
+            }.join('; ')
             if @following and df.ui.follow_unit == @following
-                "following #{df.unit_find(@following).name} (previously: #{@following_prev.map{ |u| df.unit_find(u).name }.join(', ')})"
+                "following #{DwarfAI::describe_unit(df.unit_find(@following))} (previously: #{fp})"
             else
-                "inactive (previously: #{@following_prev.map{ |u| df.unit_find(u).name }.join(', ')})"
+                "inactive (previously: #{fp})"
             end
         end
 
