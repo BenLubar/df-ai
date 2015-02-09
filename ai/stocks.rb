@@ -94,7 +94,7 @@ class DwarfAI
             if @last_managerstall != df.cur_year_tick / (1200*28)
                 @last_managerstall = df.cur_year_tick / (1200*28)
                 if m = df.world.manager_orders.first and m.is_validated
-                    if m.job_type == @last_managerorder 
+                    if m.job_type == @last_managerorder
                         if m.amount_left > 3
                             m.amount_left -= 3
                         else
@@ -147,7 +147,7 @@ class DwarfAI
         def update_kitchen
             already_banned = {}
             df.ui.kitchen.item_types.length.times { |i|
-                already_banned[[df.ui.kitchen.mat_types[i], 
+                already_banned[[df.ui.kitchen.mat_types[i],
                                 df.ui.kitchen.mat_indices[i],
                                 df.ui.kitchen.item_types[i],
                                 df.ui.kitchen.item_subtypes[i]]] = true
@@ -280,7 +280,7 @@ class DwarfAI
                 amount += (ai.pop.citizen.length * NeededPerDwarf[key]).to_i
                 queue_need(key, amount*3/2-@count[key]) if @count[key] < amount
             end
-            
+
             if amount = WatchStock[key]
                 queue_use(key, @count[key]-amount) if @count[key] > amount
             end
@@ -970,7 +970,6 @@ class DwarfAI
 
             amount.times { ai.plan.getcoffin }
         end
-        
 
         # make it so the stocks of 'what' decrease by 'amount'
         def queue_use(what, amount)
@@ -1265,7 +1264,7 @@ class DwarfAI
 
             ai.plan.map_veins.keys.find { |k|
                 can_melt += ai.plan.dig_vein(k) if moc[k]
-            } if can_melt < WatchStock[:metal_ore] and ai.plan.past_initial_phase 
+            } if can_melt < WatchStock[:metal_ore] and ai.plan.past_initial_phase
 
             if can_melt > WatchStock[:metal_ore]
                 return 4*150*(can_melt - WatchStock[:metal_ore])
@@ -1300,7 +1299,7 @@ class DwarfAI
                             has += 1
                         end
                     }
-                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1 and ai.plan.past_initial_phase 
+                    if has <= 0 and rr.item_type == :BOULDER and rr.mat_type == 0 and rr.mat_index != -1 and ai.plan.past_initial_phase
                         has += ai.plan.dig_vein(rr.mat_index)
                         future = true if has > 0
                     end

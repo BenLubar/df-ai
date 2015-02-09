@@ -31,7 +31,7 @@ class DwarfAI
             find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 0 }.subtype = :Masons
             find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 1 }.subtype = :Masons
             find_room(:workshop) { |r| !r.subtype and r.misc[:workshop_level] == 2 }.subtype = :Masons
-            
+
             dig_garbagedump
         end
 
@@ -387,7 +387,7 @@ class DwarfAI
                 furnish_room(r)
             end
         end
-        
+
         def assign_barrack_squad(bld, squad_id)
             if bld.respond_to?(:squads) # archerytarget has no such field
                 su = bld.squads.find { |_su| _su.squad_id == squad_id }
@@ -549,7 +549,7 @@ class DwarfAI
             r.accesspath.each { |ap| digroom(ap) }
 
             r.layout.each { |f|
-                next if f[:item] == :floodgate 
+                next if f[:item] == :floodgate
                 next if f[:dig]
                 @tasks << [:furnish, r, f]
             }
@@ -715,7 +715,7 @@ class DwarfAI
             end
             case ctype = f[:construction]
             when :NoRamp
-                t.dig if t.shape_basic == :Ramp 
+                t.dig if t.shape_basic == :Ramp
                 return (t.designation.dig == :No)
             when :Wall
                 return true if t.shape_basic == :Wall
@@ -2256,13 +2256,13 @@ class DwarfAI
 
             fz = @fort_entrance.z1
             setup_blueprint_workshops(fx, fy, fz, [@fort_entrance])
-            
+
             fz = @fort_entrance.z1 -= 1
             setup_blueprint_utilities(fx, fy, fz, [@fort_entrance])
-            
+
             fz = @fort_entrance.z1 -= 1
             setup_blueprint_stockpiles(fx, fy, fz, [@fort_entrance])
-            
+
             2.times {
                 fz = @fort_entrance.z1 -= 1
                 setup_blueprint_bedrooms(fx, fy, fz, [@fort_entrance])
@@ -2270,12 +2270,12 @@ class DwarfAI
         end
 
         def setup_blueprint_workshops(fx, fy, fz, entr)
-            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
             corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
             corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
             corridor_center0.accesspath = entr
             @corridors << corridor_center0
-            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
             corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
             corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
             corridor_center2.accesspath = entr
@@ -2387,12 +2387,12 @@ class DwarfAI
         end
 
         def setup_blueprint_stockpiles(fx, fy, fz, entr)
-            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
             corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
             corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
             corridor_center0.accesspath = entr
             @corridors << corridor_center0
-            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
             corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
             corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
             corridor_center2.accesspath = entr
@@ -2578,12 +2578,12 @@ class DwarfAI
         end
 
         def setup_blueprint_utilities(fx, fy, fz, entr)
-            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
             corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
             corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
             corridor_center0.accesspath = entr
             @corridors << corridor_center0
-            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
             corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
             corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
             corridor_center2.accesspath = entr
@@ -2815,7 +2815,7 @@ class DwarfAI
             cor = Corridor.new(fx-18, fx-26, fy-1, fy+1, fz, fz)
             cor.accesspath = [@corridors.last]
             @corridors << cor
-            
+
             cx = fx-32
             well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
             well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true, :dig => :Channel}
@@ -2981,12 +2981,12 @@ class DwarfAI
         end
 
         def setup_blueprint_bedrooms(fx, fy, fz, entr)
-            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz) 
+            corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
             corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
             corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
             corridor_center0.accesspath = entr
             @corridors << corridor_center0
-            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz) 
+            corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
             corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
             corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
             corridor_center2.accesspath = entr
@@ -3284,7 +3284,7 @@ class DwarfAI
             if ty
                 tx = t
             else
-                tx, ty = t.x, t.y 
+                tx, ty = t.x, t.y
             end
 
             dx, dy = tx & 15, ty & 15

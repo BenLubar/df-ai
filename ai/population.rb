@@ -156,7 +156,7 @@ class DwarfAI
             }
 
             # enlist new soldiers if needed
-            maydraft = df.unit_citizens.reject { |u| 
+            maydraft = df.unit_citizens.reject { |u|
                 u.profession == :CHILD or
                 u.profession == :BABY or
                 u.mood != :None
@@ -197,10 +197,10 @@ class DwarfAI
                     if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]
                         return a.code
                     end
-                end                
+                end
             end
         end
-        
+
         # returns an unit newly assigned to a military squad
         def military_find_new_soldier(unitlist)
             ns = unitlist.find_all { |u|
@@ -219,7 +219,7 @@ class DwarfAI
             squad.positions[pos].occupant = ns.hist_figure_id
             ns.military.squad_id = squad_id
             ns.military.squad_position = pos
-            
+
             ent = df.ui.main.fortress_entity
             if !ent.positions.assignments.find { |a| a.squad_id == squad_id }
                 if ent.assignments_by_type[:MILITARY_STRATEGY].empty?
@@ -553,7 +553,7 @@ class DwarfAI
                 end
 
                 # handle low-number of workers + tool labors
-                mintool = LaborTool.keys.inject(0) { |s, lb| 
+                mintool = LaborTool.keys.inject(0) { |s, lb|
                     min = labormin[lb]
                     minpc = laborminpct[lb] * @workers.length / 100
                     min = minpc if minpc > min
@@ -628,7 +628,7 @@ class DwarfAI
                             if sk
                                 if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
                                     DFHack::SkillRating.int(usk.rating)
-                                else 
+                                else
                                     0
                                 end
                             else
@@ -733,7 +733,7 @@ class DwarfAI
                 end
             end
         end
-        
+
         def update_nobles
             cz = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find_all { |u| u.profession != :BABY and u.profession != :CHILD }
             ent = df.ui.main.fortress_entity
@@ -815,14 +815,14 @@ class DwarfAI
 
             unit.hist_figure_tg.entity_links << poslink
             assign.histfig = unit.hist_figure_id
-            
+
             pos.responsibilities.each_with_index { |r, k|
                 ent.assignments_by_type[k] << assign if r
             }
 
             assign
         end
-            
+
         def update_pets
             needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
             needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
