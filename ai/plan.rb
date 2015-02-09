@@ -289,8 +289,7 @@ class DwarfAI
                    find_room(:bedroom) { |_r| _r.status == :plan and not _r.misc[:queue_dig] }
                 wantdig(r)
                 set_owner(r, id)
-                name = ((u = df.unit_find(id)) ? u.name : '?')
-                ai.debug("assigned a bedroom to #{name}", r)
+                ai.debug("assign #{describe_room(r)}", r)
                 if r.status == :finished
                     furnish_room(r)
                 end
@@ -370,7 +369,7 @@ class DwarfAI
                 end
 
                 r.misc[:squad_id] = squad_id
-                ai.debug("new barracks for squad #{r.misc[:squad_id]}", r)
+                ai.debug("squad #{squad_id} assign #{describe_room(r)}", r)
                 wantdig(r)
                 if r.misc[:bld_id] and bld = r.dfbuilding
                     assign_barrack_squad(bld, squad_id)
@@ -431,8 +430,7 @@ class DwarfAI
         # free / deconstruct the bedroom assigned to this dwarf
         def freebedroom(id)
             if r = find_room(:bedroom) { |_r| _r.owner == id }
-                name = ((u = df.unit_find(id)) ? u.name : '?')
-                ai.debug("freed bedroom of #{name}", r)
+                ai.debug("free #{describe_room(r)}", r)
                 set_owner(r, nil)
                 r.layout.each { |f|
                     next if f[:ignore]
@@ -476,7 +474,7 @@ class DwarfAI
                                 r.misc.delete(:bld_id)
 
                                 if r.misc[:squad_id]
-                                    ai.debug("freed barracks of squad #{r.misc[:squad_id]}", r)
+                                    ai.debug("squad #{r.misc[:squad_id]} free #{describe_room(r)}", r)
                                     r.misc.delete :squad_id
                                 end
                             end
@@ -1546,7 +1544,7 @@ class DwarfAI
         def try_endfurnish(r, f)
             bld = df.building_find(f[:bld_id]) if f[:bld_id]
             if not bld
-                #ai.debug "AI: destroyed building ? #{r.inspect} #{f.inspect}"
+                #ai.debug "destroyed building ? #{r.inspect} #{f.inspect}"
                 return true
             end
             return if bld.getBuildStage < bld.getMaxBuildStage
@@ -2633,12 +2631,12 @@ class DwarfAI
             }
 
             if @allow_ice
-                ai.debug "AI: icy embark, no well"
+                ai.debug "icy embark, no well"
             elsif river = scan_river
                 setup_blueprint_cistern_fromsource(river, fx, fy, fz)
             else
                 # TODO pool, pumps, etc
-                ai.debug "AI: no river, no well"
+                ai.debug "no river, no well"
             end
 
             # farm plots
