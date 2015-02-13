@@ -38,7 +38,7 @@ class DwarfAI
             :skull => 2, :bone => 8, :food_ingredients => 2,
             :drink_plant => 5, :drink_fruit => 5, :honey => 1,
             :honeycomb => 1, :wool => 1, :tallow => 1, :shell => 1,
-            :raw_fish => 1,
+            :raw_fish => 1, :clay => 1,
         }
 
         attr_accessor :ai, :count
@@ -217,6 +217,7 @@ class DwarfAI
             DyePlants.clear
             GrowPlants.clear
             MilkCreatures.clear
+            ClayStones.clear
             df.world.raws.plants.all.length.times do |i|
                 p = df.world.raws.plants.all[i]
                 p.material.length.times do |j|
@@ -242,6 +243,11 @@ class DwarfAI
                         MilkCreatures[i] = j + DFHack::MaterialInfo::CREATURE_BASE
                         break
                     end
+                end
+            end
+            df.world.raws.inorganics.each_with_index do |s, i|
+                if s.material.reaction_product.id.include?('FIRED_MAT')
+                    ClayStones[i] = true
                 end
             end
         end
@@ -294,6 +300,7 @@ class DwarfAI
         DyePlants     = {} # plants that can be milled that are able to dye cloth
         GrowPlants    = {} # plants that we can grow underground
         MilkCreatures = {} # creatures that have milk that can be turned into cheese
+        ClayStones    = {} # inorganic materials that have a FIRED_MAT reaction product
 
         # count unused stocks of one type of item
         def count_stocks(k)
@@ -354,6 +361,10 @@ class DwarfAI
             when :crossbow
                 df.world.items.other[:WEAPON].find_all { |i|
                     i.subtype.subtype == ManagerSubtype[:MakeBoneCrossbow]
+                }
+            when :clay
+                df.world.items.other[:BOULDER].find_all { |i|
+                    ClayStones[i.mat_index]
                 }
             when :drink_plant, :thread_plant, :mill_plant, :bag_plant
                 plant = {
@@ -991,6 +1002,10 @@ class DwarfAI
             when :raw_adamantine
                 order = :ExtractMetalStrands
 
+            when :clay
+                input = [:coal] # TODO: handle magma kilns
+                order = :MakeClayStatue
+
             when :drink_plant, :drink_fruit, :thread_plant, :mill_plant, :bag_plant
                 order = {
                     :drink_plant  => :BrewDrinkPlant,
@@ -1357,6 +1372,7 @@ class DwarfAI
             :ConstructWoodenBlocks => :ConstructBlocks,
             :MakeWoodenStepladder => :MakeTool,
             :DecorateWithShell => :DecorateWith,
+            :MakeClayStatue => :CustomReaction,
         }
         ManagerMatCategory = {
             :MakeRope => :cloth, :MakeBag => :cloth,
@@ -1374,7 +1390,7 @@ class DwarfAI
             :ConstructTractionBench => -1, :MakeSoap => -1, :MakeLye => -1, :MakeAsh => -1,
             :MakeTotem => -1, :MakeCharcoal => -1, :MakePlasterPowder => -1, :PrepareMeal => 4,
             :DyeCloth => -1, :MilkCreature => -1, :PressHoneycomb => -1, :BrewDrinkFruit => -1,
-            :BrewMead => -1, :MakeCheese => -1, :PrepareRawFish => -1,
+            :BrewMead => -1, :MakeCheese => -1, :PrepareRawFish => -1, :MakeClayStatue => -1,
         }
         ManagerCustom = {
             :ProcessPlantsBag => 'PROCESS_PLANT_TO_BAG',
@@ -1384,6 +1400,7 @@ class DwarfAI
             :MakeSoap => 'MAKE_SOAP_FROM_TALLOW',
             :MakePlasterPowder => 'MAKE_PLASTER_POWDER',
             :PressHoneycomb => 'PRESS_HONEYCOMB',
+            :MakeClayStatue => 'MAKE_CLAY_STATUE',
         }
         ManagerSubtype = {
             # depends on raws.itemdefs, wait until a world is loaded
