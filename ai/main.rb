@@ -298,6 +298,16 @@ class DwarfAI
         @camera.onupdate_register
         @random_embark.onupdate_register
         @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { debug status }
+        last_unpause = Time.now
+        @pause_onupdate = df.onupdate_register_once('df-ai unpause') {
+            if Time.now < last_unpause + 11
+                # do nothing
+            elsif df.pause_state
+                timeout_sameview(10) { unpause! }
+                last_update = Time.now
+            end
+            false
+        }
 
         df.onstatechange_register_once { |st|
             case st
@@ -319,6 +329,7 @@ class DwarfAI
         @plan.onupdate_unregister
         @pop.onupdate_unregister
         df.onupdate_unregister(@status_onupdate)
+        df.onupdate_unregister(@pause_onupdate)
     end
 
     def status
