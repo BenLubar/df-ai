@@ -470,6 +470,8 @@ class DwarfAI
                                     @labor_needmore[:CARPENTER] += 1
                                 elsif job.material_category.bone
                                     @labor_needmore[:BONE_CARVE] += 1
+                                elsif job.material_category.shell
+                                    @labor_needmore[:BONE_CARVE] += 1
                                 elsif job.material_category.cloth
                                     @labor_needmore[:CLOTHESMAKER] += 1
                                 elsif job.material_category.leather
