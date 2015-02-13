@@ -1672,7 +1672,14 @@ class DwarfAI
 
         def pull_lever(f)
             bld = df.building_find(f[:bld_id])
-            return if not bld
+            if not bld
+                ai.debug "cistern: missing lever #{f[:way]}"
+                return
+            end
+            if not bld.jobs.empty?
+                ai.debug "cistern: lever has job #{f[:way]}"
+                return
+            end
             ai.debug "cistern: pull lever #{f[:way]}"
 
             ref = DFHack::GeneralRefBuildingHolderst.cpp_new
