@@ -3148,38 +3148,38 @@ class DwarfAI
         end
 
         def setup_blueprint_caverns
-            # find a hidden floor tile
-            target = nil
-            unless (0...df.world.map.z_count).to_a.reverse.any? { |z|
+            wall = nil
+            unless (0...(@cavern_max_level ||= df.world.map.z_count)).to_a.reverse.any? { |z|
+                ai.debug "outpost: searching z-level #{z}"
                 (0...df.world.map.x_count).any? { |x|
                     (0...df.world.map.y_count).any? { |y|
                         t = df.map_tile_at(x, y, z) and
-                        map_tile_cavernfloor(t) and
-                        target = t
+                        map_tile_in_rock(t) and
+                        spiral_search(t, 2) { |_t|
+                            map_tile_cavernfloor(_t)
+                        } and
+                        #@rooms.all? { |r|
+                        #    not r.safe_include?(t.x, t.y, r.z)
+                        #} and @corridors.all? { |r|
+                        #    not r.safe_include?(t.x, t.y, r.z)
+                        #} and
+                        wall = t
                     }
                 }
             }
-                ai.debug 'outpost: could not find an initial cavern floor tile'
+                ai.debug 'outpost: could not find a cavern wall tile'
+                @cavern_max_level = 0
                 return
             end
 
-            # find a nearby wall that isn't under a room
-            unless wall = spiral_search(target) { |t|
-                @rooms.all? { |r|
-                    not r.safe_include?(t.x, t.y, r.z)
-                } and @corridors.all? { |r|
-                    not r.safe_include?(t.x, t.y, r.z)
-                } and map_tile_in_rock(t)
-            }
-                ai.debug 'outpost: could not find a cavern wall tile'
-                return
-            end
+            @cavern_max_level = wall.z + 1
 
             # find a floor next to the wall
-            unless target = spiral_search(wall) { |t|
+            unless target = spiral_search(wall, 2) { |t|
                 map_tile_cavernfloor(t)
             }
                 ai.debug 'outpost: could not find a cavern floor tile'
+                @cavern_max_level = 0
                 return
             end
 
@@ -3199,6 +3199,10 @@ class DwarfAI
 
             up = find_corridor_tosurface(wall)
             r.accesspath << up[0]
+
+            ai.debug "outpost: wall (#{wall.x}, #{wall.y}, #{wall.z})"
+            ai.debug "outpost: target (#{target.x}, #{target.y}, #{target.z})"
+            ai.debug "outpost: up (#{up.last.x2}, #{up.last.y2}, #{up.last.z2})"
 
             @rooms << r
 
@@ -3231,7 +3235,7 @@ class DwarfAI
             td.hidden and
             td.flow_size == 0 and
             tm = t.tilemat and
-            (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT) and
+            (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or tm == :GRASS_LIGHT or tm == :GRASS_DARK or tm == :PLANT or tm == :SOIL) and
             t.shape_basic == :Floor
         end
 
@@ -3283,6 +3287,9 @@ class DwarfAI
                         cors.last.accesspath << cor
                         cors << cor
                     end
+
+                    raise "find_corridor_tosurface: loop: #{origin.inspect}" if df.same_pos?(origin, out2)
+                    ai.debug "find_corridor_tosurface: #{origin.inspect} -> #{out2.inspect}"
 
                     origin = out2
                 else
