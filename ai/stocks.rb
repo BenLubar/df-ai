@@ -111,6 +111,7 @@ class DwarfAI
             @updating_count = @updating.dup
             @updating_seeds = true
             @updating_plants = true
+            @updating_corpses = true
             @updating_farmplots = []
 
             ai.plan.find_room(:farmplot) { |r|
@@ -128,6 +129,9 @@ class DwarfAI
                 elsif @updating_plants
                     cb_bg.description = 'df-ai stocks bg count_plants'
                     count_plants
+                elsif @updating_corpses
+                    cb_bg.description = 'df-ai stocks bg update_corpses'
+                    update_corpses
                 elsif key = @updating_count.shift
                     cb_bg.description = "df-ai stocks bg count #{key}"
                     @count[key] = count_stocks(key)
@@ -279,6 +283,28 @@ class DwarfAI
                 @plants[i.mat_index] += i.stack_size if is_item_free(i)
             }
             @updating_plants = false
+        end
+
+        def update_corpses
+            # XXX assumes the garbage dump always looks the same
+            return unless r = ai.plan.find_room(:garbagedump) and t = df.map_tile_at(r.x1, r.y1, r.z1-1)
+
+            df.world.items.other[:ANY_CORPSE].each { |i|
+                if is_item_free(i) and not (bld = df.building_find(i) and DFHack::BuildingStockpilest === bld) and not df.same_pos?(i, t)
+                    if not i.flags.dump and u = i.unit_tg
+                        ai.debug "stocks: dump corpse of #{DwarfAI::describe_unit(u)}"
+                    end
+                    # dump corpses that aren't in a stockpile, a grave, or the dump.
+                    i.flags.dump = true
+                elsif df.same_pos?(i, t)
+                    if i.flags.forbidden and u = i.unit_tg
+                        ai.debug "stocks: unforbid corpse of #{DwarfAI::describe_unit(u)}"
+                    end
+                    # unforbid corpses in the dump so dwarves get buried before the next year.
+                    i.flags.forbidden = false
+                end
+            }
+            @updating_corpses = false
         end
 
         def act(key)
