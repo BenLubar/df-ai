@@ -267,11 +267,12 @@ class DwarfAI
                 }
                 # uniform
                 squad.positions.each { |pos|
-                    [:Body, :Head, :Pants, :Gloves, :Shoes, :Shield, :Weapon].each { |t|
+                    item_type.each { |t, it|
+                        next unless pos.uniform[t].empty?
                         pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(
                             :color => -1,
                             :item_filter => {
-                                :item_type => item_type[t],
+                                :item_type => it,
                                 :material_class => :Armor,
                                 :mattype => -1,
                                 :matindex => -1
@@ -300,11 +301,10 @@ class DwarfAI
                 else
                     # we don't want all the axes being used up by the military.
                     weapons = df.ui.main.fortress_entity.entity_raw.equipment.weapon_tg.find_all { |idef|
-                        next if idef.skill_melee == :MINING
-                        next if idef.skill_melee == :AXE
-                        next if idef.skill_ranged != :NONE
-                        next if idef.flags[:TRAINING]
-                        true
+                        idef.skill_melee != :MINING and
+                        idef.skill_melee != :AXE and
+                        idef.skill_ranged == :NONE and
+                        not idef.flags[:TRAINING]
                     }
                     if weapons.empty?
                         squad.positions.each { |pos|
