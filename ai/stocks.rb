@@ -291,11 +291,15 @@ class DwarfAI
         end
 
         def update_corpses
-            # XXX assumes the garbage dump always looks the same
             return unless r = ai.plan.find_room(:garbagedump) and t = df.map_tile_at(r.x1, r.y1, r.z1-1)
 
             df.world.items.other[:ANY_CORPSE].each { |i|
-                if is_item_free(i) and not (bld = df.building_find(i) and DFHack::BuildingStockpilest === bld) and not df.same_pos?(i, t)
+                if is_item_free(i) and
+                    not i.flags.in_inventory and # ignore corpses in inventories even if they're being hauled
+                    not i.flags.in_building and # ignore corpses in buildings even if they're not construction materials
+                    not df.same_pos?(i, t) and
+                    not (df.map_tile_at(i).occupancy == :Passable and bld = df.building_find(i) and DFHack::BuildingStockpilest === bld)
+
                     if not i.flags.dump and u = i.unit_tg
                         ai.debug "stocks: dump corpse of #{DwarfAI::describe_unit(u)}"
                     end
@@ -1249,6 +1253,7 @@ class DwarfAI
             !i.flags.encased and
             !i.flags.removed and    # deleted object
             !i.flags.forbid and     # user forbidden (or dumped)
+            !i.flags.dump and
             !i.flags.in_chest and   # in infirmary (XXX dwarf owned items ?)
             (!i.flags.container or allow_nonempty or
              !i.general_refs.find { |ir| ir.kind_of?(DFHack::GeneralRefContainsItemst) }) and     # is empty
