@@ -19,7 +19,7 @@ class DwarfAI
             :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
             :food => 20, :drink => 20, :wood => 16, :bucket => 2,
             :thread_seeds => 10, :dye_seeds => 10, :dye => 10,
-            :weapon => 2, :armor => 2, :clothes => 2, :block => 6,
+            :weapon => 2, :armor_torso => 2, :clothes_torso => 2, :block => 6,
             :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
             :splint => 1, :crutch => 1, :rope => 1, :weaponrack => 1,
             :armorstand => 1, :floodgate => 1, :traction_bench => 1,
@@ -28,6 +28,9 @@ class DwarfAI
             :giant_corkscrew => 1, :pipe_section => 1, :anvil => 1,
             :quern => 3, :minecart => 1, :nestbox => 1, :hive => 1,
             :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
+            :armor_head => 2, :clothes_head => 2, :armor_legs => 2,
+            :clothes_legs => 2, :armor_hands => 2, :clothes_hands => 2,
+            :armor_feet => 2, :clothes_feet => 2, :armor_shield => 2,
         }
         NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
 
@@ -495,10 +498,28 @@ class DwarfAI
                 return count_stocks_weapon(:MINING)
             when :axe
                 return count_stocks_weapon(:AXE)
-            when :armor
-                return count_stocks_armor
-            when :clothes
-                return count_stocks_clothes
+            when :armor_torso
+                return count_stocks_armor(:ARMOR)
+            when :clothes_torso
+                return count_stocks_clothes(:ARMOR)
+            when :armor_legs
+                return count_stocks_armor(:PANTS)
+            when :clothes_legs
+                return count_stocks_clothes(:PANTS)
+            when :armor_head
+                return count_stocks_armor(:HELM)
+            when :clothes_head
+                return count_stocks_clothes(:HELM)
+            when :armor_hands
+                return count_stocks_armor(:GLOVES)
+            when :clothes_hands
+                return count_stocks_clothes(:GLOVES)
+            when :armor_feet
+                return count_stocks_armor(:SHOES)
+            when :clothes_feet
+                return count_stocks_clothes(:SHOES)
+            when :armor_shield
+                return count_stocks_armor(:SHIELD)
             when :lye
                 df.world.items.other[:LIQUID_MISC].find_all { |i|
                     mat = df.decode_mat(i) and mat.material and mat.material.id == 'LYE'
@@ -555,12 +576,11 @@ class DwarfAI
         # return the minimum of the number of free weapons for each subtype used by current civ
         def count_stocks_weapon(skill=nil)
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [[:WEAPON, ue.digger_tg],
-             [:WEAPON, ue.weapon_tg]].map { |oidx, idefs|
+            [ue.digger_tg, ue.weapon_tg].map { |idefs|
                 idefs.to_a.map { |idef|
                     next if skill and idef.skill_melee != skill
                     next if idef.flags[:TRAINING]
-                    df.world.items.other[oidx].count { |i|
+                    df.world.items.other[:WEAPON].count { |i|
                         i.subtype.subtype == idef.subtype and
                         i.mat_type == 0 and
                         is_item_free(i)
@@ -570,48 +590,51 @@ class DwarfAI
         end
 
         # return the minimum count of free metal armor piece per subtype
-        def count_stocks_armor
+        def count_stocks_armor(oidx)
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [[:ARMOR, ue.armor_tg],
-             [:SHIELD, ue.shield_tg],
-             [:HELM, ue.helm_tg],
-             [:PANTS, ue.pants_tg],
-             [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].map { |oidx, idefs|
-                div = 1
-                div = 2 if oidx == :GLOVES or oidx == :SHOES
-                idefs.to_a.map { |idef|
-                    next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
-                    df.world.items.other[oidx].count { |i|
-                        i.subtype.subtype == idef.subtype and
-                        i.mat_type == 0 and
-                        is_item_free(i)
-                    } / div
-                }.compact
-            }.flatten.min
+
+            idefs = case oidx
+                    when :ARMOR; ue.armor_tg
+                    when :SHIELD; ue.shield_tg
+                    when :HELM; ue.helm_tg
+                    when :PANTS; ue.pants_tg
+                    when :GLOVES; ue.gloves_tg
+                    when :SHOES; ue.shoes_tg
+                    end
+            div = 1
+            div = 2 if oidx == :GLOVES or oidx == :SHOES
+            idefs.map { |idef|
+                next unless oidx == :SHIELD or idef.props.flags[:METAL]
+                df.world.items.other[oidx].count { |i|
+                    i.subtype.subtype == idef.subtype and
+                    i.mat_type == 0 and
+                    is_item_free(i)
+                }
+            }.compact.min / div
         end
 
-        def count_stocks_clothes
+        def count_stocks_clothes(oidx)
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [[:ARMOR, ue.armor_tg],
-             [:HELM, ue.helm_tg],
-             [:PANTS, ue.pants_tg],
-             [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].map { |oidx, idefs|
-                div = 1
-                div = 2 if oidx == :GLOVES or oidx == :SHOES
-                idefs.to_a.map { |idef|
-                    next unless idef.props.flags[:SOFT] # XXX
-                    df.world.items.other[oidx].count { |i|
-                        i.subtype.subtype == idef.subtype and
-                        i.mat_type != 0 and # XXX
-                        i.wear == 0 and
-                        is_item_free(i)
-                    } / div
-                }.compact
-            }.flatten.min
-        end
 
+            idefs = case oidx
+                    when :ARMOR; ue.armor_tg
+                    when :HELM; ue.helm_tg
+                    when :PANTS; ue.pants_tg
+                    when :GLOVES; ue.gloves_tg
+                    when :SHOES; ue.shoes_tg
+                    end
+            div = 1
+            div = 2 if oidx == :GLOVES or oidx == :SHOES
+            idefs.to_a.map { |idef|
+                next unless idef.props.flags[:SOFT] # XXX
+                df.world.items.other[oidx].count { |i|
+                    i.subtype.subtype == idef.subtype and
+                    i.mat_type != 0 and # XXX
+                    i.wear == 0 and
+                    is_item_free(i)
+                }
+            }.compact.min / div
+        end
 
         # make it so the stocks of 'what' rises by 'amount'
         def queue_need(what, amount)
@@ -624,12 +647,30 @@ class DwarfAI
                 return queue_need_weapon(Needed[:pick], :MINING)
             when :axe
                 return queue_need_weapon(Needed[:axe], :AXE)
-            when :armor
-                return queue_need_armor
+            when :armor_torso
+                return queue_need_armor(:ARMOR)
+            when :clothes_torso
+                return queue_need_clothes(:ARMOR)
+            when :armor_legs
+                return queue_need_armor(:PANTS)
+            when :clothes_legs
+                return queue_need_clothes(:PANTS)
+            when :armor_head
+                return queue_need_armor(:HELM)
+            when :clothes_head
+                return queue_need_clothes(:HELM)
+            when :armor_hands
+                return queue_need_armor(:GLOVES)
+            when :clothes_hands
+                return queue_need_clothes(:GLOVES)
+            when :armor_feet
+                return queue_need_armor(:SHOES)
+            when :clothes_feet
+                return queue_need_clothes(:SHOES)
+            when :armor_shield
+                return queue_need_armor(:SHIELD)
             when :anvil
                 return queue_need_anvil
-            when :clothes
-                return queue_need_clothes
             when :coffin_bld
                 return queue_need_coffin_bld(amount)
             when :coffin_bld_pet
@@ -837,7 +878,7 @@ class DwarfAI
         end
 
         # forge armor pieces
-        def queue_need_armor
+        def queue_need_armor(oidx)
             bars = Hash.new(0)
             coal_bars = @count[:coal]
             coal_bars = 50000 if !df.world.buildings.other[:FURNACE_SMELTER_MAGMA].empty?
@@ -863,47 +904,56 @@ class DwarfAI
             may_forge_cache = CacheHash.new { |mi| may_forge_bars(mi) }
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [[:ARMOR, ue.armor_tg],
-             [:SHIELD, ue.shield_tg],
-             [:HELM, ue.helm_tg],
-             [:PANTS, ue.pants_tg],
-             [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].each { |oidx, idefs|
-                div = 1
-                div = 2 if oidx == :GLOVES or oidx == :SHOES
-                idefs.each { |idef|
-                    next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
 
-                    job = DFHack::JobType::Item.index(oidx)     # :GLOVES => :MakeGloves
+            idefs = case oidx
+                    when :ARMOR; ue.armor_tg
+                    when :SHIELD; ue.shield_tg
+                    when :HELM; ue.helm_tg
+                    when :PANTS; ue.pants_tg
+                    when :GLOVES; ue.gloves_tg
+                    when :SHOES; ue.shoes_tg
+                    end
+            div = 1
+            div = 2 if oidx == :GLOVES or oidx == :SHOES
+            idefs.each { |idef|
+                next unless oidx == :SHIELD or idef.props.flags[:METAL]
 
-                    cnt = Needed[:armor]
-                    cnt -= df.world.items.other[oidx].count { |i|
-                        i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
-                    } / div
+                job = DFHack::JobType::Item.index(oidx)     # :GLOVES => :MakeGloves
 
-                    df.world.manager_orders.each { |mo|
-                        cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
-                    }
-                    next if cnt <= 0
+                cnt = Needed[case oidx
+                             when :ARMOR; :armor_torso
+                             when :SHIELD; :armor_shield
+                             when :HELM; :armor_head
+                             when :PANTS; :armor_legs
+                             when :GLOVES; :armor_hands
+                             when :SHOES; :armor_feet
+                             end]
+                cnt -= df.world.items.other[oidx].count { |i|
+                    i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
+                } / div
 
-                    need_bars = idef.material_size / 3  # need this many bars to forge one idef item
-                    need_bars = 1 if need_bars < 1
+                df.world.manager_orders.each { |mo|
+                    cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
+                }
+                next if cnt <= 0
 
-                    @metal_armor_pref.each { |mi|
-                        break if bars[mi] < need_bars and may_forge_cache[mi]
-                        nw = bars[mi] / need_bars
-                        nw = coal_bars if nw > coal_bars
-                        nw = cnt if nw > cnt
-                        next if nw <= 0
+                need_bars = idef.material_size / 3  # need this many bars to forge one idef item
+                need_bars = 1 if need_bars < 1
 
-                        ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
-                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
-                                :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
-                        bars[mi] -= nw * need_bars
-                        coal_bars -= nw
-                        cnt -= nw
-                        break if may_forge_cache[mi]
-                    }
+                @metal_armor_pref.each { |mi|
+                    break if bars[mi] < need_bars and may_forge_cache[mi]
+                    nw = bars[mi] / need_bars
+                    nw = coal_bars if nw > coal_bars
+                    nw = cnt if nw > cnt
+                    next if nw <= 0
+
+                    ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
+                    df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
+                            :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
+                    bars[mi] -= nw * need_bars
+                    coal_bars -= nw
+                    cnt -= nw
+                    break if may_forge_cache[mi]
                 }
             }
         end
@@ -963,41 +1013,50 @@ class DwarfAI
             available_cloth = count[:cloth] - 20
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
-            [[:ARMOR, ue.armor_tg],
-             [:HELM, ue.helm_tg],
-             [:PANTS, ue.pants_tg],
-             [:GLOVES, ue.gloves_tg],
-             [:SHOES, ue.shoes_tg]].map { |oidx, idefs|
-                div = 1
-                div = 2 if oidx == :GLOVES or oidx == :SHOES
-                idefs.to_a.map { |idef|
-                    next unless idef.props.flags[:SOFT] # XXX
 
-                    job = DFHack::JobType::Item.index(oidx)
+            idefs = case oidx
+                    when :ARMOR; ue.armor_tg
+                    when :HELM; ue.helm_tg
+                    when :PANTS; ue.pants_tg
+                    when :GLOVES; ue.gloves_tg
+                    when :SHOES; ue.shoes_tg
+                    end
+            div = 1
+            div = 2 if oidx == :GLOVES or oidx == :SHOES
+            idefs.to_a.map { |idef|
+                next unless idef.props.flags[:SOFT] # XXX
 
-                    cnt = Needed[:clothes]
-                    cnt -= df.world.items.other[oidx].count { |i|
-                        i.subtype.subtype == idef.subtype and
-                        i.mat_type != 0 and
-                        i.wear == 0 and
-                        is_item_free(i)
-                    } / div
+                job = DFHack::JobType::Item.index(oidx)
 
-                    df.world.manager_orders.each { |mo|
-                        cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
-                        # TODO subtract available_cloth too
-                    }
-                    cnt = available_cloth if cnt > available_cloth
-                    next if cnt <= 0
+                cnt = Needed[case oidx
+                             when :ARMOR; :clothes_torso
+                             when :SHIELD; :clothes_shield
+                             when :HELM; :clothes_head
+                             when :PANTS; :clothes_legs
+                             when :GLOVES; :clothes_hands
+                             when :SHOES; :clothes_feet
+                             end]
+                cnt -= df.world.items.other[oidx].count { |i|
+                    i.subtype.subtype == idef.subtype and
+                    i.mat_type != 0 and
+                    i.wear == 0 and
+                    is_item_free(i)
+                } / div
 
-                    ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
-                    df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
-                            :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
-                            :material_category => { :cloth => true },
-                            :amount_left => cnt, :amount_total => cnt)
-
-                    available_cloth -= cnt
+                df.world.manager_orders.each { |mo|
+                    cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
+                    # TODO subtract available_cloth too
                 }
+                cnt = available_cloth if cnt > available_cloth
+                next if cnt <= 0
+
+                ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
+                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
+                        :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
+                        :material_category => { :cloth => true },
+                        :amount_left => cnt, :amount_total => cnt)
+
+                available_cloth -= cnt
             }
         end
 
