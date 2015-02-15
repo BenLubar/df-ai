@@ -173,7 +173,7 @@ class DwarfAI
             }
 
             df.ui.main.fortress_entity.squads_tg.each { |sq|
-                soldier_count = sq.positions.find_all { |sp| sp.occupant != -1 }.length
+                soldier_count = sq.positions.count { |sp| sp.occupant != -1 }
                 sq.schedule[1].each { |sc|
                     sc.orders.each { |so|
                         next unless so.order.kind_of?(DFHack::SquadOrderTrainst)

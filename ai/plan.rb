@@ -58,8 +58,6 @@ class DwarfAI
             @nrdig = @tasks.count { |t| t[0] == :digroom and (t[1].type != :corridor or t[1].h_z>1) }
             @nrdig += @tasks.count { |t| t[0] == :digroom and t[1].type != :corridor and t[1].w*t[1].h*t[1].h_z >= 10 }
 
-            # avoid too much manager backlog
-            manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
             want_reupdate = false
             bg = df.onupdate_register('df-ai plan bg') {
                 t = @tasks[@bg_idx]
@@ -154,8 +152,6 @@ class DwarfAI
             # [:Fishery,:Leatherworks,:Clothiers,:Jewelers,:MetalsmithsForge,:SoapMaker,:GlassFurnace]
 
             # if nothing better to do, order the miners to dig remaining stockpiles, workshops, and a few bedrooms
-            manager_backlog = df.world.manager_orders.find_all { |o| o.mat_type == 0 and o.mat_index == -1 }.length
-
             ifplan = lambda { |_r| _r if _r and _r.status == :plan }
             freebed = @spare_bedroom
             if r =

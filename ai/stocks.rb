@@ -482,9 +482,9 @@ class DwarfAI
                 }
             when :coffin_bld
                 # count free constructed coffin buildings, not items
-                return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner }.length
+                return df.world.buildings.other[:COFFIN].count { |bld| !bld.owner }
             when :coffin_bld_pet
-                return df.world.buildings.other[:COFFIN].find_all { |bld| !bld.owner and !bld.burial_mode.no_pets }.length
+                return df.world.buildings.other[:COFFIN].count { |bld| !bld.owner and !bld.burial_mode.no_pets }
             when :weapon
                 return count_stocks_weapon
             when :pick
@@ -556,11 +556,11 @@ class DwarfAI
                 idefs.to_a.map { |idef|
                     next if skill and idef.skill_melee != skill
                     next if idef.flags[:TRAINING]
-                    df.world.items.other[oidx].find_all { |i|
+                    df.world.items.other[oidx].count { |i|
                         i.subtype.subtype == idef.subtype and
                         i.mat_type == 0 and
                         is_item_free(i)
-                    }.length
+                    }
                 }.compact
             }.flatten.min
         end
@@ -578,11 +578,11 @@ class DwarfAI
                 div = 2 if oidx == :GLOVES or oidx == :SHOES
                 idefs.to_a.map { |idef|
                     next unless idef.kind_of?(DFHack::ItemdefShieldst) or idef.props.flags[:METAL]
-                    df.world.items.other[oidx].find_all { |i|
+                    df.world.items.other[oidx].count { |i|
                         i.subtype.subtype == idef.subtype and
                         i.mat_type == 0 and
                         is_item_free(i)
-                    }.length / div
+                    } / div
                 }.compact
             }.flatten.min
         end
@@ -598,12 +598,12 @@ class DwarfAI
                 div = 2 if oidx == :GLOVES or oidx == :SHOES
                 idefs.to_a.map { |idef|
                     next unless idef.props.flags[:SOFT] # XXX
-                    df.world.items.other[oidx].find_all { |i|
+                    df.world.items.other[oidx].count { |i|
                         i.subtype.subtype == idef.subtype and
                         i.mat_type != 0 and # XXX
                         i.wear == 0 and
                         is_item_free(i)
-                    }.length / div
+                    } / div
                 }.compact
             }.flatten.min
         end
@@ -802,9 +802,9 @@ class DwarfAI
                     next if idef.flags[:TRAINING]
 
                     cnt = needed
-                    cnt -= df.world.items.other[:WEAPON].find_all { |i|
+                    cnt -= df.world.items.other[:WEAPON].count { |i|
                         i.subtype.subtype == idef.subtype and is_item_free(i)
-                    }.length
+                    }
                     df.world.manager_orders.each { |mo|
                         cnt -= mo.amount_total if mo.job_type == :MakeWeapon and mo.item_subtype == idef.subtype
                     }
@@ -873,9 +873,9 @@ class DwarfAI
                     job = DFHack::JobType::Item.index(oidx)     # :GLOVES => :MakeGloves
 
                     cnt = Needed[:armor]
-                    cnt -= df.world.items.other[oidx].find_all { |i|
+                    cnt -= df.world.items.other[oidx].count { |i|
                         i.subtype.subtype == idef.subtype and i.mat_type == 0 and is_item_free(i)
-                    }.length / div
+                    } / div
 
                     df.world.manager_orders.each { |mo|
                         cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
@@ -972,12 +972,12 @@ class DwarfAI
                     job = DFHack::JobType::Item.index(oidx)
 
                     cnt = Needed[:clothes]
-                    cnt -= df.world.items.other[oidx].find_all { |i|
+                    cnt -= df.world.items.other[oidx].count { |i|
                         i.subtype.subtype == idef.subtype and
                         i.mat_type != 0 and
                         i.wear == 0 and
                         is_item_free(i)
-                    }.length / div
+                    } / div
 
                     df.world.manager_orders.each { |mo|
                         cnt -= mo.amount_total if mo.job_type == job and mo.item_subtype == idef.subtype
@@ -1135,9 +1135,9 @@ class DwarfAI
         def queue_use_gems(amount)
             return if df.world.manager_orders.find { |mo| mo.job_type == :CutGems }
             return if not i = df.world.items.other[:ROUGH].find { |_i| _i.mat_type == 0 and is_item_free(_i) }
-            this_amount = df.world.items.other[:ROUGH].find_all { |_i|
+            this_amount = df.world.items.other[:ROUGH].count { |_i|
                 _i.mat_type == i.mat_type and _i.mat_index == i.mat_index and is_item_free(_i)
-            }.length
+            }
             amount = this_amount if this_amount < amount
             amount = amount*3/4 if amount >= 10
             amount = 30 if amount > 30
@@ -1156,9 +1156,9 @@ class DwarfAI
             return if df.world.manager_orders.find { |mo| mo.job_type == :SmeltOre }
 
             i = df.world.items.other[:BOULDER].find { |_i| is_metal_ore(_i) and is_item_free(_i) }
-            this_amount = df.world.items.other[:BOULDER].find_all { |_i|
+            this_amount = df.world.items.other[:BOULDER].count { |_i|
                 _i.mat_type == i.mat_type and _i.mat_index == i.mat_index and is_item_free(_i)
-            }.length
+            }
             amount = this_amount if this_amount < amount
             amount = amount*3/4 if amount >= 10
             amount = 30 if amount > 30
@@ -1183,9 +1183,9 @@ class DwarfAI
             i = df.world.items.other[:BOULDER].find { |_i| is_raw_coke(_i) and is_item_free(_i) }
             return if not i or not reaction = is_raw_coke(i)
 
-            this_amount = df.world.items.other[:BOULDER].find_all { |_i|
+            this_amount = df.world.items.other[:BOULDER].count { |_i|
                 _i.mat_index == i.mat_index and is_item_free(_i)
-            }.length
+            }
             amount = this_amount if this_amount < amount
             amount = amount*3/4 if amount >= 10
             amount = 30 if amount > 30
@@ -1306,9 +1306,9 @@ class DwarfAI
                 df.world.raws.inorganics[mi].metal_ore.mat_index.include?(mat_index)
             }
 
-            can_melt = df.world.items.other[:BOULDER].find_all { |i|
+            can_melt = df.world.items.other[:BOULDER].count { |i|
                 is_metal_ore(i) and moc[i.mat_index] and is_item_free(i)
-            }.length
+            }
 
             ai.plan.map_veins.keys.find { |k|
                 can_melt += ai.plan.dig_vein(k) if moc[k]
@@ -1576,7 +1576,7 @@ class DwarfAI
             find = FurnitureFind[itm]
             oidx = DFHack::JobType::Item.fetch(FurnitureOrder[itm],
                     DFHack::JobType::Item.fetch(ManagerRealOrder[FurnitureOrder[itm]], :IN_PLAY))
-            df.world.items.other[oidx].find_all { |i| find[i] and df.item_isfree(i) }.length
+            df.world.items.other[oidx].count { |i| find[i] and df.item_isfree(i) }
         rescue
             ai.debug "df-ai stocks: cannot itemcount #{itm.inspect}"
             ai.debug $!
