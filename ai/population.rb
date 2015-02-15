@@ -129,6 +129,7 @@ class DwarfAI
 
                             if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
                                 assign_unit_to_zone(u, r.dfbuilding)
+                                military_random_squad_attack_unit(u)
                                 ai.debug "pop: marked #{DwarfAI::describe_unit(u)} for pitting"
                             end
                         end
@@ -184,6 +185,17 @@ class DwarfAI
             }
         end
 
+        def military_random_squad_attack_unit(u)
+            squad = df.ui.main.fortress_entity.squads_tg.sort_by { |sq|
+                sq.positions.count { |sp| sp.occupant != -1 } - sq.orders.length
+            }.last
+            return unless squad
+
+            squad.orders << DFHack::SquadOrderKillListst.cpp_new(
+                :units => [u.id],
+                :title => DwarfAI::describe_unit(u)
+            )
+        end
 
         def military_find_commander_or_captain_pos(commander)
             if commander
