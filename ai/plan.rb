@@ -3340,6 +3340,7 @@ class DwarfAI
             if task = digging?
                 status << ", digging: #{describe_room(task[1])}"
             end
+            status
         end
 
         def categorize_all
