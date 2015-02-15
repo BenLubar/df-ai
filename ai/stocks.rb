@@ -1050,10 +1050,12 @@ class DwarfAI
                 amount /= 2 if amount > 4
                 input = [:barrel] if order == :BrewDrinkPlant or order == :BrewDrinkFruit
                 input = [:bag] if order == :MillPlants or order == :ProcessPlantsBag
+                return if (order == :BrewDrinkPlant or order == :BrewDrinkFruit) and not need_drink?
 
             when :food_ingredients
                 order = :PrepareMeal
                 amount = (amount + 4) / 5
+                return unless need_food?
 
             when :skull
                 order = :MakeTotem
@@ -1691,6 +1693,14 @@ class DwarfAI
             o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :unk_2 => -1, :item_subtype => -1,
                 :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
             df.world.manager_orders << o
+        end
+
+        def need_food?
+            count[:food] < (Needed[:food] + ai.pop.citizen.length * NeededPerDwarf[:food]) * 2
+        end
+
+        def need_drink?
+            count[:drink] < (Needed[:drink] + ai.pop.citizen.length * NeededPerDwarf[:drink]) * 2
         end
 
         def serialize
