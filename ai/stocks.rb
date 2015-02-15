@@ -41,6 +41,11 @@ class DwarfAI
             :raw_fish => 1, :clay => 1,
         }
 
+        AlsoCount = {
+            :dye_plant => true, :cloth => true, :leather => true,
+            :crossbow => true, :bonebolts => true,
+        }
+
         attr_accessor :ai, :count
         attr_accessor :onupdate_handle
         def initialize(ai)
@@ -108,7 +113,7 @@ class DwarfAI
             end
 
             @updating = Needed.keys | WatchStock.keys
-            @updating_count = @updating.dup
+            @updating_count = @updating | AlsoCount.keys
             @updating_seeds = true
             @updating_plants = true
             @updating_corpses = true
@@ -662,7 +667,7 @@ class DwarfAI
 
             when :dye
                 order = :MillPlants
-                input = [:dye_plants, :bag]
+                input = [:dye_plant, :bag]
 
             when :wood
                 # dont bother if the last designated tree is not cut yet
@@ -688,7 +693,7 @@ class DwarfAI
                     :honey       => :BrewMead,
                 }
                 input = [[:drink_plant, :drink_fruit, :honey].max_by{ |i|
-                    c = count[i] || count_stocks(i)
+                    c = count[i]
                     find_manager_orders(orders[i]).each { |o| c -= o.amount_left }
                     c
                 }, :barrel]
@@ -727,7 +732,7 @@ class DwarfAI
             if input
                 i_amount = amount
                 input.each { |i|
-                    c = count[i] || count_stocks(i)
+                    c = count[i]
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
                         ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
@@ -738,7 +743,7 @@ class DwarfAI
             end
 
             if matcat = ManagerMatCategory[order]
-                i_amount = (count[matcat] || count_stocks(matcat)) - count_manager_orders_matcat(matcat, order)
+                i_amount = count[matcat] - count_manager_orders_matcat(matcat, order)
                 if i_amount < amount and Needed[matcat]
                     ai.debug "stocks: want #{amount - i_amount} more #{matcat} for #{i_amount}/#{amount} #{order}"
                     queue_need(matcat, amount - i_amount)
@@ -951,7 +956,7 @@ class DwarfAI
 
         def queue_need_clothes
             # -10 to try to avoid cancel spam
-            available_cloth = count_stocks(:cloth) - 20
+            available_cloth = count[:cloth] - 20
 
             ue = df.ui.main.fortress_entity.entity_raw.equipment
             [[:ARMOR, ue.armor_tg],
@@ -1056,13 +1061,13 @@ class DwarfAI
             when :bone
                 nhunters = ai.pop.labor_worker[:HUNT].length if ai.pop.labor_worker
                 return if not nhunters
-                need_crossbow = nhunters + 1 - count_stocks(:crossbow)
+                need_crossbow = nhunters + 1 - count[:crossbow]
                 if need_crossbow > 0
                     order = :MakeBoneCrossbow
                     amount = need_crossbow if amount > need_crossbow
                 else
                     order = :MakeBoneBolt
-                    stock = count_stocks(:bonebolts)
+                    stock = count[:bonebolts]
                     amount = 1000 - stock if amount > 1000 - stock
                     amount /= 2 if amount > 10
                     amount /= 2 if amount > 4
@@ -1104,7 +1109,7 @@ class DwarfAI
             if input
                 i_amount = amount
                 input.each { |i|
-                    c = count[i] || count_stocks(i)
+                    c = count[i]
                     i_amount = c if c < i_amount
                     if c < amount and Needed[i]
                         ai.debug "stocks: want #{amount - c} more #{i} for #{i_amount}/#{amount} #{order}"
