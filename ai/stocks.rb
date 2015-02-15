@@ -1010,7 +1010,7 @@ class DwarfAI
             }
         end
 
-        def queue_need_clothes
+        def queue_need_clothes(oidx)
             # -10 to try to avoid cancel spam
             available_cloth = count[:cloth] - 20
 
