@@ -46,7 +46,7 @@ class DwarfAI
 
         AlsoCount = {
             :dye_plant => true, :cloth => true, :leather => true,
-            :crossbow => true, :bonebolts => true,
+            :crossbow => true, :bonebolts => true, :stone => true,
         }
 
         attr_accessor :ai, :count
@@ -390,6 +390,8 @@ class DwarfAI
                 df.world.items.other[:BOULDER].find_all { |i| is_gypsum(i) }
             when :raw_adamantine
                 df.world.items.other[:BOULDER].grep(df.decode_mat('INORGANIC:RAW_ADAMANTINE'))
+            when :stone
+                df.world.items.other[:BOULDER].find_all { |i| !df.ui.economic_stone[i.mat_index] }
             when :raw_fish
                 df.world.items.other[:FISH_RAW]
             when :splint

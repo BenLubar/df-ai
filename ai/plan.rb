@@ -893,7 +893,8 @@ class DwarfAI
                 end
             when :SoapMaker
                 # bucket, boulder
-                if buckt = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) } and
+                if ai.stocks.count[:stone] > 0 and
+                    buckt = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) } and
                    bould = df.world.items.other[:BOULDER].find { |i|
                        ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                    }
@@ -919,7 +920,8 @@ class DwarfAI
                 end
             when :MetalsmithsForge
                 # anvil, boulder
-                if anvil = df.world.items.other[:ANVIL].find { |i|
+                if ai.stocks.count[:stone] > 0 and
+                    anvil = df.world.items.other[:ANVIL].find { |i|
                         ai.stocks.is_item_free(i) and i.isTemperatureSafe(11640)
                 } and bould = df.world.items.other[:BOULDER].find { |i|
                         ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
@@ -933,7 +935,8 @@ class DwarfAI
                 end
             when :WoodFurnace, :Smelter, :Kiln, :GlassFurnace
                 # firesafe boulder
-                if bould = df.world.items.other[:BOULDER].find { |i|
+                if ai.stocks.count[:stone] > 0 and
+                    bould = df.world.items.other[:BOULDER].find { |i|
                         ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
                 }
                     bld = df.building_alloc(:Furnace, r.subtype)
@@ -964,7 +967,8 @@ class DwarfAI
                 end
             else
                 # any non-eco boulder
-                if bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
+                if ai.stocks.count[:stone] > 0 and
+                    bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
                         # check map_block.items first
                         i.kind_of?(DFHack::ItemBoulderst) and
                         ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and
