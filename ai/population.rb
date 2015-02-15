@@ -385,7 +385,7 @@ class DwarfAI
                 citizen.each_value { |c|
                     next if not u = c.dfunit
                     if u.mood != :None
-                        nonworkers << [c, 'has strange mood']
+                        nonworkers << [c, "has mood: #{u.mood}"]
                     elsif u.profession == :CHILD
                         nonworkers << [c, 'is a child', true]
                     elsif u.profession == :BABY
