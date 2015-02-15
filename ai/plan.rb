@@ -69,7 +69,7 @@ class DwarfAI
                     next
                 end
 
-                bg.description = "df-ai plan bg #{t[0]} #{t[1].type if t[1].kind_of?(Corridor)}"
+                bg.description = "df-ai plan bg #{t[0]} #{describe_room(t[1]) if t[1].kind_of?(Corridor)}"
                 del = case t[0]
                 when :wantdig
                     digroom(t[1]) if t[1].dug? or @nrdig<@wantdig_max
