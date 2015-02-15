@@ -2939,18 +2939,24 @@ class DwarfAI
         # scan for 11x11 flat areas with grass
         def setup_blueprint_pastures
             want = 36
-            @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 12, 12) { |_t|
+            @fort_entrance.maptile.spiral_search { |_t|
                 next unless sf = surface_tile_at(_t)
+                floortile = 0
                 grasstile = 0
                 if (-5..5).all? { |dx| (-5..5).all? { |dy|
-                    if tt = sf.offset(dx, dy) and (tt.shape_basic == :Floor or tt.tilemat == :TREE) and
-                            tt.designation.flow_size == 0 and tt.tilemat != :FROZEN_LIQUID
-                        grasstile += 1 if tt.mapblock.block_events.find { |be|
+                    if tt = sf.offset(dx, dy) and
+                        (tt.shape_basic == :Floor or tt.tilemat == :TREE) and
+                        tt.designation.flow_size == 0 and
+                        tt.tilemat != :FROZEN_LIQUID
+
+                        grasstile += 1 if tt.mapblock.block_events.any? { |be|
                             be.kind_of?(DFHack::BlockSquareEventGrassst) and be.amount[tt.dx][tt.dy] > 0
                         }
-                        true
+                        floortile += 1
                     end
-                } } and grasstile >= 70
+
+                    not map_tile_intersects_room(tt)
+                } } and floortile >= 9*9 and grasstile >= 8*8
                     @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
                     @rooms.last.misc[:users] = []
                     want -= 1
