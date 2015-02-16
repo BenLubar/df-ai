@@ -32,7 +32,12 @@ class DwarfAI
             :clothes_legs => 2, :armor_hands => 2, :clothes_hands => 2,
             :armor_feet => 2, :clothes_feet => 2, :armor_shield => 2,
         }
-        NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2
+        NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2,
+            :slab => 0.1, :soap => 0.2, :weapon => 0.05, :cloth => 0.2,
+            :clothes_torso => 0.2, :clothes_legs => 0.2, :clothes_feet => 0.2,
+            :clothes_hands => 0.2, :clothes_head => 0.2, :armor_shield => 0.03,
+            :armor_torso => 0.03, :armor_legs => 0.03, :armor_feet => 0.03,
+            :armor_hands => 0.03, :armor_head => 0.03
 
         WatchStock = {
             :roughgem => 6, :thread_plant => 10, :cloth_nodye => 10,
@@ -1115,12 +1120,12 @@ class DwarfAI
                 amount /= 2 if amount > 4
                 input = [:barrel] if order == :BrewDrinkPlant or order == :BrewDrinkFruit
                 input = [:bag] if order == :MillPlants or order == :ProcessPlantsBag
-                return if (order == :BrewDrinkPlant or order == :BrewDrinkFruit) and not need_drink?
+                return if (order == :BrewDrinkPlant or order == :BrewDrinkFruit) and not need_more?(:drink)
 
             when :food_ingredients
                 order = :PrepareMeal
                 amount = (amount + 4) / 5
-                return unless need_food?
+                return unless need_more?(:food)
 
             when :skull
                 order = :MakeTotem
@@ -1169,6 +1174,7 @@ class DwarfAI
             when :tallow
                 order = :MakeSoap
                 input = [:lye]
+                return unless need_more?(:soap)
             end
 
             ai.debug "stocks: use #{amount} #{order} for #{what}"
@@ -1761,12 +1767,8 @@ class DwarfAI
             df.world.manager_orders << o
         end
 
-        def need_food?
-            count[:food] < (Needed[:food] + ai.pop.citizen.length * NeededPerDwarf[:food]) * 2
-        end
-
-        def need_drink?
-            count[:drink] < (Needed[:drink] + ai.pop.citizen.length * NeededPerDwarf[:drink]) * 2
+        def need_more?(type)
+            count[type] < ((Needed[type] || WatchStock[type] || 10) + (ai.pop.citizen.length * NeededPerDwarf[type]).to_i) * 10
         end
 
         def serialize

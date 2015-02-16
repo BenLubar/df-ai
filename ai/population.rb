@@ -358,6 +358,7 @@ class DwarfAI
         LaborSkill = DFHack::JobSkill::Labor.invert
         LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
         LaborMedical = { :DIAGNOSE => true, :SURGERY => true, :BONE_SETTING => true, :SUTURING => true, :DRESSING_WOUNDS => true, :FEED_WATER_CIVILIANS => true }
+        LaborStocks = { :PLANT => [:food, :drink, :cloth], :HERBALISM => [:food, :drink, :cloth], :FISH => [:food] }
         LaborHauling = { :FEED_WATER_CIVILIANS => true, :RECOVER_WOUNDED => true }
         LaborList.each { |lb|
             if lb.to_s =~ /HAUL/
@@ -557,6 +558,7 @@ class DwarfAI
                     max = labormax[lb]
                     maxpc = labormaxpct[lb] * @workers.length / 100
                     max = maxpc if maxpc > max
+                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
 
                     @labor_needmore.delete lb if @labor_worker[lb].length >= max
                 }
@@ -631,6 +633,7 @@ class DwarfAI
                     max = maxpc if maxpc > max
                     max = @workers.length if @labor_needmore.empty? and LaborIdle[lb]
                     max = 0 if lb == :FISH and fishery = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Fishery } and fishery.status == :plan
+                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
                     min = max if min > max
                     min = @workers.length if min > @workers.length
 
