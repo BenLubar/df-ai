@@ -2959,7 +2959,7 @@ class DwarfAI
                         floortile += 1
                     end
 
-                    not map_tile_intersects_room(tt)
+                    tt and not map_tile_intersects_room(tt)
                 } } and floortile >= 9*9 and grasstile >= 8*8
                     @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
                     @rooms.last.misc[:users] = []
