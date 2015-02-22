@@ -1769,15 +1769,18 @@ class DwarfAI
                         else
                             pull_lever(@m_c_lever_in) if f_in_closed
                             ai.debug 'cistern: do channel'
+                            @cistern_channel_requested = true
                             gate.offset(0, 0, 1).dig(:Channel)
                         end
                     elsif find_room(:well).maptile1.offset(-2, find_room(:well).h/2).designation.flow_size == 7
                         # something went not as planned, but we have a water source
                         @m_c_testgate_delay = nil
                     else
-                        # make sure we can actually access the cistern
-                        pull_lever(@m_c_lever_in) if f_in_closed
-                        pull_lever(@m_c_lever_out) if f_out_closed
+                        unless @cistern_channel_requested
+                            # make sure we can actually access the cistern
+                            pull_lever(@m_c_lever_in) if f_in_closed
+                            pull_lever(@m_c_lever_out) if f_out_closed
+                        end
                         @m_c_testgate_delay = 16
                     end
                 else
