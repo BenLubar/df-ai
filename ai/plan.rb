@@ -1453,7 +1453,8 @@ class DwarfAI
             t.tiletype == :FORTIFICATION or
             t.shape_basic == :Open or
             t.shape_basic == :Stair or
-            t.occupancy.building != :None
+            (t.occupancy.building != :None and
+            t.occupancy.building != :Dynamic)
         end
 
         # check smoothing progress, channel intermediate floors when done
