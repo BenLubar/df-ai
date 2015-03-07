@@ -873,7 +873,7 @@ class DwarfAI
                         next if nw <= 0
 
                         ai.debug "stocks: queue #{nw} MakeWeapon #{df.world.raws.inorganics[mi].id} #{idef.id}"
-                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :unk_2 => -1,
+                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :MakeWeapon, :item_type => -1,
                                 :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                         bars[mi] -= nw * need_bars
                         coal_bars -= nw
@@ -955,7 +955,7 @@ class DwarfAI
                     next if nw <= 0
 
                     ai.debug "stocks: queue #{nw} #{job} #{df.world.raws.inorganics[mi].id} #{idef.id}"
-                    df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
+                    df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :item_type => -1,
                             :item_subtype => idef.subtype, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                     bars[mi] -= nw * need_bars
                     coal_bars -= nw
@@ -1006,7 +1006,7 @@ class DwarfAI
                 next if nw <= 0
 
                 ai.debug "stocks: queue #{nw} ForgeAnvil #{df.world.raws.inorganics[mi].id}"
-                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :ForgeAnvil, :unk_2 => -1,
+                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :ForgeAnvil, :item_type => -1,
                     :item_subtype => -1, :mat_type => 0, :mat_index => mi, :amount_left => nw, :amount_total => nw)
                 bars[mi] -= nw * need_bars
                 coal_bars -= nw
@@ -1058,7 +1058,7 @@ class DwarfAI
                 next if cnt <= 0
 
                 ai.debug "stocks: queue #{cnt} #{job} cloth #{idef.id}"
-                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :unk_2 => -1,
+                df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => job, :item_type => -1,
                         :item_subtype => idef.subtype, :mat_type => -1, :mat_index => -1,
                         :material_category => { :cloth => true },
                         :amount_left => cnt, :amount_total => cnt)
@@ -1214,7 +1214,7 @@ class DwarfAI
             amount = 30 if amount > 30
 
             ai.debug "stocks: queue #{amount} CutGems #{df.decode_mat(i)}"
-            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :unk_2 => -1, :item_subtype => -1,
+            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CutGems, :item_type => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
 
@@ -1240,7 +1240,7 @@ class DwarfAI
             end
 
             ai.debug "stocks: queue #{amount} SmeltOre #{df.decode_mat(i)}"
-            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :SmeltOre, :unk_2 => -1, :item_subtype => -1,
+            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :SmeltOre, :item_type => -1, :item_subtype => -1,
                     :mat_type => i.mat_type, :mat_index => i.mat_index, :amount_left => amount, :amount_total => amount)
         end
 
@@ -1267,7 +1267,7 @@ class DwarfAI
             end
 
             ai.debug "stocks: queue #{amount} #{reaction}"
-            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1, :item_subtype => -1,
+            df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :item_type => -1, :item_subtype => -1,
                     :mat_type => -1, :mat_index => -1, :amount_left => amount, :amount_total => amount, :reaction_name => reaction)
         end
 
@@ -1443,7 +1443,7 @@ class DwarfAI
                         mo.job_type == :CustomReaction and mo.reaction_name == r.code
                     }
                         ai.debug "stocks: queue #{can_reaction} #{r.code}"
-                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :unk_2 => -1,
+                        df.world.manager_orders << DFHack::ManagerOrder.cpp_new(:job_type => :CustomReaction, :item_type => -1,
                             :item_subtype => -1, :reaction_name => r.code, :mat_type => -1, :mat_index => -1,
                             :amount_left => can_reaction, :amount_total => can_reaction)
                     end
@@ -1579,7 +1579,7 @@ class DwarfAI
                     o.amount_total += amount
                     o.amount_left += amount
                 else
-                    o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :unk_2 => -1, :item_subtype => (subtype || -1),
+                    o = DFHack::ManagerOrder.cpp_new(:job_type => _order, :item_type => -1, :item_subtype => (subtype || -1),
                             :mat_type => (type || (matcat ? -1 : 0)), :mat_index => -1, :amount_left => amount, :amount_total => amount)
                     o.material_category.send("#{matcat}=", true) if matcat
                     o.reaction_name = custom if custom
@@ -1762,7 +1762,7 @@ class DwarfAI
             return if df.world.items.other[:SLAB].any? { |sl|
                 sl.engraving_type == :Memorial and sl.topic == histfig_id
             }
-            o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :unk_2 => -1, :item_subtype => -1,
+            o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :item_type => -1, :item_subtype => -1,
                 :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
             df.world.manager_orders << o
         end
