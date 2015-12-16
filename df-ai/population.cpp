@@ -1,3 +1,18 @@
+#include "ai.h"
+
+REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
+
+Population::Population(color_ostream & out, AI *parent) :
+    ai(parent)
+{
+    standing_orders_forbid_used_ammo = 0;
+}
+
+Population::~Population()
+{
+}
+
+/*
 class DwarfAI
     class Population
         class Citizen
@@ -975,5 +990,6 @@ class DwarfAI
         end
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4

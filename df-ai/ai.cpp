@@ -1,18 +1,62 @@
-class DwarfAI
-    attr_accessor :plan
-    attr_accessor :pop
-    attr_accessor :stocks
-    attr_accessor :camera
-    attr_accessor :random_embark
+#include "ai.h"
 
-    def initialize
-        @pop = Population.new(self)
-        @plan = Plan.new(self)
-        @stocks = Stocks.new(self)
-        @camera = Camera.new(self)
-        @random_embark = RandomEmbark.new(self)
-    end
+AI::AI(color_ostream & out) :
+    pop(out, this),
+    plan(out, this),
+    stocks(out, this),
+    camera(out, this),
+    embark(out, this)
+{
+}
 
+command_result AI::status(color_ostream & out)
+{
+    command_result res;
+#define CHECK_RESULT(mod) \
+        res = mod.status(out); \
+        if (res != CR_OK) \
+            return res
+    CHECK_RESULT(pop);
+    CHECK_RESULT(plan);
+    CHECK_RESULT(stocks);
+    CHECK_RESULT(camera);
+    CHECK_RESULT(embark);
+#undef CHECK_RESULT
+    return res;
+}
+
+command_result AI::statechange(color_ostream & out, state_change_event event)
+{
+    command_result res;
+#define CHECK_RESULT(mod) \
+        res = mod.statechange(out, event); \
+        if (res != CR_OK) \
+            return res
+    CHECK_RESULT(pop);
+    CHECK_RESULT(plan);
+    CHECK_RESULT(stocks);
+    CHECK_RESULT(camera);
+    CHECK_RESULT(embark);
+#undef CHECK_RESULT
+    return res;
+}
+
+command_result AI::update(color_ostream & out)
+{
+    command_result res;
+#define CHECK_RESULT(mod) \
+        res = mod.update(out); \
+        if (res != CR_OK) \
+            return res
+    CHECK_RESULT(pop);
+    CHECK_RESULT(plan);
+    CHECK_RESULT(stocks);
+    CHECK_RESULT(camera);
+    CHECK_RESULT(embark);
+#undef CHECK_RESULT
+    return res;
+}
+/*
     def self.timestamp(y=df.cur_year, t=df.cur_year_tick)
         return '?????-??-??:????' if y == 0 and t == 0
         "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
@@ -345,5 +389,6 @@ class DwarfAI
         }
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4

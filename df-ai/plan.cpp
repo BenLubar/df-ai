@@ -1,3 +1,15 @@
+#include "ai.h"
+
+Plan::Plan(color_ostream & out, AI *parent) :
+    ai(parent)
+{
+}
+
+Plan::~Plan()
+{
+}
+
+/*
 class DwarfAI
     class Plan
         attr_accessor :ai, :tasks
@@ -3641,5 +3653,6 @@ class DwarfAI
         end
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4

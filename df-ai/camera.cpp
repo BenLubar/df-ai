@@ -1,3 +1,50 @@
+#include "ai.h"
+
+#include <sstream>
+#include <ctime>
+
+#include "df/interfacest.h"
+#include "df/graphic.h"
+
+REQUIRE_GLOBAL(gps);
+REQUIRE_GLOBAL(gview);
+
+Camera::Camera(color_ostream & out, AI *parent) :
+    ai(parent),
+    following(-1),
+    following_prev()
+{
+    gps->display_frames = 1;
+
+    if (/* TODO: $RECORD_MOVIE */ true)
+    {
+        start_recording(out);
+    }
+}
+
+Camera::~Camera()
+{
+    gps->display_frames = 0;
+}
+
+void Camera::start_recording(color_ostream & out)
+{
+    if (gview->supermovie_on == 0)
+    {
+        gview->supermovie_on = 1;
+        gview->currentblocksize = 0;
+        gview->nextfilepos = 0;
+        gview->supermovie_pos = 0;
+        gview->supermovie_delayrate = 0;
+        gview->first_movie_write = 1;
+
+        std::ostringstream filename;
+        filename << "data/movies/df-ai-" << std::time(nullptr) << ".cmv";
+        gview->movie_file = filename.str();
+    }
+}
+
+/*
 class DwarfAI
     class Camera
         attr_accessor :ai
@@ -160,5 +207,6 @@ class DwarfAI
         end
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4

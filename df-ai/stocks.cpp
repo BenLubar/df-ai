@@ -1,3 +1,14 @@
+#include "ai.h"
+
+Stocks::Stocks(color_ostream & out, AI *parent) :
+    ai(parent)
+{
+}
+
+Stocks::~Stocks()
+{
+}
+/*
 class DwarfAI
     # an object similar to a hash, that will evaluate and cache @proc for every key
     class CacheHash
@@ -1776,5 +1787,6 @@ class DwarfAI
         end
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4

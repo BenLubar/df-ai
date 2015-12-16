@@ -1,3 +1,15 @@
+#include "ai.h"
+
+Embark::Embark(color_ostream & out, AI *parent) :
+    ai(parent)
+{
+}
+
+Embark::~Embark()
+{
+}
+
+/*
 class DwarfAI
     class RandomEmbark
         attr_accessor :ai
@@ -219,5 +231,6 @@ class DwarfAI
         end
     end
 end
+*/
 
-# vim: et:sw=4:ts=4
+// vim: et:sw=4:ts=4
