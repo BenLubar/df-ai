@@ -27,6 +27,11 @@ class AI;
 class Population
 {
     AI *ai;
+    std::set<int32_t> citizens;
+    std::set<int32_t> military;
+    std::set<int32_t> idlers;
+    std::set<int32_t> pets;
+    int update_tick;
 
 public:
     Population(color_ostream & out, AI *parent);
@@ -35,6 +40,19 @@ public:
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
+
+private:
+    void update_citizenlist(color_ostream & out);
+    void update_nobles(color_ostream & out);
+    void update_jobs(color_ostream & out);
+    void update_military(color_ostream & out);
+    void update_pets(color_ostream & out);
+    void update_deads(color_ostream & out);
+    void update_caged(color_ostream & out);
+    void autolabors_workers(color_ostream & out);
+    void autolabors_jobs(color_ostream & out);
+    void autolabors_labors(color_ostream & out);
+    void autolabors_commit(color_ostream & out);
 };
 
 class Plan
@@ -45,9 +63,30 @@ public:
     Plan(color_ostream & out, AI *parent);
     ~Plan();
 
+    enum room_status
+    {
+        plan,
+    };
+    enum room_type
+    {
+        infirmary,
+    };
+    struct room
+    {
+        room_status status;
+    };
+
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
+
+    room & find_room(room_type type);
+    template<class F>
+    room & find_room(room_type type, F filter);
+
+    void new_citizen(color_ostream & out, int32_t id);
+    void del_citizen(color_ostream & out, int32_t id);
+    void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
 };
 
 class Stocks
@@ -80,8 +119,6 @@ public:
     command_result update(color_ostream & out);
 
     void start_recording(color_ostream & out);
-    static bool compare_view_priority(df::unit *, df::unit *);
-    static int view_priority(df::unit *);
     bool followed_previously(int32_t id);
 };
 

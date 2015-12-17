@@ -1,9 +1,33 @@
 #include "ai.h"
 
+#include "modules/Units.h"
+
+#include "df/entity_position.h"
+#include "df/entity_position_assignment.h"
+#include "df/entity_raw.h"
+#include "df/entity_position_raw.h"
+#include "df/histfig_entity_link_positionst.h"
+#include "df/historical_entity.h"
+#include "df/historical_figure.h"
+#include "df/job.h"
+#include "df/ui.h"
+#include "df/unit.h"
+#include "df/unit_skill.h"
+#include "df/unit_soul.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
+REQUIRE_GLOBAL(ui);
+REQUIRE_GLOBAL(world);
 
 Population::Population(color_ostream & out, AI *parent) :
-    ai(parent)
+    ai(parent),
+    citizens(),
+    military(),
+    idlers(),
+    pets(),
+    update_tick(0)
 {
     *standing_orders_forbid_used_ammo = 0;
 }
@@ -12,107 +36,319 @@ Population::~Population()
 {
 }
 
+command_result Population::status(color_ostream & out)
+{
+    out << citizens.size() << " citizen, ";
+    out << military.size() << " military, ";
+    out << idlers.size() << " idle, ";
+    out << pets.size() << " pets\n";
+    return CR_OK;
+}
+
+command_result Population::statechange(color_ostream & out, state_change_event event)
+{
+    return CR_OK;
+}
+
+command_result Population::update(color_ostream & out)
+{
+    update_tick++;
+    if (update_tick >= 300)
+    {
+        update_tick -= 300;
+    }
+    switch (update_tick % 100)
+    {
+        case 10:
+            update_citizenlist(out);
+            break;
+        case 20:
+            update_nobles(out);
+            break;
+        case 30:
+            update_jobs(out);
+            break;
+        case 40:
+            update_military(out);
+            break;
+        case 50:
+            update_pets(out);
+            break;
+        case 60:
+            update_deads(out);
+            break;
+        case 70:
+            update_caged(out);
+            break;
+        default:
+            break;
+    }
+
+    switch (update_tick % 30)
+    {
+        case 3:
+            autolabors_workers(out);
+            break;
+        case 6:
+            autolabors_jobs(out);
+            break;
+        case 9:
+            autolabors_labors(out);
+            break;
+        case 12:
+            autolabors_commit(out);
+            break;
+        default:
+            break;
+    }
+
+    return CR_OK;
+}
+
+void Population::update_citizenlist(color_ostream & out)
+{
+    std::set<int32_t> old = citizens;
+
+    // add new fort citizen to our list
+    for (auto unit : world->units.active)
+    {
+        if (!Units::isCitizen(unit))
+            continue;
+
+        if (Units::isBaby(unit))
+            continue;
+
+        if (citizens.insert(unit->id).second)
+        {
+            ai->plan.new_citizen(out, unit->id);
+        }
+        old.erase(unit->id);
+    }
+
+    // del those who are no longer here
+    for (auto id : old)
+    {
+        // u.counters.death_tg.flags.discovered dead/missing
+        citizens.erase(id);
+        military.erase(id);
+        ai->plan.del_citizen(out, id);
+    }
+}
+
+static int32_t total_xp(df::unit *unit)
+{
+    int32_t total = 0;
+    for (auto skill : unit->status.current_soul->skills)
+    {
+        total += 400 * skill->rating + 100 * skill->rating * (skill->rating + 1) / 2 + skill->experience;
+    }
+    return total;
+}
+
+static bool compare_total_xp(df::unit *a, df::unit *b)
+{
+    return total_xp(a) < total_xp(b);
+}
+
+static const std::string *position_code(df::historical_entity *ent, df::entity_position_responsibility r)
+{
+    for (auto pos : ent->entity_raw->positions)
+    {
+        if (pos->responsibilities[r])
+        {
+            return &pos->code;
+        }
+    }
+    return nullptr;
+}
+
+static void assign_new_noble(AI *ai, color_ostream & out, df::entity_position_responsibility r, df::unit *unit)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    const std::string *pos_code = position_code(ent, r);
+    if (pos_code == nullptr)
+    {
+        ai->debug(out, std::string("could not find position with responsibility ") + enum_item_key_str(r));
+        return;
+    }
+
+    for (auto pos : ent->positions.own)
+    {
+        if (pos->code != *pos_code)
+            continue;
+
+        auto assign = std::find_if(ent->positions.assignments.begin(), ent->positions.assignments.end(), [pos](df::entity_position_assignment *a) -> bool { return a->position_id == pos->id && a->histfig == -1; });
+        if (assign == ent->positions.assignments.end())
+        {
+            int32_t a_id = ent->positions.next_assignment_id++;
+            df::entity_position_assignment *newassign = df::allocate<df::entity_position_assignment>();
+            newassign->id = a_id;
+            newassign->position_id = pos->id;
+            newassign->flags.set(0); // XXX
+            assign = ent->positions.assignments.insert(assign, newassign);
+        }
+
+        df::histfig_entity_link_positionst *poslink = df::allocate<df::histfig_entity_link_positionst>();
+        poslink->link_strength = 100;
+        poslink->start_year = *cur_year;
+        poslink->entity_id = ent->id;
+        poslink->assignment_id = (*assign)->id;
+
+        df::historical_figure *hf = df::historical_figure::find(unit->hist_figure_id);
+        hf->entity_links.push_back(poslink);
+        (*assign)->histfig = unit->hist_figure_id;
+
+        FOR_ENUM_ITEMS(entity_position_responsibility, r)
+        {
+            if (pos->responsibilities[r])
+            {
+                ent->assignments_by_type[r].push_back(*assign);
+            }
+        }
+
+        return;
+    }
+
+    ai->debug(out, "could not find position '" + *pos_code + "' with responsibility " + enum_item_key_str(r));
+}
+
+void Population::update_nobles(color_ostream & out)
+{
+    std::vector<df::unit *> cz;
+    for (int32_t id : citizens)
+    {
+        df::unit *unit = df::unit::find(id);
+        if (Units::isChild(unit))
+            continue;
+
+        cz.push_back(unit);
+    }
+    std::sort(cz.begin(), cz.end(), compare_total_xp);
+
+    if (cz.empty())
+        return;
+
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    if (ent->assignments_by_type[entity_position_responsibility::MANAGE_PRODUCTION].empty())
+    {
+        df::unit *best = cz[0];
+        for (auto unit : cz)
+        {
+            if (unit->military.squad_id == -1 && std::find_if(ent->positions.assignments.begin(), ent->positions.assignments.end(), [unit](df::entity_position_assignment *a) -> bool { return a->histfig == unit->hist_figure_id; }) == ent->positions.assignments.end())
+            {
+                best = unit;
+                break;
+            }
+        }
+        assign_new_noble(ai, out, entity_position_responsibility::MANAGE_PRODUCTION, best);
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::ACCOUNTING].empty())
+    {
+        df::unit *best = nullptr;
+        for (auto unit : cz)
+        {
+            if (!unit->status.labors[unit_labor::MINE] && unit->military.squad_id == -1 && std::find_if(ent->positions.assignments.begin(), ent->positions.assignments.end(), [unit](df::entity_position_assignment *a) -> bool { return a->histfig == unit->hist_figure_id; }) == ent->positions.assignments.end())
+            {
+                best = unit;
+                break;
+            }
+        }
+        if (best)
+        {
+            assign_new_noble(ai, out, entity_position_responsibility::ACCOUNTING, best);
+            ui->bookkeeper_settings = 4;
+        }
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty())
+    {
+        auto & hospital = ai->plan.find_room(Plan::room_type::infirmary);
+        if (hospital.status != Plan::room_status::plan)
+        {
+            df::unit *best = nullptr;
+            for (auto unit : cz)
+            {
+                if (unit->military.squad_id == -1 && std::find_if(ent->positions.assignments.begin(), ent->positions.assignments.end(), [unit](df::entity_position_assignment *a) -> bool { return a->histfig == unit->hist_figure_id; }) == ent->positions.assignments.end())
+                {
+                    best = unit;
+                    break;
+                }
+            }
+            if (best)
+            {
+                assign_new_noble(ai, out, entity_position_responsibility::HEALTH_MANAGEMENT, best);
+            }
+        }
+    }
+    else
+    {
+        auto assignment = ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT][0];
+        df::historical_figure *hf = df::historical_figure::find(assignment->histfig);
+        if (hf)
+        {
+            df::unit *doctor = df::unit::find(hf->unit_id);
+            if (doctor)
+            {
+                // doc => healthcare
+                doctor->status.labors[unit_labor::DIAGNOSE] = true;
+                doctor->status.labors[unit_labor::SURGERY] = true;
+                doctor->status.labors[unit_labor::BONE_SETTING] = true;
+                doctor->status.labors[unit_labor::SUTURING] = true;
+                doctor->status.labors[unit_labor::DRESSING_WOUNDS] = true;
+                doctor->status.labors[unit_labor::FEED_WATER_CIVILIANS] = true;
+            }
+        }
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty())
+    {
+        df::unit *best = nullptr;
+        for (auto unit : cz)
+        {
+            if (unit->military.squad_id == -1 && std::find_if(ent->positions.assignments.begin(), ent->positions.assignments.end(), [unit](df::entity_position_assignment *a) -> bool { return a->histfig == unit->hist_figure_id; }) == ent->positions.assignments.end())
+            {
+                best = unit;
+                break;
+            }
+        }
+        if (best)
+        {
+            assign_new_noble(ai, out, entity_position_responsibility::TRADE, best);
+        }
+    }
+
+    std::set<int32_t> nobles;
+    for (auto assignment : ent->positions.assignments)
+    {
+        if (assignment->histfig == -1)
+            continue;
+
+        df::entity_position *pos = binsearch_in_vector(ent->positions.own, assignment->position_id);
+        if (pos->required_office > 0 || pos->required_dining > 0 || pos->required_tomb > 0)
+        {
+            nobles.insert(df::historical_figure::find(assignment->histfig)->unit_id);
+        }
+    }
+    ai->plan.attribute_noblerooms(out, nobles);
+}
+
+void Population::update_jobs(color_ostream & out)
+{
+    for (df::job_list_link *job = world->job_list.next; job; job = job->next)
+    {
+        if (!job->item->flags.bits.repeat)
+        {
+            job->item->flags.bits.suspend = 0;
+        }
+    }
+}
+
 /*
 class DwarfAI
     class Population
-        class Citizen
-            attr_accessor :id
-            def initialize(id)
-                @id = id
-            end
-
-            def dfunit
-                df.unit_find(@id)
-            end
-
-            def serialize
-                id
-            end
-        end
-
-        attr_accessor :ai, :citizen, :military, :pet
-        attr_accessor :labor_worker, :worker_labor
-        attr_accessor :onupdate_handle
-        def initialize(ai)
-            @ai = ai
-            @citizen = {}
-            @military = {}
-            @idlers = []
-            @pet = {}
-            @update_counter = 0
-        end
-
-        def startup
-            df.standing_orders_forbid_used_ammo = 0
-        end
-
-        def onupdate_register
-            @onupdate_handle = df.onupdate_register('df-ai pop', 360, 10) { update }
-        end
-
-        def onupdate_unregister
-            df.onupdate_unregister(@onupdate_handle)
-        end
-
-        def update
-            @update_counter += 1
-            @onupdate_handle.description = "df-ai pop #{@update_counter % 10}"
-            case @update_counter % 10
-            when 1; update_citizenlist
-            when 2; update_nobles
-            when 3; update_jobs
-            when 4; update_military
-            when 5; update_pets
-            when 6; update_deads
-            when 7; update_caged
-            end
-            @onupdate_handle.description = "df-ai pop"
-
-            i = 0
-            bga = df.onupdate_register('df-ai pop autolabors', 3) {
-                bga.description = "df-ai pop autolabors #{i}"
-                autolabors(i)
-                df.onupdate_unregister(bga) if i > 10
-                i += 1
-            } if @update_counter % 3 == 0
-        end
-
-        def new_citizen(id)
-            c = Citizen.new(id)
-            @citizen[id] = c
-            ai.plan.new_citizen(id)
-            c
-        end
-
-        def del_citizen(id)
-            @citizen.delete id
-            @military.delete id
-            ai.plan.del_citizen(id)
-        end
-
-        def update_citizenlist
-            old = @citizen.dup
-
-            # add new fort citizen to our list
-            df.unit_citizens.each { |u|
-                next if u.profession == :BABY
-                @citizen[u.id] ||= new_citizen(u.id)
-                old.delete u.id
-            }
-
-            # del those who are no longer here
-            old.each { |id, c|
-                # u.counters.death_tg.flags.discovered dead/missing
-                del_citizen(id)
-            }
-        end
-
-        def update_jobs
-            df.world.job_list.each { |j|
-                j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
-            }
-        end
-
         def update_deads
             df.world.units.all.each { |u|
                 ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly
@@ -756,103 +992,6 @@ class DwarfAI
                 rat = DFHack::SkillRating.int(sk.rating)
                 t + 400*rat + 100*rat*(rat+1)/2 + sk.experience
             }
-        end
-
-        def positionCode(responsibility)
-            df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                if a.responsibilities[responsibility]
-                    return a.code
-                end
-            end
-        end
-
-        def update_nobles
-            cz = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find_all { |u| u.profession != :BABY and u.profession != :CHILD }
-            ent = df.ui.main.fortress_entity
-
-
-            if ent.assignments_by_type[:MANAGE_PRODUCTION].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            } || cz.first
-                # TODO do check population caps, ...
-                assign_new_noble(positionCode(:MANAGE_PRODUCTION), tg)
-            end
-
-
-            if ent.assignments_by_type[:ACCOUNTING].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id } and !u.status.labors[:MINE]
-            }
-                assign_new_noble(positionCode(:ACCOUNTING), tg)
-                df.ui.bookkeeper_settings = 4
-            end
-
-
-            if ent.assignments_by_type[:HEALTH_MANAGEMENT].empty? and
-                    hosp = ai.plan.find_room(:infirmary) and hosp.status != :plan and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            }
-                assign_new_noble(positionCode(:HEALTH_MANAGEMENT), tg)
-            elsif ass = ent.assignments_by_type[:HEALTH_MANAGEMENT].first and hf = df.world.history.figures.binsearch(ass.histfig) and doc = df.unit_find(hf.unit_id)
-                # doc => healthcare
-                LaborList.each { |lb|
-                    case lb
-                    when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
-                        doc.status.labors[lb] = true
-                    end
-                }
-            end
-
-
-            if ent.assignments_by_type[:TRADE].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            }
-                assign_new_noble(positionCode(:TRADE), tg)
-            end
-
-            check_noble_appartments
-        end
-
-        def check_noble_appartments
-            noble_ids = df.ui.main.fortress_entity.assignments_by_type.map { |alist|
-                alist.map { |a| a.histfig_tg.unit_id }
-            }.flatten.uniq.sort
-
-            noble_ids.delete_if { |id|
-                not df.unit_entitypositions(df.unit_find(id)).find { |ep|
-                    ep.required_office > 0 or ep.required_dining > 0 or ep.required_tomb > 0
-                }
-            }
-
-            ai.plan.attribute_noblerooms(noble_ids)
-        end
-
-        def assign_new_noble(pos_code, unit)
-            ent = df.ui.main.fortress_entity
-
-            pos = ent.positions.own.find { |p| p.code == pos_code }
-            raise "no noble position #{pos_code}" if not pos
-
-            if not assign = ent.positions.assignments.find { |a| a.position_id == pos.id and a.histfig == -1 }
-                a_id = ent.positions.next_assignment_id
-                ent.positions.next_assignment_id = a_id+1
-                assign = DFHack::EntityPositionAssignment.cpp_new(:id => a_id, :position_id => pos.id)
-                assign.flags.resize(ent.positions.assignments.first.flags.length/8)   # XXX
-                assign.flags[0] = true  # XXX
-                ent.positions.assignments << assign
-            end
-
-            poslink = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
-            poslink.entity_id = df.ui.main.fortress_entity.id
-            poslink.assignment_id = assign.id
-
-            unit.hist_figure_tg.entity_links << poslink
-            assign.histfig = unit.hist_figure_id
-
-            pos.responsibilities.each_with_index { |r, k|
-                ent.assignments_by_type[k] << assign if r
-            }
-
-            assign
         end
 
         def update_pets

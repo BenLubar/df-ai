@@ -116,6 +116,54 @@ command_result Camera::statechange(color_ostream & out, state_change_event event
     }
 }
 
+static int view_priority(df::unit *unit)
+{
+    if (!unit->job.current_job)
+        return 0;
+
+    switch (ENUM_ATTR(job_type, type, unit->job.current_job->job_type))
+    {
+    case job_type_class::Misc:
+        return -20;
+    case job_type_class::Digging:
+        return -50;
+    case job_type_class::Building:
+        return -20;
+    case job_type_class::Hauling:
+        return -30;
+    case job_type_class::LifeSupport:
+        return -10;
+    case job_type_class::TidyUp:
+        return -20;
+    case job_type_class::Leisure:
+        return -20;
+    case job_type_class::Gathering:
+        return -30;
+    case job_type_class::Manufacture:
+        return -10;
+    case job_type_class::Improvement:
+        return -10;
+    case job_type_class::Crime:
+        return -50;
+    case job_type_class::LawEnforcement:
+        return -30;
+    case job_type_class::StrangeMood:
+        return -20;
+    case job_type_class::UnitHandling:
+        return -30;
+    case job_type_class::SiegeWeapon:
+        return -50;
+    case job_type_class::Medicine:
+        return -50;
+    }
+    return 0;
+}
+
+static bool compare_view_priority(df::unit *a, df::unit *b)
+{
+    return view_priority(a) < view_priority(b);
+}
+
 command_result Camera::update(color_ostream & out)
 {
     update_after_ticks--;
@@ -252,54 +300,6 @@ void Camera::start_recording(color_ostream & out)
         filename << "data/movies/df-ai-" << std::time(nullptr) << ".cmv";
         gview->movie_file = filename.str();
     }
-}
-
-bool Camera::compare_view_priority(df::unit *a, df::unit *b)
-{
-    return view_priority(a) < view_priority(b);
-}
-
-int Camera::view_priority(df::unit *unit)
-{
-    if (!unit->job.current_job)
-        return 0;
-
-    switch (df::enum_traits<df::job_type>::attrs(unit->job.current_job->job_type).type)
-    {
-    case job_type_class::Misc:
-        return -20;
-    case job_type_class::Digging:
-        return -50;
-    case job_type_class::Building:
-        return -20;
-    case job_type_class::Hauling:
-        return -30;
-    case job_type_class::LifeSupport:
-        return -10;
-    case job_type_class::TidyUp:
-        return -20;
-    case job_type_class::Leisure:
-        return -20;
-    case job_type_class::Gathering:
-        return -30;
-    case job_type_class::Manufacture:
-        return -10;
-    case job_type_class::Improvement:
-        return -10;
-    case job_type_class::Crime:
-        return -50;
-    case job_type_class::LawEnforcement:
-        return -30;
-    case job_type_class::StrangeMood:
-        return -20;
-    case job_type_class::UnitHandling:
-        return -30;
-    case job_type_class::SiegeWeapon:
-        return -50;
-    case job_type_class::Medicine:
-        return -50;
-    }
-    return 0;
 }
 
 bool Camera::followed_previously(int32_t id)
