@@ -10,6 +10,8 @@
 #include <random>
 #include <ctime>
 
+#include "df/report.h"
+
 using namespace DFHack;
 using namespace df::enums;
 
@@ -113,6 +115,7 @@ protected:
     friend class Camera;
     Embark embark;
     friend class Embark;
+    std::time_t unpause_delay;
 
 public:
     AI(color_ostream & out);
@@ -124,6 +127,8 @@ public:
 
     void debug(color_ostream & out, const std::string & str);
     void unpause(color_ostream & out);
+    void check_unpause(color_ostream & out, state_change_event event);
+    void handle_pause_event(color_ostream & out, std::vector<df::report *>::reverse_iterator ann, std::vector<df::report *>::reverse_iterator end);
 };
 
 // vim: et:sw=4:ts=4

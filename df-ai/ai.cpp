@@ -4,10 +4,18 @@
 
 #include "modules/Gui.h"
 
+#include "df/announcements.h"
+#include "df/announcement_type.h"
 #include "df/interface_key.h"
+#include "df/report.h"
 #include "df/viewscreen.h"
+#include "df/viewscreen_requestagreementst.h"
+#include "df/viewscreen_textviewerst.h"
+#include "df/viewscreen_topicmeetingst.h"
+#include "df/viewscreen_topicmeeting_takerequestsst.h"
 #include "df/world.h"
 
+REQUIRE_GLOBAL(announcements);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(pause_state);
@@ -19,7 +27,8 @@ AI::AI(color_ostream & out) :
     plan(out, this),
     stocks(out, this),
     camera(out, this),
-    embark(out, this)
+    embark(out, this),
+    unpause_delay(0)
 {
 }
 
@@ -44,11 +53,21 @@ command_result AI::status(color_ostream & out)
 
 command_result AI::statechange(color_ostream & out, state_change_event event)
 {
+    check_unpause(out, event);
     CHECK_RESULTS(statechange(out, event));
 }
 
 command_result AI::update(color_ostream & out)
 {
+    if (unpause_delay && unpause_delay <= std::time(nullptr))
+    {
+        unpause_delay = 0;
+        std::set<df::interface_key> keys;
+        keys.insert(interface_key::LEAVESCREEN);
+        keys.insert(interface_key::OPTION1);
+        Gui::getCurViewscreen()->feed(&keys);
+        unpause(out);
+    }
     CHECK_RESULTS(update(out));
 }
 
@@ -68,7 +87,6 @@ void AI::debug(color_ostream & out, const std::string & str)
 void AI::unpause(color_ostream & out)
 {
     std::set<df::interface_key> keys;
-    keys.clear();
     keys.insert(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
     while (!world->status.popups.empty())
     {
@@ -82,338 +100,243 @@ void AI::unpause(color_ostream & out)
     }
 }
 
-/*
-    def self.timestamp(y=df.cur_year, t=df.cur_year_tick)
-        return '?????-??-??:????' if y == 0 and t == 0
-        "#{y.to_s.rjust(5, '0')}-#{(t / 50 / 24 / 28 + 1).to_s.rjust(2, '0')}-#{(t / 50 / 24 % 28 + 1).to_s.rjust(2, '0')}:#{(t % (24 * 50)).to_s.rjust(4, '0')}"
-    end
+void AI::handle_pause_event(color_ostream & out, std::vector<df::report *>::reverse_iterator ann, std::vector<df::report *>::reverse_iterator end)
+{
+    // unsplit announce text
+    df::report *announce = *ann;
+    std::string fulltext = announce->text;
+    while (announce->flags.bits.continuation && ann != end)
+    {
+        ann++;
+        announce = *ann;
+        fulltext = announce->text + " " + fulltext;
+    }
+    debug(out, "pause: " + fulltext);
 
-    def self.describe_item(i)
-        s = DFHack::StlString.cpp_new
-        i.getItemDescription(s, 0)
-        str = s.str.to_s
-        s._cpp_delete
-        str
-    end
+    switch (announce->type)
+    {
+        case announcement_type::MEGABEAST_ARRIVAL:
+            debug(out, "pause: uh oh, megabeast...");
+            break;
+        case announcement_type::BERSERK_CITIZEN:
+            debug(out, "pause: berserk");
+            break;
+        case announcement_type::UNDEAD_ATTACK:
+            debug(out, "pause: i see dead people");
+            break;
+        case announcement_type::CAVE_COLLAPSE:
+            debug(out, "pause: kevin?");
+            break;
+        case announcement_type::DIG_CANCEL_DAMP:
+        case announcement_type::DIG_CANCEL_WARM:
+            debug(out, "pause: lazy miners");
+            break;
+        case announcement_type::BIRTH_CITIZEN:
+            debug(out, "pause: newborn");
+            break;
+        case announcement_type::BIRTH_ANIMAL:
+            break;
+        case announcement_type::D_MIGRANTS_ARRIVAL:
+        case announcement_type::D_MIGRANT_ARRIVAL:
+        case announcement_type::MIGRANT_ARRIVAL:
+        case announcement_type::NOBLE_ARRIVAL:
+        case announcement_type::FORT_POSITION_SUCCESSION:
+            debug(out, "pause: more minions");
+            break;
+        case announcement_type::DIPLOMAT_ARRIVAL:
+        case announcement_type::LIAISON_ARRIVAL:
+        case announcement_type::CARAVAN_ARRIVAL:
+        case announcement_type::TRADE_DIPLOMAT_ARRIVAL:
+            debug(out, "pause: visitors");
+            break;
+        case announcement_type::STRANGE_MOOD:
+        case announcement_type::MOOD_BUILDING_CLAIMED:
+        case announcement_type::ARTIFACT_BEGUN:
+        case announcement_type::MADE_ARTIFACT:
+            debug(out, "pause: mood");
+            break;
+        case announcement_type::FEATURE_DISCOVERY:
+        case announcement_type::STRUCK_DEEP_METAL:
+            debug(out, "pause: dig dig dig");
+            break;
+        case announcement_type::TRAINING_FULL_REVERSION:
+            debug(out, "pause: born to be wild");
+            break;
+        case announcement_type::NAMED_ARTIFACT:
+            debug(out, "pause: hallo");
+            break;
+        case announcement_type::AMBUSH_DEFENDER:
+        case announcement_type::AMBUSH_RESIDENT:
+        case announcement_type::AMBUSH_THIEF:
+        case announcement_type::AMBUSH_THIEF_SUPPORT_SKULKING:
+        case announcement_type::AMBUSH_THIEF_SUPPORT_NATURE:
+        case announcement_type::AMBUSH_THIEF_SUPPORT:
+        case announcement_type::AMBUSH_MISCHIEVOUS:
+        case announcement_type::AMBUSH_SNATCHER:
+        case announcement_type::AMBUSH_SNATCHER_SUPPORT:
+        case announcement_type::AMBUSH_AMBUSHER_NATURE:
+        case announcement_type::AMBUSH_AMBUSHER:
+        case announcement_type::AMBUSH_INJURED:
+        case announcement_type::AMBUSH_OTHER:
+        case announcement_type::AMBUSH_INCAPACITATED:
+            debug(out, "pause: an ambush!");
+            break;
+        default:
+            debug(out, "pause: unhandled pausing event");
+            break;
+    }
 
-    def self.describe_unit(u)
-        s = capitalize_all(u.name)
-        s << ', ' unless s.empty?
-        s << profession(u)
-        s
-    end
+    if (announcements->flags[announce->type].bits.DO_MEGA)
+    {
+        unpause_delay = std::time(nullptr) + 5;
+    }
+    else
+    {
+        unpause(out);
+    }
+}
 
-    def self.capitalize_all(s)
-        s.to_s.split(' ').map { |w|
-            if w == 'of' or w == 'the'
-                w
-            else
-                w.sub(/^[a-z]/) { |s| s.upcase }
-            end
-        }.join(' ')
-    end
+static bool is_pause_announcement_flag(df::report *ann)
+{
+    return ann->pos.isValid() && announcements->flags[ann->type].bits.PAUSE;
+}
 
-    # converted from dfhack's C++ api
-    def self.profession(u, ignore_noble=false, plural=false)
-        prof = u.custom_profession
-        return prof unless prof.empty?
-
-        if not ignore_noble and np = df.unit_entitypositions(u) and not np.empty?
-            case u.sex
-            when 0
-                prof = np[0].name_female[plural ? 1 : 0]
-            when 1
-                prof = np[0].name_male[plural ? 1 : 0]
-            end
-
-            prof = np[0].name[plural ? 1 : 0] if prof.empty?
-            return prof unless prof.empty?
-        end
-
-        current_race = df.ui.race_id
-        use_race_prefix = u.race != current_race
-
-        caste = u.caste_tg
-        race_prefix = caste.caste_name[0]
-
-        if plural
-            prof = caste.caste_profession_name.plural[u.profession]
-        else
-            prof = caste.caste_profession_name.singular[u.profession]
-        end
-
-        if prof.empty?
-            case u.profession
-            when :CHILD
-                prof = caste.child_name[plural ? 1 : 0]
-                use_race_prefix = prof.empty?
-            when :BABY
-                prof = caste.baby_name[plural ? 1 : 0]
-                use_race_prefix = prof.empty?
-            end
-        end
-
-        race = u.race_tg
-        race_prefix = race.name[0] if race_prefix.empty?
-
-        if prof.empty?
-            if plural
-                prof = race.profession_name.plural[u.profession]
-            else
-                prof = race.profession_name.singular[u.profession]
-            end
-
-            if prof.empty?
-                case u.profession
-                when :CHILD
-                    prof = race.general_child_name[plural ? 1 : 0]
-                    use_race_prefix = prof.empty?
-                when :BABY
-                    prof = race.general_baby_name[plural ? 1 : 0]
-                    use_race_prefix = prof.empty?
-                end
-            end
-        end
-
-        race_prefix = 'Animal' if race_prefix.empty?
-
-        if prof.empty?
-            case u.profession
-            when :TRAINED_WAR
-                prof = "War #{use_race_prefix ? race_prefix : 'Peasant'}"
-                use_race_prefix = false
-            when :TRAINED_HUNTER
-                prof = "Hunting #{use_race_prefix ? race_prefix : 'Peasant'}"
-                use_race_prefix = false
-            when :STANDARD
-                prof = 'Peasant' unless use_race_prefix
-            else
-                if caption = DFHack::Profession::Caption[u.profession]
-                    prof = caption
-                else
-                    prof = u.profession.to_s.downcase
-                end
-            end
-        end
-
-        if use_race_prefix
-            race_prefix << " " unless prof.empty?
-            prof = race_prefix + prof
-        end
-
-        capitalize_all(prof)
-    end
-
-    def debug(str, announce=nil)
-        str = str.join("\n") if Array === str
-        df.add_announcement("AI: #{str}", 7, false) { |ann| ann.pos = announce } if announce
-        ts = DwarfAI.timestamp
-        puts "AI: #{ts} #{str}" if $DEBUG
-        unless @logger
-            @logger = open('df-ai.log', 'a')
-            @logger.sync = true
-        end
-        @logger.puts "#{ts} #{str.to_s.gsub("\n", "\n                 ")}"
-    end
-
-    def startup
-        @pop.startup
-        @plan.startup
-        @stocks.startup
-        @camera.startup
-        @random_embark.startup
-    end
-
-    def unpause!
-        until df.world.status.popups.empty?
-            df.curview.feed_keys(:CLOSE_MEGA_ANNOUNCEMENT)
-        end
-        df.curview.feed_keys(:D_PAUSE) if df.pause_state
-    end
-
-    def handle_pause_event(announce)
-        # unsplit announce text
-        fulltext = announce.text
-        idx = df.world.status.announcements.index(announce)
-        while announce.flags.continuation
-            announce = df.world.status.announcements[idx -= 1]
-            break if not announce
-            fulltext = announce.text + ' ' + fulltext
-        end
-        debug "pause: #{fulltext.inspect}"
-
-        case announce.type
-        when :MEGABEAST_ARRIVAL; debug 'pause: uh oh, megabeast...'
-        when :BERSERK_CITIZEN; debug 'pause: berserk'
-        when :UNDEAD_ATTACK; debug 'pause: i see dead people'
-        when :CAVE_COLLAPSE; debug 'pause: kevin?'
-        when :DIG_CANCEL_DAMP, :DIG_CANCEL_WARM; debug 'pause: lazy miners'
-        when :BIRTH_CITIZEN; debug 'pause: newborn'
-        when :BIRTH_ANIMAL
-        when :D_MIGRANTS_ARRIVAL, :D_MIGRANT_ARRIVAL, :MIGRANT_ARRIVAL, :NOBLE_ARRIVAL, :FORT_POSITION_SUCCESSION
-            debug 'pause: more minions'
-        when :DIPLOMAT_ARRIVAL, :LIAISON_ARRIVAL, :CARAVAN_ARRIVAL, :TRADE_DIPLOMAT_ARRIVAL
-            debug 'pause: visitors'
-        when :STRANGE_MOOD, :MOOD_BUILDING_CLAIMED, :ARTIFACT_BEGUN, :MADE_ARTIFACT
-            debug 'pause: mood'
-        when :FEATURE_DISCOVERY, :STRUCK_DEEP_METAL; debug 'pause: dig dig dig'
-        when :TRAINING_FULL_REVERSION; debug 'pause: born to be wild'
-        when :NAMED_ARTIFACT; debug 'pause: hallo'
-        else
-            if announce.type.to_s =~ /^AMBUSH/
-                debug 'pause: an ambush!'
-            else
-                debug "pause: unhandled pausing event #{announce.type.inspect} #{announce.inspect}"
-                #return
-            end
-        end
-
-        if df.announcements.flags[announce.type].DO_MEGA
-            timeout_sameview { unpause! }
-        else
-            unpause!
-        end
-    end
-
-    def statechanged(st)
-        # automatically unpause the game (only for game-generated pauses)
-        if st == :PAUSED and
-                la = df.world.status.announcements.to_a.reverse.find { |a|
-                    df.announcements.flags[a.type].PAUSE rescue nil
-                } and la.year == df.cur_year and la.time == df.cur_year_tick
-            handle_pause_event(la)
-        elsif st == :PAUSED
-            unpause!
-            debug "pause without an event"
-        elsif st == :VIEWSCREEN_CHANGED
-            case cvname = df.curview._rtti_classname
-            when :viewscreen_textviewerst
-                text = df.curview.formatted_text.map { |t|
-                    t.text.to_s.strip.gsub(/\s+/, ' ')
-                }.join(' ')
-
-                case text
-                when /I am your liaison from the Mountainhomes\. Let's discuss your situation\.|Farewell, .*I look forward to our meeting next year\.|A diplomat has left unhappy\.|You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind\. Further abuse cannot be tolerated\. Let this be a warning to you\.|Greetings from the woodlands\. We have much to discuss\.|Although we do not always see eye to eye \(ha!\), I bid you farewell\. May you someday embrace nature as you embrace the rocks and mud\./
-                    debug "exit diplomat textviewerst (#{text.inspect})"
-                    timeout_sameview {
-                        df.curview.feed_keys(:LEAVESCREEN)
-                    }
-
-                when /A vile force of darkness has arrived!|The .* have brought the full forces of their lands against you\.|The enemy have come and are laying siege to the fortress\.|The dead walk\. Hide while you still can!/
-                    debug "siege (#{text.inspect})"
-                    timeout_sameview {
-                        df.curview.feed_keys(:LEAVESCREEN)
-                        unpause!
-                    }
-
-                when /Your strength has been broken\.|Your settlement has crumbled to its end\.|Your settlement has been abandoned\./
-                    debug 'you just lost the game:'
-                    debug text.inspect
-                    debug 'Exiting AI.'
-                    onupdate_unregister
-                    # dont unpause, to allow for 'die'
-
-                else
-                    debug "paused in unknown textviewerst #{text.inspect}"
-                end
-
-            when :viewscreen_topicmeetingst
-                timeout_sameview {
-                    df.curview.feed_keys(:OPTION1)
-                }
-                debug "exit diplomat topicmeetingst"
-
-            when :viewscreen_topicmeeting_takerequestsst, :viewscreen_requestagreementst
-                debug "exit diplomat #{cvname}"
-                timeout_sameview {
-                    df.curview.feed_keys(:LEAVESCREEN)
-                }
-
-            else
-                @seen_cvname ||= { :viewscreen_dwarfmodest => true }
-                debug "paused in unknown viewscreen #{cvname}" if not @seen_cvname[cvname]
-                @seen_cvname[cvname] = true
-            end
-        end
-    end
-
-    def abandon!(view=df.curview)
-        return unless $AI_RANDOM_EMBARK
-        view.child = DFHack::ViewscreenOptionst.cpp_new(:parent => view, :options => [6])
-        view = view.child
-        view.feed_keys(:SELECT)
-        view.feed_keys(:MENU_CONFIRM)
-        # current view switches to a textviewer at this point
-        df.curview.feed_keys(:SELECT)
-    end
-
-    def timeout_sameview(delay=5, &cb)
-        curscreen = df.curview._rtti_classname
-        timeoff = Time.now + delay
-
-        df.onupdate_register_once('timeout') {
-            next true if df.curview._rtti_classname != curscreen
-
-            if Time.now >= timeoff
-                cb.call
-                true
-            end
-        }
-    end
-
-    def onupdate_register
-        @pop.onupdate_register
-        @plan.onupdate_register
-        @stocks.onupdate_register
-        @camera.onupdate_register
-        @random_embark.onupdate_register
-        @status_onupdate = df.onupdate_register('df-ai status', 3*28*1200, 3*28*1200) { debug status }
-        last_unpause = Time.now
-        @pause_onupdate = df.onupdate_register_once('df-ai unpause') {
-            if Time.now < last_unpause + 11
-                # do nothing
-            elsif df.pause_state
-                timeout_sameview(10) { unpause! }
-                last_update = Time.now
-            end
-            false
-        }
-
-        df.onstatechange_register_once { |st|
-            case st
-            when :WORLD_UNLOADED
-                debug 'world unloaded, disabling self'
-                onupdate_unregister
-                true
-            else
-                statechanged(st)
-                false
-            end
-        }
-    end
-
-    def onupdate_unregister
-        @random_embark.onupdate_unregister
-        @camera.onupdate_unregister
-        @stocks.onupdate_unregister
-        @plan.onupdate_unregister
-        @pop.onupdate_unregister
-        df.onupdate_unregister(@status_onupdate)
-        df.onupdate_unregister(@pause_onupdate)
-    end
-
-    def status
-        ["Plan: #{plan.status}", "Pop: #{pop.status}", "Stocks: #{stocks.status}", "Camera: #{camera.status}"]
-    end
-
-    def serialize
+static void clean_text(std::string & text)
+{
+    bool remove = true;
+    auto dest = text.begin();
+    for (auto src : text)
+    {
+        if (src == ' ')
         {
-            :plan   => plan.serialize,
-            :pop    => pop.serialize,
-            :stocks => stocks.serialize,
-            :camera => camera.serialize,
+            if (!remove)
+            {
+                remove = true;
+                *(dest++) = src;
+            }
         }
-    end
+        else
+        {
+            remove = false;
+            *(dest++) = src;
+        }
+    }
+    text.erase(dest, text.end());
+}
+
+static bool contains(const std::string & text, const std::string & sub)
+{
+    return text.find(sub) != std::string::npos;
+}
+
+void AI::check_unpause(color_ostream & out, state_change_event event)
+{
+    if (unpause_delay)
+        return;
+
+    // automatically unpause the game (only for game-generated pauses)
+    switch (event)
+    {
+        case SC_PAUSED:
+        {
+            auto ann = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), is_pause_announcement_flag);
+            if (ann != world->status.announcements.rend() && (*ann)->year == *cur_year && (*ann)->time == *cur_year_tick)
+            {
+                handle_pause_event(out, ann, world->status.announcements.rend());
+                return;
+            }
+            debug(out, "pause without an event");
+            unpause(out);
+            return;
+        }
+        case SC_VIEWSCREEN_CHANGED:
+        {
+            df::viewscreen *view = Gui::getCurViewscreen();
+
+            df::viewscreen_textviewerst *textviewer = strict_virtual_cast<df::viewscreen_textviewerst>(view);
+            if (textviewer)
+            {
+                std::string text;
+                for (auto t : textviewer->formatted_text)
+                {
+                    text += t->text;
+                }
+                clean_text(text);
+
+                if (contains(text, "I am your liaison from the Mountainhomes. Let's discuss your situation.") || (contains(text, "Farewell, ") && contains(text, "I look forward to our meeting next year.")) || contains(text, "A diplomat has left unhappy.") || contains(text, "You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind. Further abuse cannot be tolerated. Let this be a warning to you.") || contains(text, "Greetings from the woodlands. We have much to discuss.") || contains(text, "Although we do not always see eye to eye (ha!), I bid you farwell. May you someday embrace nature as you embrace the rocks and mud."))
+                {
+                    debug(out, "diplomat: " + text);
+                    unpause_delay = std::time(nullptr) + 5;
+                    return;
+                }
+
+                if (contains(text, "A vile force of darkness has arrived!") || contains(text, " have brought the full forces of their lands against you.") || contains(text, "The enemy have come and are laying siege to the fortress.") || contains(text, "The dead walk. Hide while you still can!"))
+                {
+                    debug(out, "siege: " + text);
+                    unpause_delay = std::time(nullptr) + 5;
+                    return;
+                }
+
+                if (contains(text, "Your strength has been broken.") || contains(text, "Your settlement has crumbled to its end.") || contains(text, "Your settlement has been abandoned."))
+                {
+                    debug(out, "you just lost the game: " + text);
+                    unpause_delay = std::time(nullptr) + 5;
+                    return;
+                }
+
+                debug(out, "paused in unknown textviewerst: " + text);
+                return;
+            }
+
+            df::viewscreen_topicmeetingst *meeting = strict_virtual_cast<df::viewscreen_topicmeetingst>(view);
+            if (meeting)
+            {
+                std::string text;
+                for (auto t : meeting->text)
+                {
+                    text += *t;
+                }
+                clean_text(text);
+
+                debug(out, "diplomat (meeting): " + text);
+                unpause_delay = std::time(nullptr) + 5;
+                return;
+            }
+
+            df::viewscreen_topicmeeting_takerequestsst *requests = strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(view);
+            if (requests)
+            {
+                debug(out, "diplomat (requests)");
+                unpause_delay = std::time(nullptr) + 5;
+                return;
+            }
+
+            df::viewscreen_requestagreementst *agreement = strict_virtual_cast<df::viewscreen_requestagreementst>(view);
+            if (agreement)
+            {
+                debug(out, "diplomat (agreement)");
+                unpause_delay = std::time(nullptr) + 5;
+                return;
+            }
+
+            debug(out, "paused in unknown viewscreen");
+            unpause_delay = std::time(nullptr) + 15;
+            return;
+        }
+        default:
+            return;
+    }
+}
+
+/*
+def abandon!(view=df.curview)
+    return unless $AI_RANDOM_EMBARK
+    view.child = DFHack::ViewscreenOptionst.cpp_new(:parent => view, :options => [6])
+    view = view.child
+    view.feed_keys(:SELECT)
+    view.feed_keys(:MENU_CONFIRM)
+    # current view switches to a textviewer at this point
+    df.curview.feed_keys(:SELECT)
 end
 */
 
