@@ -58,7 +58,7 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
 
 command_result status_command(color_ostream & out, std::vector<std::string> & args)
 {
-    if (args.size() != 0)
+    if (!args.empty())
     {
         return CR_WRONG_USAGE;
     }

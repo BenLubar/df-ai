@@ -3,18 +3,44 @@
 #include <sstream>
 #include <ctime>
 
+#include "modules/Gui.h"
+#include "modules/Maps.h"
+#include "modules/Translation.h"
+#include "modules/Units.h"
+
+#include "df/creature_interaction_effect_body_transformationst.h"
 #include "df/interfacest.h"
 #include "df/graphic.h"
+#include "df/job.h"
+#include "df/job_type.h"
+#include "df/job_type_class.h"
+#include "df/syndrome.h"
+#include "df/ui.h"
+#include "df/unit.h"
+#include "df/unit_syndrome.h"
+#include "df/viewscreen_dwarfmodest.h"
+#include "df/world.h"
 
 REQUIRE_GLOBAL(gps);
 REQUIRE_GLOBAL(gview);
+REQUIRE_GLOBAL(pause_state);
+REQUIRE_GLOBAL(ui);
+REQUIRE_GLOBAL(world);
+
+static uint8_t should_show_fps()
+{
+    return strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()) ? 1 : 0;
+}
 
 Camera::Camera(color_ostream & out, AI *parent) :
     ai(parent),
     following(-1),
-    following_prev()
+    following_prev{-1, -1, -1},
+    following_index(-1),
+    update_after_ticks(0),
+    rng(0)
 {
-    gps->display_frames = 1;
+    gps->display_frames = should_show_fps();
 
     if (/* TODO: $RECORD_MOVIE */ true)
     {
@@ -25,6 +51,191 @@ Camera::Camera(color_ostream & out, AI *parent) :
 Camera::~Camera()
 {
     gps->display_frames = 0;
+}
+
+command_result Camera::status(color_ostream & out)
+{
+    if (following == -1)
+    {
+        out << "inactive";
+    }
+    else
+    {
+        out << "following ";
+        df::unit *unit = df::unit::find(following);
+        out << Translation::TranslateName(Units::getVisibleName(unit), false);
+        out << ", ";
+        out << Units::getProfessionName(unit);
+    }
+
+    if (following_index == -1)
+    {
+        out << "\n";
+        return CR_OK;
+    }
+
+    out << " (previously: ";
+    for (int i = following_index; i < 3; i++)
+    {
+        if (following_prev[i] == -1)
+            continue;
+
+        df::unit *unit = df::unit::find(following_prev[i]);
+        out << Translation::TranslateName(Units::getVisibleName(unit), false);
+        out << ", ";
+        out << Units::getProfessionName(unit);
+        if (i != following_index)
+        {
+            out << "; ";
+        }
+    }
+    for (int i = 0; i < following_index; i++)
+    {
+        if (following_prev[i] == -1)
+            continue;
+
+        df::unit *unit = df::unit::find(following_prev[i]);
+        out << Translation::TranslateName(Units::getVisibleName(unit), false);
+        out << ", ";
+        out << Units::getProfessionName(unit);
+        out << "; ";
+    }
+    out << ")\n";
+
+    return CR_OK;
+}
+
+command_result Camera::statechange(color_ostream & out, state_change_event event)
+{
+    switch (event)
+    {
+    case SC_VIEWSCREEN_CHANGED:
+        gps->display_frames = should_show_fps();
+        return CR_OK;
+    default:
+        return CR_OK;
+    }
+}
+
+command_result Camera::update(color_ostream & out)
+{
+    update_after_ticks--;
+    if (update_after_ticks > 0)
+        return CR_OK;
+
+    update_after_ticks = 100;
+
+    if ((following == -1 && ui->follow_unit != -1) || (following != -1 && following != ui->follow_unit))
+    {
+        if (ui->follow_unit == -1) {
+            following = -1;
+        } else {
+            following = ui->follow_unit;
+        }
+        return CR_OK;
+    }
+
+    std::vector<df::unit *> targets1;
+    std::vector<df::unit *> targets2;
+    for (auto unit : world->units.active)
+    {
+        if (unit->flags1.bits.dead || Maps::getTileDesignation(unit->pos)->bits.hidden)
+        {
+            continue;
+        }
+
+        if (unit->flags1.bits.marauder || unit->flags1.bits.active_invader || unit->flags2.bits.visitor_uninvited || !unit->status.attacker_ids.empty())
+        {
+            targets1.push_back(unit);
+            continue;
+        }
+        bool found = false;
+        for (auto syn : unit->syndromes.active)
+        {
+            for (auto ce : df::syndrome::find(syn->type)->ce)
+            {
+                if (virtual_cast<df::creature_interaction_effect_body_transformationst>(ce))
+                {
+                    targets1.push_back(unit);
+                    found = true;
+                    break;
+                }
+            }
+            if (found)
+                break;
+        }
+        if (found)
+            continue;
+
+        if (Units::isCitizen(unit))
+        {
+            targets2.push_back(unit);
+            continue;
+        }
+    }
+    std::shuffle(targets1.begin(), targets1.end(), rng);
+    std::shuffle(targets2.begin(), targets2.end(), rng);
+    std::sort(targets2.begin(), targets2.end(), compare_view_priority);
+
+    if (following != -1)
+    {
+        following_index++;
+        if (following_index > 3)
+        {
+            following_index = 0;
+        }
+        following_prev[following_index] = following;
+    }
+
+    df::unit *best_target = nullptr;
+
+    std::size_t targets1_count = targets1.size();
+    if (targets1_count > 2)
+        targets1_count = 2;
+    for (auto unit : targets1)
+    {
+        if (followed_previously(unit->id))
+        {
+            targets1_count--;
+            if (targets1_count == 0)
+                break;
+        }
+        else if (!best_target || best_target->flags1.bits.caged)
+        {
+            best_target = unit;
+        }
+    }
+
+    for (auto unit : targets2)
+    {
+        if (!best_target || followed_previously(best_target->id) || best_target->flags1.bits.caged)
+        {
+            best_target = unit;
+            if (!followed_previously(unit->id) && !unit->flags1.bits.caged)
+                break;
+        }
+    }
+
+    if (!best_target)
+    {
+        following = -1;
+    }
+    else
+    {
+        following = best_target->id;
+
+        if (!*pause_state)
+        {
+            Gui::revealInDwarfmodeMap(best_target->pos, true);
+            ui->follow_unit = following;
+        }
+    }
+
+    world->status.flags.bits.combat = 0;
+    world->status.flags.bits.hunting = 0;
+    world->status.flags.bits.sparring = 0;
+
+    return CR_OK;
 }
 
 void Camera::start_recording(color_ostream & out)
@@ -44,169 +255,59 @@ void Camera::start_recording(color_ostream & out)
     }
 }
 
-/*
-class DwarfAI
-    class Camera
-        attr_accessor :ai
-        attr_accessor :onupdate_handle
-        attr_accessor :onstatechange_handle
-        def initialize(ai)
-            @ai = ai
-            @following = nil
-            @following_prev = []
-        end
+bool Camera::compare_view_priority(df::unit *a, df::unit *b)
+{
+    return view_priority(a) < view_priority(b);
+}
 
-        def startup
-        end
+int Camera::view_priority(df::unit *unit)
+{
+    if (!unit->job.current_job)
+        return 0;
 
-        def onupdate_register
-            df.gps.display_frames = 1
-            @onupdate_handle = df.onupdate_register('df-ai camera', 1000, 100) { update }
-            @onstatechange_handle = df.onstatechange_register { |mode|
-                if mode == :VIEWSCREEN_CHANGED
-                    df.gps.display_frames = df.curview._raw_rtti_classname == 'viewscreen_dwarfmodest' ? 1 : 0
-                end
-            }
-            if $RECORD_MOVIE and df.gview.supermovie_on == 0
-                df.gview.supermovie_on = 1
-                df.gview.currentblocksize = 0
-                df.gview.nextfilepos = 0
-                df.gview.supermovie_pos = 0
-                df.gview.supermovie_delayrate = 0
-                df.gview.first_movie_write = 1
-                df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
-            end
-        end
+    switch (df::enum_traits<df::job_type>::attrs(unit->job.current_job->job_type).type)
+    {
+    case job_type_class::Misc:
+        return -20;
+    case job_type_class::Digging:
+        return -50;
+    case job_type_class::Building:
+        return -20;
+    case job_type_class::Hauling:
+        return -30;
+    case job_type_class::LifeSupport:
+        return -10;
+    case job_type_class::TidyUp:
+        return -20;
+    case job_type_class::Leisure:
+        return -20;
+    case job_type_class::Gathering:
+        return -30;
+    case job_type_class::Manufacture:
+        return -10;
+    case job_type_class::Improvement:
+        return -10;
+    case job_type_class::Crime:
+        return -50;
+    case job_type_class::LawEnforcement:
+        return -30;
+    case job_type_class::StrangeMood:
+        return -20;
+    case job_type_class::UnitHandling:
+        return -30;
+    case job_type_class::SiegeWeapon:
+        return -50;
+    case job_type_class::Medicine:
+        return -50;
+    }
+    return 0;
+}
 
-        def onupdate_unregister
-            df.gps.display_frames = 0
-            ai.timeout_sameview(60) { df.curview.breakdown_level = :QUIT } unless $NO_QUIT or $AI_RANDOM_EMBARK
-            df.onupdate_unregister(@onupdate_handle)
-            df.onstatechange_unregister(@onstatechange_handle)
-        end
-
-        def update
-            if (not @following and df.ui.follow_unit != -1) or (@following and @following != df.ui.follow_unit)
-                if df.ui.follow_unit == -1
-                    @following = nil
-                else
-                    @following = df.ui.follow_unit
-                end
-                return
-            end
-
-            targets1 = df.world.units.active.find_all do |u|
-                u.flags1.marauder or u.flags1.active_invader or u.flags2.visitor_uninvited or u.syndromes.active.any? { |us|
-                    us.type_tg.ce.any? { |ce|
-                        ce.kind_of?(DFHack::CreatureInteractionEffectBodyTransformationst)
-                    }
-                } or not u.status.attacker_ids.empty?
-            end.shuffle
-            targets2 = df.unit_citizens.shuffle.sort_by do |u|
-                unless u.job.current_job
-                    0
-                else
-                    case DFHack::JobType::Type[u.job.current_job.job_type]
-                    when :Misc
-                        -20
-                    when :Digging
-                        -50
-                    when :Building
-                        -20
-                    when :Hauling
-                        -30
-                    when :LifeSupport
-                        -10
-                    when :TidyUp
-                        -20
-                    when :Leisure
-                        -20
-                    when :Gathering
-                        -30
-                    when :Manufacture
-                        -10
-                    when :Improvement
-                        -10
-                    when :Crime
-                        -50
-                    when :LawEnforcement
-                        -30
-                    when :StrangeMood
-                        -20
-                    when :UnitHandling
-                        -30
-                    when :SiegeWeapon
-                        -50
-                    when :Medicine
-                        -50
-                    else
-                        0
-                    end
-                end
-            end
-
-            targets1.reject! do |u|
-                u.flags1.dead or df.map_tile_at(u).designation.hidden
-            end
-            targets2.reject! do |u|
-                u.flags1.dead
-            end
-
-            @following_prev << @following if @following
-            if @following_prev.length > 3
-                @following_prev = @following_prev[-3, 3]
-            end
-
-            targets1_count = [3, targets1.length].min
-            unless targets2.empty?
-                targets1.each do |u|
-                    if @following_prev.include?(u.id)
-                        targets1_count -= 1
-                        break if targets1_count == 0
-                    end
-                end
-            end
-
-            targets = targets1[0, targets1_count] + targets2
-
-            if targets.empty?
-                @following = nil
-            else
-                while (@following_prev.include?(targets[0].id) or targets[0].flags1.caged) and targets.length > 1
-                    targets = targets[1..-1]
-                end
-                @following = targets[0].id
-            end
-
-            if @following and not df.pause_state
-                df.center_viewscreen(df.unit_find(@following))
-                df.ui.follow_unit = @following
-            end
-
-            df.world.status.flags.combat = false
-            df.world.status.flags.hunting = false
-            df.world.status.flags.sparring = false
-        end
-
-        def status
-            fp = @following_prev.map { |id|
-                DwarfAI::describe_unit(df.unit_find(id))
-            }.join('; ')
-            if @following and df.ui.follow_unit == @following
-                "following #{DwarfAI::describe_unit(df.unit_find(@following))} (previously: #{fp})"
-            else
-                "inactive (previously: #{fp})"
-            end
-        end
-
-        def serialize
-            {
-                :following      => @following,
-                :following_prev => @following_prev,
-            }
-        end
-    end
-end
-*/
+bool Camera::followed_previously(int32_t id)
+{
+    return following_prev[0] == id ||
+           following_prev[1] == id ||
+           following_prev[2] == id;
+}
 
 // vim: et:sw=4:ts=4

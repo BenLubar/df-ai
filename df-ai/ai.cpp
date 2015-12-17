@@ -1,5 +1,16 @@
 #include "ai.h"
 
+#include <set>
+
+#include "modules/Gui.h"
+
+#include "df/interface_key.h"
+#include "df/viewscreen.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(world);
+REQUIRE_GLOBAL(pause_state);
+
 AI::AI(color_ostream & out) :
     pop(out, this),
     plan(out, this),
@@ -9,53 +20,52 @@ AI::AI(color_ostream & out) :
 {
 }
 
+#define CHECK_RESULT(res, mod, fn) \
+    res = mod.fn; \
+    if (res != CR_OK) \
+        return res
+
+#define CHECK_RESULTS(fn) \
+    command_result res; \
+    CHECK_RESULT(res, pop, fn); \
+    CHECK_RESULT(res, plan, fn); \
+    CHECK_RESULT(res, stocks, fn); \
+    CHECK_RESULT(res, camera, fn); \
+    CHECK_RESULT(res, embark, fn); \
+    return res
+
 command_result AI::status(color_ostream & out)
 {
-    command_result res;
-#define CHECK_RESULT(mod) \
-        res = mod.status(out); \
-        if (res != CR_OK) \
-            return res
-    CHECK_RESULT(pop);
-    CHECK_RESULT(plan);
-    CHECK_RESULT(stocks);
-    CHECK_RESULT(camera);
-    CHECK_RESULT(embark);
-#undef CHECK_RESULT
-    return res;
+    CHECK_RESULTS(status(out));
 }
 
 command_result AI::statechange(color_ostream & out, state_change_event event)
 {
-    command_result res;
-#define CHECK_RESULT(mod) \
-        res = mod.statechange(out, event); \
-        if (res != CR_OK) \
-            return res
-    CHECK_RESULT(pop);
-    CHECK_RESULT(plan);
-    CHECK_RESULT(stocks);
-    CHECK_RESULT(camera);
-    CHECK_RESULT(embark);
-#undef CHECK_RESULT
-    return res;
+    CHECK_RESULTS(statechange(out, event));
 }
 
 command_result AI::update(color_ostream & out)
 {
-    command_result res;
-#define CHECK_RESULT(mod) \
-        res = mod.update(out); \
-        if (res != CR_OK) \
-            return res
-    CHECK_RESULT(pop);
-    CHECK_RESULT(plan);
-    CHECK_RESULT(stocks);
-    CHECK_RESULT(camera);
-    CHECK_RESULT(embark);
-#undef CHECK_RESULT
-    return res;
+    CHECK_RESULTS(update(out));
 }
+
+void AI::unpause(color_ostream & out)
+{
+    std::set<df::interface_key> keys;
+    keys.clear();
+    keys.insert(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
+    while (!world->status.popups.empty())
+    {
+        Gui::getCurViewscreen()->feed(&keys);
+    }
+    if (*pause_state)
+    {
+        keys.clear();
+        keys.insert(interface_key::D_PAUSE);
+        Gui::getCurViewscreen()->feed(&keys);
+    }
+}
+
 /*
     def self.timestamp(y=df.cur_year, t=df.cur_year_tick)
         return '?????-??-??:????' if y == 0 and t == 0

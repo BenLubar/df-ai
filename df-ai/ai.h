@@ -7,6 +7,8 @@
 
 #include "DataDefs.h"
 
+#include <random>
+
 using namespace DFHack;
 using namespace df::enums;
 
@@ -62,7 +64,10 @@ class Camera
 {
     AI *ai;
     int32_t following;
-    std::vector<int32_t> following_prev;
+    int32_t following_prev[3];
+    int following_index;
+    int update_after_ticks;
+    std::mt19937 rng;
 
 public:
     Camera(color_ostream & out, AI *parent);
@@ -73,6 +78,9 @@ public:
     command_result update(color_ostream & out);
 
     void start_recording(color_ostream & out);
+    static bool compare_view_priority(df::unit *, df::unit *);
+    static int view_priority(df::unit *);
+    bool followed_previously(int32_t id);
 };
 
 class Embark
@@ -103,6 +111,8 @@ public:
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
+
+    void unpause(color_ostream & out);
 };
 
 // vim: et:sw=4:ts=4

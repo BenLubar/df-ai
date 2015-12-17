@@ -5,7 +5,7 @@ REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
 Population::Population(color_ostream & out, AI *parent) :
     ai(parent)
 {
-    standing_orders_forbid_used_ammo = 0;
+    *standing_orders_forbid_used_ammo = 0;
 }
 
 Population::~Population()
