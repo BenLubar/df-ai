@@ -80,7 +80,12 @@ void AI::debug(color_ostream & out, const std::string & str)
     }
     else
     {
-        out.print("[AI] %05d-%02d-%02d:%04d %s\n", *cur_year, *cur_year_tick / 50 / 24 / 28 + 1, *cur_year_tick / 50 / 24 % 28 + 1, *cur_year_tick % (24 * 50), str.c_str());
+        out.print("[AI] %05d-%02d-%02d:%04d %s\n",
+                *cur_year,
+                *cur_year_tick / 50 / 24 / 28 + 1,
+                *cur_year_tick / 50 / 24 % 28 + 1,
+                *cur_year_tick % (24 * 50),
+                str.c_str());
     }
 }
 
@@ -263,21 +268,31 @@ void AI::check_unpause(color_ostream & out, state_change_event event)
                 }
                 clean_text(text);
 
-                if (contains(text, "I am your liaison from the Mountainhomes. Let's discuss your situation.") || (contains(text, "Farewell, ") && contains(text, "I look forward to our meeting next year.")) || contains(text, "A diplomat has left unhappy.") || contains(text, "You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind. Further abuse cannot be tolerated. Let this be a warning to you.") || contains(text, "Greetings from the woodlands. We have much to discuss.") || contains(text, "Although we do not always see eye to eye (ha!), I bid you farwell. May you someday embrace nature as you embrace the rocks and mud."))
+                if (contains(text, "I am your liaison from the Mountainhomes. Let's discuss your situation.") ||
+                        (contains(text, "Farewell, ") && contains(text, "I look forward to our meeting next year.")) ||
+                        contains(text, "A diplomat has left unhappy.") ||
+                        contains(text, "You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind. Further abuse cannot be tolerated. Let this be a warning to you.") ||
+                        contains(text, "Greetings from the woodlands. We have much to discuss.") ||
+                        contains(text, "Although we do not always see eye to eye (ha!), I bid you farwell. May you someday embrace nature as you embrace the rocks and mud."))
                 {
                     debug(out, "diplomat: " + text);
                     unpause_delay = std::time(nullptr) + 5;
                     return;
                 }
 
-                if (contains(text, "A vile force of darkness has arrived!") || contains(text, " have brought the full forces of their lands against you.") || contains(text, "The enemy have come and are laying siege to the fortress.") || contains(text, "The dead walk. Hide while you still can!"))
+                if (contains(text, "A vile force of darkness has arrived!") ||
+                        contains(text, " have brought the full forces of their lands against you.") ||
+                        contains(text, "The enemy have come and are laying siege to the fortress.") ||
+                        contains(text, "The dead walk. Hide while you still can!"))
                 {
                     debug(out, "siege: " + text);
                     unpause_delay = std::time(nullptr) + 5;
                     return;
                 }
 
-                if (contains(text, "Your strength has been broken.") || contains(text, "Your settlement has crumbled to its end.") || contains(text, "Your settlement has been abandoned."))
+                if (contains(text, "Your strength has been broken.") ||
+                        contains(text, "Your settlement has crumbled to its end.") ||
+                        contains(text, "Your settlement has been abandoned."))
                 {
                     debug(out, "you just lost the game: " + text);
                     unpause_delay = std::time(nullptr) + 5;
@@ -285,6 +300,7 @@ void AI::check_unpause(color_ostream & out, state_change_event event)
                 }
 
                 debug(out, "paused in unknown textviewerst: " + text);
+                unpause_delay = std::time(nullptr) + 15;
                 return;
             }
 
