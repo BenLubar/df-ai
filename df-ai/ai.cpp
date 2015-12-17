@@ -8,10 +8,13 @@
 #include "df/viewscreen.h"
 #include "df/world.h"
 
-REQUIRE_GLOBAL(world);
+REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(pause_state);
+REQUIRE_GLOBAL(world);
 
 AI::AI(color_ostream & out) :
+    rng(0),
     pop(out, this),
     plan(out, this),
     stocks(out, this),
@@ -47,6 +50,19 @@ command_result AI::statechange(color_ostream & out, state_change_event event)
 command_result AI::update(color_ostream & out)
 {
     CHECK_RESULTS(update(out));
+}
+
+void AI::debug(color_ostream & out, const std::string & str)
+{
+    if (*cur_year == 0 && *cur_year_tick == 0)
+    {
+        // split up the string so trigraphs don't do weird things.
+        out.print("[AI] ?????" "-??" "-??:???? %s\n", str.c_str());
+    }
+    else
+    {
+        out.print("[AI] %05d-%02d-%02d:%04d %s\n", *cur_year, *cur_year_tick / 50 / 24 / 28 + 1, *cur_year_tick / 50 / 24 % 28 + 1, *cur_year_tick % (24 * 50), str.c_str());
+    }
 }
 
 void AI::unpause(color_ostream & out)

@@ -37,8 +37,7 @@ Camera::Camera(color_ostream & out, AI *parent) :
     following(-1),
     following_prev{-1, -1, -1},
     following_index(-1),
-    update_after_ticks(0),
-    rng(0)
+    update_after_ticks(0)
 {
     gps->display_frames = should_show_fps();
 
@@ -173,8 +172,8 @@ command_result Camera::update(color_ostream & out)
             continue;
         }
     }
-    std::shuffle(targets1.begin(), targets1.end(), rng);
-    std::shuffle(targets2.begin(), targets2.end(), rng);
+    std::shuffle(targets1.begin(), targets1.end(), ai->rng);
+    std::shuffle(targets2.begin(), targets2.end(), ai->rng);
     std::sort(targets2.begin(), targets2.end(), compare_view_priority);
 
     if (following != -1)

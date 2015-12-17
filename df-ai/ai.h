@@ -8,6 +8,7 @@
 #include "DataDefs.h"
 
 #include <random>
+#include <ctime>
 
 using namespace DFHack;
 using namespace df::enums;
@@ -67,7 +68,6 @@ class Camera
     int32_t following_prev[3];
     int following_index;
     int update_after_ticks;
-    std::mt19937 rng;
 
 public:
     Camera(color_ostream & out, AI *parent);
@@ -86,6 +86,9 @@ public:
 class Embark
 {
     AI *ai;
+    bool embarking;
+    std::string world_name;
+    std::time_t timeout;
 
 public:
     Embark(color_ostream & out, AI *parent);
@@ -98,11 +101,18 @@ public:
 
 class AI
 {
+protected:
+    std::mt19937 rng;
     Population pop;
+    friend class Population;
     Plan plan;
+    friend class Plan;
     Stocks stocks;
+    friend class Stocks;
     Camera camera;
+    friend class Camera;
     Embark embark;
+    friend class Embark;
 
 public:
     AI(color_ostream & out);
@@ -112,6 +122,7 @@ public:
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
 
+    void debug(color_ostream & out, const std::string & str);
     void unpause(color_ostream & out);
 };
 
