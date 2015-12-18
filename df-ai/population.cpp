@@ -1,5 +1,6 @@
 #include "ai.h"
 
+#include "modules/Gui.h"
 #include "modules/Units.h"
 
 #include "df/entity_position.h"
@@ -9,11 +10,21 @@
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
+#include "df/interface_key.h"
+#include "df/itemdef_weaponst.h"
 #include "df/job.h"
+#include "df/squad.h"
+#include "df/squad_ammo_spec.h"
+#include "df/squad_order_trainst.h"
+#include "df/squad_position.h"
+#include "df/squad_schedule_order.h"
+#include "df/squad_uniform_spec.h"
 #include "df/ui.h"
+#include "df/uniform_category.h"
 #include "df/unit.h"
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
+#include "df/viewscreen.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -162,16 +173,9 @@ static const std::string *position_code(df::historical_entity *ent, df::entity_p
     return nullptr;
 }
 
-static void assign_new_noble(AI *ai, color_ostream & out, df::entity_position_responsibility r, df::unit *unit)
+static df::entity_position_assignment *assign_new_noble_by_code(AI *ai, color_ostream & out, const std::string *pos_code, df::unit *unit)
 {
     df::historical_entity *ent = ui->main.fortress_entity;
-
-    const std::string *pos_code = position_code(ent, r);
-    if (pos_code == nullptr)
-    {
-        ai->debug(out, std::string("could not find position with responsibility ") + enum_item_key_str(r));
-        return;
-    }
 
     for (auto pos : ent->positions.own)
     {
@@ -207,10 +211,68 @@ static void assign_new_noble(AI *ai, color_ostream & out, df::entity_position_re
             }
         }
 
-        return;
+        return *assign;
+    }
+    return nullptr;
+}
+
+static df::entity_position_assignment *assign_new_noble(AI *ai, color_ostream & out, df::entity_position_responsibility r, df::unit *unit)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    const std::string *pos_code = position_code(ent, r);
+    if (pos_code == nullptr)
+    {
+        ai->debug(out, std::string("could not find position with responsibility ") + enum_item_key_str(r));
+        return nullptr;
     }
 
-    ai->debug(out, "could not find position '" + *pos_code + "' with responsibility " + enum_item_key_str(r));
+    df::entity_position_assignment *assign = assign_new_noble_by_code(ai, out, pos_code, unit);
+    if (!assign)
+    {
+        ai->debug(out, "could not find position '" + *pos_code + "' with responsibility " + enum_item_key_str(r));
+    }
+    return assign;
+}
+
+static df::entity_position_assignment *assign_new_noble_commander(AI *ai, color_ostream & out, df::unit *unit)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    for (auto pos : ent->entity_raw->positions)
+    {
+        if (pos->responsibilities[entity_position_responsibility::MILITARY_STRATEGY] && pos->flags.is_set(entity_position_raw_flags::SITE))
+        {
+            df::entity_position_assignment *assign = assign_new_noble_by_code(ai, out, &pos->code, unit);
+            if (!assign)
+            {
+                ai->debug(out, "could not find position '" + pos->code + "' with responsibility MILITARY_STRATEGY (site)");
+            }
+            return assign;
+        }
+    }
+    ai->debug(out, "could not find position with responsibility MILITARY_STRATEGY (site)");
+    return nullptr;
+}
+
+static df::entity_position_assignment *assign_new_noble_captain(AI *ai, color_ostream & out, df::unit *unit)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    for (auto pos : ent->entity_raw->positions)
+    {
+        if (pos->flags.is_set(entity_position_raw_flags::MILITARY_SCREEN_ONLY) && pos->flags.is_set(entity_position_raw_flags::SITE))
+        {
+            df::entity_position_assignment *assign = assign_new_noble_by_code(ai, out, &pos->code, unit);
+            if (!assign)
+            {
+                ai->debug(out, "could not find position '" + pos->code + "' for captain (site)");
+            }
+            return assign;
+        }
+    }
+    ai->debug(out, "could not find position for captain (site)");
+    return nullptr;
 }
 
 void Population::update_nobles(color_ostream & out)
@@ -265,8 +327,8 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty())
     {
-        auto & hospital = ai->plan.find_room(Plan::room_type::infirmary);
-        if (hospital.status != Plan::room_status::plan)
+        auto hospital = ai->plan.find_room(Plan::room_type::infirmary);
+        if (hospital && hospital->status != Plan::room_status::plan)
         {
             df::unit *best = nullptr;
             for (auto unit : cz)
@@ -346,6 +408,229 @@ void Population::update_jobs(color_ostream & out)
     }
 }
 
+void Population::update_military(color_ostream & out)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    // check for new soldiers, allocate barracks
+    std::vector<df::unit *> newsoldiers;
+    std::vector<df::unit *> maydraft;
+
+    for (auto id : citizens)
+    {
+        df::unit *unit = df::unit::find(id);
+        if (unit->military.squad_id == 1)
+        {
+            if (military.erase(id))
+            {
+                ai->plan.del_soldier(out, id);
+            }
+
+            if (!Units::isChild(unit) && unit->mood == mood_type::None)
+            {
+                maydraft.push_back(unit);
+            }
+        }
+        else if (military.insert(std::make_pair(id, unit->military.squad_id)).second)
+        {
+            newsoldiers.push_back(unit);
+        }
+    }
+    std::sort(maydraft.begin(), maydraft.end(), compare_total_xp);
+
+    // enlist new soldiers if needed
+    for (int i = 0; military.size() < (maydraft.size() - i) / 4; i++)
+    {
+        df::unit *unit = maydraft[i];
+
+        int squad_size = 8;
+        if (military.size() < 4 * 6)
+            squad_size = 6;
+        if (military.size() < 3 * 4)
+            squad_size = 4;
+
+        int32_t squad_id = -1;
+
+        for (auto sq : ent->squads)
+        {
+            int count = 0;
+            for (auto soldier : military)
+            {
+                if (soldier.second == sq)
+                {
+                    count++;
+                }
+            }
+
+            if (count < squad_size)
+            {
+                squad_id = sq;
+                break;
+            }
+        }
+
+        if (squad_id == -1)
+        {
+            // create a new squad using the UI
+            std::set<df::interface_key> keys;
+#define KEY(key) \
+            keys.clear(); \
+            keys.insert(interface_key::key); \
+            Gui::getCurViewscreen()->feed(&keys)
+            KEY(D_MILITARY);
+            KEY(D_MILITARY_CREATE_SQUAD);
+            KEY(STANDARDSCROLL_UP);
+            KEY(SELECT);
+            KEY(LEAVESCREEN);
+#undef KEY
+
+            // get the squad and its id
+            squad_id = ent->squads.back();
+            df::squad *squad = df::squad::find(squad_id);
+
+            squad->cur_alert_idx = 1; // train
+            squad->uniform_priority = 2;
+            squad->carry_food = 2;
+            squad->carry_water = 2;
+
+            // uniform
+            for (auto pos : squad->positions)
+            {
+#define UNIFORM(type, item, cat) \
+                if (pos->uniform[uniform_category::type].empty()) \
+                { \
+                    df::squad_uniform_spec *spec = df::allocate<df::squad_uniform_spec>(); \
+                    spec->color = -1; \
+                    spec->item_filter.item_type = item_type::item; \
+                    spec->item_filter.material_class = entity_material_category::cat; \
+                    spec->item_filter.mattype = -1; \
+                    spec->item_filter.matindex = -1; \
+                    pos->uniform[uniform_category::type].push_back(spec); \
+                }
+                UNIFORM(body, ARMOR, Armor);
+                UNIFORM(head, HELM, Armor);
+                UNIFORM(pants, PANTS, Armor);
+                UNIFORM(gloves, GLOVES, Armor);
+                UNIFORM(shoes, SHOES, Armor);
+                UNIFORM(shield, SHIELD, Armor);
+                UNIFORM(weapon, WEAPON, None);
+#undef UNIFORM
+                pos->flags.bits.exact_matches = 1;
+            }
+
+            if (ent->squads.size() % 3 == 0)
+            {
+                // ranged squad
+                for (auto pos : squad->positions)
+                {
+                    pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.ranged = 1;
+                }
+                df::squad_ammo_spec *ammo = df::allocate<df::squad_ammo_spec>();
+                ammo->item_filter.item_type = item_type::AMMO;
+                ammo->item_filter.item_subtype = 0; // TODO: check raws for actual bolt subtype
+                ammo->item_filter.material_class = entity_material_category::None;
+                ammo->amount = 500;
+                ammo->flags.bits.use_combat = 1;
+                ammo->flags.bits.use_training = 1;
+                squad->ammunition.push_back(ammo);
+            }
+            else
+            {
+                // we don't want all the axes being used up by the military.
+                std::vector<df::itemdef_weaponst *> weapons;
+                for (int16_t id : ent->entity_raw->equipment.weapon_id)
+                {
+                    df::itemdef_weaponst *weapon = df::itemdef_weaponst::find(id);
+                    if (!weapon->flags.is_set(weapon_flags::TRAINING) &&
+                            weapon->skill_melee != job_skill::MINING &&
+                            weapon->skill_melee != job_skill::AXE &&
+                            weapon->skill_ranged == job_skill::NONE)
+                        weapons.push_back(weapon);
+                }
+                if (weapons.empty())
+                {
+                    ai->debug(out, "squad: no melee weapons found");
+                    for (auto pos : squad->positions)
+                    {
+                        pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.melee = 1;
+                    }
+                }
+                else
+                {
+                    size_t weapon_index = (ent->squads.size() - 1) * 10;
+                    for (auto pos : squad->positions)
+                    {
+                        pos->uniform[uniform_category::weapon][0]->item_filter.item_subtype = weapons[weapon_index++ % weapons.size()]->subtype;
+                    }
+                }
+            }
+        }
+
+        df::squad *squad = df::squad::find(squad_id);
+        int32_t squad_position = -1;
+        for (auto pos : squad->positions)
+        {
+            squad_position++;
+            if (pos->occupant != -1)
+                continue;
+
+            pos->occupant = unit->hist_figure_id;
+            unit->military.squad_id = squad_id;
+            unit->military.squad_position = squad_position;
+
+            bool has_leader = false;
+            for (auto assign : ent->positions.assignments)
+            {
+                if (assign->squad_id == squad_id)
+                {
+                    has_leader = true;
+                    break;
+                }
+            }
+
+            if (!has_leader)
+            {
+                df::entity_position_assignment *assign = ent->assignments_by_type[entity_position_responsibility::MILITARY_STRATEGY].empty() ? assign_new_noble_commander(ai, out, unit) : assign_new_noble_captain(ai, out, unit);
+                if (assign)
+                    assign->squad_id = squad_id;
+            }
+        }
+        military[unit->id] = squad_id;
+        newsoldiers.push_back(unit);
+    }
+
+    for (auto unit : newsoldiers)
+    {
+        ai->plan.new_soldier(out, unit->id);
+    }
+
+    for (auto id : ent->squads)
+    {
+        df::squad *squad = df::squad::find(id);
+        int soldier_count = 0;
+        for (auto pos : squad->positions)
+        {
+            if (pos->occupant != -1)
+                soldier_count++;
+        }
+        for (int month = 0; month < 12; month++)
+        {
+            for (auto order : squad->schedule[1][month]->orders)
+            {
+                df::squad_order_trainst *train = virtual_cast<df::squad_order_trainst>(order->order);
+                if (train)
+                {
+                    order->min_count = (soldier_count > 3 ? soldier_count - 1 : soldier_count);
+                    auto barracks = ai->plan.find_room(Plan::room_type::barracks, [id](Plan::room *r) -> bool { return r->info.barracks.squad_id == id; });
+                    if (barracks && barracks->status != Plan::room_status::finished)
+                    {
+                        order->min_count = 0;
+                    }
+                }
+            }
+        }
+    }
+}
 /*
 class DwarfAI
     class Population
@@ -390,52 +675,6 @@ class DwarfAI
             ai.debug "pop: dumped #{count} items from cages" if count > 0
         end
 
-        def update_military
-            # check for new soldiers, allocate barracks
-            newsoldiers = []
-
-            df.unit_citizens.each { |u|
-                if u.military.squad_id == -1
-                    if @military.delete u.id
-                        ai.plan.freesoldierbarrack(u.id)
-                    end
-                else
-                    if not @military[u.id]
-                        @military[u.id] = u.military.squad_id
-                        newsoldiers << u.id
-                    end
-                end
-            }
-
-            # enlist new soldiers if needed
-            maydraft = df.unit_citizens.reject { |u|
-                u.profession == :CHILD or
-                u.profession == :BABY or
-                u.mood != :None
-            }
-            while @military.length < maydraft.length/5
-                ns = military_find_new_soldier(maydraft)
-                break if not ns
-                @military[ns.id] = ns.military.squad_id
-                newsoldiers << ns.id
-            end
-
-            newsoldiers.each { |uid|
-                ai.plan.getsoldierbarrack(uid)
-            }
-
-            df.ui.main.fortress_entity.squads_tg.each { |sq|
-                soldier_count = sq.positions.count { |sp| sp.occupant != -1 }
-                sq.schedule[1].each { |sc|
-                    sc.orders.each { |so|
-                        next unless so.order.kind_of?(DFHack::SquadOrderTrainst)
-                        so.min_count = (soldier_count > 3 ? soldier_count-1 : soldier_count)
-                        so.min_count = 0 if r = ai.plan.find_room(:barracks) { |_r| _r.misc[:squad_id] == sq.id } and r.status != :finished
-                    }
-                }
-            }
-        end
-
         def military_random_squad_attack_unit(u)
             squad = df.ui.main.fortress_entity.squads_tg.sort_by { |sq|
                 sq.positions.count { |sp| sp.occupant != -1 } - sq.orders.length
@@ -447,162 +686,6 @@ class DwarfAI
                 :title => DwarfAI::describe_unit(u)
             )
         end
-
-        def military_find_commander_or_captain_pos(commander)
-            if commander
-                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.responsibilities[:MILITARY_STRATEGY] and a.flags[:SITE]
-                        return a.code
-                    end
-                end
-            else
-                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]
-                        return a.code
-                    end
-                end
-            end
-        end
-
-        # returns an unit newly assigned to a military squad
-        def military_find_new_soldier(unitlist)
-            ns = unitlist.find_all { |u|
-                u.military.squad_id == -1
-            }.sort_by { |u|
-                unit_totalxp(u) + 5000*df.unit_entitypositions(u).length
-            }.first
-            return if not ns
-
-            squad_id = military_find_free_squad
-            return if not squad_id
-            squad = df.world.squads.all.binsearch(squad_id)
-            pos = squad.positions.index { |p| p.occupant == -1 }
-            return if not pos
-
-            squad.positions[pos].occupant = ns.hist_figure_id
-            ns.military.squad_id = squad_id
-            ns.military.squad_position = pos
-
-            ent = df.ui.main.fortress_entity
-            if !ent.positions.assignments.find { |a| a.squad_id == squad_id }
-                if ent.assignments_by_type[:MILITARY_STRATEGY].empty?
-                    assign_new_noble(military_find_commander_or_captain_pos(true), ns).squad_id = squad_id
-                else
-                    assign_new_noble(military_find_commander_or_captain_pos(false), ns).squad_id = squad_id
-                end
-            end
-
-            ns
-        end
-
-        # return a squad index with an empty slot
-        def military_find_free_squad
-            squad_sz = 8
-            squad_sz = 6 if @military.length < 4*6
-            squad_sz = 4 if @military.length < 3*4
-
-            if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < squad_sz }
-
-                # create a new squad using the UI
-                df.curview.feed_keys(:D_MILITARY)
-                df.curview.feed_keys(:D_MILITARY_CREATE_SQUAD)
-                df.curview.feed_keys(:STANDARDSCROLL_UP)
-                df.curview.feed_keys(:SELECT)
-                df.curview.feed_keys(:LEAVESCREEN)
-
-                # get the squad and its id
-                squad_id = df.ui.main.fortress_entity.squads.last
-                squad    = df.ui.main.fortress_entity.squads_tg.last
-
-                squad.cur_alert_idx = 1     # train
-                squad.uniform_priority = 2
-                squad.carry_food = 2
-                squad.carry_water = 2
-
-                item_type = {
-                    :Body => :ARMOR,
-                    :Head => :HELM,
-                    :Pants => :PANTS,
-                    :Gloves => :GLOVES,
-                    :Shoes => :SHOES,
-                    :Shield => :SHIELD,
-                    :Weapon => :WEAPON
-                }
-                # uniform
-                squad.positions.each { |pos|
-                    item_type.each { |t, it|
-                        next unless pos.uniform[t].empty?
-                        pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(
-                            :color => -1,
-                            :item_filter => {
-                                :item_type => it,
-                                :material_class => :Armor,
-                                :mattype => -1,
-                                :matindex => -1
-                            })
-                    }
-                    pos.uniform[:Weapon][0].item_filter.material_class = :None
-                    pos.flags.exact_matches = true
-                }
-
-                if df.ui.main.fortress_entity.squads.length % 3 == 0
-                    # ranged squad
-                    squad.positions.each { |pos|
-                        pos.uniform[:Weapon][0].indiv_choice.ranged = true
-                    }
-                    squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(
-                        :item_filter => {
-                            :item_type => :AMMO,
-                            :item_subtype => 0, # subtype = bolts
-                            :material_class => :None
-                        },
-                        :amount => 500,
-                        :flags => {
-                            :use_combat => true,
-                            :use_training => true
-                        })
-                else
-                    # we don't want all the axes being used up by the military.
-                    weapons = df.ui.main.fortress_entity.entity_raw.equipment.weapon_tg.find_all { |idef|
-                        idef.skill_melee != :MINING and
-                        idef.skill_melee != :AXE and
-                        idef.skill_ranged == :NONE and
-                        not idef.flags[:TRAINING]
-                    }
-                    if weapons.empty?
-                        squad.positions.each { |pos|
-                            pos.uniform[:Weapon][0].indiv_choice.melee = true
-                        }
-                    else
-                        squad.positions.each { |pos|
-                            pos.uniform[:Weapon][0].item_filter.item_subtype = weapons[rand(weapons.length)].subtype
-                        }
-                    end
-                end
-
-                ## schedule
-                #df.ui.alerts.list.each { |alert|
-                #    # squad.schedule.index = alerts.list.index (!= alert.id)
-                #    squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
-                #    12.times { |i|
-                #        scm = squad.schedule.last[i]
-                #        scm._cpp_init
-                #        10.times { scm.order_assignments << -1 }
-                #
-                #        case squad.schedule.length  # currently definied alert + 1
-                #        when 2
-                #            # train for 2 month, free the 3rd
-                #            next if i % 3 == df.ui.main.fortress_entity.squads.length % 3
-                #            scm.orders << DFHack::SquadScheduleOrder.cpp_new(:min_count => 0,
-                #                    :positions => [false]*10, :order => DFHack::SquadOrderTrainst.cpp_new)
-                #        end
-                #    }
-                #}
-            end
-
-            squad_id
-        end
-
 
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
@@ -987,13 +1070,6 @@ class DwarfAI
             !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
         end
 
-        def unit_totalxp(u)
-            u.status.current_soul.skills.inject(0) { |t, sk|
-                rat = DFHack::SkillRating.int(sk.rating)
-                t + 400*rat + 100*rat*(rat+1)/2 + sk.experience
-            }
-        end
-
         def update_pets
             needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
             needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
@@ -1114,18 +1190,6 @@ class DwarfAI
 
             u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
             bld.assigned_units << u.id
-        end
-
-        def status
-            "#{@citizen.length} citizen, #{@military.length} military, #{@idlers.length} idle, #{@pet.length} pets"
-        end
-
-        def serialize
-            {
-                :citizen  => Hash[@citizen.map{ |k, v| [k, v.serialize] }],
-                :military => Hash[@military.map{ |k, v| [k, v.serialize] }],
-                :pet      => @pet,
-            }
         end
     end
 end

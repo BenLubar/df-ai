@@ -28,7 +28,7 @@ class Population
 {
     AI *ai;
     std::set<int32_t> citizens;
-    std::set<int32_t> military;
+    std::map<int32_t, int32_t> military;
     std::set<int32_t> idlers;
     std::set<int32_t> pets;
     int update_tick;
@@ -66,27 +66,47 @@ public:
     enum room_status
     {
         plan,
+        finished,
     };
     enum room_type
     {
         infirmary,
+        barracks,
     };
     struct room
     {
+        room_type type;
         room_status status;
+        union T_info
+        {
+            struct
+            {
+                int32_t squad_id;
+            } barracks;
+        };
+        T_info info;
     };
 
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
 
-    room & find_room(room_type type);
     template<class F>
-    room & find_room(room_type type, F filter);
+    room *find_room(room_type type, F filter)
+    {
+        // TODO
+        return nullptr;
+    }
+    room *find_room(room_type type)
+    {
+        return find_room(type, [](room *r) -> bool { return true; });
+    }
 
     void new_citizen(color_ostream & out, int32_t id);
     void del_citizen(color_ostream & out, int32_t id);
     void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
+    void new_soldier(color_ostream & out, int32_t id);
+    void del_soldier(color_ostream & out, int32_t id);
 };
 
 class Stocks
