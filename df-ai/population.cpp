@@ -13,6 +13,8 @@
 #include "df/entity_raw.h"
 #include "df/general_ref.h"
 #include "df/general_ref_building_civzone_assignedst.h"
+#include "df/general_ref_contains_itemst.h"
+#include "df/general_ref_contains_unitst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
@@ -22,6 +24,7 @@
 #include "df/manager_order.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
+#include "df/squad_order_kill_listst.h"
 #include "df/squad_order_trainst.h"
 #include "df/squad_position.h"
 #include "df/squad_schedule_order.h"
@@ -642,6 +645,29 @@ void Population::update_military(color_ostream & out)
     }
 }
 
+static void assign_unit_to_zone(df::unit *unit, Plan::room *pasture)
+{
+    // remove existing zone assignments
+    // TODO remove existing chains/cages?
+    unit->general_refs.erase(std::remove_if(unit->general_refs.begin(), unit->general_refs.end(), [unit](df::general_ref *gen) -> bool
+        {
+            df::general_ref_building_civzone_assignedst *ref = virtual_cast<df::general_ref_building_civzone_assignedst>(gen);
+            if (ref)
+            {
+                df::building_civzonest *zone = virtual_cast<df::building_civzonest>(ref->getBuilding());
+                zone->assigned_units.erase(std::find(zone->assigned_units.begin(), zone->assigned_units.end(), unit->id));
+                delete ref;
+                return true;
+            }
+            return false;
+        }), unit->general_refs.end());
+
+    df::general_ref_building_civzone_assignedst *ref = df::allocate<df::general_ref_building_civzone_assignedst>();
+    ref->building_id = pasture->building_id;
+    unit->general_refs.push_back(ref);
+    virtual_cast<df::building_civzonest>(ref->getBuilding())->assigned_units.push_back(unit->id);
+}
+
 void Population::update_pets(color_ostream & out)
 {
     int needmilk = 0;
@@ -776,26 +802,7 @@ void Population::update_pets(color_ostream & out)
             auto pasture = ai->plan.new_grazer(out, unit->id);
             if (pasture)
             {
-                // remove existing zone assignments
-                // TODO remove existing chains/cages?
-                unit->general_refs.erase(std::remove_if(unit->general_refs.begin(), unit->general_refs.end(), [unit](df::general_ref *gen) -> bool
-                    {
-                        df::general_ref_building_civzone_assignedst *ref = virtual_cast<df::general_ref_building_civzone_assignedst>(gen);
-                        if (ref)
-                        {
-                            df::building_civzonest *zone = virtual_cast<df::building_civzonest>(ref->getBuilding());
-                            zone->assigned_units.erase(std::find(zone->assigned_units.begin(), zone->assigned_units.end(), unit->id));
-                            delete ref;
-                            return true;
-                        }
-                        return false;
-                    }), unit->general_refs.end());
-
-                df::general_ref_building_civzone_assignedst *ref = df::allocate<df::general_ref_building_civzone_assignedst>();
-                ref->building_id = pasture->building_id;
-                unit->general_refs.push_back(ref);
-                virtual_cast<df::building_civzonest>(ref->getBuilding())->assigned_units.push_back(unit->id);
-
+                assign_unit_to_zone(unit, pasture);
                 // TODO monitor grass levels
             }
             else
@@ -859,62 +866,121 @@ void Population::update_pets(color_ostream & out)
         ai->stocks.add_manager_order(job_type::ShearCreature, needshear);
 }
 
+void Population::update_deads(color_ostream & out)
+{
+    for (auto unit : world->units.active)
+    {
+        if (unit->flags3.bits.ghostly)
+        {
+            ai->stocks.queue_slab(unit->hist_figure_id);
+        }
+    }
+}
+
+static void military_random_squad_attack_unit(df::unit *unit, const std::string & desc)
+{
+    df::squad *squad = nullptr;
+    int32_t best = 0;
+    for (auto id : ui->main.fortress_entity->squads)
+    {
+        df::squad *candidate = df::squad::find(id);
+        int32_t score = 0;
+        for (auto pos : candidate->positions)
+        {
+            if (pos->occupant != -1)
+            {
+                score++;
+            }
+        }
+        score -= candidate->orders.size();
+        if (!squad || best < score)
+        {
+            squad = candidate;
+            best = score;
+        }
+    }
+    if (!squad)
+        return;
+
+    df::squad_order_kill_listst *kill = df::allocate<df::squad_order_kill_listst>();
+    kill->units.push_back(unit->id);
+    kill->title = desc;
+
+    squad->orders.push_back(kill);
+}
+
+void Population::update_caged(color_ostream & out)
+{
+    int count = 0;
+    for (auto cage : world->items.other[items_other_id::CAGE])
+    {
+        if (!cage->flags.bits.on_ground)
+            continue;
+        for (auto ref : cage->general_refs)
+        {
+            df::general_ref_contains_itemst *item = virtual_cast<df::general_ref_contains_itemst>(ref);
+            if (item)
+            {
+                if (!item->getItem()->flags.bits.dump)
+                    count++;
+
+                item->getItem()->flags.bits.dump = 1;
+                continue;
+            }
+
+            df::general_ref_contains_unitst *prisoner = virtual_cast<df::general_ref_contains_unitst>(ref);
+            if (prisoner)
+            {
+                df::unit *unit = prisoner->getUnit();
+                std::vector<int32_t> & histfigs = ui->main.fortress_entity->histfig_ids;
+                if (std::find(histfigs.begin(), histfigs.end(), unit->hist_figure_id) != histfigs.end())
+                {
+                    // TODO rescue caged dwarves
+                }
+                else
+                {
+                    for (auto it : unit->inventory)
+                    {
+                        if (!it->item->flags.bits.dump)
+                            count++;
+
+                        it->item->flags.bits.dump = 1;
+                    }
+
+                    if (unit->inventory.empty())
+                    {
+                        auto pit = ai->plan.find_room(Plan::room_type::pitcage, [cage](Plan::room *room) -> bool { return room->building_id != -1 && abs(room->pos.x - cage->pos.x) <= 1 && abs(room->pos.y - cage->pos.y) <= 1 && room->pos.z == cage->pos.z; });
+                        if (pit)
+                        {
+                            assign_unit_to_zone(unit, pit);
+                            df::creature_raw *race = world->raws.creatures.all[unit->race];
+                            df::caste_raw *caste = race->caste[unit->caste];
+                            std::ostringstream desc;
+                            desc << race->creature_id << ":" << caste->caste_id;
+                            military_random_squad_attack_unit(unit, desc.str());
+                            std::ostringstream message;
+                            message << "[pop] marked ";
+                            message << desc.str();
+                            message << " for pitting";
+                            ai->debug(out, message.str());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (count > 0)
+    {
+        std::ostringstream message;
+        message << "[pop] dumped " << count << " items from cages";
+        ai->debug(out, message.str());
+    }
+}
+
+
 /*
 class DwarfAI
     class Population
-        def update_deads
-            df.world.units.all.each { |u|
-                ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly
-            }
-        end
-
-        def update_caged
-            count = 0
-            df.world.items.other[:CAGE].each do |cage|
-                next if not cage.flags.on_ground
-                cage.general_refs.each do |ref|
-                    case ref
-                    when DFHack::GeneralRefContainsItemst
-                        next if ref.item_tg.flags.dump
-                        count += 1
-                        ref.item_tg.flags.dump = true
-
-                    when DFHack::GeneralRefContainsUnitst
-                        u = ref.unit_tg
-
-                        if df.ui.main.fortress_entity.histfig_ids.include?(u.hist_figure_id)
-                            # TODO rescue caged dwarves
-                        else
-                            u.inventory.each do |it|
-                                next if it.item.flags.dump
-                                count += 1
-                                it.item.flags.dump = true
-                            end
-
-                            if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
-                                assign_unit_to_zone(u, r.dfbuilding)
-                                military_random_squad_attack_unit(u)
-                                ai.debug "pop: marked #{DwarfAI::describe_unit(u)} for pitting"
-                            end
-                        end
-                    end
-                end
-            end
-            ai.debug "pop: dumped #{count} items from cages" if count > 0
-        end
-
-        def military_random_squad_attack_unit(u)
-            squad = df.ui.main.fortress_entity.squads_tg.sort_by { |sq|
-                sq.positions.count { |sp| sp.occupant != -1 } - sq.orders.length
-            }.last
-            return unless squad
-
-            squad.orders << DFHack::SquadOrderKillListst.cpp_new(
-                :units => [u.id],
-                :title => DwarfAI::describe_unit(u)
-            )
-        end
-
         LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
         LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
         LaborSkill = DFHack::JobSkill::Labor.invert

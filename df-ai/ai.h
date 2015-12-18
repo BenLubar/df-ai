@@ -89,11 +89,13 @@ public:
     {
         infirmary,
         barracks,
+        pitcage,
     };
     struct room
     {
         room_type type;
         room_status status;
+        df::coord pos;
         int32_t building_id;
         union T_info
         {
@@ -143,6 +145,7 @@ public:
 
     std::vector<df::manager_order *> find_manager_orders(df::job_type type);
     void add_manager_order(df::job_type type, int count);
+    void queue_slab(int32_t histfig);
 };
 
 class Camera
