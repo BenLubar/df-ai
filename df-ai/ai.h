@@ -10,7 +10,13 @@
 #include <random>
 #include <ctime>
 
-#include "df/report.h"
+#include "df/job_type.h"
+
+namespace df
+{
+    struct report;
+    struct manager_order;
+}
 
 using namespace DFHack;
 using namespace df::enums;
@@ -30,7 +36,18 @@ class Population
     std::set<int32_t> citizens;
     std::map<int32_t, int32_t> military;
     std::set<int32_t> idlers;
-    std::set<int32_t> pets;
+    union pet_flags
+    {
+        int32_t whole;
+        struct
+        {
+            int milkable : 1;
+            int shearable : 1;
+            int hunts_vermin : 1;
+            int grazer : 1;
+        } bits;
+    };
+    std::map<int32_t, pet_flags> pets;
     int update_tick;
 
 public:
@@ -77,6 +94,7 @@ public:
     {
         room_type type;
         room_status status;
+        int32_t building_id;
         union T_info
         {
             struct
@@ -107,6 +125,8 @@ public:
     void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
     void new_soldier(color_ostream & out, int32_t id);
     void del_soldier(color_ostream & out, int32_t id);
+    room *new_grazer(color_ostream & out, int32_t id);
+    void del_grazer(color_ostream & out, int32_t id);
 };
 
 class Stocks
@@ -120,6 +140,9 @@ public:
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
+
+    std::vector<df::manager_order *> find_manager_orders(df::job_type type);
+    void add_manager_order(df::job_type type, int count);
 };
 
 class Camera

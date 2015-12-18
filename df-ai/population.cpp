@@ -3,16 +3,23 @@
 #include "modules/Gui.h"
 #include "modules/Units.h"
 
+#include "df/building.h"
+#include "df/building_civzonest.h"
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
 #include "df/entity_position.h"
 #include "df/entity_position_assignment.h"
-#include "df/entity_raw.h"
 #include "df/entity_position_raw.h"
+#include "df/entity_raw.h"
+#include "df/general_ref.h"
+#include "df/general_ref_building_civzone_assignedst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
 #include "df/interface_key.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
+#include "df/manager_order.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
 #include "df/squad_order_trainst.h"
@@ -22,12 +29,15 @@
 #include "df/ui.h"
 #include "df/uniform_category.h"
 #include "df/unit.h"
+#include "df/unit_misc_trait.h"
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
+#include "df/unit_wound.h"
 #include "df/viewscreen.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
@@ -631,6 +641,224 @@ void Population::update_military(color_ostream & out)
         }
     }
 }
+
+void Population::update_pets(color_ostream & out)
+{
+    int needmilk = 0;
+    int needshear = 0;
+
+    for (auto order : ai->stocks.find_manager_orders(job_type::MilkCreature))
+    {
+        needmilk -= order->amount_left;
+    }
+
+    for (auto order : ai->stocks.find_manager_orders(job_type::ShearCreature))
+    {
+        needshear -= order->amount_left;
+    }
+
+    std::map<df::caste_raw *, std::vector<std::pair<int32_t, df::unit *> > > forSlaughter;
+
+    std::map<int32_t, pet_flags> old = pets;
+    for (auto unit : world->units.active)
+    {
+        if (unit->civ_id != ui->civ_id ||
+                unit->race == ui->race_id ||
+                unit->flags1.bits.dead ||
+                unit->flags1.bits.merchant ||
+                unit->flags1.bits.forest ||
+                unit->flags2.bits.slaughter)
+            continue;
+
+        df::creature_raw *race = world->raws.creatures.all[unit->race];
+        df::caste_raw *caste = race->caste[unit->caste];
+        int32_t age = (*cur_year - unit->relations.birth_year) * 12 * 28 + (*cur_year_tick - unit->relations.birth_time) / 1200; // days
+
+        if (pets.count(unit->id))
+        {
+            if (caste->body_size_2.back() <= age && // full grown
+                    unit->profession != profession::TRAINED_HUNTER && // not trained
+                    unit->profession != profession::TRAINED_WAR && // not trained
+                    unit->relations.pet_owner_id == -1) // not owned
+            {
+                bool is_gelded = false;
+                for (auto wound : unit->body.wounds)
+                {
+                    for (auto part : wound->parts)
+                    {
+                        if (part->flags2.bits.gelded)
+                        {
+                            is_gelded = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (is_gelded || // Bob Barker'd
+                        (caste->gender == 0 && !unit->status.current_soul->orientation_flags.bits.marry_male) || // Ellen Degeneres'd
+                        (caste->gender == 1 && !unit->status.current_soul->orientation_flags.bits.marry_female)) // Neil Patrick Harris'd
+                {
+                    // animal can't reproduce, can't work, and will provide
+                    // maximum butchering reward. kill it.
+                    unit->flags2.bits.slaughter = 1;
+                    std::ostringstream message;
+                    message << "[pop] marked ";
+                    message << age / 12 / 28 << "y";
+                    message << age % (12 * 28) << "d old ";
+                    message << race->creature_id << ":" << caste->caste_id;
+                    message << " for slaughter (can't reproduce)";
+                    ai->debug(out, message.str());
+                    continue;
+                }
+
+                forSlaughter[caste].push_back(std::make_pair(age, unit));
+            }
+
+            pet_flags flags = pets.at(unit->id);
+            bool is_adult = unit->profession != profession::BABY && unit->profession != profession::CHILD;
+            if (flags.bits.milkable && is_adult)
+            {
+                bool milked = false;
+                for (auto trait : unit->status.misc_traits)
+                {
+                    if (trait->id == misc_trait_type::MilkCounter)
+                    {
+                        milked = true;
+                        break;
+                    }
+                }
+                if (!milked)
+                    needmilk++;
+            }
+
+            if (flags.bits.shearable && is_adult)
+            {
+                bool shearable = false;
+                for (auto layer : caste->shearable_tissue_layer)
+                {
+                    for (auto index : layer->bp_modifiers_idx)
+                    {
+                        if (unit->appearance.bp_modifiers[index] >= layer->length)
+                        {
+                            shearable = true;
+                            break;
+                        }
+                    }
+                    if (shearable)
+                        break;
+                }
+                if (shearable)
+                    needshear++;
+            }
+
+            old.erase(unit->id);
+
+            continue;
+        }
+
+        pet_flags flags;
+        if (caste->flags.is_set(caste_raw_flags::MILKABLE))
+        {
+            flags.bits.milkable = 1;
+        }
+        if (!caste->shearable_tissue_layer.empty())
+        {
+            flags.bits.shearable = 1;
+        }
+        if (caste->flags.is_set(caste_raw_flags::HUNTS_VERMIN))
+        {
+            flags.bits.hunts_vermin = 1;
+        }
+        if (caste->flags.is_set(caste_raw_flags::GRAZER))
+        {
+            flags.bits.grazer = 1;
+
+            auto pasture = ai->plan.new_grazer(out, unit->id);
+            if (pasture)
+            {
+                // remove existing zone assignments
+                // TODO remove existing chains/cages?
+                unit->general_refs.erase(std::remove_if(unit->general_refs.begin(), unit->general_refs.end(), [unit](df::general_ref *gen) -> bool
+                    {
+                        df::general_ref_building_civzone_assignedst *ref = virtual_cast<df::general_ref_building_civzone_assignedst>(gen);
+                        if (ref)
+                        {
+                            df::building_civzonest *zone = virtual_cast<df::building_civzonest>(ref->getBuilding());
+                            zone->assigned_units.erase(std::find(zone->assigned_units.begin(), zone->assigned_units.end(), unit->id));
+                            delete ref;
+                            return true;
+                        }
+                        return false;
+                    }), unit->general_refs.end());
+
+                df::general_ref_building_civzone_assignedst *ref = df::allocate<df::general_ref_building_civzone_assignedst>();
+                ref->building_id = pasture->building_id;
+                unit->general_refs.push_back(ref);
+                virtual_cast<df::building_civzonest>(ref->getBuilding())->assigned_units.push_back(unit->id);
+
+                // TODO monitor grass levels
+            }
+            else
+            {
+                // TODO slaughter best candidate, keep this one
+                // also avoid killing named pets
+                unit->flags2.bits.slaughter = 1;
+                std::ostringstream message;
+                message << "[pop] marked ";
+                message << age / 12 / 28 << "y";
+                message << age % (12 * 28) << "d old ";
+                message << race->creature_id << ":" << caste->caste_id;
+                message << " for slaughter (no pasture)";
+                ai->debug(out, message.str());
+            }
+        }
+        pets[unit->id] = flags;
+    }
+
+    for (auto remove : old)
+    {
+        ai->plan.del_grazer(out, remove.first);
+        pets.erase(remove.first);
+    }
+
+    for (auto slaughter : forSlaughter)
+    {
+        df::caste_raw *caste = slaughter.first;
+        std::vector<std::pair<int32_t, df::unit *>> & candidates = slaughter.second;
+
+        std::sort(candidates.begin(), candidates.end(), [](std::pair<int32_t, df::unit *> a, std::pair<int32_t, df::unit *> b) -> bool { return a.first > b.first; });
+
+        for (size_t i = 0; i < candidates.size() - 5; i++)
+        {
+            // We have reproductively viable animals, but there are more than
+            // five of this sex (full-grown). Kill the oldest ones for meat,
+            // leather, and bones.
+
+            int32_t age = candidates[i].first;
+            df::unit *unit = candidates[i].second;
+            df::creature_raw *race = world->raws.creatures.all[unit->race];
+
+            std::ostringstream message;
+            message << "[pop] marked ";
+            message << age / 12 / 28 << "y";
+            message << age % (12 * 28) << "d old ";
+            message << race->creature_id << ":" << caste->caste_id;
+            message << " for slaughter (too many adults)";
+            ai->debug(out, message.str());
+        }
+    }
+
+    if (needmilk > 10)
+        needmilk = 10;
+    if (needmilk > 0)
+        ai->stocks.add_manager_order(job_type::MilkCreature, needmilk);
+
+    if (needshear > 10)
+        needshear = 10;
+    if (needshear > 0)
+        ai->stocks.add_manager_order(job_type::ShearCreature, needshear);
+}
+
 /*
 class DwarfAI
     class Population
@@ -1068,128 +1296,6 @@ class DwarfAI
             squad = df.world.squads.all.binsearch(u.military.squad_id)
             curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
             !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
-        end
-
-        def update_pets
-            needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
-            needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
-
-            forSlaughter = Hash.new { |h, k| h[k] = [] }
-
-            np = @pet.dup
-            df.world.units.active.each { |u|
-                next if u.civ_id != df.ui.civ_id
-                next if u.race == df.ui.race_id
-                next if u.flags1.dead or u.flags1.merchant or u.flags1.forest or u.flags2.slaughter
-
-                cst = u.caste_tg
-                age = (df.cur_year - u.relations.birth_year) * 12 * 28 + (df.cur_year_tick - u.relations.birth_time) / 1200 # days
-
-                if @pet[u.id]
-                    if cst.body_size_2.last <= age and # full grown
-                        u.profession != :TRAINED_HUNTER and # not trained
-                        u.profession != :TRAINED_WAR and # not trained
-                        u.relations.pet_owner_id == -1 # not owned
-
-                        if (u.body.wounds.any? { |w| w.parts.any? { |p| p.flags2.gelded } } or # gelded
-                            (cst.gender == 0 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
-                            (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_female)) # gay
-
-                            # animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
-                            u.flags2.slaughter = true
-                            ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (can't reproduce)"
-                            next
-                        end
-
-                        forSlaughter[u.caste_tg] << [age, u]
-                    end
-
-                    if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
-                        if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
-                            needmilk += 1
-                        end
-                    end
-
-                    if @pet[u.id].include?(:SHEARABLE) and u.profession != :BABY and u.profession != :CHILD
-                        if cst.shearable_tissue_layer.find { |stl|
-                            stl.bp_modifiers_idx.find { |bpi|
-                                u.appearance.bp_modifiers[bpi] >= stl.length
-                            }
-                        }
-                            needshear += 1
-                        end
-                    end
-
-                    np.delete u.id
-                    next
-                end
-
-                @pet[u.id] = []
-
-                if cst.flags[:MILKABLE]
-                    @pet[u.id] << :MILKABLE
-                end
-
-                if cst.shearable_tissue_layer.length > 0
-                    @pet[u.id] << :SHEARABLE
-                end
-
-                if cst.flags[:HUNTS_VERMIN]
-                    @pet[u.id] << :HUNTS_VERMIN
-                end
-
-                if cst.flags[:GRAZER]
-                    @pet[u.id] << :GRAZER
-
-                    if bld = ai.plan.getpasture(u.id)
-                        assign_unit_to_zone(u, bld)
-                        # TODO monitor grass levels
-                    else
-                        # TODO slaughter best candidate, keep this one
-                        # also avoid killing named pets
-                        u.flags2.slaughter = true
-                        ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (no pasture)"
-                    end
-                end
-            }
-
-            np.each_key { |id|
-                ai.plan.freepasture(id)
-                @pet.delete id
-            }
-
-            forSlaughter.each { |cst, candidates|
-                # we have reproductively viable animals, but there are more than 5 of this sex (full-grown). kill the oldest ones for meat/leather/bones.
-
-                candidates = candidates.sort_by(&:first)
-                while candidates.length > 5
-                    candidate = candidates.pop
-                    age, u = candidate[0], candidate[1]
-                    u.flags2.slaughter = true
-                    ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (too many adults)"
-                end
-            }
-
-            needmilk = 30 if needmilk > 30
-            ai.stocks.add_manager_order(:MilkCreature, needmilk) if needmilk > 0
-
-            needshear = 30 if needshear > 30
-            ai.stocks.add_manager_order(:ShearCreature, needshear) if needshear > 0
-        end
-
-        def assign_unit_to_zone(u, bld)
-            # remove existing zone assignments
-            # TODO remove existing chains/cages ?
-            while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
-                ref = u.general_refs[ridx]
-                cidx = ref.building_tg.assigned_units.index(u.id)
-                ref.building_tg.assigned_units.delete_at(cidx)
-                u.general_refs.delete_at(ridx)
-                df.free(ref._memaddr)
-            end
-
-            u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
-            bld.assigned_units << u.id
         end
     end
 end
