@@ -5,7 +5,6 @@
 
 #include "modules/Gui.h"
 #include "modules/Maps.h"
-#include "modules/Translation.h"
 #include "modules/Units.h"
 
 #include "df/creature_interaction_effect_body_transformationst.h"
@@ -60,11 +59,7 @@ command_result Camera::status(color_ostream & out)
     }
     else
     {
-        out << "following ";
-        df::unit *unit = df::unit::find(following);
-        out << Translation::TranslateName(Units::getVisibleName(unit), false);
-        out << ", ";
-        out << Units::getProfessionName(unit);
+        out << "following " << ai->describe_unit(df::unit::find(following));
     }
 
     if (following_index == -1)
@@ -79,25 +74,19 @@ command_result Camera::status(color_ostream & out)
         if (following_prev[i] == -1)
             continue;
 
-        df::unit *unit = df::unit::find(following_prev[i]);
-        out << Translation::TranslateName(Units::getVisibleName(unit), false);
-        out << ", ";
-        out << Units::getProfessionName(unit);
         if (i != following_index)
         {
             out << "; ";
         }
+        out << ai->describe_unit(df::unit::find(following_prev[i]));
     }
     for (int i = 0; i < following_index; i++)
     {
         if (following_prev[i] == -1)
             continue;
 
-        df::unit *unit = df::unit::find(following_prev[i]);
-        out << Translation::TranslateName(Units::getVisibleName(unit), false);
-        out << ", ";
-        out << Units::getProfessionName(unit);
         out << "; ";
+        out << ai->describe_unit(df::unit::find(following_prev[i]));
     }
     out << ")\n";
 

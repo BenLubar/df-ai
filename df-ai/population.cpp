@@ -5,6 +5,10 @@
 
 #include "df/building.h"
 #include "df/building_civzonest.h"
+#include "df/building_farmplotst.h"
+#include "df/building_stockpilest.h"
+#include "df/building_tradedepotst.h"
+#include "df/building_workshopst.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
 #include "df/entity_position.h"
@@ -13,8 +17,10 @@
 #include "df/entity_raw.h"
 #include "df/general_ref.h"
 #include "df/general_ref_building_civzone_assignedst.h"
+#include "df/general_ref_building_holderst.h"
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_contains_unitst.h"
+#include "df/general_ref_unit_workerst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
@@ -22,6 +28,7 @@
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
 #include "df/manager_order.h"
+#include "df/reaction.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
 #include "df/squad_order_kill_listst.h"
@@ -37,6 +44,7 @@
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
 #include "df/viewscreen.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -49,7 +57,13 @@ Population::Population(color_ostream & out, AI *parent) :
     ai(parent),
     citizens(),
     military(),
+    workers(),
     idlers(),
+    labor_needmore(),
+    medic(),
+    labor_worker(),
+    worker_labor(),
+    last_idle_year(-1),
     pets(),
     update_tick(0)
 {
@@ -172,6 +186,42 @@ static int32_t total_xp(df::unit *unit)
 static bool compare_total_xp(df::unit *a, df::unit *b)
 {
     return total_xp(a) < total_xp(b);
+}
+
+template<class T, class F>
+static T unit_entity_positions(df::unit *unit, T start, F func)
+{
+    auto hf = df::historical_figure::find(unit->hist_figure_id);
+    if (!hf)
+        return start;
+
+    for (auto link : hf->entity_links)
+    {
+        auto el = virtual_cast<df::histfig_entity_link_positionst>(link);
+        if (!el)
+            continue;
+        auto ent = df::historical_entity::find(el->entity_id);
+        if (!ent)
+            continue;
+        auto asn = binsearch_in_vector(ent->positions.assignments, el->assignment_id);
+        if (!asn)
+            continue;
+        auto pos = binsearch_in_vector(ent->positions.own, asn->position_id);
+        if (!pos)
+            continue;
+        start = func(start, pos);
+    }
+    return start;
+}
+
+static int32_t score_for_draft(df::unit *unit)
+{
+    return unit_entity_positions(unit, total_xp(unit), [](int32_t score, df::entity_position *pos) -> int32_t { return score + 5000; });
+}
+
+static bool compare_for_draft(df::unit *a, df::unit *b)
+{
+    return score_for_draft(a) < score_for_draft(b);
 }
 
 static const std::string *position_code(df::historical_entity *ent, df::entity_position_responsibility r)
@@ -449,7 +499,7 @@ void Population::update_military(color_ostream & out)
             newsoldiers.push_back(unit);
         }
     }
-    std::sort(maydraft.begin(), maydraft.end(), compare_total_xp);
+    std::sort(maydraft.begin(), maydraft.end(), compare_for_draft);
 
     // enlist new soldiers if needed
     for (int i = 0; military.size() < (maydraft.size() - i) / 4; i++)
@@ -977,394 +1027,750 @@ void Population::update_caged(color_ostream & out)
     }
 }
 
+static const struct LaborInfo
+{
+    std::vector<df::unit_labor> list;
+    std::set<df::unit_labor> tool;
+    std::map<df::unit_labor, df::job_skill> skill;
+    std::set<df::unit_labor> idle;
+    std::set<df::unit_labor> medical;
+    std::map<df::unit_labor, std::set<Stocks::good>> stocks;
+    std::set<df::unit_labor> hauling;
+    std::map<df::unit_labor, uint32_t> min;
+    std::map<df::unit_labor, uint32_t> max;
+    std::map<df::unit_labor, uint32_t> min_pct;
+    std::map<df::unit_labor, uint32_t> max_pct;
 
-/*
-class DwarfAI
-    class Population
-        LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
-        LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
-        LaborSkill = DFHack::JobSkill::Labor.invert
-        LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
-        LaborMedical = { :DIAGNOSE => true, :SURGERY => true, :BONE_SETTING => true, :SUTURING => true, :DRESSING_WOUNDS => true, :FEED_WATER_CIVILIANS => true }
-        LaborStocks = { :PLANT => [:food, :drink, :cloth], :HERBALISM => [:food, :drink, :cloth], :FISH => [:food] }
-        LaborHauling = { :FEED_WATER_CIVILIANS => true, :RECOVER_WOUNDED => true }
-        LaborList.each { |lb|
-            if lb.to_s =~ /HAUL/
-                LaborHauling[lb] = true
-            end
+    LaborInfo() {
+        FOR_ENUM_ITEMS(unit_labor, l)
+        {
+            if (l != unit_labor::NONE)
+            {
+                list.push_back(l);
+
+                min[l] = 2;
+                max[l] = 8;
+                min_pct[l] = 0;
+                max_pct[l] = 0;
+
+                skill[l] = job_skill::NONE;
+            }
         }
 
-        LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
-        LaborMax = Hash.new(8).update :FISH => 1
-        LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 10
-        LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 30
-        LaborHauling.keys.each { |lb|
-            LaborMinPct[lb] = 30
-            LaborMaxPct[lb] = 100
+        tool.insert(unit_labor::MINE);
+        tool.insert(unit_labor::CUTWOOD);
+        tool.insert(unit_labor::HUNT);
+
+        FOR_ENUM_ITEMS(job_skill, s)
+        {
+            skill[ENUM_ATTR(job_skill, labor, s)] = s;
         }
-        LaborWontWorkJob = { :AttendParty => true, :Rest => true, :UpdateStockpileRecords => true }
 
-        def autolabors(step)
-            case step
-            when 1
-                @workers = []
-                @idlers = []
-                @labor_needmore = Hash.new(0)
-                nonworkers = []
-                @medic = {}
-                df.ui.main.fortress_entity.assignments_by_type[:HEALTH_MANAGEMENT].each { |n|
-                    next unless hf = df.world.history.figures.binsearch(n.histfig)
-                    @medic[hf.unit_id] = true
+        idle.insert(unit_labor::PLANT);
+        idle.insert(unit_labor::HERBALIST);
+        idle.insert(unit_labor::FISH);
+        idle.insert(unit_labor::DETAIL);
+
+        medical.insert(unit_labor::DIAGNOSE);
+        medical.insert(unit_labor::SURGERY);
+        medical.insert(unit_labor::BONE_SETTING);
+        medical.insert(unit_labor::SUTURING);
+        medical.insert(unit_labor::DRESSING_WOUNDS);
+        medical.insert(unit_labor::FEED_WATER_CIVILIANS);
+
+        stocks[unit_labor::PLANT].insert(Stocks::good::food);
+        stocks[unit_labor::PLANT].insert(Stocks::good::drink);
+        stocks[unit_labor::PLANT].insert(Stocks::good::cloth);
+        stocks[unit_labor::HERBALIST].insert(Stocks::good::food);
+        stocks[unit_labor::HERBALIST].insert(Stocks::good::drink);
+        stocks[unit_labor::HERBALIST].insert(Stocks::good::cloth);
+        stocks[unit_labor::FISH].insert(Stocks::good::food);
+
+        hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
+        hauling.insert(unit_labor::RECOVER_WOUNDED);
+        hauling.insert(unit_labor::HAUL_STONE);
+        hauling.insert(unit_labor::HAUL_WOOD);
+        hauling.insert(unit_labor::HAUL_BODY);
+        hauling.insert(unit_labor::HAUL_FOOD);
+        hauling.insert(unit_labor::HAUL_REFUSE);
+        hauling.insert(unit_labor::HAUL_ITEM);
+        hauling.insert(unit_labor::HAUL_FURNITURE);
+        hauling.insert(unit_labor::HAUL_ANIMALS);
+        hauling.insert(unit_labor::HAUL_TRADE);
+        hauling.insert(unit_labor::HAUL_WATER);
+
+        min[unit_labor::DETAIL] = 4;
+        min[unit_labor::PLANT] = 4;
+        min[unit_labor::HERBALIST] = 1;
+
+        max[unit_labor::FISH] = 1;
+
+        min_pct[unit_labor::DETAIL] = 5;
+        min_pct[unit_labor::PLANT] = 30;
+        min_pct[unit_labor::FISH] = 1;
+        min_pct[unit_labor::HERBALIST] = 10;
+
+        max_pct[unit_labor::DETAIL] = 20;
+        max_pct[unit_labor::PLANT] = 60;
+        max_pct[unit_labor::FISH] = 10;
+        max_pct[unit_labor::HERBALIST] = 30;
+
+        for (df::unit_labor l : hauling)
+        {
+            min_pct[l] = 30;
+            max_pct[l] = 100;
+        }
+    }
+} labors;
+
+
+void Population::autolabors_workers(color_ostream & out)
+{
+    workers.clear();
+    idlers.clear();
+    labor_needmore.clear();
+    std::map<df::unit *, std::string> nonworkers;
+    medic.clear();
+    for (auto assignment : ui->main.fortress_entity->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT])
+    {
+        df::historical_figure *hf = df::historical_figure::find(assignment->histfig);
+        medic.insert(hf->unit_id);
+    }
+
+    bool merchant = false;
+    for (df::unit *unit : world->units.active)
+    {
+        if (unit->flags1.bits.merchant && !unit->flags1.bits.dead)
+        {
+            merchant = true;
+            break;
+        }
+    }
+    set_up_trading(merchant);
+
+    for (int32_t id : citizens)
+    {
+        df::unit *unit = df::unit::find(id);
+        if (!unit)
+            continue;
+        if (unit->mood != mood_type::None)
+        {
+            nonworkers[unit] = "has mood: " + ENUM_KEY_STR(mood_type, unit->mood);
+        }
+        else if (Units::isChild(unit))
+        {
+            nonworkers[unit] = "is a child";
+        }
+        else if (has_military_duty(unit))
+        {
+            nonworkers[unit] = "has military duty";
+        }
+        else if (unit->flags1.bits.caged)
+        {
+            nonworkers[unit] = "caged";
+        }
+        else if (citizens.size() >= 20 &&
+                !world->manager_orders.empty() &&
+                !world->manager_orders.back()->is_validated &&
+                unit_entity_positions(unit, false, [](bool exists, df::entity_position *pos) -> bool { return exists || pos->responsibilities[entity_position_responsibility::MANAGE_PRODUCTION]; }))
+        {
+            nonworkers[unit] = "validating work orders";
+        }
+        else if (merchant && unit_entity_positions(unit, false, [](bool exists, df::entity_position *pos) -> bool { return exists || pos->responsibilities[entity_position_responsibility::TRADE]; }))
+        {
+            nonworkers[unit] = "trading";
+        }
+        else if (unit->job.current_job && unit->job.current_job->job_type == job_type::Rest)
+        {
+            nonworkers[unit] = "resting injury";
+        }
+        else
+        {
+            bool has_activity = false;
+            for (auto ref : unit->specific_refs)
+            {
+                if (ref->type == specific_ref_type::ACTIVITY)
+                {
+                    has_activity = true;
+                    break;
                 }
+            }
 
-                merchant = df.world.units.all.any? { |u|
-                    u.flags1.merchant and not u.flags1.dead
+            if (has_activity)
+            {
+                nonworkers[unit] = "has activity";
+            }
+            else
+            {
+                workers.insert(unit->id);
+                if (!unit->job.current_job)
+                {
+                    idlers.insert(unit->id);
                 }
+            }
+        }
+    }
 
-                set_up_trading(merchant)
-
-                citizen.each_value { |c|
-                    next if not u = c.dfunit
-                    if u.mood != :None
-                        nonworkers << [c, "has mood: #{u.mood}"]
-                    elsif u.profession == :CHILD
-                        nonworkers << [c, 'is a child', true]
-                    elsif u.profession == :BABY
-                        nonworkers << [c, 'is a baby', true]
-                    elsif unit_hasmilitaryduty(u)
-                        nonworkers << [c, 'has military duty']
-                    elsif u.flags1.caged
-                        nonworkers << [c, 'caged']
-                    elsif @citizen.length >= 20 and
-                        df.world.manager_orders.last and
-                        df.world.manager_orders.last.is_validated == 0 and
-                        df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
-                        nonworkers << [c, 'validating work orders']
-                    elsif merchant and df.unit_entitypositions(u).find { |n| n.responsibilities[:TRADE] }
-                        nonworkers << [c, 'trading']
-                    elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
-                        nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
-                    elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
-                        nonworkers << [c, 'on break']
-                    elsif u.specific_refs.find { |sr| sr.type == :ACTIVITY }
-                        nonworkers << [c, 'has activity']
-                    else
-                        # TODO filter nobles that will not work
-                        @workers << c
-                        @idlers << c if not u.job.current_job
-                    end
+    // free non-workers
+    for (auto entry : nonworkers)
+    {
+        df::unit *unit = entry.first;
+        for (auto lb : labors.list)
+        {
+            if (labors.hauling.count(lb))
+            {
+                if (!unit->status.labors[lb] && !Units::isChild(unit))
+                {
+                    unit->status.labors[lb] = true;
+                    ai->debug(out, "[pop] assigning labor " + ENUM_KEY_STR(unit_labor, lb) + " to " + ai->describe_unit(unit) + " (non-worker: " + entry.second + ")");
                 }
-
-                # free non-workers
-                nonworkers.each { |c|
-                    u = c[0].dfunit
-                    ul = u.status.labors
-                    LaborList.each { |lb|
-                        if LaborHauling[lb]
-                            if not ul[lb] and not c[2]
-                                ul[lb] = true
-                                u.military.pickup_flags.update = true if LaborTool[lb]
-                                ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
-                            end
-                        elsif ul[lb]
-                            next if LaborMedical[lb] and @medic[u.id]
-                            ul[lb] = false
-                            u.military.pickup_flags.update = true if LaborTool[lb]
-                            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
-                        end
-                    }
+            }
+            else if (unit->status.labors[lb])
+            {
+                if (labors.medical.count(lb) && medic.count(unit->id))
+                    continue;
+                unit->status.labors[lb] = false;
+                if (labors.tool.count(lb))
+                {
+                    unit->military.pickup_flags.bits.update = 1;
                 }
+                ai->debug(out, "[pop] unassigning labor " + ENUM_KEY_STR(unit_labor, lb) + " from " + ai->describe_unit(unit) + " (non-worker: " + entry.second + ")");
+            }
+        }
+    }
+}
 
-            when 2
-                seen_workshop = {}
-                df.world.job_list.each { |job|
-                    ref_bld = job.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first
-                    ref_wrk = job.general_refs.grep(DFHack::GeneralRefUnitWorkerst).first
-                    next if ref_bld and seen_workshop[ref_bld.building_id]
+void Population::autolabors_jobs(color_ostream & out)
+{
+    std::set<int32_t> seen_workshop;
 
-                    if not ref_wrk
-                        job_labor = DFHack::JobSkill::Labor[DFHack::JobType::Skill[job.job_type]]
-                        job_labor = DFHack::JobType::Labor.fetch(job.job_type, job_labor)
-                        if job_labor and job_labor != :NONE
-                            @labor_needmore[job_labor] += 1
+    for (df::job_list_link *link = world->job_list.next; link; link = link->next)
+    {
+        df::general_ref_building_holderst *ref_bld = nullptr;
+        df::general_ref_unit_workerst *ref_wrk = nullptr;
 
-                        else
-                            case job.job_type
-                            when :ConstructBuilding, :DestroyBuilding
-                                # TODO
-                                @labor_needmore[:UNKNOWN_BUILDING_LABOR_PLACEHOLDER] += 1
-                            when :CustomReaction
-                                reac = df.world.raws.reactions.find { |r| r.code == job.reaction_name }
-                                if reac and job_labor = DFHack::JobSkill::Labor[reac.skill]
-                                    @labor_needmore[job_labor] += 1 if job_labor != :NONE
-                                end
-                            when :PenSmallAnimal, :PenLargeAnimal
-                                @labor_needmore[:HAUL_ANIMAL] += 1
-                            when :StoreItemInStockpile, :StoreItemInBag, :StoreItemInHospital,
-                                    :StoreItemInChest, :StoreItemInCabinet, :StoreWeapon,
-                                    :StoreArmor, :StoreItemInBarrel, :StoreItemInBin, :StoreItemInVehicle
-                                LaborHauling.keys.each { |lb|
-                                    @labor_needmore[lb] += 1
-                                }
-                            else
-                                if job.material_category.wood
-                                    @labor_needmore[:CARPENTER] += 1
-                                elsif job.material_category.bone
-                                    @labor_needmore[:BONE_CARVE] += 1
-                                elsif job.material_category.shell
-                                    @labor_needmore[:BONE_CARVE] += 1
-                                elsif job.material_category.cloth
-                                    @labor_needmore[:CLOTHESMAKER] += 1
-                                elsif job.material_category.leather
-                                    @labor_needmore[:LEATHER] += 1
-                                elsif job.mat_type == 0
-                                    # XXX metalcraft ?
-                                    @labor_needmore[:MASON] += 1
-                                else
-                                    @seen_badwork ||= {}
-                                    ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
-                                    @seen_badwork[job.job_type] = true
-                                end
-                            end
-                        end
-                    end
+        for (auto ref : link->item->general_refs)
+        {
+            if (!ref_bld)
+            {
+                ref_bld = virtual_cast<df::general_ref_building_holderst>(ref);
+            }
+            if (!ref_wrk)
+            {
+                ref_wrk = virtual_cast<df::general_ref_unit_workerst>(ref);
+            }
 
-                    if ref_bld
-                        case ref_bld.building_tg
-                        when DFHack::BuildingFarmplotst, DFHack::BuildingStockpilest
-                            # parallel work allowed
-                        else
-                            seen_workshop[ref_bld.building_id] = true
-                        end
-                    end
-                }
+            if (ref_bld && ref_wrk)
+                break;
+        }
 
-            when 3
-                # count active labors
-                @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
-                @worker_labor = @workers.inject({}) { |h, c| h.update c.id => [] }
-                @workers.each { |c|
-                    ul = c.dfunit.status.labors
-                    LaborList.each { |lb|
-                        if ul[lb]
-                            @labor_worker[lb] << c.id
-                            @worker_labor[c.id] << lb
-                        end
-                    }
-                }
+        if (ref_bld && seen_workshop.count(ref_bld->building_id))
+            continue;
 
-                if @workers.length > 15
-                    # if one has too many labors, free him up (one per round)
-                    lim = 4*LaborList.length/[@workers.length, 1].max
-                    lim = 4 if lim < 4
-                    lim += LaborHauling.length
-                    if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
-                        c = citizen[cid]
-                        u = c.dfunit
-                        ul = u.status.labors
+        if (!ref_wrk)
+        {
+            df::unit_labor job_labor = ENUM_ATTR(job_type, labor, link->item->job_type);
+            if (job_labor == unit_labor::NONE)
+                job_labor = ENUM_ATTR(job_skill, labor, ENUM_ATTR(job_type, skill, link->item->job_type));
 
-                        LaborList.each { |lb|
-                            if ul[lb]
-                                next if LaborMedical[lb] and @medic[u.id]
-                                @worker_labor[c.id].delete lb
-                                @labor_worker[lb].delete c.id
-                                ul[lb] = false
-                                u.military.pickup_flags.update = true if LaborTool[lb]
-                            end
-                        }
-                        ai.debug "unassigned all labors from #{DwarfAI::describe_unit(u)} (too many labors)"
-                    end
-                end
-
-            when 4
-                labormin = LaborMin
-                labormax = LaborMax
-                laborminpct = LaborMinPct
-                labormaxpct = LaborMaxPct
-
-                LaborList.each { |lb|
-                    max = labormax[lb]
-                    maxpc = labormaxpct[lb] * @workers.length / 100
-                    max = maxpc if maxpc > max
-                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
-
-                    @labor_needmore.delete lb if @labor_worker[lb].length >= max
-                }
-
-                if @labor_needmore.empty? and not @idlers.empty? and ai.plan.past_initial_phase and (not @last_idle_year or @last_idle_year != df.cur_year)
-                    ai.plan.idleidle
-                    @last_idle_year = df.cur_year
-                end
-
-                # handle low-number of workers + tool labors
-                mintool = LaborTool.keys.inject(0) { |s, lb|
-                    min = labormin[lb]
-                    minpc = laborminpct[lb] * @workers.length / 100
-                    min = minpc if minpc > min
-                    s + min
-                }
-                if @workers.length < mintool
-                    labormax = labormax.dup
-                    LaborTool.each_key { |lb| labormax[lb] = 0 }
-                    case @workers.length
-                    when 0
-                        # meh
-                    when 1
-                        # switch mine or cutwood based on time (1/2 dwarf month each)
-                        if (df.cur_year_tick / (1200*28/2)) % 2 == 0
-                            labormax[:MINE] = 1
-                        else
-                            labormax[:CUTWOOD] = 1
-                        end
-                    else
-                        @workers.length.times { |i|
-                            # divide equally between labors, with priority
-                            # to mine, then wood, then hunt
-                            # XXX new labortools ?
-                            lb = [:MINE, :CUTWOOD, :HUNT][i%3]
-                            labormax[lb] += 1
-                        }
-                    end
-                end
-
-                # list of dwarves with an exclusive labor
-                exclusive = {}
-                [
-                    [:CARPENTER, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Carpenters and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
-                    [:MINE, lambda { ai.plan.digging? }],
-                    [:MASON, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Masons and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
-                    [:CUTWOOD, lambda { ai.stocks.cutting_trees? }],
-                    [:DETAIL, lambda { r = ai.plan.find_room(:cistern) { |_r| _r.subtype == :well } and not r.misc[:channeled] }],
-                ].each { |lb, test|
-                    if @workers.length > exclusive.length+2 and @labor_needmore[lb] > 0 and test[]
-                        # keep last run's choice
-                        cid = @labor_worker[lb].sort_by { |i| @worker_labor[i].length }.first
-                        next if not cid
-                        exclusive[cid] = lb
-                        @idlers.delete_if { |_c| _c.id == cid }
-                        c = citizen[cid]
-                        @worker_labor[cid].dup.each { |llb|
-                            next if llb == lb
-                            next if LaborTool[llb]
-                            autolabor_unsetlabor(c, llb, "has exclusive labor: #{lb}")
-                        }
-                    end
-                }
-
-                # autolabor!
-                LaborList.each { |lb|
-                    min = labormin[lb]
-                    max = labormax[lb]
-                    minpc = laborminpct[lb] * @workers.length / 100
-                    maxpc = labormaxpct[lb] * @workers.length / 100
-                    min = minpc if minpc > min
-                    max = maxpc if maxpc > max
-                    max = @workers.length if @labor_needmore.empty? and LaborIdle[lb]
-                    max = 0 if lb == :FISH and fishery = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Fishery } and fishery.status == :plan
-                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
-                    min = max if min > max
-                    min = @workers.length if min > @workers.length
-
-                    cnt = @labor_worker[lb].length
-                    if cnt > max
-                        next if @labor_needmore.empty?
-                        sk = LaborSkill[lb]
-                        @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
-                            if sk
-                                if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                    DFHack::SkillRating.int(usk.rating)
-                                else
-                                    0
-                                end
-                            else
-                                rand
-                            end
-                        }
-                        (cnt-max).times {
-                            cid = @labor_worker[lb].shift
-                            autolabor_unsetlabor(citizen[cid], lb, 'too many dwarves')
-                        }
-
-                    elsif cnt < min
-                        min += 1 if min < max and not LaborTool[lb]
-                        (min-cnt).times {
-                            c = @workers.sort_by { |_c|
-                                malus = @worker_labor[_c.id].length * 10
-                                malus += df.unit_entitypositions(_c.dfunit).length * 40
-                                if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                    malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
-                                end
-                                [malus, rand]
-                            }.find { |_c|
-                                next if exclusive[_c.id]
-                                next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
-                                not @worker_labor[_c.id].include?(lb)
+            if (job_labor != unit_labor::NONE)
+            {
+                labor_needmore[job_labor]++;
+            }
+            else
+            {
+                switch (link->item->job_type)
+                {
+                    case job_type::ConstructBuilding:
+                    case job_type::DestroyBuilding:
+                        // TODO
+                        break;
+                    case job_type::CustomReaction:
+                        for (auto reaction : world->raws.reactions)
+                        {
+                            if (reaction->code == link->item->reaction_name)
+                            {
+                                df::unit_labor job_labor = ENUM_ATTR(job_skill, labor, reaction->skill);
+                                if (job_labor != unit_labor::NONE)
+                                    labor_needmore[job_labor]++;
+                                break;
                             }
+                        }
+                        break;
+                    case job_type::PenSmallAnimal:
+                    case job_type::PenLargeAnimal:
+                        labor_needmore[unit_labor::HAUL_ANIMALS]++;
+                        break;
+                    case job_type::StoreOwnedItem:
+                    case job_type::PlaceItemInTomb:
+                    case job_type::StoreItemInStockpile:
+                    case job_type::StoreItemInBag:
+                    case job_type::StoreItemInHospital:
+                    case job_type::StoreWeapon:
+                    case job_type::StoreArmor:
+                    case job_type::StoreItemInBarrel:
+                    case job_type::StoreItemInBin:
+                    case job_type::StoreItemInVehicle:
+                        for (auto lb : labors.hauling)
+                        {
+                            labor_needmore[lb]++;
+                        }
+                        break;
+                    default:
+                        if (link->item->material_category.bits.wood)
+                        {
+                            labor_needmore[unit_labor::CARPENTER]++;
+                        }
+                        else if (link->item->material_category.bits.bone ||
+                                link->item->material_category.bits.shell)
+                        {
+                            labor_needmore[unit_labor::BONE_CARVE]++;
+                        }
+                        else if (link->item->material_category.bits.cloth)
+                        {
+                            labor_needmore[unit_labor::CLOTHESMAKER]++;
+                        }
+                        else if (link->item->material_category.bits.leather)
+                        {
+                            labor_needmore[unit_labor::LEATHER]++;
+                        }
+                        else if (link->item->mat_type == 0)
+                        {
+                            // XXX metalcraft ?
+                            labor_needmore[unit_labor::MASON]++;
+                        }
+                        else
+                        {
+                            ai->debug(out, "unknown labor for " + ENUM_KEY_STR(job_type, link->item->job_type));
+                        }
+                }
+            }
+        }
 
-                            autolabor_setlabor(c, lb, 'not enough dwarves')
+        if (ref_bld)
+        {
+            df::building *building = df::building::find(ref_bld->building_id);
+            if (virtual_cast<df::building_farmplotst>(building) ||
+                    virtual_cast<df::building_stockpilest>(building))
+            {
+                // parallel work allowed
+            }
+            else
+            {
+                seen_workshop.insert(ref_bld->building_id);
+            }
+        }
+    }
+}
+
+void Population::autolabors_labors(color_ostream & out)
+{
+    // count active labors
+    labor_worker.clear();
+    worker_labor.clear();
+    for (int32_t id : workers)
+    {
+        df::unit *unit = df::unit::find(id);
+        for (df::unit_labor lb : labors.list)
+        {
+            if (unit->status.labors[lb])
+            {
+                labor_worker[lb].insert(id);
+                worker_labor[id].insert(lb);
+            }
+        }
+    }
+
+    if (workers.size() > 15)
+    {
+        // if one has too many labors, free him up (one per round)
+        size_t limit = 4 * labors.list.size() / workers.size();
+        if (limit < 4)
+            limit = 4;
+        limit += labors.hauling.size();
+
+        for (auto & entry : worker_labor)
+        {
+            if (entry.second.size() > limit && (!medic.count(entry.first) || entry.second.size() > limit + labors.medical.size()))
+            {
+                df::unit *unit = df::unit::find(entry.first);
+                for (auto it = entry.second.begin(); it != entry.second.end(); )
+                {
+                    if (labors.medical.count(*it) && medic.count(entry.first))
+                    {
+                        it++;
+                        continue;
+                    }
+                    labor_worker[*it].erase(entry.first);
+                    unit->status.labors[*it] = false;
+                    if (labors.tool.count(*it))
+                        unit->military.pickup_flags.bits.update = 1;
+                    entry.second.erase(it++);
+                }
+                ai->debug(out, "[pop] unassigned all labors from " + ai->describe_unit(unit) + " (too many labors)");
+                break;
+            }
+        }
+    }
+}
+
+void Population::autolabors_commit(color_ostream & out)
+{
+    // make copies
+    std::map<df::unit_labor, uint32_t> labormin = labors.min;
+    std::map<df::unit_labor, uint32_t> labormax = labors.max;
+    std::map<df::unit_labor, uint32_t> laborminpct = labors.min_pct;
+    std::map<df::unit_labor, uint32_t> labormaxpct = labors.max_pct;
+
+    for (df::unit_labor lb : labors.list)
+    {
+        uint32_t max = labormax.at(lb);
+        uint32_t maxpc = labormaxpct.at(lb) * workers.size() / 100;
+        if (maxpc > max)
+            max = maxpc;
+        if (labors.stocks.count(lb))
+        {
+            bool need_any = false;
+            for (auto good : labors.stocks.at(lb))
+            {
+                if (ai->stocks.need_more(good))
+                {
+                    need_any = true;
+                    break;
+                }
+            }
+            if (!need_any)
+                max = 0;
+        }
+
+        if (labor_worker.count(lb) && labor_worker.at(lb).size() >= max)
+        {
+            labor_needmore.erase(lb);
+        }
+    }
+
+    if (labor_needmore.empty() && !idlers.empty() && ai->plan.past_initial_phase() && last_idle_year != *cur_year)
+    {
+        ai->plan.idleidle(out);
+        last_idle_year = *cur_year;
+    }
+
+    // handle low-number of workers + tool labors
+    uint32_t mintool = 0;
+    for (df::unit_labor lb : labors.tool)
+    {
+        uint32_t min = labormin.at(lb);
+        uint32_t minpc = laborminpct.at(lb) * workers.size() / 100;
+        if (minpc > min)
+            min = minpc;
+        mintool += min;
+    }
+
+    if (workers.size() < mintool)
+    {
+        for (df::unit_labor lb : labors.tool)
+        {
+            labormax[lb] = 0;
+        }
+        switch (workers.size())
+        {
+            case 0:
+                // meh
+                break;
+
+            case 1:
+                // switch mine or cutwood based on time (1/2 dwarf month each)
+                if ((*cur_year_tick / 28 / (1200 / 2)) % 2 == 0)
+                    labormax[unit_labor::MINE] = 1;
+                else
+                    labormax[unit_labor::CUTWOOD] = 1;
+                break;
+
+            default:
+                // Divide workers equally between labors, with priority to
+                // mining, then woodcutting, then hunting.
+                // XXX new labors.tool?
+                uint32_t base = workers.size() / 3;
+                labormax[unit_labor::MINE] = base + (workers.size() % 3 > 0 ? 1 : 0);
+                labormax[unit_labor::CUTWOOD] = base + (workers.size() % 3 > 1 ? 1 : 0);
+                labormax[unit_labor::HUNT] = base;
+                break;
+        }
+    }
+
+    // list of dwarves with an exclusive labor
+    std::map<int32_t, df::unit_labor> exclusive;
+#define EXCLUSIVE_LABOR(lb, condition) \
+    if (workers.size() > exclusive.size() + 2 && labor_needmore.count(unit_labor::lb) && labor_needmore.at(unit_labor::lb) && (condition)) \
+    { \
+        if (labor_worker.count(unit_labor::lb)) \
+        { \
+            /* keep last run's choice */ \
+            int32_t id = -1; \
+            for (int32_t uid : labor_worker.at(unit_labor::lb)) \
+            { \
+                if (id == -1 || worker_labor.at(uid).size() < worker_labor.at(id).size()) \
+                    id = uid; \
+            } \
+            if (id != -1) \
+            { \
+                exclusive[id] = unit_labor::lb; \
+                idlers.erase(id); \
+                df::unit *unit = df::unit::find(id); \
+                std::set<df::unit_labor> labors_copy = worker_labor[id]; \
+                for (df::unit_labor other : labors_copy) \
+                { \
+                    if (unit_labor::lb == other) \
+                        continue; \
+                    if (labors.tool.count(other)) \
+                        continue; \
+                    unassign_labor(out, unit, other, "has exclusive labor: " + ENUM_KEY_STR(unit_labor, unit_labor::lb)); \
+                } \
+            } \
+        } \
+    }
+#define WORKSHOP_WITH_JOBS(t) \
+    ai->plan.find_room(Plan::room_type::workshop, [](Plan::room *r) -> bool { \
+                if (r->info.workshop.type != Plan::workshop_type::t) \
+                    return false; \
+                df::building_workshopst *building = virtual_cast<df::building_workshopst>(df::building::find(r->building_id)); \
+                return building && !building->jobs.empty(); \
+            })
+
+    EXCLUSIVE_LABOR(CARPENTER, WORKSHOP_WITH_JOBS(Carpenters));
+    EXCLUSIVE_LABOR(MINE, ai->plan.is_digging());
+    EXCLUSIVE_LABOR(MASON, WORKSHOP_WITH_JOBS(Masons));
+    EXCLUSIVE_LABOR(CUTWOOD, ai->stocks.is_cutting_trees());
+    EXCLUSIVE_LABOR(DETAIL, ai->plan.find_room(Plan::room_type::cistern_well, [](Plan::room *r) -> bool { return !r->info.cistern_well.channeled; }));
+
+#undef WORKSHOP_WITH_JOBS
+#undef EXCLUSIVE_LABOR
+
+    // autolabor!
+    for (df::unit_labor lb : labors.list)
+    {
+        uint32_t min = labormin.at(lb);
+        uint32_t max = labormax.at(lb);
+        uint32_t minpc = laborminpct.at(lb) * workers.size() / 100;
+        uint32_t maxpc = labormaxpct.at(lb) * workers.size() / 100;
+        if (minpc > min)
+            min = minpc;
+        if (maxpc > max)
+            max = maxpc;
+        if (labor_needmore.empty() && labors.idle.count(lb))
+            max = workers.size();
+        if (lb == unit_labor::FISH && !ai->plan.find_room(Plan::room_type::workshop, [](Plan::room *r) -> bool { return r->info.workshop.type == Plan::workshop_type::Fishery && r->status != Plan::room_status::plan; }))
+            max = 0;
+        if (labors.stocks.count(lb))
+        {
+            bool need_any = false;
+            for (auto good : labors.stocks.at(lb))
+            {
+                if (ai->stocks.need_more(good))
+                {
+                    need_any = true;
+                    break;
+                }
+            }
+            if (!need_any)
+                max = 0;
+        }
+        if (min > max)
+            min = max;
+        if (min > workers.size())
+            min = workers.size();
+
+        uint32_t count = labor_worker.count(lb) ? labor_worker.at(lb).size() : 0;
+        if (count > max)
+        {
+            if (labor_needmore.empty())
+                continue;
+            df::job_skill skill = labors.skill.at(lb);
+            for (uint32_t i = max; i < count; i++)
+            {
+                df::unit *worst = nullptr;
+                int32_t worst_skill = ((int32_t) skill_rating::Legendary5) + 1;
+                for (int32_t id : labor_worker[lb])
+                {
+                    df::unit *unit = df::unit::find(id);
+                    if (skill == job_skill::NONE)
+                    {
+                        worst = unit;
+                        break;
+                    }
+                    bool has_skill = false;
+                    for (auto sk : unit->status.current_soul->skills)
+                    {
+                        if (sk->id == skill)
+                        {
+                            has_skill = true;
+                            if (worst_skill > sk->rating)
+                            {
+                                worst = unit;
+                                worst_skill = sk->rating;
+                            }
+                            break;
+                        }
+                    }
+                    if (!has_skill)
+                    {
+                        worst = unit;
+                        break;
+                    }
+                }
+                unassign_labor(out, worst, lb, "too many dwarves");
+            }
+        }
+        else if (count < min)
+        {
+            if (min < max && !labors.tool.count(lb))
+                min++;
+
+            df::job_skill skill = labors.skill.at(lb);
+
+            for (uint32_t i = count; i < min; i++)
+            {
+                df::unit *best = nullptr;
+                int best_score = 0;
+                for (int32_t id : workers)
+                {
+                    if (worker_labor.count(id) && worker_labor.at(id).count(lb))
+                        continue;
+                    if (exclusive.count(id))
+                        continue;
+                    if (labors.tool.count(lb) && worker_labor.count(id))
+                    {
+                        bool any_tool = false;
+                        for (df::unit_labor tool : labors.tool)
+                        {
+                            if (worker_labor.at(id).count(tool))
+                            {
+                                any_tool = true;
+                                break;
+                            }
                         }
 
-                    elsif not @idlers.empty?
-                        more, desc = @labor_needmore[lb], 'idle'
-                        more, desc = max - cnt, 'idleidle' if @labor_needmore.empty?
-                        more.times do
-                            break if @labor_worker[lb].length >= max
-                            c = @idlers[rand(@idlers.length)]
-                            autolabor_setlabor(c, lb, desc)
-                        end
-                    end
+                        if (any_tool)
+                            continue;
+                    }
+
+                    df::unit *unit = df::unit::find(id);
+                    int score = unit_entity_positions(unit, worker_labor.count(id) ? worker_labor.at(id).size() * 10 : 0, [](int n, df::entity_position *pos) -> int { return n + 40; });
+                    if (skill != job_skill::NONE)
+                    {
+                        for (auto sk : unit->status.current_soul->skills)
+                        {
+                            if (sk->id == skill)
+                            {
+                                score -= ((int) sk->rating) * 4;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (score < best_score)
+                    {
+                        best = unit;
+                        best_score = score;
+                    }
                 }
-            end
-        end
 
-        def autolabor_setlabor(c, lb, reason='no reason given')
-            return if not c
-            return if @worker_labor[c.id].include?(lb)
-            @labor_worker[lb] << c.id
-            @worker_labor[c.id] << lb
-            u = c.dfunit
-            if LaborTool[lb]
-                LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
-            end
-            u.status.labors[lb] = true
-            u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (#{reason})"
-        end
+                assign_labor(out, best, lb, "not enough dwarves");
+            }
+        }
+        else if (!idlers.empty())
+        {
+            uint32_t more = max - count;
+            std::string desc = "idleidle";
+            if (!labor_needmore.empty())
+            {
+                more = labor_needmore.count(lb) ? labor_needmore.at(lb) : 0;
+                desc = "idle";
+            }
 
-        def autolabor_unsetlabor(c, lb, reason='no reason given')
-            return if not c
-            return if not @worker_labor[c.id].include?(lb)
-            u = c.dfunit
-            return if LaborMedical[lb] and @medic[u.id]
-            @labor_worker[lb].delete c.id
-            @worker_labor[c.id].delete lb
-            u.status.labors[lb] = false
-            u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (#{reason})"
-        end
+            for (uint32_t i = 0; i < more; i++)
+            {
+                if (labor_worker[lb].size() >= max)
+                    break;
 
-        def set_up_trading(should_be_trading)
-            return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
-            return unless bld = r.dfbuilding
-            return if bld.getBuildStage < bld.getMaxBuildStage
-            return if bld.trade_flags.trader_requested == should_be_trading
-            return unless view = df.curview and view._raw_rtti_classname == 'viewscreen_dwarfmodest'
+                auto id = idlers.begin();
+                std::advance(id, std::uniform_int_distribution<size_t>(0, idlers.size() - 1)(ai->rng));
 
-            view.feed_keys(:D_BUILDJOB)
-            df.center_viewscreen(r)
-            view.feed_keys(:CURSOR_LEFT)
-            view.feed_keys(:BUILDJOB_DEPOT_REQUEST_TRADER)
-            view.feed_keys(:LEAVESCREEN)
-        end
+                assign_labor(out, df::unit::find(*id), lb, desc);
+            }
+        }
+    }
+}
 
-        def unit_hasmilitaryduty(u)
-            return if u.military.squad_id == -1
-            squad = df.world.squads.all.binsearch(u.military.squad_id)
-            curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
-            !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
-        end
-    end
-end
-*/
+void Population::assign_labor(color_ostream & out, df::unit *unit, df::unit_labor labor, std::string reason)
+{
+    if (worker_labor.count(unit->id) && worker_labor.at(unit->id).count(labor))
+        return;
+    labor_worker[labor].insert(unit->id);
+    worker_labor[unit->id].insert(labor);
+    if (labors.tool.count(labor))
+    {
+        for (auto lb : labors.tool)
+        {
+            unassign_labor(out, unit, lb, "conflicts with " + ENUM_KEY_STR(unit_labor, labor) + " - " + reason);
+        }
+        unit->military.pickup_flags.bits.update = 1;
+    }
+    unit->status.labors[labor] = true;
+    ai->debug(out, "[pop] assigning labor " + ENUM_KEY_STR(unit_labor, labor) + " to " + ai->describe_unit(unit) + " (" + reason + ")");
+}
+
+void Population::unassign_labor(color_ostream & out, df::unit *unit, df::unit_labor labor, std::string reason)
+{
+    if (!worker_labor.count(unit->id) || !worker_labor.at(unit->id).count(labor))
+        return;
+    if (labors.medical.count(labor) && medic.count(unit->id))
+        return;
+    labor_worker[labor].erase(unit->id);
+    worker_labor[unit->id].erase(labor);
+    if (labors.tool.count(labor))
+    {
+        unit->military.pickup_flags.bits.update = 1;
+    }
+    unit->status.labors[labor] = false;
+    ai->debug(out, "[pop] unassigning labor " + ENUM_KEY_STR(unit_labor, labor) + " from " + ai->describe_unit(unit) + " (" + reason + ")");
+}
+
+void Population::set_up_trading(bool should_be_trading)
+{
+    Plan::room *room = ai->plan.find_room(Plan::room_type::workshop, [](Plan::room *r) -> bool { return r->info.workshop.type == Plan::workshop_type::TradeDepot; });
+    if (!room)
+        return;
+    df::building_tradedepotst *depot = virtual_cast<df::building_tradedepotst>(df::building::find(room->building_id));
+    if (!depot || depot->getBuildStage() < depot->getMaxBuildStage())
+        return;
+    if (depot->trade_flags.bits.trader_requested == should_be_trading)
+        return;
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+        return;
+
+    std::set<df::interface_key> keys;
+#define KEY(key) \
+            keys.clear(); \
+            keys.insert(interface_key::key); \
+            Gui::getCurViewscreen()->feed(&keys)
+    KEY(D_BUILDJOB);
+    Gui::setCursorCoords(room->pos.x, room->pos.y, room->pos.z);
+    KEY(CURSOR_LEFT);
+    KEY(BUILDJOB_DEPOT_REQUEST_TRADER);
+    KEY(LEAVESCREEN);
+#undef KEY
+}
+
+bool Population::has_military_duty(df::unit *unit)
+{
+    if (unit->military.squad_id == -1)
+        return false;
+
+    df::squad *squad = df::squad::find(unit->military.squad_id);
+    const auto & curmonth = squad->schedule[squad->cur_alert_idx][*cur_year_tick / 28 / 1200];
+
+    return !curmonth->orders.empty() && (curmonth->orders.size() != 1 || curmonth->orders[0]->min_count != 0);
+}
 
 // vim: et:sw=4:ts=4

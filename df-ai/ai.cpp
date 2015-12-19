@@ -3,6 +3,8 @@
 #include <set>
 
 #include "modules/Gui.h"
+#include "modules/Translation.h"
+#include "modules/Units.h"
 
 #include "df/announcements.h"
 #include "df/announcement_type.h"
@@ -342,6 +344,12 @@ void AI::check_unpause(color_ostream & out, state_change_event event)
         default:
             return;
     }
+}
+
+std::string AI::describe_unit(df::unit *unit)
+{
+    return Translation::TranslateName(Units::getVisibleName(unit), false) +
+        ", " + Units::getProfessionName(unit);
 }
 
 /*
