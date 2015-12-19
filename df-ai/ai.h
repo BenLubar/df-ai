@@ -169,6 +169,24 @@ public:
 class Stocks
 {
     AI *ai;
+    // plants that can be brewed in their basic form
+    std::map<int32_t, int16_t> drink_plants;
+    // plants that have a growth that can be brewed
+    std::map<int32_t, int16_t> drink_fruits;
+    // plants that can be made into thread
+    std::map<int32_t, int16_t> thread_plants;
+    // plants that can be milled
+    std::map<int32_t, int16_t> mill_plants;
+    // plants that can be processed into a bag
+    std::map<int32_t, int16_t> bag_plants;
+    // plants that can be milled that are able to dye cloth
+    std::map<int32_t, int16_t> dye_plants;
+    // plants that we can grow underground
+    std::map<int32_t, int16_t> grow_plants;
+    // creatures that have milk that can be turned into cheese
+    std::map<int32_t, int16_t> milk_creatures;
+    // inorganic materials that have a FIRED_MAT reaction product
+    std::set<int32_t> clay_stones;
 
 public:
     Stocks(color_ostream & out, AI *parent);
@@ -176,9 +194,96 @@ public:
 
     enum good
     {
-        food,
-        drink,
+        anvil,
+        armor_feet,
+        armor_hands,
+        armor_head,
+        armor_legs,
+        armor_shield,
+        armor_torso,
+        armorstand,
+        ash,
+        axe,
+        backpack,
+        bag,
+        bag_plant,
+        barrel,
+        bed,
+        bin,
+        block,
+        bone,
+        bonebolts,
+        bucket,
+        cabinet,
+        cage,
+        chair,
+        chest,
+        clay,
         cloth,
+        cloth_nodye,
+        clothes_feet,
+        clothes_hands,
+        clothes_head,
+        clothes_legs,
+        clothes_torso,
+        coal,
+        coffin,
+        coffin_bld,
+        coffin_bld_pet,
+        crossbow,
+        crutch,
+        door,
+        drink,
+        drink_fruit,
+        drink_plant,
+        dye,
+        dye_plant,
+        dye_seeds,
+        flask,
+        floodgate,
+        food,
+        food_ingredients,
+        giant_corkscrew,
+        gypsum,
+        hive,
+        honey,
+        honeycomb,
+        jug,
+        leather,
+        lye,
+        mechanism,
+        metal_ore,
+        milk,
+        mill_plant,
+        minecart,
+        nestbox,
+        pick,
+        pipe_section,
+        plasterpowder,
+        quern,
+        quiver,
+        raw_adamantine,
+        raw_coke,
+        raw_fish,
+        rope,
+        roughgem,
+        shell,
+        skull,
+        slab,
+        soap,
+        splint,
+        stepladder,
+        stone,
+        table,
+        tallow,
+        thread_plant,
+        thread_seeds,
+        traction_bench,
+        weapon,
+        weaponrack,
+        wheelbarrow,
+        wood,
+        wool,
     };
 
     command_result status(color_ostream & out);
@@ -190,6 +295,10 @@ public:
     void queue_slab(int32_t histfig);
     bool need_more(good g);
     bool is_cutting_trees();
+
+private:
+    void update_kitchen(color_ostream & out);
+    void update_plants(color_ostream & out);
 };
 
 class Camera
