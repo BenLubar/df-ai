@@ -193,22 +193,20 @@ static bool has_reaction_product(df::material *mat, const std::string & product)
 
 void Stocks::update_kitchen(color_ostream & out)
 {
-    std::set<std::pair<std::pair<int16_t, int32_t>, std::pair<df::item_type, int16_t> > > already_banned;
+    std::set<std::tuple<int16_t, int32_t, df::item_type, int16_t>> already_banned;
     for (size_t i = 0; i < ui->kitchen.item_types.size(); i++)
     {
-        already_banned.insert(std::make_pair(
-                std::make_pair(
-                    ui->kitchen.mat_types[i],
-                    ui->kitchen.mat_indices[i]
-                ), std::make_pair(
-                    ui->kitchen.item_types[i],
-                    ui->kitchen.item_subtypes[i]
-                )));
+        already_banned.insert(std::tie(
+            ui->kitchen.mat_types[i],
+            ui->kitchen.mat_indices[i],
+            ui->kitchen.item_types[i],
+            ui->kitchen.item_subtypes[i]
+        ));
     }
 
     auto ban_cooking = [&already_banned, &out, this](int16_t mat_type, int32_t mat_index, df::item_type type, int16_t subtype = -1) -> void
     {
-        auto key = std::make_pair(std::make_pair(mat_type, mat_index), std::make_pair(type, subtype));
+        auto key = std::tie(mat_type, mat_index, type, subtype);
         if (!already_banned.insert(key).second)
             return;
         ai->debug(out, "ban_cooking " + ENUM_KEY_STR(item_type, type) + ":" + MaterialInfo(mat_type, mat_index).getToken());
