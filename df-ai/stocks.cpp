@@ -344,48 +344,6 @@ class DwarfAI
     end
 
     class Stocks
-        Needed = {
-            :door => 4, :bed => 4, :bin => 4, :barrel => 4,
-            :cabinet => 4, :chest => 4, :mechanism => 4,
-            :bag => 3, :table => 3, :chair => 3, :cage => 3,
-            :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
-            :food => 20, :drink => 20, :wood => 16, :bucket => 2,
-            :thread_seeds => 10, :dye_seeds => 10, :dye => 10,
-            :weapon => 2, :armor_torso => 2, :clothes_torso => 2, :block => 6,
-            :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
-            :splint => 1, :crutch => 1, :rope => 1, :weaponrack => 1,
-            :armorstand => 1, :floodgate => 1, :traction_bench => 1,
-            :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
-            :coal => 3, :raw_coke => 1, :gypsum => 1, :slab => 1,
-            :giant_corkscrew => 1, :pipe_section => 1, :anvil => 1,
-            :quern => 3, :minecart => 1, :nestbox => 1, :hive => 1,
-            :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
-            :armor_head => 2, :clothes_head => 2, :armor_legs => 2,
-            :clothes_legs => 2, :armor_hands => 2, :clothes_hands => 2,
-            :armor_feet => 2, :clothes_feet => 2, :armor_shield => 2,
-        }
-        NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2,
-            :slab => 0.1, :soap => 0.2, :weapon => 0.05, :cloth => 0.2,
-            :clothes_torso => 0.2, :clothes_legs => 0.2, :clothes_feet => 0.2,
-            :clothes_hands => 0.2, :clothes_head => 0.2, :armor_shield => 0.03,
-            :armor_torso => 0.03, :armor_legs => 0.03, :armor_feet => 0.03,
-            :armor_hands => 0.03, :armor_head => 0.03
-
-        WatchStock = {
-            :roughgem => 6, :thread_plant => 10, :cloth_nodye => 10,
-            :mill_plant => 4, :bag_plant => 4, :milk => 1,
-            :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
-            :skull => 2, :bone => 8, :food_ingredients => 2,
-            :drink_plant => 5, :drink_fruit => 5, :honey => 1,
-            :honeycomb => 1, :wool => 1, :tallow => 1, :shell => 1,
-            :raw_fish => 1, :clay => 1,
-        }
-
-        AlsoCount = {
-            :dye_plant => true, :cloth => true, :leather => true,
-            :crossbow => true, :bonebolts => true, :stone => true,
-        }
-
         attr_accessor :ai, :count
         attr_accessor :onupdate_handle
         def initialize(ai)

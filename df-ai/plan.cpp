@@ -1,12 +1,508 @@
 #include "ai.h"
 
-Plan::Plan(color_ostream & out, AI *parent) :
-    ai(parent)
+#include "modules/Buildings.h"
+
+#include "df/building.h"
+#include "df/building_squad_use.h"
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
+#include "df/squad.h"
+#include "df/unit.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(world);
+
+// when stacking manager jobs, do not stack more than this
+static const int manager_taskmax = 4;
+// add new masonly if more that this much mason manager orders
+static const int manager_maxbacklog = 10;
+// number of dwarves per dininghall table/chair
+static const int dwarves_per_table = 3;
+// number of dwarves per farmplot tile
+static const int dwarves_per_farmtile_num = 3;
+static const int dwarves_per_farmtile_den = 2;
+// dig at most this much wantdig rooms at a time
+static const int want_dig_max = 2;
+// dig this much free bedroom in advance when idle
+static const int spare_bedroom = 3;
+
+Plan::task::task(task_type type) :
+    type(type)
 {
+}
+
+Plan::Plan(color_ostream & out, AI *parent) :
+    ai(parent),
+    rooms(),
+    tasks(),
+    task_cur(tasks.end()),
+    idleidle_todo(),
+    out_of_furniture(),
+    dig_count(0)
+{
+    tasks.push_back(task(task_type::check_rooms));
 }
 
 Plan::~Plan()
 {
+}
+
+command_result Plan::update(color_ostream & out)
+{
+    if (!idleidle_todo.empty())
+    {
+        smooth_room(out, idleidle_todo.front());
+        idleidle_todo.pop_front();
+    }
+
+    if (task_cur == tasks.end())
+    {
+        task_cur = tasks.begin();
+        out_of_furniture.clear();
+        dig_count = 0;
+        for (const auto & task : tasks)
+        {
+            if (task.type == task_type::dig_room)
+            {
+                room *r = task.room;
+                df::coord size = r->size();
+                if (r->type != room_type::corridor || size.z > 1)
+                    dig_count++;
+                if (r->type != room_type::corridor && size.x * size.y * size.z >= 10)
+                    dig_count++;
+            }
+        }
+        return CR_OK;
+    }
+
+    const task & t = *task_cur;
+    switch (t.type)
+    {
+        case task_type::want_dig:
+            {
+                room *r = t.room;
+                if (is_dug(r) || dig_count < want_dig_max)
+                {
+                    if (dig_room(out, r))
+                    {
+                        tasks.erase(task_cur++);
+                        return CR_OK;
+                    }
+                }
+                break;
+            }
+        case task_type::dig_room:
+            {
+                room *r = t.room;
+                if (is_dug(r))
+                {
+                    r->status = room_status::dug;
+                    construct_room(out, r);
+                    tasks.erase(task_cur);
+                    task_cur = tasks.end(); // want_dig asap
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::construct_workshop:
+            {
+                if (try_construct_workshop(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::construct_stockpile:
+            {
+                if (try_construct_stockpile(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::construct_activity_zone:
+            {
+                if (try_construct_activity_zone(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::set_up_farm_plot:
+            {
+                if (try_set_up_farm_plot(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::furnish:
+            {
+                if (try_furnish(out, t.room, t.room->layout[t.index]))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::check_furnish:
+            {
+                if (try_end_furnish(out, t.room, t.room->layout[t.index]))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::check_construct:
+            {
+                if (try_end_construct(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::dig_cistern:
+            {
+                if (try_dig_cistern(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::dig_garbage:
+            {
+                if (try_dig_garbage(out, t.room))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::check_idle:
+            {
+                if (check_idle(out))
+                {
+                    tasks.erase(task_cur++);
+                    return CR_OK;
+                }
+                break;
+            }
+        case task_type::check_rooms:
+            {
+                check_rooms(out);
+                break;
+            }
+        case task_type::monitor_cistern:
+            {
+                monitor_cistern(out);
+                break;
+            }
+    }
+
+    task_cur++;
+    return CR_OK;
+}
+
+/*
+bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
+{
+    std::set<df::coord> holes;
+    for (auto & f : r->layout)
+    {
+        if (f.ignore)
+            continue;
+        if (f.dig == furniture_dig::no)
+        {
+            holes.insert(r->pos0 + f.pos);
+            continue;
+        }
+    }
+    holes = []
+    @layout.each { |f|
+        next if f[:ignore]
+        return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
+        next holes << t if f[:dig] == :No
+        case t.shape_basic
+        when :Wall; return false
+        when :Open
+        else return false if f[:dig] == :Channel
+        end
+    }
+    (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
+        if t = df.map_tile_at(x, y, z)
+            return false if (t.shape == :WALL or (want and t.shape_basic != want)) and not holes.find { |h| h.x == t.x and h.y == t.y and h.z == t.z }
+        end
+    } } }
+    true
+end
+*/
+
+// free / deconstruct the common facilities assigned to this dwarf
+// optionally restricted to a single subtype among:
+//  [dininghall, farmplots, barracks]
+void Plan::free_common_rooms(color_ostream & out, int32_t id)
+{
+    free_common_rooms(out, id, room_type::dining_hall);
+    free_common_rooms(out, id, room_type::farm_plot);
+    free_common_rooms(out, id, room_type::barracks);
+}
+
+void Plan::free_common_rooms(color_ostream & out, int32_t id, room_type subtype)
+{
+    if (subtype == room_type::dining_hall || subtype == room_type::barracks)
+    {
+        find_room(subtype, [subtype, id](room *r) -> bool
+                {
+                    for (auto & l : r->layout)
+                    {
+                        if (l.ignore)
+                        {
+                            continue;
+                        }
+                        if (l.users.erase(id) && l.users.empty())
+                        {
+                            // delete the specific table/chair/bed/etc for
+                            // the dwarf
+                            if (l.building_id != -1 && l.building_id != r->building_id)
+                            {
+                                Buildings::deconstruct(df::building::find(l.building_id));
+                                l.building_id = -1;
+                                l.ignore = true;
+                            }
+
+                            // clear the whole room if it is entirely unused
+                            if (r->building_id != -1)
+                            {
+                                bool any_users = false;
+                                for (auto & l : r->layout)
+                                {
+                                    if (!l.users.empty())
+                                    {
+                                        any_users = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!any_users)
+                                {
+                                    Buildings::deconstruct(df::building::find(r->building_id));
+                                    r->building_id = -1;
+
+                                    if (subtype == room_type::barracks && r->info.barracks.squad_id != -1)
+                                    {
+                                        // TODO: ai.debug("squad #{r.misc[:squad_id]} free #{describe_room(r)}", r)
+                                        r->info.barracks.squad_id = -1;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return false; // keep searching
+                });
+    }
+    else
+    {
+        find_room(subtype, [id](room *r) -> bool
+                {
+                    if (r->users.erase(id) && r->users.empty() && r->building_id != -1)
+                    {
+                        Buildings::deconstruct(df::building::find(r->building_id));
+                        r->building_id = -1;
+                    }
+                    return false; // keep searching
+                });
+    }
+}
+
+void Plan::new_citizen(color_ostream & out, int32_t id)
+{
+    if (!have_task(task_type::check_idle))
+    {
+        tasks.push_back(task(task_type::check_idle));
+    }
+    get_dining_room(out, id);
+    get_bedroom(out, id);
+}
+
+void Plan::del_citizen(color_ostream & out, int32_t id)
+{
+    free_common_rooms(out, id);
+    free_bedroom(out, id);
+}
+
+void Plan::new_soldier(color_ostream & out, int32_t id)
+{
+    df::unit *unit = df::unit::find(id);
+    int32_t squad_id = unit->military.squad_id;
+    if (squad_id == -1)
+        return;
+
+    room *r = find_room(room_type::barracks, [squad_id](room *r) -> bool { return r->info.barracks.squad_id == squad_id; });
+    if (!r)
+    {
+        r = find_room(room_type::barracks, [](room *r) -> bool { return r->info.barracks.squad_id == -1; });
+        if (!r)
+        {
+            ai->debug(out, "[plan] no free barracks");
+            return;
+        }
+
+        r->info.barracks.squad_id = squad_id;
+        // TODO: ai.debug("squad #{squad_id} assign #{describe_room(r)}", r)
+        want_dig(out, r);
+
+        df::building *bld = df::building::find(r->building_id);
+        if (bld)
+        {
+            assign_squad_to_barracks(out, bld, squad_id);
+        }
+    }
+
+#define FIND_FURNITURE(t) \
+    bool found_ ## t = false; \
+    for (auto & l : r->layout) \
+    { \
+        if (l.type == furniture_type::t && l.users.count(id)) \
+        { \
+            found_ ## t = true; \
+            l.ignore = false; \
+            break; \
+        } \
+    } \
+    if (!found_ ## t) \
+    { \
+        for (auto & l : r->layout) \
+        { \
+            if (l.type == furniture_type::t && ( \
+                        furniture_type::t == furniture_type::archery_target || \
+                        l.users.size() < (furniture_type::t == furniture_type::weapon_rack ? 4 : 1))) \
+            { \
+                l.users.insert(id); \
+                l.ignore = false; \
+                break; \
+            } \
+        } \
+    }
+
+    FIND_FURNITURE(weapon_rack);
+    FIND_FURNITURE(armor_stand);
+    FIND_FURNITURE(bed);
+    FIND_FURNITURE(cabinet);
+    FIND_FURNITURE(chest);
+    FIND_FURNITURE(archery_target);
+
+#undef FIND_FURNITURE
+
+    if (r->status == room_status::finished)
+    {
+        furnish_room(out, r);
+    }
+}
+
+void Plan::assign_squad_to_barracks(color_ostream & out, df::building *bld, int32_t squad_id)
+{
+    std::vector<df::building_squad_use *> *squads = bld->getSquads();
+    if (squads) // archery targets return null.
+    {
+        auto su = std::find_if(squads->begin(), squads->end(), [squad_id](df::building_squad_use *su) -> bool { return su->squad_id == squad_id; });
+        if (su == squads->end())
+        {
+            su = squads->insert(su, df::allocate<df::building_squad_use>());
+            (*su)->squad_id = squad_id;
+        }
+        (*su)->mode.bits.sleep = 1;
+        (*su)->mode.bits.train = 1;
+        (*su)->mode.bits.indiv_eq = 1;
+        (*su)->mode.bits.squad_eq = 1;
+    }
+
+    df::squad *squad = df::squad::find(squad_id);
+    auto sr = std::find_if(squad->rooms.begin(), squad->rooms.end(), [bld](df::squad::T_rooms *sr) -> bool { return sr->building_id == bld->id; });
+    if (sr == squad->rooms.end())
+    {
+        sr = squad->rooms.insert(sr, df::allocate<df::squad::T_rooms>());
+        (*sr)->building_id = bld->id;
+    }
+    (*sr)->mode.bits.sleep = 1;
+    (*sr)->mode.bits.train = 1;
+    (*sr)->mode.bits.indiv_eq = 1;
+    (*sr)->mode.bits.squad_eq = 1;
+}
+
+void Plan::del_soldier(color_ostream & out, int32_t id)
+{
+    free_common_rooms(out, id, room_type::barracks);
+}
+
+static int32_t get_grazer(int32_t pet_id)
+{
+    df::unit *unit = df::unit::find(pet_id);
+    df::creature_raw *race = world->raws.creatures.all[unit->race];
+    df::caste_raw *caste = race->caste[unit->caste];
+    if (caste->misc.grazer == 0)
+        return 0;
+    // 1000 = arbitrary, based on dfwiki?pasture
+    // 11*11 == pasture dimensions
+    return 11*11*1000 / caste->misc.grazer;
+}
+
+Plan::room *Plan::new_grazer(color_ostream & out, int32_t pet_id)
+{
+    int limit = 1000 - get_grazer(pet_id);
+    room *r = find_room(room_type::pasture, [limit](room *r) -> bool
+        {
+            int32_t used = 0;
+            for (int32_t id : r->users)
+            {
+                used += get_grazer(id);
+            }
+            return used < limit;
+        });
+    if (r)
+    {
+        r->users.insert(pet_id);
+        if (r->building_id == -1)
+            construct_room(out, r);
+    }
+    return r;
+}
+
+void Plan::del_grazer(color_ostream & out, int32_t pet_id)
+{
+    room *r = find_room(room_type::pasture, [pet_id](room *r) -> bool { return r->users.count(pet_id); });
+    if (r)
+    {
+        r->users.erase(pet_id);
+    }
+}
+
+void Plan::idleidle(color_ostream & out)
+{
+    ai->debug(out, "smooth fort");
+    idleidle_todo.clear();
+    auto add_to_tab = [this](room *r) -> bool
+    {
+        if (r->status != room_status::plan && r->status != room_status::dig)
+        {
+            idleidle_todo.push_back(r);
+        }
+        return false;
+    };
+    find_room(room_type::noble_room, add_to_tab);
+    find_room(room_type::bedroom, add_to_tab);
+    find_room(room_type::well, add_to_tab);
+    find_room(room_type::dining_hall, add_to_tab);
+    find_room(room_type::cemetary, add_to_tab);
+    find_room(room_type::infirmary, add_to_tab);
+    find_room(room_type::barracks, add_to_tab);
+    find_room(room_type::corridor, add_to_tab);
 }
 
 /*
@@ -504,27 +1000,6 @@ class DwarfAI
 
         def freesoldierbarrack(id)
             freecommonrooms(id, :barracks)
-        end
-
-        def getpasture(pet_id)
-            limit = 1000 - ((11*11*1000 / df.unit_find(pet_id).caste_tg.misc.grazer) rescue 0) # 1000 = arbitrary, based on dfwiki?pasture
-            if r = find_room(:pasture) { |_r|
-                _r.misc[:users].empty? or
-                _r.misc[:users].inject(0) { |s, id|
-                    # 11*11 == pasture dimensions
-                    s + ((11*11*1000 / df.unit_find(id).caste_tg.misc.grazer) rescue 0)
-                } < limit
-            }
-                r.misc[:users] << pet_id
-                construct_room(r) if not r.misc[:bld_id]
-                r.dfbuilding
-            end
-        end
-
-        def freepasture(pet_id)
-            if r = find_room(:pasture) { |_r| _r.misc[:users].include?(pet_id) }
-                r.misc[:users].delete pet_id
-            end
         end
 
         def set_owner(r, uid)

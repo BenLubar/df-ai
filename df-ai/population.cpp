@@ -999,7 +999,7 @@ void Population::update_caged(color_ostream & out)
 
                     if (unit->inventory.empty())
                     {
-                        auto pit = ai->plan.find_room(Plan::room_type::pitcage, [cage](Plan::room *room) -> bool { return room->building_id != -1 && abs(room->pos.x - cage->pos.x) <= 1 && abs(room->pos.y - cage->pos.y) <= 1 && room->pos.z == cage->pos.z; });
+                        auto pit = ai->plan.find_room(Plan::room_type::pit_cage, [cage](Plan::room *room) -> bool { df::coord room_pos = room->pos(); return room->building_id != -1 && abs(room_pos.x - cage->pos.x) <= 1 && abs(room_pos.y - cage->pos.y) <= 1 && room_pos.z == cage->pos.z; });
                         if (pit)
                         {
                             assign_unit_to_zone(unit, pit);
@@ -1755,7 +1755,8 @@ void Population::set_up_trading(bool should_be_trading)
             keys.insert(interface_key::key); \
             Gui::getCurViewscreen()->feed(&keys)
     KEY(D_BUILDJOB);
-    Gui::setCursorCoords(room->pos.x, room->pos.y, room->pos.z);
+    df::coord pos = room->pos();
+    Gui::setCursorCoords(pos.x, pos.y, pos.z);
     KEY(CURSOR_LEFT);
     KEY(BUILDJOB_DEPOT_REQUEST_TRADER);
     KEY(LEAVESCREEN);

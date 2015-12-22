@@ -7,14 +7,17 @@
 
 #include "DataDefs.h"
 
-#include <random>
 #include <ctime>
+#include <list>
+#include <random>
 
 #include "df/job_type.h"
+#include "df/tiletype_shape_basic.h"
 #include "df/unit_labor.h"
 
 namespace df
 {
+    struct building;
     struct manager_order;
     struct report;
     struct unit;
@@ -95,32 +98,61 @@ public:
     Plan(color_ostream & out, AI *parent);
     ~Plan();
 
-    enum room_status
+    enum class room_status
     {
         plan,
+        dig,
+        dug,
         finished,
     };
-    enum room_type
+    enum class room_type
     {
-        infirmary,
         barracks,
-        pitcage,
-        workshop,
+        bedroom,
+        cemetary,
         cistern_well,
+        corridor,
+        dining_hall,
+        farm_plot,
+        infirmary,
+        noble_room,
+        pasture,
+        pit_cage,
+        well,
+        workshop,
     };
-    enum workshop_type
+    enum class workshop_type
     {
-        TradeDepot,
         Carpenters,
-        Masons,
         Fishery,
+        Masons,
+        TradeDepot,
+    };
+    enum class furniture_type
+    {
+        archery_target,
+        armor_stand,
+        bed,
+        cabinet,
+        chest,
+        weapon_rack,
+    };
+    struct furniture
+    {
+        furniture_type type;
+        df::coord2d pos;
+        int32_t building_id;
+        std::set<int32_t> users;
+        bool ignore;
     };
     struct room
     {
         room_type type;
         room_status status;
-        df::coord pos;
+        df::coord pos0, pos1;
         int32_t building_id;
+        std::set<int32_t> users;
+        std::vector<furniture> layout;
         union
         {
             struct
@@ -136,16 +168,65 @@ public:
                 bool channeled;
             } cistern_well;
         } info;
+
+        df::coord size() const
+        {
+            df::coord size = (pos1 - pos0);
+            size.x++;
+            size.y++;
+            size.z++;
+            return size;
+        };
+        df::coord pos() const
+        {
+            df::coord halfsize = size();
+            halfsize.x /= 2;
+            halfsize.y /= 2;
+            halfsize.z /= 2;
+            return pos0 + halfsize;
+        };
+    };
+    enum class task_type
+    {
+        want_dig,
+        dig_room,
+        construct_workshop,
+        construct_stockpile,
+        construct_activity_zone,
+        set_up_farm_plot,
+        furnish,
+        check_furnish,
+        check_construct,
+        dig_cistern,
+        dig_garbage,
+        check_idle,
+        check_rooms,
+        monitor_cistern,
+    };
+    struct task
+    {
+        task_type type;
+        Plan::room *room;
+        size_t index;
+
+        explicit task(task_type type);
     };
 
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
     command_result update(color_ostream & out);
 
+    std::map<room_type, std::vector<room *>> rooms;
     template<class F>
     room *find_room(room_type type, F filter)
     {
-        // TODO
+        if (!rooms.count(type))
+            return nullptr;
+        for (room *r : rooms.at(type))
+        {
+            if (filter(r))
+                return r;
+        }
         return nullptr;
     }
     room *find_room(room_type type)
@@ -153,8 +234,32 @@ public:
         return find_room(type, [](room *r) -> bool { return true; });
     }
 
+    std::list<task> tasks;
+    std::list<task>::iterator task_cur;
+    template<class F>
+    bool have_task(task_type type, F filter)
+    {
+        for (const auto & t : tasks)
+        {
+            if (t.type == type && filter(t))
+                return true;
+        }
+        return false;
+    }
+    bool have_task(task_type type)
+    {
+        return have_task(type, [](const task & t) -> bool { return true; });
+    }
+
+    std::list<room *> idleidle_todo;
+    std::set<furniture_type> out_of_furniture;
+    size_t dig_count;
+
     void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
     void idleidle(color_ostream & out);
+    bool check_idle(color_ostream & out);
+    bool check_rooms(color_ostream & out);
+    bool monitor_cistern(color_ostream & out);
     bool is_digging();
     bool past_initial_phase();
 
@@ -164,6 +269,30 @@ public:
     void del_soldier(color_ostream & out, int32_t id);
     room *new_grazer(color_ostream & out, int32_t id);
     void del_grazer(color_ostream & out, int32_t id);
+
+    void get_dining_room(color_ostream & out, int32_t id);
+    void get_bedroom(color_ostream & out, int32_t id);
+    void free_bedroom(color_ostream & out, int32_t id);
+    void free_common_rooms(color_ostream & out, int32_t id);
+    void free_common_rooms(color_ostream & out, int32_t id, room_type subtype);
+    void assign_squad_to_barracks(color_ostream & out, df::building *bld, int32_t squad_id);
+
+    bool is_dug(room *r, df::tiletype_shape_basic want = tiletype_shape_basic::None);
+
+    bool want_dig(color_ostream & out, room *r);
+    bool dig_room(color_ostream & out, room *r);
+    bool try_construct_workshop(color_ostream & out, room *r);
+    bool try_construct_stockpile(color_ostream & out, room *r);
+    bool try_construct_activity_zone(color_ostream & out, room *r);
+    bool try_furnish(color_ostream & out, room *r, furniture & f);
+    bool try_end_furnish(color_ostream & out, room *r, furniture & f);
+    bool try_end_construct(color_ostream & out, room *r);
+    bool try_set_up_farm_plot(color_ostream & out, room *r);
+    bool try_dig_cistern(color_ostream & out, room *r);
+    bool try_dig_garbage(color_ostream & out, room *r);
+    void construct_room(color_ostream & out, room *r);
+    void furnish_room(color_ostream & out, room *r);
+    void smooth_room(color_ostream & out, room *r);
 };
 
 class Stocks
@@ -192,7 +321,7 @@ public:
     Stocks(color_ostream & out, AI *parent);
     ~Stocks();
 
-    enum good
+    enum class good
     {
         anvil,
         armor_feet,
