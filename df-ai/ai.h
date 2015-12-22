@@ -118,15 +118,37 @@ public:
         noble_room,
         pasture,
         pit_cage,
+        stockpile,
         well,
         workshop,
     };
     enum class workshop_type
     {
         Carpenters,
+        Clothiers,
+        Craftsdwarfs,
+        Farmers,
         Fishery,
+        Jewelers,
+        Kitchen,
+        Loom,
         Masons,
+        MetalsmithsForge,
+        Smelter,
+        Still,
         TradeDepot,
+        WoodFurnace,
+    };
+    enum class stockpile_type
+    {
+        animals,
+        bars_blocks,
+        cloth,
+        food,
+        gems,
+        refuse,
+        stone,
+        wood,
     };
     enum class furniture_type
     {
@@ -135,6 +157,7 @@ public:
         bed,
         cabinet,
         chest,
+        floodgate,
         weapon_rack,
     };
     enum class furniture_dig
@@ -156,10 +179,12 @@ public:
     {
         room_type type;
         room_status status;
-        df::coord pos0, pos1;
+        df::coord min, max;
         int32_t building_id;
+        std::vector<room *> access_path;
         std::set<int32_t> users;
         std::vector<furniture> layout;
+        bool in_dig_queue;
         union
         {
             struct
@@ -168,30 +193,24 @@ public:
             } barracks;
             struct
             {
-                workshop_type type;
-            } workshop;
-            struct
-            {
                 bool channeled;
             } cistern_well;
+            struct
+            {
+                stockpile_type type;
+                int32_t level;
+                room *workshop;
+            } stockpile;
+            struct
+            {
+                workshop_type type;
+                int32_t level;
+            } workshop;
         } info;
 
-        df::coord size() const
-        {
-            df::coord size = (pos1 - pos0);
-            size.x++;
-            size.y++;
-            size.z++;
-            return size;
-        };
-        df::coord pos() const
-        {
-            df::coord halfsize = size();
-            halfsize.x /= 2;
-            halfsize.y /= 2;
-            halfsize.z /= 2;
-            return pos0 + halfsize;
-        };
+        room(room_type type, df::coord min, df::coord max);
+        df::coord size() const;
+        df::coord pos() const;
     };
     enum class task_type
     {
@@ -285,6 +304,8 @@ public:
     void assign_squad_to_barracks(color_ostream & out, df::building *bld, int32_t squad_id);
 
     bool is_dug(room *r, df::tiletype_shape_basic want = tiletype_shape_basic::None);
+    void dig(color_ostream & out, room *r);
+    void fix_open(color_ostream & out, room *r);
 
     bool want_dig(color_ostream & out, room *r);
     bool dig_room(color_ostream & out, room *r);

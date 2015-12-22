@@ -32,6 +32,47 @@ Plan::task::task(task_type type) :
 {
 }
 
+Plan::room::room(room_type type, df::coord min, df::coord max) :
+    type(type),
+    status(room_status::plan),
+    min(min),
+    max(max),
+    building_id(-1),
+    access_path(),
+    users(),
+    layout(),
+    in_dig_queue(false)
+{
+    if (this->min.x > this->max.x)
+    {
+        int16_t tmp = this->min.x;
+        this->min.x = this->max.x;
+        this->max.x = tmp;
+    }
+    if (this->min.y > this->max.y)
+    {
+        int16_t tmp = this->min.y;
+        this->min.y = this->max.y;
+        this->max.y = tmp;
+    }
+    if (this->min.z > this->max.z)
+    {
+        int16_t tmp = this->min.z;
+        this->min.z = this->max.z;
+        this->max.z = tmp;
+    }
+}
+
+df::coord Plan::room::pos() const
+{
+    return max - min + 1;
+}
+
+df::coord Plan::room::size() const
+{
+    return min + (size() / 2);
+}
+
 Plan::Plan(color_ostream & out, AI *parent) :
     ai(parent),
     rooms(),
@@ -220,10 +261,10 @@ bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
             continue;
         if (f.dig == furniture_dig::wall)
         {
-            holes.insert(r->pos0 + f.pos);
+            holes.insert(r->min + f.pos);
             continue;
         }
-        df::tiletype *tt = Maps::getTileType(r->pos0 + f.pos);
+        df::tiletype *tt = Maps::getTileType(r->min + f.pos);
         if (!tt)
             continue;
         df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
@@ -239,11 +280,11 @@ bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
                 break;
         }
     }
-    for (int16_t x = r->pos0.x; x <= r->pos1.x; x++)
+    for (int16_t x = r->min.x; x <= r->max.x; x++)
     {
-        for (int16_t y = r->pos0.y; y <= r->pos1.y; y++)
+        for (int16_t y = r->min.y; y <= r->max.y; y++)
         {
-            for (int16_t z = r->pos0.z; z <= r->pos1.z; z++)
+            for (int16_t z = r->min.z; z <= r->max.z; z++)
             {
                 df::tiletype *tt = Maps::getTileType(x, y, z);
                 if (!tt)
@@ -521,6 +562,97 @@ void Plan::idleidle(color_ostream & out)
     find_room(room_type::infirmary, add_to_tab);
     find_room(room_type::barracks, add_to_tab);
     find_room(room_type::corridor, add_to_tab);
+}
+
+bool Plan::dig_room(color_ostream & out, room *r)
+{
+    if (r->status != room_status::plan)
+        return true;
+
+    // TODO: ai.debug "digroom #{describe_room(r)}"
+    r->in_dig_queue = false;
+    r->status = room_status::dig;
+    fix_open(out, r);
+    dig(out, r);
+    task t(task_type::dig_room);
+    t.room = r;
+    tasks.push_back(t);
+    for (room *ap : r->access_path)
+    {
+        dig_room(out, ap);
+    }
+
+    for (auto f = r->layout.begin(); f != r->layout.end(); f++)
+    {
+        if (f->type == furniture_type::floodgate)
+            continue;
+        if (f->dig != furniture_dig::floor)
+            continue;
+        task ft(task_type::furnish);
+        ft.room = r;
+        ft.index = f - r->layout.begin();
+        tasks.push_back(ft);
+    }
+
+    if (r->type == room_type::workshop && r->info.workshop.level == 0)
+    {
+        // add minimal stockpile in front of workshop
+        stockpile_type st = stockpile_type::animals;
+        switch (r->info.workshop.type)
+        {
+            case workshop_type::Carpenters:
+            case workshop_type::WoodFurnace:
+                st = stockpile_type::wood;
+                break;
+            case workshop_type::Masons:
+            case workshop_type::Smelter:
+                st = stockpile_type::stone;
+                break;
+            case workshop_type::Craftsdwarfs:
+                st = stockpile_type::refuse;
+                break;
+            case workshop_type::Farmers:
+            case workshop_type::Fishery:
+            case workshop_type::Still:
+            case workshop_type::Kitchen:
+                st = stockpile_type::food;
+                break;
+            case workshop_type::Jewelers:
+                st = stockpile_type::gems;
+                break;
+            case workshop_type::Loom:
+            case workshop_type::Clothiers:
+                st = stockpile_type::cloth;
+                break;
+            case workshop_type::MetalsmithsForge:
+                st = stockpile_type::bars_blocks;
+                break;
+            case workshop_type::TradeDepot:
+                // invalid
+                break;
+        }
+        if (st != stockpile_type::animals)
+        {
+            // XXX hardcoded fort layout
+            int16_t y = r->layout[0].pos.y > 0 ? (r->max.y + 2) : (r->min.y - 2); // check door position
+            room *sp = new room(room_type::stockpile, df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
+            sp->info.stockpile.type = st;
+            sp->info.stockpile.level = 0;
+            sp->info.stockpile.workshop = r;
+            std::vector<room *> & stockpiles = rooms[room_type::stockpile];
+            auto pos = std::find_if(stockpiles.begin(), stockpiles.end(), [](room *r) -> bool { return r->info.stockpile.level != 0; });
+            stockpiles.insert(pos, sp);
+            dig_room(out, sp);
+        }
+    }
+
+    df::coord size = r->size();
+    if (r->type != room_type::corridor || size.z > 1)
+        dig_count++;
+    if (r->type != room_type::corridor && size.x * size.y * size.z >= 10)
+        dig_count++;
+
+    return true;
 }
 
 /*
