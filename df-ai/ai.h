@@ -137,10 +137,17 @@ public:
         chest,
         weapon_rack,
     };
+    enum class furniture_dig
+    {
+        floor,
+        wall,
+        channel,
+    };
     struct furniture
     {
         furniture_type type;
-        df::coord2d pos;
+        furniture_dig dig;
+        df::coord pos;
         int32_t building_id;
         std::set<int32_t> users;
         bool ignore;

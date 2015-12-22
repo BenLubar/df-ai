@@ -1,6 +1,7 @@
 #include "ai.h"
 
 #include "modules/Buildings.h"
+#include "modules/Maps.h"
 
 #include "df/building.h"
 #include "df/building_squad_use.h"
@@ -210,7 +211,6 @@ command_result Plan::update(color_ostream & out)
     return CR_OK;
 }
 
-/*
 bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
 {
     std::set<df::coord> holes;
@@ -218,31 +218,49 @@ bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
     {
         if (f.ignore)
             continue;
-        if (f.dig == furniture_dig::no)
+        if (f.dig == furniture_dig::wall)
         {
             holes.insert(r->pos0 + f.pos);
             continue;
         }
+        df::tiletype *tt = Maps::getTileType(r->pos0 + f.pos);
+        if (!tt)
+            continue;
+        df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+        switch (ENUM_ATTR(tiletype_shape, basic_shape, s))
+        {
+            case tiletype_shape_basic::Wall:
+                return false;
+            case tiletype_shape_basic::Open:
+                break;
+            default:
+                if (f.dig == furniture_dig::channel)
+                    return false;
+                break;
+        }
     }
-    holes = []
-    @layout.each { |f|
-        next if f[:ignore]
-        return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
-        next holes << t if f[:dig] == :No
-        case t.shape_basic
-        when :Wall; return false
-        when :Open
-        else return false if f[:dig] == :Channel
-        end
+    for (int16_t x = r->pos0.x; x <= r->pos1.x; x++)
+    {
+        for (int16_t y = r->pos0.y; y <= r->pos1.y; y++)
+        {
+            for (int16_t z = r->pos0.z; z <= r->pos1.z; z++)
+            {
+                df::tiletype *tt = Maps::getTileType(x, y, z);
+                if (!tt)
+                    continue;
+                df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+                if ((s == tiletype_shape::WALL ||
+                            (want != tiletype_shape_basic::None &&
+                             ENUM_ATTR(tiletype_shape, basic_shape, s) != want)) &&
+                        !holes.count(df::coord(x, y, z)))
+                {
+                    return false;
+                }
+            }
+        }
     }
-    (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
-        if t = df.map_tile_at(x, y, z)
-            return false if (t.shape == :WALL or (want and t.shape_basic != want)) and not holes.find { |h| h.x == t.x and h.y == t.y and h.z == t.z }
-        end
-    } } }
-    true
-end
-*/
+    return true;
+}
 
 // free / deconstruct the common facilities assigned to this dwarf
 // optionally restricted to a single subtype among:
