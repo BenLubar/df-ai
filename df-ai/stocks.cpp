@@ -3,6 +3,9 @@
 #include "modules/Materials.h"
 
 #include "df/creature_raw.h"
+#include "df/item_slabst.h"
+#include "df/items_other_id.h"
+#include "df/manager_order.h"
 #include "df/plant_growth.h"
 #include "df/ui.h"
 #include "df/world.h"
@@ -328,6 +331,33 @@ void Stocks::update_plants(color_ostream & out)
             clay_stones.insert(idx);
         }
     END_FOR_EACH()
+}
+
+void Stocks::queue_slab(int32_t id)
+{
+    for (auto mo : world->manager_orders)
+    {
+        if (mo->job_type == job_type::EngraveSlab && mo->hist_figure_id == id)
+            return;
+    }
+    for (auto item : world->items.other[items_other_id::SLAB])
+    {
+        df::item_slabst *sl = virtual_cast<df::item_slabst>(item);
+        if (!sl)
+            continue;
+        if (sl->engraving_type == slab_engraving_type::Memorial && sl->topic == id)
+            return;
+        // FIXME we need to actually build the slab to get rid of the ghost
+    }
+    df::manager_order *o = df::allocate<df::manager_order>();
+    o->job_type = job_type::EngraveSlab;
+    o->item_type = item_type::NONE;
+    o->item_subtype = -1;
+    o->mat_type = 0;
+    o->mat_index = -1;
+    o->amount_total = 1;
+    o->hist_figure_id = id;
+    world->manager_orders.push_back(o);
 }
 /*
 class DwarfAI
@@ -1925,18 +1955,6 @@ class DwarfAI
                     end
                 }
             end
-        end
-
-        def queue_slab(histfig_id)
-            return if df.world.manager_orders.any? { |mo|
-                mo.job_type == :EngraveSlab and mo.hist_figure_id == histfig_id
-            }
-            return if df.world.items.other[:SLAB].any? { |sl|
-                sl.engraving_type == :Memorial and sl.topic == histfig_id
-            }
-            o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :item_type => -1, :item_subtype => -1,
-                :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
-            df.world.manager_orders << o
         end
 
         def need_more?(type)
