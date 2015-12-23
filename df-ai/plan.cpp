@@ -4,6 +4,7 @@
 #include "modules/Maps.h"
 
 #include "df/building.h"
+#include "df/building_civzonest.h"
 #include "df/building_squad_use.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
@@ -655,6 +656,55 @@ bool Plan::dig_room(color_ostream & out, room *r)
     return true;
 }
 
+bool Plan::try_construct_activity_zone(color_ostream & out, room *r)
+{
+    if (!constructions_done(r))
+        return false;
+
+    df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->pos(), building_type::Civzone, civzone_type::ActivityZone));
+    bld->zone_flags.bits.active = 1;
+    switch (r->type)
+    {
+        case room_type::infirmary:
+            bld->zone_flags.bits.hospital = 1;
+            bld->hospital.max_splints = 5;
+            bld->hospital.max_thread = 75000;
+            bld->hospital.max_cloth = 50000;
+            bld->hospital.max_crutches = 5;
+            bld->hospital.max_plaster = 750;
+            bld->hospital.max_buckets = 2;
+            bld->hospital.max_soap = 750;
+            break;
+        case room_type::garbage_dump:
+            bld->zone_flags.bits.garbage_dump = 1;
+            break;
+        case room_type::pasture:
+            bld->zone_flags.bits.pen_pasture = 1;
+            break;
+        case room_type::pit_cage:
+            bld->zone_flags.bits.pit_pond = 1;
+            break;
+        default:
+            // ???
+            break;
+    }
+    df::coord size = r->size();
+    bld->room.extents = new uint8_t[size.x * size.y];
+    bld->room.x = r->min.x;
+    bld->room.y = r->min.y;
+    bld->room.width = size.x;
+    bld->room.height = size.y;
+    for (int16_t i = 0; i < size.x * size.y; i++)
+    {
+        bld->room.extents[i] = 1;
+    }
+    bld->is_room = true;
+    Buildings::constructAbstract(bld);
+    r->building_id = bld->id;
+
+    return true;
+}
+
 /*
 class DwarfAI
     class Plan
@@ -783,17 +833,6 @@ class DwarfAI
                 else true
                 end
             }
-        end
-
-        def new_citizen(uid)
-            @tasks << [:checkidle] unless @tasks.find { |t| t[0] == :checkidle }
-            getdiningroom(uid)
-            getbedroom(uid)
-        end
-
-        def del_citizen(uid)
-            freecommonrooms(uid)
-            freebedroom(uid)
         end
 
         def checkidle
@@ -1009,64 +1048,6 @@ class DwarfAI
             }
         end
 
-        def getsoldierbarrack(id)
-            u = df.unit_find(id)
-            return if not u
-            squad_id = u.military.squad_id
-            return if squad_id == -1
-
-            if not r = find_room(:barracks) { |_r| _r.misc[:squad_id] == squad_id }
-                r = find_room(:barracks) { |_r| not _r.misc[:squad_id] }
-                if not r
-                    ai.debug "no free barracks"
-                    return
-                end
-
-                r.misc[:squad_id] = squad_id
-                ai.debug("squad #{squad_id} assign #{describe_room(r)}", r)
-                wantdig(r)
-                if r.misc[:bld_id] and bld = r.dfbuilding
-                    assign_barrack_squad(bld, squad_id)
-                end
-            end
-
-            [:weaponrack, :armorstand, :bed, :cabinet, :chest, :archerytarget].map { |it|
-                r.layout.find { |f| f[:item] == it and f[:users].include?(id) } ||
-                r.layout.find { |f| f[:item] == it and (it == :archerytarget or f[:users].length < (it == :weaponrack ? 4 : 1)) }
-            }.compact.each { |f|
-                f[:users] << id unless f[:users].include?(id)
-                f.delete :ignore
-            }
-            if r.status == :finished
-                furnish_room(r)
-            end
-        end
-
-        def assign_barrack_squad(bld, squad_id)
-            if bld.respond_to?(:squads) # archerytarget has no such field
-                su = bld.squads.find { |_su| _su.squad_id == squad_id }
-                if not su
-                    su = DFHack::BuildingSquadUse.cpp_new(:squad_id => squad_id)
-                    bld.squads << su
-                end
-                su.mode.sleep = true
-                su.mode.train = true
-                su.mode.indiv_eq = true
-                su.mode.squad_eq = true
-            end
-
-            squad = df.world.squads.all.binsearch(squad_id)
-            sr = squad.rooms.find { |_sr| _sr.building_id == bld.id }
-            if not sr
-                sr = DFHack::Squad_TRooms.cpp_new(:building_id => bld.id)
-                squad.rooms << sr
-            end
-            sr.mode.sleep = true
-            sr.mode.train = true
-            sr.mode.indiv_eq = true
-            sr.mode.squad_eq = true
-        end
-
         def getcoffin
             if r = find_room(:cemetary) { |_r|
                     _r.layout.find { |f| f[:users] and f[:users].length < 1 }
@@ -1096,60 +1077,6 @@ class DwarfAI
                 }
                 r.misc.delete(:bld_id)
             end
-        end
-
-        # free / deconstruct the common facilities assigned to this dwarf
-        # optionnaly restricted to a single subtype among:
-        #  [dininghall, farmplots, barracks]
-        def freecommonrooms(id, subtype=nil)
-            @rooms.each { |r|
-                next if subtype and subtype != r.type
-
-                case r.type
-                when :dininghall, :barracks
-                    r.layout.each { |f|
-                        next unless f[:users]
-                        next if f[:ignore]
-                        if f[:users].delete(id) and f[:users].empty?
-                            # delete the specific table/chair/bed/etc for the dwarf
-                            if f[:bld_id] and f[:bld_id] != r.misc[:bld_id]
-                                if bld = df.building_find(f[:bld_id])
-                                    df.building_deconstruct(bld)
-                                end
-                                f.delete :bld_id
-                                f[:ignore] = true
-                            end
-
-                            # clear the whole room if it is entirely unused
-                            if r.misc[:bld_id] and r.layout.all? { |f| f[:users].to_a.empty? }
-                                if bld = r.dfbuilding
-                                    df.building_deconstruct(bld)
-                                end
-                                r.misc.delete(:bld_id)
-
-                                if r.misc[:squad_id]
-                                    ai.debug("squad #{r.misc[:squad_id]} free #{describe_room(r)}", r)
-                                    r.misc.delete :squad_id
-                                end
-                            end
-                        end
-                    }
-
-                when :farmplot
-                    r.misc[:users].delete id
-                    if r.misc[:bld_id] and r.misc[:users].empty?
-                        if bld = r.dfbuilding
-                            df.building_deconstruct(bld)
-                        end
-                        r.misc.delete(:bld_id)
-                    end
-
-                end
-            }
-        end
-
-        def freesoldierbarrack(id)
-            freecommonrooms(id, :barracks)
         end
 
         def set_owner(r, uid)
@@ -1669,43 +1596,6 @@ class DwarfAI
                     false   # loop on all stockpiles
                 end
             }
-
-            true
-        end
-
-        def try_construct_activityzone(r)
-            return unless r.constructions_done?
-
-            bld = df.building_alloc(:Civzone, :ActivityZone)
-            bld.zone_flags.active = true
-            case r.type
-            when :infirmary
-                bld.zone_flags.hospital = true
-                bld.hospital.max_splints = 5
-                bld.hospital.max_thread = 75000
-                bld.hospital.max_cloth = 50000
-                bld.hospital.max_crutches = 5
-                bld.hospital.max_plaster = 750
-                bld.hospital.max_buckets = 2
-                bld.hospital.max_soap = 750
-            when :garbagedump
-                bld.zone_flags.garbage_dump = true
-            when :pasture
-                bld.zone_flags.pen_pasture = true
-                # pit_flags |= 2
-            when :pitcage
-                bld.zone_flags.pit_pond = true
-            end
-            df.building_position(bld, r)
-            bld.room.extents = df.malloc(r.w*r.h)
-            bld.room.x = r.x1
-            bld.room.y = r.y1
-            bld.room.width = r.w
-            bld.room.height = r.h
-            r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
-            bld.is_room = 1
-            df.building_construct_abstract(bld)
-            r.misc[:bld_id] = bld.id
 
             true
         end

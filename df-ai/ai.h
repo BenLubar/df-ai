@@ -114,6 +114,7 @@ public:
         corridor,
         dining_hall,
         farm_plot,
+        garbage_dump,
         infirmary,
         noble_room,
         pasture,
@@ -304,6 +305,7 @@ public:
     void assign_squad_to_barracks(color_ostream & out, df::building *bld, int32_t squad_id);
 
     bool is_dug(room *r, df::tiletype_shape_basic want = tiletype_shape_basic::None);
+    bool constructions_done(room *r);
     void dig(color_ostream & out, room *r);
     void fix_open(color_ostream & out, room *r);
 
