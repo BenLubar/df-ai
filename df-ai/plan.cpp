@@ -928,6 +928,121 @@ void Plan::dig(color_ostream & out, df::coord pos, df::tile_dig_designation mode
     }
 }
 
+static void do_smooth(std::set<df::coord> & tiles)
+{
+    // remove tiles that are not smoothable
+    for (auto it = tiles.begin(); it != tiles.end(); )
+    {
+        df::tiletype *tt = Maps::getTileType(*it);
+        df::tile_designation *td = Maps::getTileDesignation(*it);
+        df::tile_occupancy *occ = Maps::getTileOccupancy(*it);
+
+        if (!tt || !td || !occ)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        df::tiletype_material mat = ENUM_ATTR(tiletype, material, *tt);
+
+        // not a smoothable material
+        if (mat != tiletype_material::STONE && mat != tiletype_material::MINERAL)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        // already designated for something
+        if (td->bits.dig != tile_dig_designation::No || td->bits.smooth != 0 || td->bits.hidden)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        df::tiletype_special sp = ENUM_ATTR(tiletype, special, *tt);
+        df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
+
+        // already smooth
+        if (mat == tiletype_material::SOIL ||
+                mat == tiletype_material::GRASS_LIGHT ||
+                mat == tiletype_material::GRASS_DARK ||
+                mat == tiletype_material::PLANT ||
+                mat == tiletype_material::ROOT ||
+                mat == tiletype_material::ROOT ||
+                sp == tiletype_special::TRACK ||
+                sp == tiletype_special::SMOOTH ||
+                s == tiletype_shape::FORTIFICATION ||
+                sb == tiletype_shape_basic::Open ||
+                sb == tiletype_shape_basic::Stair ||
+                (occ->bits.building != tile_building_occ::None &&
+                 occ->bits.building != tile_building_occ::Dynamic))
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        // wrong shape
+        if (sb != tiletype_shape_basic::Wall && sb != tiletype_shape_basic::Floor)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        it++;
+    }
+
+    // remove tiles that are already being smoothed
+    for (df::job_list_link *job = world->job_list.next; job; job = job->next)
+    {
+        if (job->item->job_type == job_type::DetailWall ||
+                job->item->job_type == job_type::DetailFloor)
+        {
+            tiles.erase(job->item->pos);
+        }
+    }
+
+    // mark the tiles to be smoothed!
+    for (df::coord pos : tiles)
+    {
+        Maps::getTileDesignation(pos)->bits.smooth = 1;
+        Maps::getTileBlock(pos)->flags.bits.designated = 1;
+    }
+}
+
+// returns the set of tiles that were marked for smoothing by this call
+static std::set<df::coord> smooth_xyz(df::coord min, df::coord max)
+{
+    std::set<df::coord> tiles;
+    for (int16_t x = min.x; x < max.x; x++)
+    {
+        for (int16_t y = min.y; y < max.y; y++)
+        {
+            for (int16_t z = min.z; z < max.z; z++)
+            {
+                tiles.insert(df::coord(x, y, z));
+            }
+        }
+    }
+    do_smooth(tiles);
+    return tiles;
+}
+
+void Plan::smooth_room(color_ostream & out, room *r)
+{
+    smooth_xyz(r->min, r->max);
+}
+
+// smooth a room and its accesspath corridors (recursive)
+void Plan::smooth_room_access(color_ostream & out, room *r)
+{
+    smooth_room(out, r);
+    for (auto a : r->access_path)
+    {
+        smooth_room_access(out, r);
+    }
+}
+
 /*
 class DwarfAI
     class Plan
@@ -2003,10 +2118,6 @@ class DwarfAI
             categorize_all
         end
 
-        def smooth_room(r)
-            smooth_xyz!((r.x1-1)..(r.x2+1), (r.y1-1)..(r.y2+1), (r.z1)..(r.z2))
-        end
-
         # smooth a room and its accesspath corridors (recursive)
         def smooth_room_access(r)
             smooth_room(r)
@@ -2068,77 +2179,6 @@ class DwarfAI
                     }
                 }
             }
-        end
-
-        def smooth_xyz!(xs, ys, zs)
-            tiles = []
-            xs.each { |x|
-                ys.each { |y|
-                    zs.each { |z|
-                        tiles << [x, y, z]
-                    }
-                }
-            }
-            smooth!(*tiles)
-        end
-
-        def smooth!(*tiles)
-            # get df tile references
-            tiles = tiles.map { |tile|
-                if Array === tile
-                    df.map_tile_at(*tile)
-                else
-                    df.map_tile_at(tile)
-                end
-            }
-
-            # remove tiles that are not smoothable
-            tiles = tiles.reject { |tile|
-                next true unless tile
-
-                # not a smoothable material
-                next true if tile.tilemat != :STONE and tile.tilemat != :MINERAL
-
-                # already designated for something
-                next true if tile.designation.dig != :No or tile.designation.smooth != 0 or tile.designation.hidden
-
-                # already smooth
-                next true if smooth?(tile)
-
-                # wrong shape
-                next true if tile.shape_basic != :Wall and tile.shape_basic != :Floor
-            }
-
-            # remove tiles that are already being smoothed
-            df.world.job_list.each { |j|
-                if j.job_type == :DetailWall or j.job_type == :DetailFloor
-                    tiles = tiles.reject { |tile|
-                        df.same_pos?(j, tile)
-                    }
-                end
-            }
-
-            # mark the tiles to be smoothed!
-            tiles.each { |tile|
-                tile.designation.smooth = 1
-                tile.mapblock.flags.designated = true
-            }
-        end
-
-        def smooth?(t)
-            return if not t
-            t.tilemat == :SOIL or
-            t.tilemat == :GRASS_LIGHT or
-            t.tilemat == :GRASS_DARK or
-            t.tilemat == :PLANT or
-            t.tilemat == :ROOT or
-            t.special == :TRACK or
-            t.special == :SMOOTH or
-            t.tiletype == :FORTIFICATION or
-            t.shape_basic == :Open or
-            t.shape_basic == :Stair or
-            (t.occupancy.building != :None and
-            t.occupancy.building != :Dynamic)
         end
 
         # check smoothing progress, channel intermediate floors when done

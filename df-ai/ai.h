@@ -348,6 +348,7 @@ public:
     void construct_room(color_ostream & out, room *r);
     void furnish_room(color_ostream & out, room *r);
     void smooth_room(color_ostream & out, room *r);
+    void smooth_room_access(color_ostream & out, room *r);
 };
 
 class Stocks
