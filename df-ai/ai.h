@@ -12,12 +12,14 @@
 #include <random>
 
 #include "df/job_type.h"
+#include "df/tile_dig_designation.h"
 #include "df/tiletype_shape_basic.h"
 #include "df/unit_labor.h"
 
 namespace df
 {
     struct building;
+    struct item;
     struct manager_order;
     struct report;
     struct unit;
@@ -153,28 +155,43 @@ public:
     };
     enum class furniture_type
     {
+        none,
+
         archery_target,
         armor_stand,
         bed,
         cabinet,
+        cage_trap,
         chest,
         floodgate,
+        gear_assembly,
+        lever,
+        minecart_route,
+        nest_box,
+        roller,
+        track_stop,
+        traction_bench,
+        vertical_axle,
         weapon_rack,
+        well,
+        windmill,
     };
-    enum class furniture_dig
+    enum class furniture_construction
     {
-        floor,
-        wall,
-        channel,
+        none,
     };
     struct furniture
     {
         furniture_type type;
-        furniture_dig dig;
+        df::tile_dig_designation dig;
+        furniture_construction construction;
         df::coord pos;
         int32_t building_id;
         std::set<int32_t> users;
+        bool make_room;
         bool ignore;
+
+        furniture(furniture_type type, df::coord pos);
     };
     struct room
     {
@@ -304,6 +321,8 @@ public:
     void free_common_rooms(color_ostream & out, int32_t id, room_type subtype);
     void assign_squad_to_barracks(color_ostream & out, df::building *bld, int32_t squad_id);
 
+    void dig(color_ostream & out, df::coord pos, df::tile_dig_designation mode);
+
     bool is_dug(room *r, df::tiletype_shape_basic want = tiletype_shape_basic::None);
     bool constructions_done(room *r);
     void dig(color_ostream & out, room *r);
@@ -314,8 +333,14 @@ public:
     bool try_construct_workshop(color_ostream & out, room *r);
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activity_zone(color_ostream & out, room *r);
-    bool try_furnish(color_ostream & out, room *r, furniture & f);
-    bool try_end_furnish(color_ostream & out, room *r, furniture & f);
+    bool try_furnish(color_ostream & out, room *r, size_t index);
+    bool try_furnish_construction(color_ostream & out, room *r, size_t index);
+    bool try_furnish_well(color_ostream & out, room *r, size_t index);
+    bool try_furnish_archery_target(color_ostream & out, room *r, size_t index);
+    bool try_furnish_windmill(color_ostream & out, room *r, size_t index);
+    bool try_furnish_roller(color_ostream & out, room *r, size_t index);
+    bool try_furnish_minecart_route(color_ostream & out, room *r, size_t index);
+    bool try_end_furnish(color_ostream & out, room *r, size_t index);
     bool try_end_construct(color_ostream & out, room *r);
     bool try_set_up_farm_plot(color_ostream & out, room *r);
     bool try_dig_cistern(color_ostream & out, room *r);
@@ -444,6 +469,7 @@ public:
         wood,
         wool,
     };
+    std::map<good, size_t> count;
 
     command_result status(color_ostream & out);
     command_result statechange(color_ostream & out, state_change_event event);
@@ -454,6 +480,8 @@ public:
     void queue_slab(int32_t histfig);
     bool need_more(good g);
     bool is_cutting_trees();
+    df::item *find_furniture_item(Plan::furniture_type type);
+    bool is_item_free(df::item *item);
 
 private:
     void update_kitchen(color_ostream & out);

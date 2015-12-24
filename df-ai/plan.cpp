@@ -8,6 +8,7 @@
 #include "df/building_squad_use.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/job.h"
 #include "df/squad.h"
 #include "df/unit.h"
 #include "df/world.h"
@@ -72,6 +73,18 @@ df::coord Plan::room::pos() const
 df::coord Plan::room::size() const
 {
     return min + (size() / 2);
+}
+
+Plan::furniture::furniture(furniture_type type, df::coord pos) :
+    type(type),
+    dig(tile_dig_designation::Default),
+    construction(furniture_construction::none),
+    pos(pos),
+    building_id(-1),
+    users(),
+    make_room(false),
+    ignore(false)
+{
 }
 
 Plan::Plan(color_ostream & out, AI *parent) :
@@ -185,7 +198,7 @@ command_result Plan::update(color_ostream & out)
             }
         case task_type::furnish:
             {
-                if (try_furnish(out, t.room, t.room->layout[t.index]))
+                if (try_furnish(out, t.room, t.index))
                 {
                     tasks.erase(task_cur++);
                     return CR_OK;
@@ -194,7 +207,7 @@ command_result Plan::update(color_ostream & out)
             }
         case task_type::check_furnish:
             {
-                if (try_end_furnish(out, t.room, t.room->layout[t.index]))
+                if (try_end_furnish(out, t.room, t.index))
                 {
                     tasks.erase(task_cur++);
                     return CR_OK;
@@ -260,7 +273,7 @@ bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
     {
         if (f.ignore)
             continue;
-        if (f.dig == furniture_dig::wall)
+        if (f.dig == tile_dig_designation::No)
         {
             holes.insert(r->min + f.pos);
             continue;
@@ -276,7 +289,7 @@ bool Plan::is_dug(room *r, df::tiletype_shape_basic want)
             case tiletype_shape_basic::Open:
                 break;
             default:
-                if (f.dig == furniture_dig::channel)
+                if (f.dig == tile_dig_designation::Channel)
                     return false;
                 break;
         }
@@ -587,7 +600,7 @@ bool Plan::dig_room(color_ostream & out, room *r)
     {
         if (f->type == furniture_type::floodgate)
             continue;
-        if (f->dig != furniture_dig::floor)
+        if (f->dig != tile_dig_designation::Default)
             continue;
         task ft(task_type::furnish);
         ft.room = r;
@@ -703,6 +716,216 @@ bool Plan::try_construct_activity_zone(color_ostream & out, room *r)
     r->building_id = bld->id;
 
     return true;
+}
+
+bool Plan::try_end_construct(color_ostream & out, room *r)
+{
+    df::building *bld = df::building::find(r->building_id);
+    if (bld->getBuildStage() < bld->getMaxBuildStage())
+        return false;
+    furnish_room(out, r);
+    return true;
+}
+
+static df::building *alloc_furniture_building(Plan::furniture_type type, df::coord pos)
+{
+    switch (type)
+    {
+        case Plan::furniture_type::none:
+            return nullptr;
+
+        case Plan::furniture_type::archery_target:
+            return nullptr;
+        case Plan::furniture_type::armor_stand:
+            return Buildings::allocInstance(pos, building_type::Armorstand);
+        case Plan::furniture_type::bed:
+            return Buildings::allocInstance(pos, building_type::Bed);
+        case Plan::furniture_type::cabinet:
+            return Buildings::allocInstance(pos, building_type::Cabinet);
+        case Plan::furniture_type::cage_trap:
+            return Buildings::allocInstance(pos, building_type::Trap, trap_type::CageTrap);
+        case Plan::furniture_type::chest:
+            return Buildings::allocInstance(pos, building_type::Box);
+        case Plan::furniture_type::floodgate:
+            return Buildings::allocInstance(pos, building_type::Floodgate);
+        case Plan::furniture_type::gear_assembly:
+            return Buildings::allocInstance(pos, building_type::GearAssembly);
+        case Plan::furniture_type::lever:
+            return Buildings::allocInstance(pos, building_type::Trap, trap_type::Lever);
+        case Plan::furniture_type::minecart_route:
+            return nullptr;
+        case Plan::furniture_type::nest_box:
+            return Buildings::allocInstance(pos, building_type::NestBox);
+        case Plan::furniture_type::roller:
+            return nullptr;
+        case Plan::furniture_type::track_stop:
+            return Buildings::allocInstance(pos, building_type::Trap, trap_type::TrackStop);
+        case Plan::furniture_type::traction_bench:
+            return Buildings::allocInstance(pos, building_type::TractionBench);
+        case Plan::furniture_type::vertical_axle:
+            return Buildings::allocInstance(pos, building_type::AxleVertical);
+        case Plan::furniture_type::weapon_rack:
+            return Buildings::allocInstance(pos, building_type::Weaponrack);
+        case Plan::furniture_type::well:
+            return nullptr;
+        case Plan::furniture_type::windmill:
+            return nullptr;
+    }
+    return nullptr;
+}
+
+bool Plan::try_furnish(color_ostream & out, room *r, size_t index)
+{
+    furniture & f = r->layout.at(index);
+
+    if (f.building_id != -1)
+        return true;
+    if (f.ignore)
+        return true;
+
+    df::tiletype *tt = Maps::getTileType(r->min + f.pos);
+    if (!tt)
+        return false;
+
+    if (f.construction != furniture_construction::none)
+    {
+        if (try_furnish_construction(out, r, index))
+        {
+            if (f.type == furniture_type::none)
+                return true;
+        }
+        else
+        {
+            return false; // don't try to furnish item before construction is done
+        }
+    }
+
+    df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+
+    if (ENUM_ATTR(tiletype_shape, basic_shape, s) == tiletype_shape_basic::Wall)
+        return false;
+
+    df::item *itm = nullptr;
+
+    switch (f.type)
+    {
+        case furniture_type::none:
+            return true;
+        case furniture_type::well:
+            return try_furnish_well(out, r, index);
+        case furniture_type::archery_target:
+            return try_furnish_archery_target(out, r, index);
+        case furniture_type::gear_assembly:
+            for (auto i : world->items.other[items_other_id::TRAPPARTS])
+            {
+                if (ai->stocks.is_item_free(i))
+                {
+                    itm = i;
+                    break;
+                }
+            }
+            if (itm == nullptr)
+                return false;
+            break;
+        case furniture_type::vertical_axle:
+            for (auto i : world->items.other[items_other_id::WOOD])
+            {
+                if (ai->stocks.is_item_free(i))
+                {
+                    itm = i;
+                    break;
+                }
+            }
+            if (itm == nullptr)
+                return false;
+            break;
+        case furniture_type::windmill:
+            return try_furnish_windmill(out, r, index);
+        case furniture_type::roller:
+            return try_furnish_roller(out, r, index);
+        case furniture_type::minecart_route:
+            return try_furnish_minecart_route(out, r, index);
+        default:
+            break;
+    }
+
+    if (out_of_furniture.count(f.type))
+        return false;
+
+    df::tile_occupancy *oc = Maps::getTileOccupancy(r->min + f.pos);
+    if (oc->bits.building != tile_building_occ::None)
+    {
+        // TODO warn if this stays for too long?
+        return false;
+    }
+
+    df::tiletype_material mat = ENUM_ATTR(tiletype, material, *tt);
+    if (s == tiletype_shape::RAMP || mat == tiletype_material::TREE || mat == tiletype_material::ROOT)
+    {
+        dig(out, r->min + f.pos, f.dig);
+        return false;
+    }
+
+    if (!itm)
+    {
+        itm = ai->stocks.find_furniture_item(f.type);
+
+        if (!itm)
+        {
+            out_of_furniture.insert(f.type);
+            return false;
+        }
+    }
+
+
+    // TODO ai.debug "furnish #{f[:item]} in #{describe_room(r)}"
+    if (f.type == furniture_type::cage_trap && (!ai->stocks.count.count(Stocks::good::cage) || !ai->stocks.count.at(Stocks::good::cage)))
+    {
+        // avoid too much spam
+        return false;
+    }
+
+    df::building *bld = alloc_furniture_building(f.type, r->min + f.pos);
+
+    // TODO: f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
+
+    std::vector<df::item *> items;
+    items.push_back(itm);
+    Buildings::constructWithItems(bld, items);
+
+    if (f.make_room)
+    {
+        r->building_id = bld->id;
+    }
+    f.building_id = bld->id;
+
+    task t(task_type::check_furnish);
+    t.room = r;
+    t.index = index;
+    tasks.push_back(t);
+
+    return true;
+}
+
+void Plan::dig(color_ostream & out, df::coord pos, df::tile_dig_designation mode)
+{
+    df::tile_designation *designation = Maps::getTileDesignation(pos);
+    if (mode != tile_dig_designation::No && designation->bits.dig == tile_dig_designation::No && !designation->bits.hidden)
+    {
+        for (df::job_list_link *job = world->job_list.next; job; job = job->next)
+        {
+            if (ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging && job->item->pos == pos)
+            {
+                // someone already enroute to dig here, avoid 'Inappropriate dig square' spam
+                return;
+            }
+        }
+    }
+    designation->bits.dig = mode;
+    if (mode != tile_dig_designation::No)
+    {
+        Maps::getTileBlock(pos)->flags.bits.designated = 1;
+    }
 }
 
 /*
@@ -1172,72 +1395,6 @@ class DwarfAI
         def furnish_room(r)
             r.layout.each { |f| @tasks << [:furnish, r, f] }
             r.status = :finished
-        end
-
-        FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
-            :gear_assembly => :GearAssembly,
-            :vertical_axle => :AxleVertical,
-            :traction_bench => :TractionBench,
-            :nestbox => :NestBox
-
-        def try_furnish(r, f)
-            return true if f[:bld_id]
-            return true if f[:ignore]
-            tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
-            return if not tgtile
-            if f[:construction]
-                if try_furnish_construction(r, f, tgtile)
-                    return true if not f[:item]
-                else
-                    return  # dont try to furnish item before construction is done
-                end
-            end
-            return if tgtile.shape_basic == :Wall
-            case f[:item]
-            when nil
-                return true
-            when :well
-                return try_furnish_well(r, f, tgtile)
-            when :archerytarget
-                return try_furnish_archerytarget(r, f, tgtile)
-            when :gear_assembly
-                return if not itm = df.world.items.other[:TRAPPARTS].find { |i| ai.stocks.is_item_free(i) }
-            when :vertical_axle
-                return if not itm = df.world.items.other[:WOOD].find { |i| ai.stocks.is_item_free(i) }
-            when :windmill
-                return try_furnish_windmill(r, f, tgtile)
-            when :roller
-                return try_furnish_roller(r, f, tgtile)
-            when :minecart_route
-                return try_furnish_minecart_route(r, f, tgtile)
-            end
-
-            return if @cache_nofurnish[f[:item]]
-            if tgtile.occupancy.building != :None
-                # TODO warn if this stays for too long?
-                false
-            elsif tgtile.shape == :RAMP or tgtile.tilemat == :TREE or tgtile.tilemat == :ROOT
-                tgtile.dig(f[:dig] || :Default)
-                false
-            elsif itm ||= ai.stocks.find_furniture_item(f[:item])
-                return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
-                ai.debug "furnish #{f[:item]} in #{describe_room(r)}"
-                bldn = FurnitureBuilding[f[:item]]
-                subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
-                bld = df.building_alloc(bldn, subtype)
-                df.building_position(bld, tgtile)
-                f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
-                df.building_construct(bld, [itm])
-                if f[:makeroom]
-                    r.misc[:bld_id] = bld.id
-                end
-                f[:bld_id] = bld.id
-                @tasks << [:checkfurnish, r, f]
-                true
-            else
-                @cache_nofurnish[f[:item]] = true
-                false
-            end
         end
 
         def try_furnish_well(r, f, t)

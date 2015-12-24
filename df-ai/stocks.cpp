@@ -146,7 +146,8 @@ Stocks::Stocks(color_ostream & out, AI *parent) :
     dye_plants(),
     grow_plants(),
     milk_creatures(),
-    clay_stones()
+    clay_stones(),
+    count()
 {
 }
 
