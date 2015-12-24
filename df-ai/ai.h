@@ -112,6 +112,7 @@ public:
         barracks,
         bedroom,
         cemetary,
+        cistern_reserve,
         cistern_well,
         corridor,
         dining_hall,
@@ -298,6 +299,7 @@ public:
     std::list<room *> idleidle_todo;
     std::set<furniture_type> out_of_furniture;
     size_t dig_count;
+    size_t try_cistern_count;
 
     void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
     void idleidle(color_ostream & out);
@@ -349,6 +351,7 @@ public:
     void furnish_room(color_ostream & out, room *r);
     void smooth_room(color_ostream & out, room *r);
     void smooth_room_access(color_ostream & out, room *r);
+    void smooth_cistern(color_ostream & out, room *r);
 };
 
 class Stocks

@@ -94,7 +94,8 @@ Plan::Plan(color_ostream & out, AI *parent) :
     task_cur(tasks.end()),
     idleidle_todo(),
     out_of_furniture(),
-    dig_count(0)
+    dig_count(0),
+    try_cistern_count(0)
 {
     tasks.push_back(task(task_type::check_rooms));
 }
@@ -928,6 +929,30 @@ void Plan::dig(color_ostream & out, df::coord pos, df::tile_dig_designation mode
     }
 }
 
+static bool is_smooth(df::coord pos)
+{
+    df::tile_occupancy *occ = Maps::getTileOccupancy(pos);
+    df::tiletype *tt = Maps::getTileType(pos);
+    df::tiletype_material mat = ENUM_ATTR(tiletype, material, *tt);
+    df::tiletype_special sp = ENUM_ATTR(tiletype, special, *tt);
+    df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
+
+    return mat == tiletype_material::SOIL ||
+        mat == tiletype_material::GRASS_LIGHT ||
+        mat == tiletype_material::GRASS_DARK ||
+        mat == tiletype_material::PLANT ||
+        mat == tiletype_material::ROOT ||
+        mat == tiletype_material::ROOT ||
+        sp == tiletype_special::TRACK ||
+        sp == tiletype_special::SMOOTH ||
+        s == tiletype_shape::FORTIFICATION ||
+        sb == tiletype_shape_basic::Open ||
+        sb == tiletype_shape_basic::Stair ||
+        (occ->bits.building != tile_building_occ::None &&
+         occ->bits.building != tile_building_occ::Dynamic);
+}
+
 static void do_smooth(std::set<df::coord> & tiles)
 {
     // remove tiles that are not smoothable
@@ -959,28 +984,15 @@ static void do_smooth(std::set<df::coord> & tiles)
             continue;
         }
 
-        df::tiletype_special sp = ENUM_ATTR(tiletype, special, *tt);
-        df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
-        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
-
         // already smooth
-        if (mat == tiletype_material::SOIL ||
-                mat == tiletype_material::GRASS_LIGHT ||
-                mat == tiletype_material::GRASS_DARK ||
-                mat == tiletype_material::PLANT ||
-                mat == tiletype_material::ROOT ||
-                mat == tiletype_material::ROOT ||
-                sp == tiletype_special::TRACK ||
-                sp == tiletype_special::SMOOTH ||
-                s == tiletype_shape::FORTIFICATION ||
-                sb == tiletype_shape_basic::Open ||
-                sb == tiletype_shape_basic::Stair ||
-                (occ->bits.building != tile_building_occ::None &&
-                 occ->bits.building != tile_building_occ::Dynamic))
+        if (is_smooth(*it))
         {
             tiles.erase(it++);
             continue;
         }
+
+        df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
 
         // wrong shape
         if (sb != tiletype_shape_basic::Wall && sb != tiletype_shape_basic::Floor)
@@ -1014,11 +1026,11 @@ static void do_smooth(std::set<df::coord> & tiles)
 static std::set<df::coord> smooth_xyz(df::coord min, df::coord max)
 {
     std::set<df::coord> tiles;
-    for (int16_t x = min.x; x < max.x; x++)
+    for (int16_t x = min.x; x <= max.x; x++)
     {
-        for (int16_t y = min.y; y < max.y; y++)
+        for (int16_t y = min.y; y <= max.y; y++)
         {
-            for (int16_t z = min.z; z < max.z; z++)
+            for (int16_t z = min.z; z <= max.z; z++)
             {
                 tiles.insert(df::coord(x, y, z));
             }
@@ -1041,6 +1053,119 @@ void Plan::smooth_room_access(color_ostream & out, room *r)
     {
         smooth_room_access(out, r);
     }
+}
+
+// check smoothing progress, channel intermediate floors when done
+bool Plan::try_dig_cistern(color_ostream & out, room *r)
+{
+    // XXX hardcoded layout..
+    int count = 0;
+    int16_t acc_y = r->access_path[0]->min.y;
+    for (int16_t z = r->min.z + 1; z <= r->max.z; z++)
+    {
+        for (int16_t x = r->max.x; x >= r->min.x; x--)
+        {
+            bool stop = false;
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                df::tiletype *tt = Maps::getTileType(x, y, z);
+                if (!tt)
+                    continue;
+                df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *tt);
+                df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
+                switch (sb)
+                {
+                    case tiletype_shape_basic::Floor:
+                        {
+                            df::tiletype *nt01 = Maps::getTileType(x - 1, y, z);
+                            if (!nt01 ||
+                                    !is_smooth(df::coord(x + 1, y - 1, z)) ||
+                                    !is_smooth(df::coord(x + 1, y, z)) ||
+                                    !is_smooth(df::coord(x + 1, y + 1, z)))
+                            {
+                                stop = true;
+                                break;
+                            }
+
+                            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *nt01)) == tiletype_shape_basic::Floor)
+                            {
+                                dig(out, df::coord(x, y, z), tile_dig_designation::Channel);
+                            }
+                            else
+                            {
+                                // last column before stairs
+                                if (y > acc_y)
+                                {
+                                    if (is_smooth(df::coord(x, y + 1, z)) &&
+                                            is_smooth(df::coord(x - 1, y + 1, z)))
+                                    {
+                                        dig(out, df::coord(x, y, z), tile_dig_designation::Channel);
+                                    }
+                                }
+                                else
+                                {
+                                    if (is_smooth(df::coord(x, y - 1, z)) &&
+                                            is_smooth(df::coord(x - 1, y - 1, z)))
+                                    {
+                                        dig(out, df::coord(x, y, z), tile_dig_designation::Channel);
+                                    }
+                                }
+                            }
+                            break;
+                        }
+
+                    case tiletype_shape_basic::Open:
+                        count++;
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            if (stop)
+                break;
+        }
+    }
+
+    try_cistern_count++;
+    if (try_cistern_count % 12 == 0)
+    {
+        smooth_cistern(out, r);
+    }
+
+    df::coord size = r->size();
+    if (count == size.x * size.y * (size.z - 1))
+    {
+        r->info.cistern_well.channeled = true;
+        return true;
+    }
+    return false;
+}
+
+void Plan::smooth_cistern(color_ostream & out, room *r)
+{
+    for (auto a : r->access_path)
+    {
+        smooth_room_access(out, a);
+    }
+
+    std::set<df::coord> tiles;
+    for (int16_t z = r->min.z; z <= r->max.z; z++)
+    {
+        for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
+        {
+            for (int16_t y = r->min.y - 1; y <= r->max.y + 1; y++)
+            {
+                if (z != r->min.z &&
+                        r->min.x <= x && r->max.x >= x &&
+                        r->min.y <= y && r->max.y >= y)
+                    continue;
+                tiles.insert(df::coord(x, y, z));
+            }
+        }
+    }
+
+    do_smooth(tiles);
 }
 
 /*
