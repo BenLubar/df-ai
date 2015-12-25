@@ -1,4 +1,5 @@
 #include "ai.h"
+#include "unit_entity_positions.h"
 
 #include "modules/Gui.h"
 #include "modules/Units.h"
@@ -186,32 +187,6 @@ static int32_t total_xp(df::unit *unit)
 static bool compare_total_xp(df::unit *a, df::unit *b)
 {
     return total_xp(a) < total_xp(b);
-}
-
-template<class T, class F>
-static T unit_entity_positions(df::unit *unit, T start, F func)
-{
-    auto hf = df::historical_figure::find(unit->hist_figure_id);
-    if (!hf)
-        return start;
-
-    for (auto link : hf->entity_links)
-    {
-        auto el = virtual_cast<df::histfig_entity_link_positionst>(link);
-        if (!el)
-            continue;
-        auto ent = df::historical_entity::find(el->entity_id);
-        if (!ent)
-            continue;
-        auto asn = binsearch_in_vector(ent->positions.assignments, el->assignment_id);
-        if (!asn)
-            continue;
-        auto pos = binsearch_in_vector(ent->positions.own, asn->position_id);
-        if (!pos)
-            continue;
-        start = func(start, pos);
-    }
-    return start;
 }
 
 static int32_t score_for_draft(df::unit *unit)
@@ -457,7 +432,7 @@ void Population::update_nobles(color_ostream & out)
             nobles.insert(df::historical_figure::find(assignment->histfig)->unit_id);
         }
     }
-    ai->plan.attribute_noblerooms(out, nobles);
+    ai->plan.attribute_noble_rooms(out, nobles);
 }
 
 void Population::update_jobs(color_ostream & out)

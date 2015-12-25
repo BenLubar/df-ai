@@ -1,4 +1,5 @@
 #include "ai.h"
+#include "unit_entity_positions.h"
 
 #include "modules/Buildings.h"
 #include "modules/Maps.h"
@@ -40,6 +41,7 @@ Plan::room::room(room_type type, df::coord min, df::coord max) :
     min(min),
     max(max),
     building_id(-1),
+    owner_id(-1),
     access_path(),
     users(),
     layout(),
@@ -264,6 +266,11 @@ command_result Plan::update(color_ostream & out)
     }
 
     task_cur++;
+    return CR_OK;
+}
+
+command_result Plan::statechange(color_ostream & out, state_change_event event)
+{
     return CR_OK;
 }
 
@@ -1166,6 +1173,79 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
     }
 
     do_smooth(tiles);
+}
+
+void Plan::attribute_noble_rooms(color_ostream & out, std::set<int32_t> & ids)
+{
+    // XXX tomb may be populated...
+    find_room(room_type::noble_room, [this, &out, ids](room *r) -> bool {
+                if (r->owner_id != -1 && !ids.count(r->owner_id))
+                {
+                    set_owner(out, r, -1);
+                }
+                return false;
+            });
+
+    for (int32_t id : ids)
+    {
+        std::vector<df::entity_position *> positions;
+        unit_entity_positions(df::unit::find(id), [&positions](df::entity_position *pos) -> void { positions.push_back(pos); });
+        room *base = find_room(room_type::noble_room, [id](room *r) -> bool { return r->owner_id == id; });
+        if (!base)
+            base = find_room(room_type::noble_room, [](room *r) -> bool { return r->owner_id == -1; });
+        if (!base)
+            continue;
+        find_room(room_type::noble_room, [this, &out, base, positions, id](room *r) -> bool {
+                    if (r->info.noble_room.suite == base->info.noble_room.suite)
+                    {
+                        set_owner(out, r, id);
+                        switch (r->info.noble_room.type)
+                        {
+                            case noble_room_type::tomb:
+                                for (auto pos : positions)
+                                {
+                                    if (pos->required_tomb > 0)
+                                    {
+                                        want_dig(out, r);
+                                        break;
+                                    }
+                                }
+                                break;
+                            case noble_room_type::dining_room:
+                                for (auto pos : positions)
+                                {
+                                    if (pos->required_dining > 0)
+                                    {
+                                        want_dig(out, r);
+                                        break;
+                                    }
+                                }
+                                break;
+                            case noble_room_type::bedroom:
+                                for (auto pos : positions)
+                                {
+                                    if (pos->required_bedroom > 0)
+                                    {
+                                        want_dig(out, r);
+                                        break;
+                                    }
+                                }
+                                break;
+                            case noble_room_type::office:
+                                for (auto pos : positions)
+                                {
+                                    if (pos->required_office > 0)
+                                    {
+                                        want_dig(out, r);
+                                        break;
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                    return false;
+                });
+    }
 }
 
 /*

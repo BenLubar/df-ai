@@ -126,6 +126,24 @@ public:
         well,
         workshop,
     };
+    enum class noble_room_type
+    {
+        tomb,
+        dining_room,
+        bedroom,
+        office,
+    };
+    enum class stockpile_type
+    {
+        animals,
+        bars_blocks,
+        cloth,
+        food,
+        gems,
+        refuse,
+        stone,
+        wood,
+    };
     enum class workshop_type
     {
         Carpenters,
@@ -142,17 +160,6 @@ public:
         Still,
         TradeDepot,
         WoodFurnace,
-    };
-    enum class stockpile_type
-    {
-        animals,
-        bars_blocks,
-        cloth,
-        food,
-        gems,
-        refuse,
-        stone,
-        wood,
     };
     enum class furniture_type
     {
@@ -200,6 +207,7 @@ public:
         room_status status;
         df::coord min, max;
         int32_t building_id;
+        int32_t owner_id;
         std::vector<room *> access_path;
         std::set<int32_t> users;
         std::vector<furniture> layout;
@@ -214,6 +222,11 @@ public:
             {
                 bool channeled;
             } cistern_well;
+            struct
+            {
+                noble_room_type type;
+                int32_t suite;
+            } noble_room;
             struct
             {
                 stockpile_type type;
@@ -301,7 +314,7 @@ public:
     size_t dig_count;
     size_t try_cistern_count;
 
-    void attribute_noblerooms(color_ostream & out, std::set<int32_t> & ids);
+    void attribute_noble_rooms(color_ostream & out, std::set<int32_t> & ids);
     void idleidle(color_ostream & out);
     bool check_idle(color_ostream & out);
     bool check_rooms(color_ostream & out);
@@ -329,6 +342,7 @@ public:
     bool constructions_done(room *r);
     void dig(color_ostream & out, room *r);
     void fix_open(color_ostream & out, room *r);
+    void set_owner(color_ostream & out, room *r, int32_t id);
 
     bool want_dig(color_ostream & out, room *r);
     bool dig_room(color_ostream & out, room *r);
