@@ -55,6 +55,12 @@ command_result Camera::onupdate_register(color_ostream & out)
                     gps->display_frames = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()) ? 1 : 0;
                 }
             });
+    check_record_status();
+    return CR_OK;
+}
+
+void Camera::check_record_status()
+{
     if (RECORD_MOVIE && gview->supermovie_on == 0)
     {
         gview->supermovie_on = 1;
@@ -67,7 +73,6 @@ command_result Camera::onupdate_register(color_ostream & out)
         filename << "data/movies/df-ai-" << std::time(nullptr) << ".cmv";
         gview->movie_file = filename.str();
     }
-    return CR_OK;
 }
 
 command_result Camera::onupdate_unregister(color_ostream & out)

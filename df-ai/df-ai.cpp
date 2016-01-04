@@ -16,6 +16,7 @@ REQUIRE_GLOBAL(pause_state);
 
 // Protected by CoreSuspender
 AI *dwarfAI = nullptr;
+bool full_reset_requested = false;
 
 command_result status_command(color_ostream & out, std::vector<std::string> & args);
 
@@ -24,6 +25,12 @@ bool check_enabled(color_ostream & out)
 {
     if (enabled)
     {
+        if (full_reset_requested)
+        {
+            delete dwarfAI;
+            dwarfAI = nullptr;
+            full_reset_requested = false;
+        }
         if (!dwarfAI)
         {
             df::viewscreen_titlest *view = virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen());

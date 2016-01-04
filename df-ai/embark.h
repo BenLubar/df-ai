@@ -5,6 +5,7 @@ class AI;
 class Embark
 {
     AI *ai;
+    bool selected_embark;
 
 public:
     Embark(AI *ai);
@@ -14,9 +15,9 @@ public:
     command_result onupdate_register(color_ostream & out);
     command_result onupdate_unregister(color_ostream & out);
 
-    void update(color_ostream & out);
-
-    std::string status();
+    bool update(color_ostream & out);
 };
+
+extern std::string AI_RANDOM_EMBARK_WORLD;
 
 // vim: et:sw=4:ts=4

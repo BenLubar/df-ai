@@ -1,225 +1,337 @@
-/*
-class DwarfAI
-    class RandomEmbark
-        attr_accessor :ai
-        def initialize(ai)
-            @ai = ai
-            df.onupdate_register_once('df-ai random_embark') { update } if $AI_RANDOM_EMBARK
-        end
+#include "ai.h"
+#include "camera.h"
+#include "embark.h"
+#include "event_manager.h"
 
-        def startup
-            # do nothing
-        end
+#include "modules/Gui.h"
+#include "modules/Screen.h"
+#include "modules/Translation.h"
 
-        def onupdate_register
-            # do nothing
-        end
+#include "df/region_map_entry.h"
+#include "df/viewscreen_choose_start_sitest.h"
+#include "df/viewscreen_new_regionst.h"
+#include "df/viewscreen_setupdwarfgamest.h"
+#include "df/viewscreen_textviewerst.h"
+#include "df/viewscreen_titlest.h"
+#include "df/viewscreen_update_regionst.h"
+#include "df/world.h"
+#include "df/world_data.h"
 
-        def onupdate_unregister
-            if $AI_RANDOM_EMBARK
-                ai.debug 'game over. restarting in 1 minute.'
-                ai.timeout_sameview(60) do
-                    ai.debug 'restarting.'
-                    df.curview.feed_keys(:LEAVESCREEN)
+REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
+REQUIRE_GLOBAL(world);
 
-                    df.onupdate_register_once('df-ai restart wait') {
-                        next unless df.curview._raw_rtti_classname == 'viewscreen_titlest'
+std::string AI_RANDOM_EMBARK_WORLD = "";
 
-                        unless $NO_QUIT
-                            df.curview.breakdown_level = :QUIT
-                            next true
-                        end
+Embark::Embark(AI *ai) :
+    ai(ai),
+    selected_embark(false)
+{
+    if (AI_RANDOM_EMBARK)
+    {
+        events.onupdate_register_once("df-ai random_embark", [this](color_ostream & out) -> bool
+                {
+                    return update(out);
+                });
+    }
+}
 
-                        # reset
-                        $dwarfAI = DwarfAI.new
+command_result Embark::startup(color_ostream & out)
+{
+    // do nothing
+    return CR_OK;
+}
 
-                        df.onupdate_register_once('df-ai restart') {
-                            view = df.curview
-                            if view._raw_rtti_classname == 'viewscreen_dwarfmodest'
-                                begin
-                                    $dwarfAI.onupdate_register
-                                    $dwarfAI.startup
-                                    view.feed_keys(:D_PAUSE) if df.pause_state
-                                rescue Exception
-                                    $dwarfAI.debug $!
-                                    $dwarfAI.debug $!.backtrace.join("\n")
-                                    $dwarfAI.abandon!(view)
-                                end
-                                true
-                            end
-                        }
+command_result Embark::onupdate_register(color_ostream & out)
+{
+    // do nothing
+    return CR_OK;
+}
 
-                        true
+command_result Embark::onupdate_unregister(color_ostream & out)
+{
+    if (AI_RANDOM_EMBARK)
+    {
+        ai->debug(out, "game over. restarting in 1 minute.");
+        ai->timeout_sameview(60, [this](color_ostream & out)
+                {
+                    ai->debug(out, "restarting.");
+                    interface_key_set keys;
+                    keys.insert(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen()->feed(&keys);
+
+                    events.onupdate_register_once("df-ai restart wait", [this](color_ostream & out) -> bool
+                            {
+                                if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
+                                {
+                                    return false;
+                                }
+
+                                if (!NO_QUIT)
+                                {
+                                    Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
+                                    return true;
+                                }
+
+                                extern bool full_reset_requested;
+                                full_reset_requested = true;
+                                return true;
+                            });
+                });
+    }
+    return CR_OK;
+}
+
+bool Embark::update(color_ostream & out)
+{
+    df::viewscreen *curview = Gui::getCurViewscreen();
+    if (!curview || curview->breakdown_level != interface_breakdown_types::NONE)
+        return false;
+
+    interface_key_set keys;
+    if (df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(curview))
+    {
+        ai->camera->check_record_status();
+        switch (view->sel_subpage)
+        {
+            case df::viewscreen_titlest::None:
+                {
+                    auto start_game = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::Start);
+                    if (!AI_RANDOM_EMBARK_WORLD.empty() && start_game != view->menu_line_id.end())
+                    {
+                        ai->debug(out, "choosing \"Start Game\"");
+                        view->sel_menu_line = start_game - view->menu_line_id.begin();
                     }
-                end
-            end
-        end
-
-        def update
-            view = df.curview
-            return if not view or view.breakdown_level != :NONE
-            case view
-            when DFHack::ViewscreenTitlest
-                if $RECORD_MOVIE and df.gview.supermovie_on == 0
-                    df.gview.supermovie_on = 1
-                    df.gview.currentblocksize = 0
-                    df.gview.nextfilepos = 0
-                    df.gview.supermovie_pos = 0
-                    df.gview.supermovie_delayrate = 0
-                    df.gview.first_movie_write = 1
-                    df.gview.movie_file = "data/movies/df-ai-#{Time.now.to_i}.cmv"
-                end
-
-                case view.sel_subpage
-                when :None
-                    if $AI_RANDOM_EMBARK_WORLD and view.menu_line_id.include?(1)
-                        ai.debug 'choosing "Start Game"'
-                        view.sel_menu_line = view.menu_line_id.index(1)
-                        view.feed_keys(:SELECT)
                     else
-                        $AI_RANDOM_EMBARK_WORLD = nil
-                        ai.debug 'choosing "New World"'
-                        view.sel_menu_line = view.menu_line_id.index(2)
-                        view.feed_keys(:SELECT)
-                    end
-                when :StartSelectWorld
-                    if not $AI_RANDOM_EMBARK_WORLD
-                        ai.debug 'leaving "Select World" (no save name)'
-                        view.feed_keys(:LEAVESCREEN)
-                        return
-                    end
-
-                    # XXX the memory structures are wrong. Revisit this when they get fixed.
-                    l = view.start_savegames.length
-                    save = view.continue_savegames.to_a[-l, l].index($AI_RANDOM_EMBARK_WORLD)
-                    if save
-                        ai.debug "selecting save ##{save}"
-                        view.sel_submenu_line = save
-                        view.feed_keys(:SELECT)
+                    {
+                        ai->debug(out, "choosing \"New World\"");
+                        view->sel_menu_line = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::NewWorld) - view->menu_line_id.begin();
+                    }
+                    keys.insert(interface_key::SELECT);
+                    view->feed(&keys);
+                    break;
+                }
+            case df::viewscreen_titlest::StartSelectWorld:
+                {
+                    if (AI_RANDOM_EMBARK_WORLD.empty())
+                    {
+                        ai->debug(out, "leaving \"Select World\" (no save name)");
+                        keys.insert(interface_key::LEAVESCREEN);
+                        view->feed(&keys);
+                        return false;
+                    }
+                    auto save = std::find_if(view->start_savegames.begin(), view->start_savegames.end(), [](df::viewscreen_titlest::T_start_savegames *s) -> bool
+                            {
+                                return s->save_dir == AI_RANDOM_EMBARK_WORLD;
+                            });
+                    if (save != view->start_savegames.end())
+                    {
+                        ai->debug(out, stl_sprintf("selecting save #%d (%s, %s)",
+                                    save - view->start_savegames.begin(),
+                                    (*save)->world_name_str.c_str(),
+                                    Translation::TranslateName(&(*save)->world_name, true).c_str()));
+                        view->sel_submenu_line = save - view->start_savegames.begin();
+                        keys.insert(interface_key::SELECT);
+                    }
                     else
-                        ai.debug "could not find save named #{$AI_RANDOM_EMBARK_WORLD}"
-                        $AI_RANDOM_EMBARK_WORLD = nil
-                        view.feed_keys(:LEAVESCREEN)
-                    end
-                when :StartSelectMode
-                    if view.submenu_line_id.include?(0)
-                        ai.debug 'choosing "Dwarf Fortress Mode"'
-                        view.sel_menu_line = view.submenu_line_id.index(0)
-                        view.feed_keys(:SELECT)
+                    {
+                        ai->debug(out, "could not find save named " + AI_RANDOM_EMBARK_WORLD);
+                        AI_RANDOM_EMBARK_WORLD = "";
+                        keys.insert(interface_key::LEAVESCREEN);
+                    }
+                    view->feed(&keys);
+                    break;
+                }
+            case df::viewscreen_titlest::StartSelectMode:
+                {
+                    auto fortress_mode = std::find(view->submenu_line_id.begin(), view->submenu_line_id.end(), 0);
+                    if (fortress_mode != view->submenu_line_id.end())
+                    {
+                        ai->debug(out, "choosing \"Dwarf Fortress Mode\"");
+                        view->sel_menu_line = fortress_mode - view->submenu_line_id.begin();
+                        keys.insert(interface_key::SELECT);
+                    }
                     else
-                        ai.debug 'leaving "Select Mode" (no fortress mode available)'
-                        $AI_RANDOM_EMBARK_WORLD = nil
-                        view.feed_keys(:LEAVESCREEN)
-                    end
-                end
-            when DFHack::ViewscreenNewRegionst
-                return if $AI_RANDOM_EMBARK_WORLD
+                    {
+                        ai->debug(out, "leaving \"Select Mode\" (no fortress mode available)");
+                        AI_RANDOM_EMBARK_WORLD = "";
+                        keys.insert(interface_key::LEAVESCREEN);
+                    }
+                    view->feed(&keys);
+                    break;
+                }
+            default:
+                break;
+        }
+    }
+    else if (df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview))
+    {
+        if (!AI_RANDOM_EMBARK_WORLD.empty())
+            return false;
 
-                if not view.unk_33.empty?
-                    ai.debug 'leaving world gen disclaimer'
-                    view.feed_keys(:LEAVESCREEN)
-                elsif df.world.worldgen_status.state == 0
-                    ai.debug 'choosing "Generate World"'
-                    view.world_size = 1
-                    view.feed_keys(:MENU_CONFIRM)
-                elsif df.world.worldgen_status.state == 10
-                    ai.debug "world gen finished, save name is #{df.world.cur_savegame.save_dir}"
-                    $AI_RANDOM_EMBARK_WORLD = df.world.cur_savegame.save_dir
-                    view.feed_keys(:SELECT)
-                end
-            when DFHack::ViewscreenUpdateRegionst
-                ai.debug "updating world, goal: #{DwarfAI.timestamp(view.year, view.year_tick)}"
-            when DFHack::ViewscreenChooseStartSitest
-                if view.finder.finder_state == -1
-                    ai.debug 'choosing "Site Finder"'
-                    view.feed_keys(:SETUP_FIND)
-                    view.finder.options[:DimensionX] = 3
-                    view.finder.options[:DimensionY] = 2
-                    view.finder.options[:Aquifer] = 0
-                    view.finder.options[:River] = 1
-                    view.finder.options[:Savagery] = 2
-                    view.feed_keys(:SELECT)
-                elsif view.finder.search_x == -1
-                    if @selected_embark
-                        return
-                    elsif view.finder.finder_state == 2
-                        ai.debug 'choosing "Embark"'
-                        view.feed_keys(:LEAVESCREEN)
-                        sx, sy = view.location.region_pos.x, view.location.region_pos.y
-                        sites = []
-                        df.world.world_data.world_width.times do |x|
-                            df.world.world_data.world_height.times do |y|
-                                s = df.world.world_data.region_map[x][y].finder_rank
-                                sites << [x, y] if s >= 10000
-                            end
-                        end
-                        raise 'no good embarks but site finder exited with success' if sites.empty?
-                        ai.debug "found sites count: #{sites.length}"
-                        site = sites[rand(sites.length)]
-                        dx, dy = site[0], site[1]
-                        dx -= sx
-                        dy -= sy
+        if (!view->welcome_msg.empty())
+        {
+            ai->debug(out, "leaving world gen disclaimer");
+            keys.insert(interface_key::LEAVESCREEN);
+            view->feed(&keys);
+        }
+        else if (world->worldgen_status.state == 0)
+        {
+            ai->debug(out, "choosing \"Generate World\"");
+            view->world_size = 1;
+            keys.insert(interface_key::MENU_CONFIRM);
+            view->feed(&keys);
+        }
+        else if (world->worldgen_status.state == 10)
+        {
+            ai->debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
+            AI_RANDOM_EMBARK_WORLD = world->cur_savegame.save_dir;
+            keys.insert(interface_key::SELECT);
+            view->feed(&keys);
+        }
+    }
+    else if (df::viewscreen_update_regionst *view = strict_virtual_cast<df::viewscreen_update_regionst>(curview))
+    {
+        ai->debug(out, "updating world, goal: " + AI::timestamp(view->year, view->year_tick));
+    }
+    else if (df::viewscreen_choose_start_sitest *view = strict_virtual_cast<df::viewscreen_choose_start_sitest>(curview))
+    {
+        if (view->finder.finder_state == -1)
+        {
+            ai->debug(out, "choosing \"Site Finder\"");
+            keys.insert(interface_key::SETUP_FIND);
+            view->feed(&keys);
+            keys.clear();
+            view->finder.options[embark_finder_option::DimensionX] = 3;
+            view->finder.options[embark_finder_option::DimensionY] = 2;
+            view->finder.options[embark_finder_option::Aquifer] = 0;
+            view->finder.options[embark_finder_option::River] = 1;
+            view->finder.options[embark_finder_option::Savagery] = 2;
+            keys.insert(interface_key::SELECT);
+            view->feed(&keys);
+        }
+        else if (view->finder.search_x == -1)
+        {
+            if (selected_embark)
+            {
+                return false;
+            }
+            else if (view->finder.finder_state == 2)
+            {
+                ai->debug(out, "choosing \"Embark\"");
+                keys.insert(interface_key::LEAVESCREEN);
+                view->feed(&keys);
+                keys.clear();
 
-                        if dx >= 0
-                            dx.times do
-                                view.feed_keys(:CURSOR_RIGHT)
-                            end
-                        else
-                            (-dx).times do
-                                view.feed_keys(:CURSOR_LEFT)
-                            end
-                        end
+                df::coord2d start = view->location.region_pos;
+                std::vector<df::coord2d> sites;
+                for (int16_t x = 0; x < world->world_data->world_width; x++)
+                {
+                    for (int16_t y = 0; y < world->world_data->world_height; y++)
+                    {
+                        if (world->world_data->region_map[x][y].finder_rank >= 10000)
+                        {
+                            sites.push_back(df::coord2d(x, y));
+                        }
+                    }
+                }
+                assert(!sites.empty());
+                ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
+                df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(ai->rng)];
+                df::coord2d diff = site - start;
 
-                        if dy >= 0
-                            dy.times do
-                                view.feed_keys(:CURSOR_DOWN)
-                            end
-                        else
-                            (-dy).times do
-                                view.feed_keys(:CURSOR_UP)
-                            end
-                        end
-
-                        @selected_embark = true
-
-                        ai.timeout_sameview(15) do
-                            view.feed_keys(:SETUP_EMBARK)
-                            view.feed_keys(:SELECT) # dismiss warnings
-                        end
-                    else
-                        ai.debug 'leaving embark selector (no good embarks)'
-                        $AI_RANDOM_EMBARK_WORLD = nil
-                        view.breakdown_level = :QUIT
-                    end
+                if (diff.x >= 0)
+                {
+                    for (int16_t x = 0; x < diff.x; x++)
+                    {
+                        keys.insert(interface_key::CURSOR_RIGHT);
+                        view->feed(&keys);
+                        keys.clear();
+                    }
+                }
                 else
-                    ai.debug "searching for a site (#{view.finder.search_x}/#{df.world.world_data.world_width / 16}, #{view.finder.search_y}/#{df.world.world_data.world_height / 16})"
-                end
-            when DFHack::ViewscreenSetupdwarfgamest
-                ai.debug 'choosing "Play Now"'
-                view.feed_keys(:SELECT)
-                # TODO custom embark loadout
-            when DFHack::ViewscreenTextviewerst
-                ai.timeout_sameview do
-                    ai.debug 'site is ready. disabling minimap.'
-                    df.curview.feed_keys(:LEAVESCREEN)
-                    df.ui_area_map_width = 3
-                    df.ui_menu_width = 3
-                    df.standing_orders_job_cancel_announce = 0 unless $DEBUG
-                end
-                return true
-            end
-            false
-        end
+                {
+                    for (int16_t x = 0; x > diff.x; x--)
+                    {
+                        keys.insert(interface_key::CURSOR_LEFT);
+                        view->feed(&keys);
+                        keys.clear();
+                    }
+                }
 
-        def status
-            ""
-        end
+                if (diff.y >= 0)
+                {
+                    for (int16_t y = 0; y < diff.y; y++)
+                    {
+                        keys.insert(interface_key::CURSOR_DOWN);
+                        view->feed(&keys);
+                        keys.clear();
+                    }
+                }
+                else
+                {
+                    for (int16_t y = 0; y > diff.y; y--)
+                    {
+                        keys.insert(interface_key::CURSOR_UP);
+                        view->feed(&keys);
+                        keys.clear();
+                    }
+                }
 
-        def serialize
-            {}
-        end
-    end
-end
-*/
+                selected_embark = true;
+
+                ai->timeout_sameview(15, [](color_ostream & out)
+                        {
+                            df::viewscreen *view = Gui::getCurViewscreen();
+                            interface_key_set keys;
+                            keys.insert(interface_key::SETUP_EMBARK);
+                            view->feed(&keys);
+                            keys.clear();
+                            // dismiss warnings
+                            keys.insert(interface_key::SELECT);
+                            view->feed(&keys);
+                        });
+            }
+            else
+            {
+                ai->debug(out, "leaving embark selector (no good embarks)");
+                AI_RANDOM_EMBARK_WORLD = "";
+                view->breakdown_level = interface_breakdown_types::QUIT; // XXX
+            }
+        }
+        else
+        {
+            ai->debug(out, stl_sprintf("searching foor a site (%d/%d, %d/%d)",
+                        view->finder.search_x,
+                        world->world_data->world_width / 16,
+                        view->finder.search_y,
+                        world->world_data->world_height / 16));
+        }
+    }
+    else if (df::viewscreen_setupdwarfgamest *view = strict_virtual_cast<df::viewscreen_setupdwarfgamest>(curview))
+    {
+        ai->debug(out, "choosing \"Play Now\"");
+        keys.insert(interface_key::SELECT);
+        view->feed(&keys);
+        // TODO custom embark loadout
+    }
+    else if (df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview))
+    {
+        ai->debug(out, "site is ready.");
+        ai->timeout_sameview([this](color_ostream & out)
+                {
+                    ai->debug(out, "disabling minimap.");
+                    interface_key_set keys;
+                    keys.insert(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen()->feed(&keys);
+                    Gui::setMenuWidth(3, 3);
+                    if (!DEBUG)
+                    {
+                        *standing_orders_job_cancel_announce = 0;
+                    }
+                });
+        return true;
+    }
+    return false;
+}
 
 // vim: et:sw=4:ts=4

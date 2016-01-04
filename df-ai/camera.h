@@ -21,6 +21,7 @@ public:
     command_result onupdate_register(color_ostream & out);
     command_result onupdate_unregister(color_ostream & out);
 
+    void check_record_status();
     void update(color_ostream & out);
     std::string status();
 };
