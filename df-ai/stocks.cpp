@@ -1,365 +1,3 @@
-#include "ai.h"
-
-#include "modules/Materials.h"
-
-#include "df/creature_raw.h"
-#include "df/item_slabst.h"
-#include "df/items_other_id.h"
-#include "df/manager_order.h"
-#include "df/plant_growth.h"
-#include "df/ui.h"
-#include "df/world.h"
-
-REQUIRE_GLOBAL(ui);
-REQUIRE_GLOBAL(world);
-
-const static struct GoodsInfo
-{
-    std::map<Stocks::good, size_t> needed;
-    std::map<Stocks::good, double> needed_per_dwarf;
-    std::map<Stocks::good, size_t> watch_stock;
-    std::set<Stocks::good> also_count;
-
-    GoodsInfo()
-    {
-        needed[Stocks::good::door] = 4;
-        needed[Stocks::good::bed] = 4;
-        needed[Stocks::good::bin] = 4;
-        needed[Stocks::good::barrel] = 4;
-        needed[Stocks::good::cabinet] = 4;
-        needed[Stocks::good::chest] = 4;
-        needed[Stocks::good::mechanism] = 4;
-        needed[Stocks::good::bag] = 3;
-        needed[Stocks::good::table] = 3;
-        needed[Stocks::good::chair] = 3;
-        needed[Stocks::good::cage] = 3;
-        needed[Stocks::good::coffin] = 2;
-        needed[Stocks::good::coffin_bld] = 3;
-        needed[Stocks::good::coffin_bld_pet] = 1;
-        needed[Stocks::good::food] = 20;
-        needed[Stocks::good::drink] = 20;
-        needed[Stocks::good::wood] = 16;
-        needed[Stocks::good::bucket] = 2;
-        needed[Stocks::good::thread_seeds] = 10;
-        needed[Stocks::good::dye_seeds] = 10;
-        needed[Stocks::good::dye] = 10;
-        needed[Stocks::good::weapon] = 2;
-        needed[Stocks::good::armor_torso] = 2;
-        needed[Stocks::good::clothes_torso] = 2;
-        needed[Stocks::good::block] = 6;
-        needed[Stocks::good::quiver] = 2;
-        needed[Stocks::good::flask] = 2;
-        needed[Stocks::good::backpack] = 2;
-        needed[Stocks::good::wheelbarrow] = 1;
-        needed[Stocks::good::splint] = 1;
-        needed[Stocks::good::crutch] = 1;
-        needed[Stocks::good::rope] = 1;
-        needed[Stocks::good::weaponrack] = 1;
-        needed[Stocks::good::armorstand] = 1;
-        needed[Stocks::good::floodgate] = 1;
-        needed[Stocks::good::traction_bench] = 1;
-        needed[Stocks::good::soap] = 1;
-        needed[Stocks::good::lye] = 1;
-        needed[Stocks::good::ash] = 1;
-        needed[Stocks::good::plasterpowder] = 1;
-        needed[Stocks::good::coal] = 3;
-        needed[Stocks::good::raw_coke] = 1;
-        needed[Stocks::good::gypsum] = 1;
-        needed[Stocks::good::slab] = 1;
-        needed[Stocks::good::giant_corkscrew] = 1;
-        needed[Stocks::good::pipe_section] = 1;
-        needed[Stocks::good::anvil] = 1;
-        needed[Stocks::good::quern] = 3;
-        needed[Stocks::good::minecart] = 1;
-        needed[Stocks::good::nestbox] = 1;
-        needed[Stocks::good::hive] = 1;
-        needed[Stocks::good::jug] = 1;
-        needed[Stocks::good::stepladder] = 2;
-        needed[Stocks::good::pick] = 2;
-        needed[Stocks::good::axe] = 2;
-        needed[Stocks::good::armor_head] = 2;
-        needed[Stocks::good::clothes_head] = 2;
-        needed[Stocks::good::armor_legs] = 2;
-        needed[Stocks::good::clothes_legs] = 2;
-        needed[Stocks::good::armor_hands] = 2;
-        needed[Stocks::good::clothes_hands] = 2;
-        needed[Stocks::good::armor_feet] = 2;
-        needed[Stocks::good::clothes_feet] = 2;
-        needed[Stocks::good::armor_shield] = 2;
-
-        needed_per_dwarf[Stocks::good::food] = 1;
-        needed_per_dwarf[Stocks::good::drink] = 2;
-        needed_per_dwarf[Stocks::good::slab] = 0.1;
-        needed_per_dwarf[Stocks::good::soap] = 0.2;
-        needed_per_dwarf[Stocks::good::weapon] = 0.05;
-        needed_per_dwarf[Stocks::good::cloth] = 0.2;
-        needed_per_dwarf[Stocks::good::clothes_torso] = 0.2;
-        needed_per_dwarf[Stocks::good::clothes_legs] = 0.2;
-        needed_per_dwarf[Stocks::good::clothes_feet] = 0.2;
-        needed_per_dwarf[Stocks::good::clothes_hands] = 0.2;
-        needed_per_dwarf[Stocks::good::clothes_head] = 0.2;
-        needed_per_dwarf[Stocks::good::armor_shield] = 0.03;
-        needed_per_dwarf[Stocks::good::armor_torso] = 0.03;
-        needed_per_dwarf[Stocks::good::armor_legs] = 0.03;
-        needed_per_dwarf[Stocks::good::armor_feet] = 0.03;
-        needed_per_dwarf[Stocks::good::armor_hands] = 0.03;
-        needed_per_dwarf[Stocks::good::armor_head] = 0.03;
-
-        watch_stock[Stocks::good::roughgem] = 6;
-        watch_stock[Stocks::good::thread_plant] = 10;
-        watch_stock[Stocks::good::cloth_nodye] = 10;
-        watch_stock[Stocks::good::mill_plant] = 4;
-        watch_stock[Stocks::good::bag_plant] = 4;
-        watch_stock[Stocks::good::milk] = 1;
-        watch_stock[Stocks::good::metal_ore] = 6;
-        watch_stock[Stocks::good::raw_coke] = 2;
-        watch_stock[Stocks::good::raw_adamantine] = 2;
-        watch_stock[Stocks::good::skull] = 2;
-        watch_stock[Stocks::good::bone] = 8;
-        watch_stock[Stocks::good::food_ingredients] = 2;
-        watch_stock[Stocks::good::drink_plant] = 5;
-        watch_stock[Stocks::good::drink_fruit] = 5;
-        watch_stock[Stocks::good::honey] = 1;
-        watch_stock[Stocks::good::honeycomb] = 1;
-        watch_stock[Stocks::good::wool] = 1;
-        watch_stock[Stocks::good::tallow] = 1;
-        watch_stock[Stocks::good::shell] = 1;
-        watch_stock[Stocks::good::raw_fish] = 1;
-        watch_stock[Stocks::good::clay] = 1;
-
-        also_count.insert(Stocks::good::dye_plant);
-        also_count.insert(Stocks::good::cloth);
-        also_count.insert(Stocks::good::leather);
-        also_count.insert(Stocks::good::crossbow);
-        also_count.insert(Stocks::good::bonebolts);
-        also_count.insert(Stocks::good::stone);
-    }
-} goods;
-
-Stocks::Stocks(color_ostream & out, AI *parent) :
-    ai(parent),
-    drink_plants(),
-    drink_fruits(),
-    thread_plants(),
-    mill_plants(),
-    bag_plants(),
-    dye_plants(),
-    grow_plants(),
-    milk_creatures(),
-    clay_stones(),
-    count()
-{
-}
-
-Stocks::~Stocks()
-{
-}
-
-static bool has_reaction_product(df::material *mat, const std::string & product)
-{
-    const std::vector<std::string *> & v = mat->reaction_product.id;
-    for (auto s : v)
-    {
-        if (*s == product)
-            return true;
-    }
-    return false;
-}
-
-#define FOR_EACH_PLANT() \
-    for (auto pit = world->raws.plants.all.begin(); pit != world->raws.plants.all.end(); pit++) \
-    { \
-        const int16_t material_type_base = MaterialInfo::PLANT_BASE; \
-        int32_t idx = pit - world->raws.plants.all.begin(); \
-        df::plant_raw *plant = *pit; \
-        std::vector<df::material *> & materials = plant->material;
-#define FOR_EACH_CREATURE() \
-    for (auto cit = world->raws.creatures.all.begin(); cit != world->raws.creatures.all.end(); cit++) \
-    { \
-        const int16_t material_type_base = MaterialInfo::CREATURE_BASE; \
-        int32_t idx = cit - world->raws.creatures.all.begin(); \
-        df::creature_raw *creature = *cit; \
-        std::vector<df::material *> & materials = creature->material;
-#define FOR_EACH_MATERIAL() \
-    for (auto mit = materials.begin(); mit != materials.end(); mit++) \
-    { \
-        int16_t typ = material_type_base + (mit - materials.begin()); \
-        df::material *mat = *mit;
-#define FOR_EACH_INORGANIC() \
-    for (auto iit = world->raws.inorganics.begin(); iit != world->raws.inorganics.end(); iit++) \
-    { \
-        int16_t typ = 0; \
-        int32_t idx = iit - world->raws.inorganics.begin(); \
-        df::inorganic_raw *inorganic = *iit; \
-        df::material *mat = &inorganic->material;
-#define END_FOR_EACH() \
-    }
-
-void Stocks::update_kitchen(color_ostream & out)
-{
-    std::set<std::tuple<int16_t, int32_t, df::item_type, int16_t>> already_banned;
-    for (size_t i = 0; i < ui->kitchen.item_types.size(); i++)
-    {
-        already_banned.insert(std::tie(
-            ui->kitchen.mat_types[i],
-            ui->kitchen.mat_indices[i],
-            ui->kitchen.item_types[i],
-            ui->kitchen.item_subtypes[i]
-        ));
-    }
-
-    auto ban_cooking = [&already_banned, &out, this](int16_t mat_type, int32_t mat_index, df::item_type type, int16_t subtype = -1) -> void
-    {
-        auto key = std::tie(mat_type, mat_index, type, subtype);
-        if (!already_banned.insert(key).second)
-            return;
-        ai->debug(out, "ban_cooking " + ENUM_KEY_STR(item_type, type) + ":" + MaterialInfo(mat_type, mat_index).getToken());
-        ui->kitchen.mat_types.push_back(mat_type);
-        ui->kitchen.mat_indices.push_back(mat_index);
-        ui->kitchen.item_types.push_back(type);
-        ui->kitchen.item_subtypes.push_back(subtype);
-        ui->kitchen.exc_types.push_back(1); // cooking
-    };
-
-    // ban cooking alcohol
-    FOR_EACH_PLANT()
-        FOR_EACH_MATERIAL()
-            if (mat->flags.is_set(material_flags::ALCOHOL))
-            {
-                ban_cooking(typ, idx, item_type::DRINK);
-            }
-        END_FOR_EACH()
-    END_FOR_EACH()
-    FOR_EACH_CREATURE()
-        FOR_EACH_MATERIAL()
-            if (mat->flags.is_set(material_flags::ALCOHOL))
-            {
-                ban_cooking(typ, idx, item_type::DRINK);
-            }
-        END_FOR_EACH()
-    END_FOR_EACH()
-
-    // ban cooking honey (hard-coded in raws)
-    MaterialInfo honey;
-    if (honey.findCreature("HONEY_BEE", "HONEY"))
-    {
-        ban_cooking(honey.type, honey.index, item_type::LIQUID_MISC);
-    }
-
-    // ban cooking tallow
-    FOR_EACH_CREATURE()
-        FOR_EACH_MATERIAL()
-            if (has_reaction_product(mat, "SOAP_MAT"))
-            {
-                ban_cooking(typ, idx, item_type::GLOB);
-            }
-        END_FOR_EACH()
-    END_FOR_EACH()
-
-    // ban cooking plants that have seeds
-    FOR_EACH_PLANT()
-        MaterialInfo m(plant->material_defs.type_basic_mat, plant->material_defs.idx_basic_mat);
-        if (m.isValid() && has_reaction_product(m.material, "SEED_MAT"))
-        {
-            ban_cooking(m.type, m.index, item_type::PLANT);
-        }
-
-        if (!plant->flags.is_set(plant_raw_flags::TREE))
-        {
-            for (auto g : plant->growths)
-            {
-                MaterialInfo gm(g);
-                if (gm.isValid() && has_reaction_product(gm.material, "SEED_MAT"))
-                {
-                    ban_cooking(g->mat_type, g->mat_index, item_type::PLANT_GROWTH);
-                }
-            }
-        }
-    }
-}
-
-void Stocks::update_plants(color_ostream & out)
-{
-    drink_plants.clear();
-    drink_fruits.clear();
-    thread_plants.clear();
-    mill_plants.clear();
-    bag_plants.clear();
-    dye_plants.clear();
-    grow_plants.clear();
-    milk_creatures.clear();
-    clay_stones.clear();
-
-    FOR_EACH_PLANT()
-        FOR_EACH_MATERIAL()
-            if (has_reaction_product(mat, "DRINK_MAT"))
-            {
-                if (mat->flags.is_set(material_flags::STRUCTURAL_PLANT_MAT))
-                {
-                    drink_plants[idx] = typ;
-                }
-                else if (mat->flags.is_set(material_flags::LEAF_MAT))
-                {
-                    drink_fruits[idx] = typ;
-                }
-                break;
-            }
-        END_FOR_EACH()
-
-        if (plant->flags.is_set(plant_raw_flags::THREAD))
-            thread_plants[idx] = plant->material_defs.type_basic_mat;
-        if (plant->flags.is_set(plant_raw_flags::MILL))
-            mill_plants[idx] = plant->material_defs.type_basic_mat;
-        if (has_reaction_product(MaterialInfo(plant->material_defs.type_basic_mat, plant->material_defs.idx_basic_mat).material, "BAG_ITEM"))
-            bag_plants[idx] = plant->material_defs.type_basic_mat;
-        if (plant->flags.is_set(plant_raw_flags::MILL) && MaterialInfo(plant->material_defs.type_mill, plant->material_defs.idx_mill).material->flags.is_set(material_flags::IS_DYE))
-            dye_plants[idx] = plant->material_defs.type_mill;
-        if (plant->flags.is_set(plant_raw_flags::SEED) && plant->flags.is_set(plant_raw_flags::BIOME_SUBTERRANEAN_WATER))
-            grow_plants[idx] = plant->material_defs.type_basic_mat;
-    END_FOR_EACH()
-    FOR_EACH_CREATURE()
-        FOR_EACH_MATERIAL()
-            if (has_reaction_product(mat, "CHEESE_MAT"))
-            {
-                milk_creatures[idx] = typ;
-                break;
-            }
-        END_FOR_EACH()
-    END_FOR_EACH()
-    FOR_EACH_INORGANIC()
-        if (has_reaction_product(mat, "FIRED_MAT"))
-        {
-            clay_stones.insert(idx);
-        }
-    END_FOR_EACH()
-}
-
-void Stocks::queue_slab(int32_t id)
-{
-    for (auto mo : world->manager_orders)
-    {
-        if (mo->job_type == job_type::EngraveSlab && mo->hist_figure_id == id)
-            return;
-    }
-    for (auto item : world->items.other[items_other_id::SLAB])
-    {
-        df::item_slabst *sl = virtual_cast<df::item_slabst>(item);
-        if (!sl)
-            continue;
-        if (sl->engraving_type == slab_engraving_type::Memorial && sl->topic == id)
-            return;
-        // FIXME we need to actually build the slab to get rid of the ghost
-    }
-    df::manager_order *o = df::allocate<df::manager_order>();
-    o->job_type = job_type::EngraveSlab;
-    o->item_type = item_type::NONE;
-    o->item_subtype = -1;
-    o->mat_type = 0;
-    o->mat_index = -1;
-    o->amount_total = 1;
-    o->hist_figure_id = id;
-    world->manager_orders.push_back(o);
-}
 /*
 class DwarfAI
     # an object similar to a hash, that will evaluate and cache @proc for every key
@@ -375,6 +13,48 @@ class DwarfAI
     end
 
     class Stocks
+        Needed = {
+            :door => 4, :bed => 4, :bin => 4, :barrel => 4,
+            :cabinet => 4, :chest => 4, :mechanism => 4,
+            :bag => 3, :table => 3, :chair => 3, :cage => 3,
+            :coffin => 2, :coffin_bld => 3, :coffin_bld_pet => 1,
+            :food => 20, :drink => 20, :wood => 16, :bucket => 2,
+            :thread_seeds => 10, :dye_seeds => 10, :dye => 10,
+            :weapon => 2, :armor_torso => 2, :clothes_torso => 2, :block => 6,
+            :quiver => 2, :flask => 2, :backpack => 2, :wheelbarrow => 1,
+            :splint => 1, :crutch => 1, :rope => 1, :weaponrack => 1,
+            :armorstand => 1, :floodgate => 1, :traction_bench => 1,
+            :soap => 1, :lye => 1, :ash => 1, :plasterpowder => 1,
+            :coal => 3, :raw_coke => 1, :gypsum => 1, :slab => 1,
+            :giant_corkscrew => 1, :pipe_section => 1, :anvil => 1,
+            :quern => 3, :minecart => 1, :nestbox => 1, :hive => 1,
+            :jug => 1, :stepladder => 2, :pick => 2, :axe => 2,
+            :armor_head => 2, :clothes_head => 2, :armor_legs => 2,
+            :clothes_legs => 2, :armor_hands => 2, :clothes_hands => 2,
+            :armor_feet => 2, :clothes_feet => 2, :armor_shield => 2,
+        }
+        NeededPerDwarf = Hash.new(0.0).update :food => 1, :drink => 2,
+            :slab => 0.1, :soap => 0.2, :weapon => 0.05, :cloth => 0.2,
+            :clothes_torso => 0.2, :clothes_legs => 0.2, :clothes_feet => 0.2,
+            :clothes_hands => 0.2, :clothes_head => 0.2, :armor_shield => 0.03,
+            :armor_torso => 0.03, :armor_legs => 0.03, :armor_feet => 0.03,
+            :armor_hands => 0.03, :armor_head => 0.03
+
+        WatchStock = {
+            :roughgem => 6, :thread_plant => 10, :cloth_nodye => 10,
+            :mill_plant => 4, :bag_plant => 4, :milk => 1,
+            :metal_ore => 6, :raw_coke => 2, :raw_adamantine => 2,
+            :skull => 2, :bone => 8, :food_ingredients => 2,
+            :drink_plant => 5, :drink_fruit => 5, :honey => 1,
+            :honeycomb => 1, :wool => 1, :tallow => 1, :shell => 1,
+            :raw_fish => 1, :clay => 1,
+        }
+
+        AlsoCount = {
+            :dye_plant => true, :cloth => true, :leather => true,
+            :crossbow => true, :bonebolts => true, :stone => true,
+        }
+
         attr_accessor :ai, :count
         attr_accessor :onupdate_handle
         def initialize(ai)
@@ -482,6 +162,114 @@ class DwarfAI
             }
         end
 
+        def update_kitchen
+            already_banned = {}
+            df.ui.kitchen.item_types.length.times { |i|
+                already_banned[[df.ui.kitchen.mat_types[i],
+                                df.ui.kitchen.mat_indices[i],
+                                df.ui.kitchen.item_types[i],
+                                df.ui.kitchen.item_subtypes[i]]] = true
+            }
+            ban_cooking = lambda { |mat_type, mat_index, type|
+                subtype = -1
+                key = [mat_type, mat_index, type, subtype]
+                next if already_banned[key]
+                already_banned[key] = true
+                ai.debug "ban_cooking #{type}:#{df.decode_mat(mat_type, mat_index)}"
+                df.ui.kitchen.mat_types     << mat_type
+                df.ui.kitchen.mat_indices   << mat_index
+                df.ui.kitchen.item_types    << type
+                df.ui.kitchen.item_subtypes << subtype
+                df.ui.kitchen.exc_types     << 1 # cooking
+            }
+
+            # ban cooking alcohol
+            df.world.raws.plants.all.each_with_index do |p, i|
+                p.material.each_with_index do |m, j|
+                    if m.flags[:ALCOHOL]
+                        ban_cooking[j + DFHack::MaterialInfo::PLANT_BASE, i, :DRINK]
+                    end
+                end
+            end
+            df.world.raws.creatures.all.each_with_index do |c, i|
+                c.material.each_with_index do |m, j|
+                    if m.flags[:ALCOHOL]
+                        ban_cooking[j + DFHack::MaterialInfo::CREATURE_BASE, i, :DRINK]
+                    end
+                end
+            end
+
+            # ban cooking honey (hard-coded in raws)
+            honey = df.decode_mat('CREATURE:HONEY_BEE:HONEY')
+            ban_cooking[honey.mat_type, honey.mat_index, :LIQUID_MISC]
+
+            # ban cooking tallow
+            df.world.raws.creatures.all.each_with_index do |c, i|
+                c.material.each_with_index do |m, j|
+                    if m.reaction_product and m.reaction_product.id and m.reaction_product.id[0] == 'SOAP_MAT'
+                        ban_cooking[j + DFHack::MaterialInfo::CREATURE_BASE, i, :GLOB]
+                    end
+                end
+            end
+
+            # ban cooking plants that have seeds
+            df.world.raws.plants.all.each do |p|
+                m = df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material
+                ban_cooking[p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat, :PLANT] if m.reaction_product and m.reaction_product.id and m.reaction_product.id.include?('SEED_MAT')
+
+                if not p.flags[:TREE]
+                    p.growths.each do |g|
+                        m = df.decode_mat(g).material
+                        ban_cooking[g.mat_type, g.mat_index, :PLANT_GROWTH] if m.reaction_product and m.reaction_product.id and m.reaction_product.id.include?('SEED_MAT')
+                    end
+                end
+            end
+        end
+
+        def update_plants
+            DrinkPlants.clear
+            DrinkFruits.clear
+            ThreadPlants.clear
+            MillPlants.clear
+            BagPlants.clear
+            DyePlants.clear
+            GrowPlants.clear
+            MilkCreatures.clear
+            ClayStones.clear
+            df.world.raws.plants.all.length.times do |i|
+                p = df.world.raws.plants.all[i]
+                p.material.length.times do |j|
+                    if p.material[j].reaction_product.id.include?('DRINK_MAT')
+                        if p.material[j].flags[:STRUCTURAL_PLANT_MAT]
+                            DrinkPlants[i] = j + DFHack::MaterialInfo::PLANT_BASE
+                        elsif p.material[j].flags[:LEAF_MAT]
+                            DrinkFruits[i] = j + DFHack::MaterialInfo::PLANT_BASE
+                        end
+                        break
+                    end
+                end
+                ThreadPlants[i] = p.material_defs.type_basic_mat if p.flags[:THREAD]
+                MillPlants[i]   = p.material_defs.type_basic_mat if p.flags[:MILL]
+                BagPlants[i]    = p.material_defs.type_basic_mat if df.decode_mat(p.material_defs.type_basic_mat, p.material_defs.idx_basic_mat).material.reaction_product.id.include?('BAG_ITEM')
+                DyePlants[i]    = p.material_defs.type_mill      if p.flags[:MILL] and df.decode_mat(p.material_defs.type_mill, p.material_defs.idx_mill).material.flags[:IS_DYE]
+                GrowPlants[i]   = p.material_defs.type_basic_mat if p.flags[:SEED] and p.flags[:BIOME_SUBTERRANEAN_WATER]
+            end
+            df.world.raws.creatures.all.length.times do |i|
+                c = df.world.raws.creatures.all[i]
+                c.material.length.times do |j|
+                    if c.material[j].reaction_product.id.include?('CHEESE_MAT')
+                        MilkCreatures[i] = j + DFHack::MaterialInfo::CREATURE_BASE
+                        break
+                    end
+                end
+            end
+            df.world.raws.inorganics.each_with_index do |s, i|
+                if s.material.reaction_product.id.include?('FIRED_MAT')
+                    ClayStones[i] = true
+                end
+            end
+        end
+
         def count_seeds
             @farmplots = Hash.new(0)
             ai.plan.find_room(:farmplot) { |r|
@@ -547,6 +335,16 @@ class DwarfAI
                 queue_use(key, @count[key]-amount) if @count[key] > amount
             end
         end
+
+        DrinkPlants   = {} # plants that can be brewed in their basic form
+        DrinkFruits   = {} # plants that have a growth that can be brewed
+        ThreadPlants  = {} # plants that can be made into thread
+        MillPlants    = {} # plants that can be milled
+        BagPlants     = {} # plants that can be processed into a bag
+        DyePlants     = {} # plants that can be milled that are able to dye cloth
+        GrowPlants    = {} # plants that we can grow underground
+        MilkCreatures = {} # creatures that have milk that can be turned into cheese
+        ClayStones    = {} # inorganic materials that have a FIRED_MAT reaction product
 
         # count unused stocks of one type of item
         def count_stocks(k)
@@ -1956,6 +1754,18 @@ class DwarfAI
                     end
                 }
             end
+        end
+
+        def queue_slab(histfig_id)
+            return if df.world.manager_orders.any? { |mo|
+                mo.job_type == :EngraveSlab and mo.hist_figure_id == histfig_id
+            }
+            return if df.world.items.other[:SLAB].any? { |sl|
+                sl.engraving_type == :Memorial and sl.topic == histfig_id
+            }
+            o = DFHack::ManagerOrder.cpp_new(:job_type => :EngraveSlab, :item_type => -1, :item_subtype => -1,
+                :mat_type => 0, :mat_index => -1, :amount_left => 1, :amount_total => 1, :hist_figure_id => histfig_id)
+            df.world.manager_orders << o
         end
 
         def need_more?(type)

@@ -1,18 +1,16 @@
 #include "ai.h"
+#include "camera.h"
 
 #include <sstream>
-#include <ctime>
 
 #include "modules/Gui.h"
-#include "modules/Maps.h"
 #include "modules/Units.h"
+#include "modules/Maps.h"
 
 #include "df/creature_interaction_effect_body_transformationst.h"
-#include "df/interfacest.h"
 #include "df/graphic.h"
+#include "df/interfacest.h"
 #include "df/job.h"
-#include "df/job_type.h"
-#include "df/job_type_class.h"
 #include "df/syndrome.h"
 #include "df/ui.h"
 #include "df/unit.h"
@@ -26,257 +24,38 @@ REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-static uint8_t should_show_fps()
-{
-    return strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()) ? 1 : 0;
-}
-
-Camera::Camera(color_ostream & out, AI *parent) :
-    ai(parent),
+Camera::Camera(AI *ai) :
+    ai(ai),
+    onupdate_handle(nullptr),
+    onstatechange_handle(nullptr),
     following(-1),
-    following_prev{-1, -1, -1},
-    following_index(-1),
-    update_after_ticks(0)
+    following_prev()
 {
-    gps->display_frames = should_show_fps();
-
-    if (/* TODO: $RECORD_MOVIE */ true)
-    {
-        start_recording(out);
-    }
 }
 
 Camera::~Camera()
 {
-    gps->display_frames = 0;
+    events.onupdate_unregister(onupdate_handle);
+    events.onstatechange_unregister(onstatechange_handle);
 }
 
-command_result Camera::status(color_ostream & out)
+command_result Camera::startup(color_ostream & out)
 {
-    if (following == -1)
-    {
-        out << "inactive";
-    }
-    else
-    {
-        out << "following " << ai->describe_unit(df::unit::find(following));
-    }
-
-    if (following_index == -1)
-    {
-        out << "\n";
-        return CR_OK;
-    }
-
-    out << " (previously: ";
-    for (int i = following_index; i < 3; i++)
-    {
-        if (following_prev[i] == -1)
-            continue;
-
-        if (i != following_index)
-        {
-            out << "; ";
-        }
-        out << ai->describe_unit(df::unit::find(following_prev[i]));
-    }
-    for (int i = 0; i < following_index; i++)
-    {
-        if (following_prev[i] == -1)
-            continue;
-
-        out << "; ";
-        out << ai->describe_unit(df::unit::find(following_prev[i]));
-    }
-    out << ")\n";
-
     return CR_OK;
 }
 
-command_result Camera::statechange(color_ostream & out, state_change_event event)
+command_result Camera::onupdate_register(color_ostream & out)
 {
-    switch (event)
-    {
-    case SC_VIEWSCREEN_CHANGED:
-        gps->display_frames = should_show_fps();
-        return CR_OK;
-    default:
-        return CR_OK;
-    }
-}
-
-static int view_priority(df::unit *unit)
-{
-    if (!unit->job.current_job)
-        return 0;
-
-    switch (ENUM_ATTR(job_type, type, unit->job.current_job->job_type))
-    {
-    case job_type_class::Misc:
-        return -20;
-    case job_type_class::Digging:
-        return -50;
-    case job_type_class::Building:
-        return -20;
-    case job_type_class::Hauling:
-        return -30;
-    case job_type_class::LifeSupport:
-        return -10;
-    case job_type_class::TidyUp:
-        return -20;
-    case job_type_class::Leisure:
-        return -20;
-    case job_type_class::Gathering:
-        return -30;
-    case job_type_class::Manufacture:
-        return -10;
-    case job_type_class::Improvement:
-        return -10;
-    case job_type_class::Crime:
-        return -50;
-    case job_type_class::LawEnforcement:
-        return -30;
-    case job_type_class::StrangeMood:
-        return -20;
-    case job_type_class::UnitHandling:
-        return -30;
-    case job_type_class::SiegeWeapon:
-        return -50;
-    case job_type_class::Medicine:
-        return -50;
-    }
-    return 0;
-}
-
-static bool compare_view_priority(df::unit *a, df::unit *b)
-{
-    return view_priority(a) < view_priority(b);
-}
-
-command_result Camera::update(color_ostream & out)
-{
-    update_after_ticks--;
-    if (update_after_ticks > 0)
-        return CR_OK;
-
-    update_after_ticks = 100;
-
-    if ((following == -1 && ui->follow_unit != -1) || (following != -1 && following != ui->follow_unit))
-    {
-        if (ui->follow_unit == -1) {
-            following = -1;
-        } else {
-            following = ui->follow_unit;
-        }
-        return CR_OK;
-    }
-
-    std::vector<df::unit *> targets1;
-    std::vector<df::unit *> targets2;
-    for (auto unit : world->units.active)
-    {
-        if (unit->flags1.bits.dead || Maps::getTileDesignation(unit->pos)->bits.hidden)
-        {
-            continue;
-        }
-
-        if (unit->flags1.bits.marauder || unit->flags1.bits.active_invader || unit->flags2.bits.visitor_uninvited || !unit->status.attacker_ids.empty())
-        {
-            targets1.push_back(unit);
-            continue;
-        }
-        bool found = false;
-        for (auto syn : unit->syndromes.active)
-        {
-            for (auto ce : df::syndrome::find(syn->type)->ce)
+    gps->display_frames = 1;
+    onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
+    onstatechange_handle = events.onstatechange_register([](color_ostream & out, state_change_event mode)
             {
-                if (virtual_cast<df::creature_interaction_effect_body_transformationst>(ce))
+                if (mode == SC_VIEWSCREEN_CHANGED)
                 {
-                    targets1.push_back(unit);
-                    found = true;
-                    break;
+                    gps->display_frames = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()) ? 1 : 0;
                 }
-            }
-            if (found)
-                break;
-        }
-        if (found)
-            continue;
-
-        if (Units::isCitizen(unit))
-        {
-            targets2.push_back(unit);
-            continue;
-        }
-    }
-    std::shuffle(targets1.begin(), targets1.end(), ai->rng);
-    std::shuffle(targets2.begin(), targets2.end(), ai->rng);
-    std::sort(targets2.begin(), targets2.end(), compare_view_priority);
-
-    if (following != -1)
-    {
-        following_index++;
-        if (following_index > 3)
-        {
-            following_index = 0;
-        }
-        following_prev[following_index] = following;
-    }
-
-    df::unit *best_target = nullptr;
-
-    std::size_t targets1_count = targets1.size();
-    if (targets1_count > 2)
-        targets1_count = 2;
-    for (auto unit : targets1)
-    {
-        if (followed_previously(unit->id))
-        {
-            targets1_count--;
-            if (targets1_count == 0)
-                break;
-        }
-        else if (!best_target || best_target->flags1.bits.caged)
-        {
-            best_target = unit;
-        }
-    }
-
-    for (auto unit : targets2)
-    {
-        if (!best_target || followed_previously(best_target->id) || best_target->flags1.bits.caged)
-        {
-            best_target = unit;
-            if (!followed_previously(unit->id) && !unit->flags1.bits.caged)
-                break;
-        }
-    }
-
-    if (!best_target)
-    {
-        following = -1;
-    }
-    else
-    {
-        following = best_target->id;
-
-        if (!*pause_state)
-        {
-            Gui::revealInDwarfmodeMap(best_target->pos, true);
-            ui->follow_unit = following;
-        }
-    }
-
-    world->status.flags.bits.combat = 0;
-    world->status.flags.bits.hunting = 0;
-    world->status.flags.bits.sparring = 0;
-
-    return CR_OK;
-}
-
-void Camera::start_recording(color_ostream & out)
-{
-    if (gview->supermovie_on == 0)
+            });
+    if (RECORD_MOVIE && gview->supermovie_on == 0)
     {
         gview->supermovie_on = 1;
         gview->currentblocksize = 0;
@@ -284,18 +63,189 @@ void Camera::start_recording(color_ostream & out)
         gview->supermovie_pos = 0;
         gview->supermovie_delayrate = 0;
         gview->first_movie_write = 1;
-
         std::ostringstream filename;
         filename << "data/movies/df-ai-" << std::time(nullptr) << ".cmv";
         gview->movie_file = filename.str();
     }
+    return CR_OK;
 }
 
-bool Camera::followed_previously(int32_t id)
+command_result Camera::onupdate_unregister(color_ostream & out)
 {
-    return following_prev[0] == id ||
-           following_prev[1] == id ||
-           following_prev[2] == id;
+    gps->display_frames = 0;
+    if (!NO_QUIT && !AI_RANDOM_EMBARK)
+    {
+        ai->timeout_sameview(60, [](color_ostream & out)
+                {
+                    Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
+                });
+    }
+    events.onupdate_unregister(onupdate_handle);
+    events.onstatechange_unregister(onstatechange_handle);
+    return CR_OK;
+}
+
+void Camera::update(color_ostream & out)
+{
+    if (following != ui->follow_unit)
+    {
+        following = ui->follow_unit;
+        return;
+    }
+
+    std::vector<df::unit *> targets1;
+    for (df::unit *u : world->units.active)
+    {
+        if (u->flags1.bits.dead || Maps::getTileDesignation(u->pos)->bits.hidden)
+            continue;
+        if (u->flags1.bits.marauder ||
+                u->flags1.bits.active_invader ||
+                u->flags2.bits.visitor_uninvited ||
+                !u->status.attacker_ids.empty() ||
+                std::find_if(u->syndromes.active.begin(), u->syndromes.active.end(), [](df::unit_syndrome *us) -> bool
+                    {
+                        auto & s = df::syndrome::find(us->type)->ce;
+                        return std::find_if(s.begin(), s.end(), [](df::creature_interaction_effect *ce) -> bool
+                                {
+                                    return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
+                                }) != s.end();
+                    }) != u->syndromes.active.end())
+        {
+            targets1.push_back(u);
+        }
+    }
+    std::shuffle(targets1.begin(), targets1.end(), ai->rng);
+    std::vector<df::unit *> targets2;
+    for (df::unit *u : world->units.active)
+    {
+        if (!u->flags1.bits.dead && Units::isCitizen(u))
+        {
+            targets2.push_back(u);
+        }
+    }
+    std::shuffle(targets2.begin(), targets2.end(), ai->rng);
+    auto score = [](df::unit *u) -> int
+    {
+        if (!u->job.current_job)
+        {
+            return 0;
+        }
+        switch (ENUM_ATTR(job_type, type, u->job.current_job->job_type))
+        {
+            case job_type_class::Misc:
+                return -20;
+            case job_type_class::Digging:
+                return -50;
+            case job_type_class::Building:
+                return -20;
+            case job_type_class::Hauling:
+                return -30;
+            case job_type_class::LifeSupport:
+                return -10;
+            case job_type_class::TidyUp:
+                return -20;
+            case job_type_class::Leisure:
+                return -20;
+            case job_type_class::Gathering:
+                return -30;
+            case job_type_class::Manufacture:
+                return -10;
+            case job_type_class::Improvement:
+                return -10;
+            case job_type_class::Crime:
+                return -50;
+            case job_type_class::LawEnforcement:
+                return -30;
+            case job_type_class::StrangeMood:
+                return -20;
+            case job_type_class::UnitHandling:
+                return -30;
+            case job_type_class::SiegeWeapon:
+                return -50;
+            case job_type_class::Medicine:
+                return -50;
+        }
+        return 0;
+    };
+    std::sort(targets2.begin(), targets2.end(), [score](df::unit *a, df::unit *b) -> bool { return score(a) < score(b); });
+
+    if (following != -1)
+        following_prev.push_back(following);
+    if (following_prev.size() > 3)
+    {
+        following_prev.erase(following_prev.begin(), following_prev.end() - 3);
+    }
+
+    size_t targets1_count = targets1.size();
+    if (targets1_count > 3)
+        targets1_count = 3;
+    if (!targets2.empty())
+    {
+        for (df::unit *u : targets1)
+        {
+            if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end())
+            {
+                targets1_count--;
+                if (targets1_count == 0)
+                    break;
+            }
+        }
+    }
+
+    targets1.erase(targets1.begin(), targets1.begin() + targets1_count);
+    targets1.insert(targets1.end(), targets2.begin(), targets2.end());
+
+    df::unit *following_unit = nullptr;
+    following = -1;
+    if (!targets1.empty())
+    {
+        for (df::unit *u : targets1)
+        {
+            if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end() && !u->flags1.bits.caged)
+            {
+                following_unit = u;
+                following = u->id;
+                break;
+            }
+        }
+        if (following == -1)
+        {
+            following_unit = targets1[std::uniform_int_distribution<size_t>(0, targets1.size() - 1)(ai->rng)];
+            following = following_unit->id;
+        }
+    }
+
+    if (following != -1 && !*pause_state)
+    {
+        Gui::revealInDwarfmodeMap(following_unit->pos, true);
+        ui->follow_unit = following;
+    }
+
+    world->status.flags.bits.combat = 0;
+    world->status.flags.bits.hunting = 0;
+    world->status.flags.bits.sparring = 0;
+}
+
+std::string Camera::status()
+{
+    std::string fp;
+    for (int32_t id : following_prev)
+    {
+        if (!fp.empty())
+        {
+            fp += "; ";
+        }
+        fp += AI::describe_unit(df::unit::find(id));
+    }
+    if (!fp.empty())
+    {
+        fp = " (previously: " + fp + ")";
+    }
+    if (following != -1 && ui->follow_unit == following)
+    {
+        return "following " + AI::describe_unit(df::unit::find(following)) + fp;
+    }
+    return "inactive" + fp;
 }
 
 // vim: et:sw=4:ts=4

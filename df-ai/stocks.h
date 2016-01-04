@@ -1,0 +1,128 @@
+#pragma once
+
+#include "event_manager.h"
+
+#include <map>
+#include <set>
+
+#include "df/items_other_id.h"
+#include "df/job_skill.h"
+#include "df/job_type.h"
+
+namespace df
+{
+    struct manager_order;
+}
+
+class AI;
+struct room;
+
+class Stocks
+{
+    AI *ai;
+    std::map<std::string, size_t> count;
+    OnupdateCallback *onupdate_handle;
+    std::vector<std::string> updating;
+    std::vector<std::string> updating_count;
+    size_t lastupdating;
+    std::map<std::pair<uint8_t, int32_t>, size_t> farmplots;
+    std::map<int32_t, size_t> seeds;
+    std::map<int32_t, size_t> plants;
+    int32_t last_unforbidall_year;
+    int32_t last_managerstall;
+    df::job_type last_managerorder;
+    bool updating_seeds;
+    bool updating_plants;
+    bool updating_corpses;
+    std::vector<room *> updating_farmplots;
+    std::map<std::string, int16_t> manager_subtype;
+    df::coord last_cutpos;
+
+    std::map<int32_t, int16_t> drink_plants;
+    std::map<int32_t, int16_t> drink_fruits;
+    std::map<int32_t, int16_t> thread_plants;
+    std::map<int32_t, int16_t> mill_plants;
+    std::map<int32_t, int16_t> bag_plants;
+    std::map<int32_t, int16_t> dye_plants;
+    std::map<int32_t, int16_t> grow_plants;
+    std::map<int32_t, int16_t> milk_creatures;
+    std::set<int32_t> clay_stones;
+    std::map<int32_t, std::string> raw_coke;
+
+    std::vector<int32_t> metal_digger_pref;
+    std::vector<int32_t> metal_weapon_pref;
+    std::vector<int32_t> metal_armor_pref;
+    std::vector<int32_t> metal_anvil_pref;
+
+public:
+    Stocks(AI *ai);
+    ~Stocks();
+
+    void reset();
+    command_result startup(color_ostream & out);
+    command_result onupdate_register(color_ostream & out);
+    command_result onupdate_unregister(color_ostream & out);
+
+    std::string status();
+
+    void update(color_ostream & out);
+    void update_kitchen(color_ostream & out);
+    void update_plants(color_ostream & out);
+    void count_seeds(color_ostream & out);
+    void count_plants(color_ostream & out);
+    void update_corpses(color_ostream & out);
+
+    void act(color_ostream & out, std::string key);
+    size_t count_stocks(color_ostream & out, std::string k);
+    size_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE);
+    size_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
+    size_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
+
+    void queue_need(color_ostream & out, std::string what, size_t amount);
+    void queue_need_weapon(color_ostream & out, size_t needed, df::job_skill skill = job_skill::NONE);
+    void queue_need_armor(color_ostream & out, df::items_other_id oidx);
+    void queue_need_anvil(color_ostream & out);
+    void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
+    void queue_need_coffin_bld(color_ostream & out, size_t amount);
+    void queue_use(color_ostream & out, std::string what, size_t amount);
+    void queue_use_gems(color_ostream & out, size_t amount);
+    void queue_use_metal_ore(color_ostream & out, size_t amount);
+    void queue_use_raw_coke(color_ostream & out, size_t amount);
+
+    std::set<df::coord> tree_list();
+    df::coord cuttrees(color_ostream & out, size_t amount, std::set<df::coord> list);
+    inline df::coord cuttrees(color_ostream & out, size_t amount)
+    {
+        return cuttrees(out, amount, tree_list());
+    }
+
+    bool is_item_free(df::item *i, bool allow_nonempty = false);
+    bool is_metal_ore(int32_t i);
+    bool is_metal_ore(df::item *i);
+    std::string is_raw_coke(int32_t i);
+    std::string is_raw_coke(df::item *i);
+    bool is_gypsum(int32_t i);
+    bool is_gypsum(df::item *i);
+
+    size_t may_forge_metal_bars(int32_t mat_index, size_t div = 1);
+
+    command_result init_manager_subtype(color_ostream & out);
+
+    std::vector<df::manager_order *> find_manager_orders(std::string order);
+    size_t count_manager_orders_matcat(std::string matcat, df::job_type order = df::job_type(-1));
+    void add_manager_order(color_ostream & out, std::string order, size_t amount = 1, size_t maxmerge = 30);
+
+    std::string furniture_order(std::string k);
+    std::function<bool(df::item *)> furniture_find(std::string k);
+    df::item *find_furniture_item(std::string itm);
+    size_t find_furniture_itemcount(std::string itm);
+
+    bool is_cutting_trees();
+
+    void farmplot(color_ostream & out, room *r, bool initial = true);
+    void queue_slab(color_ostream & out, int32_t histfig_id);
+
+    bool need_more(std::string type);
+};
+
+// vim: et:sw=4:ts=4

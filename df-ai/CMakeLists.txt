@@ -8,11 +8,17 @@ SET(PROJECT_SRCS
     stocks.cpp
     camera.cpp
     embark.cpp
+    event_manager.cpp
 )
 
 SET(PROJECT_HDRS
     ai.h
-    unit_entity_positions.h
+    population.h
+    plan.h
+    stocks.h
+    camera.h
+    embark.h
+    event_manager.h
 )
 
 SET_SOURCE_FILES_PROPERTIES( ${PROJECT_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE)

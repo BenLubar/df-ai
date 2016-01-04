@@ -1,21 +1,27 @@
 #include "ai.h"
-
-#include <set>
+#include "population.h"
+#include "plan.h"
+#include "stocks.h"
+#include "camera.h"
+#include "embark.h"
 
 #include "modules/Gui.h"
+#include "modules/Screen.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
 
 #include "df/announcements.h"
-#include "df/announcement_type.h"
-#include "df/interface_key.h"
+#include "df/item.h"
 #include "df/report.h"
 #include "df/viewscreen.h"
+#include "df/viewscreen_optionst.h"
 #include "df/viewscreen_requestagreementst.h"
 #include "df/viewscreen_textviewerst.h"
-#include "df/viewscreen_topicmeetingst.h"
 #include "df/viewscreen_topicmeeting_takerequestsst.h"
+#include "df/viewscreen_topicmeetingst.h"
 #include "df/world.h"
+
+#include <sstream>
 
 REQUIRE_GLOBAL(announcements);
 REQUIRE_GLOBAL(cur_year);
@@ -23,99 +29,143 @@ REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(world);
 
-AI::AI(color_ostream & out) :
+AI::AI() :
     rng(0),
-    pop(out, this),
-    plan(out, this),
-    stocks(out, this),
-    camera(out, this),
-    embark(out, this),
-    unpause_delay(0)
+    logger("df-ai.log", std::ofstream::out | std::ofstream::app),
+    pop(new Population(this)),
+    plan(new Plan(this)),
+    stocks(new Stocks(this)),
+    camera(new Camera(this)),
+    embark(new Embark(this)),
+    status_onupdate(nullptr),
+    pause_onupdate(nullptr),
+    seen_cvname()
 {
+    seen_cvname.insert("viewscreen_dwarfmodest");
 }
 
-#define CHECK_RESULT(res, mod, fn) \
-    res = mod.fn; \
-    if (res != CR_OK) \
-        return res
-
-#define CHECK_RESULTS(fn) \
-    command_result res; \
-    CHECK_RESULT(res, pop, fn); \
-    CHECK_RESULT(res, plan, fn); \
-    CHECK_RESULT(res, stocks, fn); \
-    CHECK_RESULT(res, camera, fn); \
-    CHECK_RESULT(res, embark, fn); \
-    return res
-
-command_result AI::status(color_ostream & out)
+AI::~AI()
 {
-    CHECK_RESULTS(status(out));
+    delete embark;
+    delete camera;
+    delete stocks;
+    delete plan;
+    delete pop;
+    logger.close();
+    events.onstatechange_list.clear();
+    for (auto u : events.onupdate_list)
+        delete u;
+    events.onupdate_list.clear();
 }
 
-command_result AI::statechange(color_ostream & out, state_change_event event)
+std::string AI::timestamp(int32_t y, int32_t t)
 {
-    check_unpause(out, event);
-    CHECK_RESULTS(statechange(out, event));
-}
-
-command_result AI::update(color_ostream & out)
-{
-    if (unpause_delay && unpause_delay <= std::time(nullptr))
+    if (y == 0 && t == 0)
     {
-        unpause_delay = 0;
-        std::set<df::interface_key> keys;
-        keys.insert(interface_key::LEAVESCREEN);
-        keys.insert(interface_key::OPTION1);
-        Gui::getCurViewscreen()->feed(&keys);
-        unpause(out);
+        // split up to avoid trigraphs
+        return "?????" "-" "??" "-" "??" ":" "????";
     }
-    CHECK_RESULTS(update(out));
+    return stl_sprintf("%05d-%02d-%02d:%04d",
+            y,                    // year
+            t / 50 / 24 / 28 + 1, // month
+            t / 50 / 24 % 28 + 1, // day
+            t % (24 * 50));       // time
 }
 
-void AI::debug(color_ostream & out, const std::string & str)
+std::string AI::timestamp()
 {
-    if (*cur_year == 0 && *cur_year_tick == 0)
+    return timestamp(*cur_year, *cur_year_tick);
+}
+
+std::string AI::describe_item(df::item *i)
+{
+    std::string s;
+    i->getItemDescription(&s, 0);
+    return s;
+}
+
+std::string AI::describe_unit(df::unit *u)
+{
+    std::string s = Translation::TranslateName(&u->name);
+    s = Translation::capitalize(s);
+    if (!s.empty())
+        s += ", ";
+    s += Units::getProfessionName(u);
+    return s;
+}
+
+void AI::debug(color_ostream & out, std::string str, df::coord announce)
+{
+    Gui::showZoomAnnouncement(df::announcement_type(0), announce, "AI: " + str, 7, false);
+    debug(out, str);
+}
+
+void AI::debug(color_ostream & out, std::string str)
+{
+    std::string ts = timestamp();
+
+    if (DEBUG)
     {
-        // split up the string so trigraphs don't do weird things.
-        out.print("[AI] ?????" "-??" "-??:???? %s\n", str.c_str());
+        out << "AI: " << ts << " " << str << "\n";
     }
-    else
+    logger << ts << " ";
+    size_t pos = 0;
+    while (true)
     {
-        out.print("[AI] %05d-%02d-%02d:%04d %s\n",
-                *cur_year,
-                *cur_year_tick / 50 / 24 / 28 + 1,
-                *cur_year_tick / 50 / 24 % 28 + 1,
-                *cur_year_tick % (24 * 50),
-                str.c_str());
+        size_t end = str.find('\n', pos);
+        if (end == std::string::npos)
+        {
+            logger << str.substr(pos) << "\n";
+            break;
+        }
+        logger << str.substr(pos, end) << "\n                 ";
+        pos = end + 1;
     }
 }
 
-void AI::unpause(color_ostream & out)
+command_result AI::startup(color_ostream & out)
 {
-    std::set<df::interface_key> keys;
-    keys.insert(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
+    command_result res = CR_OK;
+    if (res == CR_OK)
+        res = pop->startup(out);
+    if (res == CR_OK)
+        res = plan->startup(out);
+    if (res == CR_OK)
+        res = stocks->startup(out);
+    if (res == CR_OK)
+        res = camera->startup(out);
+    if (res == CR_OK)
+        res = embark->startup(out);
+    return res;
+}
+
+void AI::unpause()
+{
     while (!world->status.popups.empty())
     {
+        interface_key_set keys;
+        keys.insert(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
         Gui::getCurViewscreen()->feed(&keys);
     }
     if (*pause_state)
     {
-        keys.clear();
+        interface_key_set keys;
         keys.insert(interface_key::D_PAUSE);
         Gui::getCurViewscreen()->feed(&keys);
     }
 }
 
-void AI::handle_pause_event(color_ostream & out, std::vector<df::report *>::reverse_iterator ann, std::vector<df::report *>::reverse_iterator end)
+void AI::handle_pause_event(color_ostream & out, df::report *announce)
 {
     // unsplit announce text
-    df::report *announce = *ann;
     std::string fulltext = announce->text;
-    while (announce->flags.bits.continuation && ann != end)
+    auto idx = std::find(world->status.announcements.rbegin(), world->status.announcements.rend(), announce);
+    while (announce->flags.bits.continuation)
     {
-        ann++;
-        announce = *ann;
+        idx++;
+        if (idx == world->status.announcements.rend())
+            break;
+        announce = *idx;
         fulltext = announce->text + " " + fulltext;
     }
     debug(out, "pause: " + fulltext);
@@ -172,196 +222,269 @@ void AI::handle_pause_event(color_ostream & out, std::vector<df::report *>::reve
         case announcement_type::NAMED_ARTIFACT:
             debug(out, "pause: hallo");
             break;
-        case announcement_type::AMBUSH_DEFENDER:
-        case announcement_type::AMBUSH_RESIDENT:
-        case announcement_type::AMBUSH_THIEF:
-        case announcement_type::AMBUSH_THIEF_SUPPORT_SKULKING:
-        case announcement_type::AMBUSH_THIEF_SUPPORT_NATURE:
-        case announcement_type::AMBUSH_THIEF_SUPPORT:
-        case announcement_type::AMBUSH_MISCHIEVOUS:
-        case announcement_type::AMBUSH_SNATCHER:
-        case announcement_type::AMBUSH_SNATCHER_SUPPORT:
-        case announcement_type::AMBUSH_AMBUSHER_NATURE:
-        case announcement_type::AMBUSH_AMBUSHER:
-        case announcement_type::AMBUSH_INJURED:
-        case announcement_type::AMBUSH_OTHER:
-        case announcement_type::AMBUSH_INCAPACITATED:
-            debug(out, "pause: an ambush!");
-            break;
         default:
-            debug(out, "pause: unhandled pausing event");
-            break;
+            {
+                const static std::string prefix("AMBUSH");
+                std::string type(ENUM_KEY_STR(announcement_type, announce->type));
+                if (std::mismatch(prefix.begin(), prefix.end(), type.begin()).first == prefix.end())
+                {
+                    debug(out, "pause: an ambush!");
+                }
+                else
+                {
+                    debug(out, "pause: unhandled pausing event " + type);
+                    // return;
+                }
+                break;
+            }
     }
 
     if (announcements->flags[announce->type].bits.DO_MEGA)
     {
-        unpause_delay = std::time(nullptr) + 5;
+        timeout_sameview([](color_ostream & out)
+                {
+                    unpause();
+                });
     }
     else
     {
-        unpause(out);
+        unpause();
     }
 }
 
-static bool is_pause_announcement_flag(df::report *ann)
+void AI::statechanged(color_ostream & out, state_change_event st)
 {
-    return ann->pos.isValid() && announcements->flags[ann->type].bits.PAUSE;
-}
-
-static void clean_text(std::string & text)
-{
-    bool remove = true;
-    auto dest = text.begin();
-    for (auto src : text)
+    // automatically unpause the game (only for game-generated pauses)
+    if (st == SC_PAUSED)
     {
-        if (src == ' ')
+        auto la = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), [](df::report *a) -> bool
+                {
+                    return announcements->flags[a->type].bits.PAUSE;
+                });
+        if (la != world->status.announcements.rend() &&
+                (*la)->year == *cur_year &&
+                (*la)->time == *cur_year_tick)
         {
-            if (!remove)
-            {
-                remove = true;
-                *(dest++) = src;
-            }
+            handle_pause_event(out, *la);
         }
         else
         {
-            remove = false;
-            *(dest++) = src;
-        }
-    }
-    text.erase(dest, text.end());
-}
-
-static bool contains(const std::string & text, const std::string & sub)
-{
-    return text.find(sub) != std::string::npos;
-}
-
-void AI::check_unpause(color_ostream & out, state_change_event event)
-{
-    if (unpause_delay)
-        return;
-
-    // automatically unpause the game (only for game-generated pauses)
-    switch (event)
-    {
-        case SC_PAUSED:
-        {
-            auto ann = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), is_pause_announcement_flag);
-            if (ann != world->status.announcements.rend() && (*ann)->year == *cur_year && (*ann)->time == *cur_year_tick)
-            {
-                handle_pause_event(out, ann, world->status.announcements.rend());
-                return;
-            }
+            unpause();
             debug(out, "pause without an event");
-            unpause(out);
-            return;
         }
-        case SC_VIEWSCREEN_CHANGED:
+    }
+    else if (st == SC_VIEWSCREEN_CHANGED)
+    {
+        df::viewscreen *curview = Gui::getCurViewscreen();
+        df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview);
+        if (view)
         {
-            df::viewscreen *view = Gui::getCurViewscreen();
-
-            df::viewscreen_textviewerst *textviewer = strict_virtual_cast<df::viewscreen_textviewerst>(view);
-            if (textviewer)
+            std::string text;
+            for (auto t : view->formatted_text)
             {
-                std::string text;
-                for (auto t : textviewer->formatted_text)
+                if (t->text)
                 {
-                    text += t->text;
+                    text += " " + *t->text;
                 }
-                clean_text(text);
-
-                if (contains(text, "I am your liaison from the Mountainhomes. Let's discuss your situation.") ||
-                        (contains(text, "Farewell, ") && contains(text, "I look forward to our meeting next year.")) ||
-                        contains(text, "A diplomat has left unhappy.") ||
-                        contains(text, "You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind. Further abuse cannot be tolerated. Let this be a warning to you.") ||
-                        contains(text, "Greetings from the woodlands. We have much to discuss.") ||
-                        contains(text, "Although we do not always see eye to eye (ha!), I bid you farwell. May you someday embrace nature as you embrace the rocks and mud."))
-                {
-                    debug(out, "diplomat: " + text);
-                    unpause_delay = std::time(nullptr) + 5;
-                    return;
-                }
-
-                if (contains(text, "A vile force of darkness has arrived!") ||
-                        contains(text, " have brought the full forces of their lands against you.") ||
-                        contains(text, "The enemy have come and are laying siege to the fortress.") ||
-                        contains(text, "The dead walk. Hide while you still can!"))
-                {
-                    debug(out, "siege: " + text);
-                    unpause_delay = std::time(nullptr) + 5;
-                    return;
-                }
-
-                if (contains(text, "Your strength has been broken.") ||
-                        contains(text, "Your settlement has crumbled to its end.") ||
-                        contains(text, "Your settlement has been abandoned."))
-                {
-                    debug(out, "you just lost the game: " + text);
-                    unpause_delay = std::time(nullptr) + 5;
-                    return;
-                }
-
-                debug(out, "paused in unknown textviewerst: " + text);
-                unpause_delay = std::time(nullptr) + 15;
-                return;
             }
 
-            df::viewscreen_topicmeetingst *meeting = strict_virtual_cast<df::viewscreen_topicmeetingst>(view);
-            if (meeting)
+            std::string stripped = text;
+            stripped.erase(std::remove(stripped.begin(), stripped.end(), ' '), stripped.end());
+
+            if (stripped.find("I" "am" "your" "liaison" "from" "the" "Mountainhomes." "Let's" "discuss" "your" "situation.") != std::string::npos ||
+                    stripped.find("I" "look" "forward" "to" "our" "meeting" "next" "year.") != std::string::npos ||
+                    stripped.find("A" "diplomat" "has" "left" "unhappy.") != std::string::npos ||
+                    stripped.find("You" "have" "disrespected" "the" "trees" "in" "this" "area," "but" "this" "is" "what" "we" "have" "come" "to" "expect" "from" "your" "stunted" "kind." "Further" "abuse" "cannot" "be" "tolerated." "Let" "this" "be" "a" "warning" "to" "you.") != std::string::npos ||
+                    stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
+                    stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos)
             {
-                std::string text;
-                for (auto t : meeting->text)
-                {
-                    text += *t;
-                }
-                clean_text(text);
-
-                debug(out, "diplomat (meeting): " + text);
-                unpause_delay = std::time(nullptr) + 5;
-                return;
+                debug(out, "exit diplomat textviewerst:" + text);
+                timeout_sameview([](color_ostream & out)
+                        {
+                            interface_key_set keys;
+                            keys.insert(interface_key::LEAVESCREEN);
+                            Gui::getCurViewscreen()->feed(&keys);
+                        });
             }
-
-            df::viewscreen_topicmeeting_takerequestsst *requests = strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(view);
-            if (requests)
+            else if (stripped.find("A" "vile" "force" "of" "darkness" "has" "arrived!") != std::string::npos ||
+                    stripped.find("have" "brought" "the" "full" "forces" "of" "their" "lands" "against" "you.") != std::string::npos ||
+                    stripped.find("The" "enemy" "have" "come" "and" "are" "laying" "siege" "to" "the" "fortress.") != std::string::npos ||
+                    stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
             {
-                debug(out, "diplomat (requests)");
-                unpause_delay = std::time(nullptr) + 5;
-                return;
+                debug(out, "exit siege textviewerst:" + text);
+                timeout_sameview([](color_ostream & out)
+                        {
+                            interface_key_set keys;
+                            keys.insert(interface_key::LEAVESCREEN);
+                            Gui::getCurViewscreen()->feed(&keys);
+                            unpause();
+                        });
             }
-
-            df::viewscreen_requestagreementst *agreement = strict_virtual_cast<df::viewscreen_requestagreementst>(view);
-            if (agreement)
+            else if (stripped.find("Your" "strength" "has" "been" "broken.") != std::string::npos ||
+                    stripped.find("Your" "settlement" "has" "crumbled" "to" "its" "end.") != std::string::npos ||
+                    stripped.find("Your" "settlement" "has" "been" "abandoned.") != std::string::npos)
             {
-                debug(out, "diplomat (agreement)");
-                unpause_delay = std::time(nullptr) + 5;
-                return;
+                debug(out, "you just lost the game:" + text);
+                debug(out, "Exiting AI");
+                onupdate_unregister(out);
+                // don't unpause, to allow for 'die'
             }
-
-            debug(out, "paused in unknown viewscreen");
-            unpause_delay = std::time(nullptr) + 15;
-            return;
+            else
+            {
+                debug(out, "paused in unknown textviewerst:" + text);
+            }
         }
-        default:
-            return;
+        else if (strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
+        {
+            debug(out, "exit diplomat topicmeetingst");
+            timeout_sameview([](color_ostream & out)
+                    {
+                        interface_key_set keys;
+                        keys.insert(interface_key::OPTION1);
+                        Gui::getCurViewscreen()->feed(&keys);
+                    });
+        }
+        else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
+        {
+            debug(out, "exit diplomat topicmeeting_takerequestsst");
+            timeout_sameview([](color_ostream & out)
+                    {
+                        interface_key_set keys;
+                        keys.insert(interface_key::LEAVESCREEN);
+                        Gui::getCurViewscreen()->feed(&keys);
+                    });
+        }
+        else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
+        {
+            debug(out, "exit diplomat requestagreementst");
+            timeout_sameview([](color_ostream & out)
+                    {
+                        interface_key_set keys;
+                        keys.insert(interface_key::LEAVESCREEN);
+                        Gui::getCurViewscreen()->feed(&keys);
+                    });
+        }
+        else
+        {
+            std::string cvname = virtual_identity::get(curview)->getName();
+            if (seen_cvname.insert(cvname).second)
+            {
+                debug(out, "paused in unknown viewscreen " + cvname);
+            }
+        }
     }
 }
 
-std::string AI::describe_unit(df::unit *unit)
+void AI::abandon(color_ostream & out)
 {
-    return Translation::TranslateName(Units::getVisibleName(unit), false) +
-        ", " + Units::getProfessionName(unit);
+    if (!AI_RANDOM_EMBARK)
+        return;
+    df::viewscreen_optionst *view = df::allocate<df::viewscreen_optionst>();
+    view->options.push_back(df::viewscreen_optionst::Abandon);
+    Screen::show(view);
+    interface_key_set keys;
+    keys.insert(interface_key::SELECT);
+    view->feed(&keys);
+    keys.clear();
+    keys.insert(interface_key::MENU_CONFIRM);
+    view->feed(&keys);
+    // current view switches to a textviewer at this point
+    keys.clear();
+    keys.insert(interface_key::SELECT);
+    Gui::getCurViewscreen()->feed(&keys);
 }
 
-/*
-def abandon!(view=df.curview)
-    return unless $AI_RANDOM_EMBARK
-    view.child = DFHack::ViewscreenOptionst.cpp_new(:parent => view, :options => [6])
-    view = view.child
-    view.feed_keys(:SELECT)
-    view.feed_keys(:MENU_CONFIRM)
-    # current view switches to a textviewer at this point
-    df.curview.feed_keys(:SELECT)
-end
-*/
+void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb)
+{
+    virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen());
+    std::time_t timeoff = std::time(nullptr) + delay;
+
+    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [curscreen, timeoff, cb](color_ostream & out) -> bool
+            {
+                if (virtual_identity::get(Gui::getCurViewscreen()) != curscreen)
+                    return true;
+
+                if (std::time(nullptr) >= timeoff)
+                {
+                    cb(out);
+                    return true;
+                }
+                return false;
+            });
+}
+
+command_result AI::onupdate_register(color_ostream & out)
+{
+    command_result res = CR_OK;
+    if (res == CR_OK)
+        res = pop->onupdate_register(out);
+    if (res == CR_OK)
+        res = plan->onupdate_register(out);
+    if (res == CR_OK)
+        res = stocks->onupdate_register(out);
+    if (res == CR_OK)
+        res = camera->onupdate_register(out);
+    if (res == CR_OK)
+        res = embark->onupdate_register(out);
+    if (res == CR_OK)
+    {
+        status_onupdate = events.onupdate_register("df-ai status", 3*28*1200, 3*28*1200, [this](color_ostream & out) { debug(out, status()); });
+        std::time_t last_unpause = std::time(nullptr);
+        pause_onupdate = events.onupdate_register_once("df-ai unpause", [this, &last_unpause](color_ostream & out) -> bool
+                {
+                    if (std::time(nullptr) < last_unpause + 11)
+                        return false;
+                    if (*pause_state)
+                    {
+                        timeout_sameview(10, [](color_ostream & out) { unpause(); });
+                        last_unpause = std::time(nullptr);
+                    }
+                    return false;
+                });
+        events.onstatechange_register_once([this](color_ostream & out, state_change_event st) -> bool
+                {
+                    if (st == SC_WORLD_UNLOADED)
+                    {
+                        debug(out, "world unloaded, disabling self");
+                        onupdate_unregister(out);
+                        return true;
+                    }
+                    statechanged(out, st);
+                    return false;
+                });
+    }
+    return res;
+}
+
+command_result AI::onupdate_unregister(color_ostream & out)
+{
+    command_result res = CR_OK;
+    if (res == CR_OK)
+        res = embark->onupdate_unregister(out);
+    if (res == CR_OK)
+        res = camera->onupdate_unregister(out);
+    if (res == CR_OK)
+        res = stocks->onupdate_unregister(out);
+    if (res == CR_OK)
+        res = plan->onupdate_unregister(out);
+    if (res == CR_OK)
+        res = pop->onupdate_unregister(out);
+    if (res == CR_OK)
+    {
+        events.onupdate_unregister(status_onupdate);
+        events.onupdate_unregister(pause_onupdate);
+    }
+    return res;
+}
+
+std::string AI::status()
+{
+    std::ostringstream str;
+    str << "Plan: " << plan->status() << "\n";
+    str << "Pop: " << pop->status() << "\n";
+    str << "Stocks: " << stocks->status() << "\n";
+    str << "Camera: " << camera->status();
+    return str.str();
+}
 
 // vim: et:sw=4:ts=4

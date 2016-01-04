@@ -1,10 +1,21 @@
+// a dwarf fortress autonomous artificial intelligence (more or less)
+
 #include "ai.h"
+#include "event_manager.h"
+
+#include "modules/Gui.h"
+#include "modules/Screen.h"
+
+#include "df/viewscreen_titlest.h"
+#include "df/viewscreen_dwarfmodest.h"
 
 DFHACK_PLUGIN("df-ai");
 DFHACK_PLUGIN_IS_ENABLED(enabled);
 
+REQUIRE_GLOBAL(pause_state);
+
 // Protected by CoreSuspender
-AI *ai = nullptr;
+AI *dwarfAI = nullptr;
 
 command_result status_command(color_ostream & out, std::vector<std::string> & args);
 
@@ -13,16 +24,47 @@ bool check_enabled(color_ostream & out)
 {
     if (enabled)
     {
-        if (!ai)
+        if (!dwarfAI)
         {
-            ai = new AI(out);
+            df::viewscreen_titlest *view = virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen());
+            if (view && !AI_RANDOM_EMBARK)
+            {
+                interface_key_set keys;
+                keys.insert(interface_key::SELECT);
+                view->feed(&keys);
+                keys.clear();
+                keys.insert(interface_key::SELECT);
+                view->feed(&keys);
+            }
+
+            dwarfAI = new AI();
+
+            events.onupdate_register_once("df-ai start", [](color_ostream & out) -> bool
+                    {
+                        df::viewscreen_dwarfmodest *view = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen());
+                        if (view)
+                        {
+                            dwarfAI->onupdate_register(out);
+                            dwarfAI->startup(out);
+                            if (*pause_state)
+                            {
+                                interface_key_set keys;
+                                keys.insert(interface_key::D_PAUSE);
+                                view->feed(&keys);
+                            }
+                            return true;
+                        }
+                        return false;
+                    });
         }
         return true;
     }
-    if (ai)
+    if (dwarfAI)
     {
-        delete ai;
-        ai = nullptr;
+        dwarfAI->onupdate_unregister(out);
+        out << "removed onupdate\n";
+        delete dwarfAI;
+        dwarfAI = nullptr;
     }
     return false;
 }
@@ -71,7 +113,8 @@ command_result status_command(color_ostream & out, std::vector<std::string> & ar
         return CR_OK;
     }
 
-    return ai->status(out);
+    out << dwarfAI->status() << "\n";
+    return CR_OK;
 }
 
 DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_change_event event)
@@ -79,15 +122,17 @@ DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_cha
     if (!check_enabled(out))
         return CR_OK;
 
-    return ai->statechange(out, event);
+    events.onstatechange(out, event);
+    return CR_OK;
 }
 
-DFhackCExport command_result plugin_onupdate(color_ostream &out)
+DFhackCExport command_result plugin_onupdate(color_ostream & out)
 {
     if (!check_enabled(out))
         return CR_OK;
 
-    return ai->update(out);
+    events.onupdate(out);
+    return CR_OK;
 }
 
 // vim: et:sw=4:ts=4
