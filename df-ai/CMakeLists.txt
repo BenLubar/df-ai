@@ -9,6 +9,7 @@ SET(PROJECT_SRCS
     camera.cpp
     embark.cpp
     event_manager.cpp
+    unit_entity_positions.cpp
 )
 
 SET(PROJECT_HDRS
@@ -18,7 +19,11 @@ SET(PROJECT_HDRS
     stocks.h
     camera.h
     embark.h
+    room.h
     event_manager.h
+    unit_entity_positions.h
+    horrible.h
+    dfhack_shared.h
 )
 
 SET_SOURCE_FILES_PROPERTIES( ${PROJECT_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE)

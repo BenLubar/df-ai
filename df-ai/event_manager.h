@@ -1,18 +1,8 @@
 #pragma once
 
-#include "Core.h"
-#include <Console.h>
-#include <Export.h>
-#include <PluginManager.h>
-
-#include "DataDefs.h"
+#include "dfhack_shared.h"
 
 #include <functional>
-
-using namespace DFHack;
-using namespace df::enums;
-
-extern std::vector<std::string> *plugin_globals;
 
 struct OnupdateCallback
 {

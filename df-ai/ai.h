@@ -1,11 +1,6 @@
 #pragma once
 
-#include "Core.h"
-#include <Console.h>
-#include <Export.h>
-#include <PluginManager.h>
-
-#include "DataDefs.h"
+#include "dfhack_shared.h"
 
 #include <ctime>
 #include <fstream>
@@ -23,15 +18,10 @@ namespace df
     struct viewscreen;
 }
 
-using namespace DFHack;
-using namespace df::enums;
-
 const bool AI_RANDOM_EMBARK = true;
 const bool DEBUG = true;
 const bool RECORD_MOVIE = true;
 const bool NO_QUIT = true;
-
-extern std::vector<std::string> *plugin_globals;
 
 struct OnupdateCallback;
 class Population;

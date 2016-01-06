@@ -1,6 +1,8 @@
 #pragma once
 
 #include "event_manager.h"
+#include "room.h"
+#include "horrible.h"
 
 #include <functional>
 #include <list>
@@ -19,43 +21,6 @@ namespace df
 
 class AI;
 
-struct horrible_t
-{
-};
-
-typedef std::map<std::string, horrible_t> furniture;
-
-struct room
-{
-    std::string status;
-    std::string type;
-    std::string subtype;
-    df::coord min, max;
-    std::vector<room *> accesspath;
-    std::vector<furniture *> layout;
-    int32_t owner;
-    std::map<std::string, horrible_t> misc;
-
-    room(df::coord min, df::coord max);
-    room(std::string type, std::string subtype, df::coord min, df::coord max);
-    ~room();
-
-    inline df::coord size() const { return max - min + 1; }
-    inline df::coord pos() const { return min + size() / 2; }
-
-    void dig(std::string mode = "");
-    void fixup_open();
-    void fixup_open_tile(df::coord t, std::string d, furniture *f);
-    void fixup_open_helper(df::coord t, std::string c, furniture *f);
-
-    bool include(df::coord t) const;
-    bool safe_include(df::coord t) const;
-    std::string dig_mode(df::coord t) const;
-    bool is_dug(df::tiletype_shape_basic want = tiletype_shape_basic::None) const;
-    bool constructions_done() const;
-    df::building *dfbuilding() const;
-};
-
 typedef std::vector<horrible_t> task;
 
 class Plan
@@ -63,15 +28,19 @@ class Plan
     AI *ai;
     OnupdateCallback *onupdate_handle;
     size_t nrdig;
-    std::list<task> tasks;
-    std::list<task>::iterator bg_idx;
+    std::list<task *> tasks;
+    std::list<task *>::iterator bg_idx;
     std::vector<room *> rooms;
     std::map<std::string, std::vector<room *>> room_category;
     std::vector<room *> corridors;
     std::set<std::string> cache_nofurnish;
     room *fort_entrance;
     std::map<int32_t, std::set<df::coord>> map_veins;
+    std::vector<std::string> important_workshops;
+    std::vector<std::string> important_workshops2;
+    size_t checkroom_idx;
     bool allow_ice;
+    bool past_initial_phase;
 
 public:
     Plan(AI *ai);
@@ -83,13 +52,13 @@ public:
 
     void update(color_ostream & out);
 
-    bool is_digging();
+    task *is_digging();
     bool is_idle();
 
     void new_citizen(color_ostream & out, int32_t uid);
     void del_citizen(color_ostream & out, int32_t uid);
 
-    void checkidle(color_ostream & out);
+    bool checkidle(color_ostream & out);
     void idleidle(color_ostream & out);
 
     void checkrooms(color_ostream & out);
@@ -97,7 +66,7 @@ public:
 
     void getbedroom(color_ostream & out, int32_t id);
     void getdiningroom(color_ostream & out, int32_t id);
-    void attribute_noblerooms(color_ostream & out, const std::vector<int32_t> & id_list);
+    void attribute_noblerooms(color_ostream & out, const std::set<int32_t> & id_list);
 
     void getsoldierbarrack(color_ostream & out, int32_t id);
     void assign_barrack_squad(color_ostream & out, df::building *bld, int32_t squad_id);
@@ -109,15 +78,15 @@ public:
     void freecommonrooms(color_ostream & out, int32_t id);
     void freesoldierbarrack(color_ostream & out, int32_t id);
 
-    void getpasture(color_ostream & out, int32_t pet_id);
+    df::building *getpasture(color_ostream & out, int32_t pet_id);
     void freepasture(color_ostream & out, int32_t pet_id);
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
     void wantdig(color_ostream & out, room *r);
     void digroom(color_ostream & out, room *r);
-    void construct_room(color_ostream & out, room *r);
-    void furnish_room(color_ostream & out, room *r);
+    bool construct_room(color_ostream & out, room *r);
+    bool furnish_room(color_ostream & out, room *r);
     bool try_furnish(color_ostream & out, room *r, furniture *f);
     bool try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t);
@@ -133,14 +102,14 @@ public:
 
     void setup_stockpile_settings(color_ostream & out, std::string subtype, df::building_stockpilest *bld, room *r = nullptr);
 
-    void construct_farmplot(color_ostream & out, room *r);
+    bool construct_farmplot(color_ostream & out, room *r);
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
 
     void smooth_room(color_ostream & out, room *r);
     void smooth_room_access(color_ostream & out, room *r);
     void smooth_cistern(color_ostream & out, room *r);
-    void construct_cistern(color_ostream & out, room *r);
+    bool construct_cistern(color_ostream & out, room *r);
     bool dump_items_access(color_ostream & out, room *r);
     void room_items(color_ostream & out, std::function<void(df::item *)>);
     void smooth_xyz(df::coord min, df::coord max);
@@ -212,7 +181,7 @@ public:
 
     std::string status();
 
-    command_result categorize_all(color_ostream & out);
+    void categorize_all();
 
     std::string describe_room(room *r);
 
