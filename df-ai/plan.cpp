@@ -1,19 +1,50 @@
 #include "ai.h"
 #include "plan.h"
-#include "unit_entity_positions.h"
+#include "stocks.h"
 
 #include "modules/Buildings.h"
+#include "modules/Items.h"
+#include "modules/Job.h"
+#include "modules/Maps.h"
+#include "modules/Materials.h"
+#include "modules/Units.h"
 
+#include "df/building_archerytargetst.h"
+#include "df/building_civzonest.h"
+#include "df/building_coffinst.h"
+#include "df/building_def.h"
+#include "df/building_doorst.h"
+#include "df/building_floodgatest.h"
 #include "df/building_squad_use.h"
+#include "df/building_tablest.h"
+#include "df/building_trapst.h"
 #include "df/building_wagonst.h"
 #include "df/buildings_other_id.h"
+#include "df/builtin_mats.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
 #include "df/entity_position.h"
+#include "df/furniture_type.h"
+#include "df/general_ref_building_holderst.h"
+#include "df/general_ref_building_triggertargetst.h"
+#include "df/hauling_route.h"
+#include "df/hauling_stop.h"
+#include "df/item_boulderst.h"
+#include "df/item_toolst.h"
+#include "df/itemdef_toolst.h"
+#include "df/items_other_id.h"
+#include "df/job.h"
+#include "df/organic_mat_category.h"
+#include "df/route_stockpile_link.h"
 #include "df/squad.h"
+#include "df/stop_depart_condition.h"
+#include "df/trap_type.h"
+#include "df/ui.h"
 #include "df/unit.h"
+#include "df/vehicle.h"
 #include "df/world.h"
 
+REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 const size_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
@@ -38,9 +69,16 @@ Plan::Plan(AI *ai) :
     map_veins(),
     important_workshops(),
     important_workshops2(),
+    m_c_lever_in(nullptr),
+    m_c_lever_out(nullptr),
+    m_c_cistern(nullptr),
+    m_c_reserve(nullptr),
+    m_c_testgate_delay(-1),
     checkroom_idx(0),
+    trycistern_count(0),
     allow_ice(false),
-    past_initial_phase(false)
+    past_initial_phase(false),
+    cistern_channel_requested(false)
 {
     tasks.push_back(new task{horrible_t("checkrooms")});
 
@@ -74,6 +112,39 @@ Plan::~Plan()
     {
         delete r;
     }
+}
+
+static bool find_item(df::items_other_id idx, df::item *&item, bool fire_safe = false, bool non_economic = false)
+{
+    for (df::item *i : world->items.other[idx])
+    {
+        if (Stocks::is_item_free(i) &&
+                (!fire_safe || i->isTemperatureSafe(1)) &&
+                (!non_economic || ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
+        {
+            item = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, size_t n, bool fire_safe = false, bool non_economic = false)
+{
+    size_t j = 0;
+    for (df::item *i : world->items.other[idx])
+    {
+        if (Stocks::is_item_free(i) &&
+                (!fire_safe || i->isTemperatureSafe(1)) &&
+                (!non_economic || ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
+        {
+            items.push_back(i);
+            j++;
+            if (j == n)
+                return true;
+        }
+    }
+    return false;
 }
 
 command_result Plan::startup(color_ostream & out)
@@ -650,7 +721,8 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
 
     for (int32_t id : id_list)
     {
-        std::vector<df::entity_position *> entpos = unit_entity_positions(df::unit::find(id));
+        std::vector<Units::NoblePosition> entpos;
+        Units::getNoblePositions(&entpos, df::unit::find(id));
         room *base = find_room("nobleroom", [id](room *r) -> bool { return r->owner == id; });
         if (!base)
             base = find_room("nobleroom", [](room *r) -> bool { return r->owner == -1; });
@@ -660,7 +732,7 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
             seen.insert(r->subtype);
             set_owner(out, r, id);
 #define DIG_ROOM_IF(type, req) \
-            if (r->subtype == type && std::find_if(entpos.begin(), entpos.end(), [](df::entity_position *ep) -> bool { return ep->required_ ## req > 0; }) != entpos.end()) \
+            if (r->subtype == type && std::find_if(entpos.begin(), entpos.end(), [](Units::NoblePosition np) -> bool { return np.position->required_ ## req > 0; }) != entpos.end()) \
                 wantdig(out, r)
             DIG_ROOM_IF("tomb", tomb);
             DIG_ROOM_IF("diningroom", dining);
@@ -936,6 +1008,31 @@ void Plan::set_owner(color_ostream & out, room *r, int32_t uid)
     }
 }
 
+void Plan::dig_tile(df::coord t, std::string mode)
+{
+    df::tile_dig_designation dig;
+    if (!find_enum_item(&dig, mode))
+        return;
+
+    df::tile_designation *des = Maps::getTileDesignation(t);
+    if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No && !des->bits.hidden)
+    {
+        for (auto job = world->job_list.next; job != nullptr; job = job->next)
+        {
+            if (ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging && job->item->pos == t)
+            {
+                // someone already enroute to dig here, avoid 'Inappropriate
+                // dig square' spam
+                return;
+            }
+        }
+    }
+
+    des->bits.dig = dig;
+    if (dig != tile_dig_designation::No)
+        Maps::getTileBlock(t)->flags.bits.designated = 1;
+}
+
 // queue a room for digging when other dig jobs are finished
 void Plan::wantdig(color_ostream & out, room *r)
 {
@@ -1076,1244 +1173,2123 @@ bool Plan::furnish_room(color_ostream & out, room *r)
     return true;
 }
 
-/*
-FurnitureBuilding = Hash.new { |h, k| h[k] = k.to_s.capitalize.to_sym }.update :chest => :Box,
-    :gear_assembly => :GearAssembly,
-    :vertical_axle => :AxleVertical,
-    :traction_bench => :TractionBench,
-    :nestbox => :NestBox
+static df::building_type FurnitureBuilding(std::string k)
+{
+    if (k == "gear_assembly")
+        return building_type::GearAssembly;
+    if (k == "vertical_axle")
+        return building_type::AxleVertical;
+    if (k == "traction_bench")
+        return building_type::TractionBench;
+    if (k == "nestbox")
+        return building_type::NestBox;
 
-def try_furnish(r, f)
-    return true if f[:bld_id]
-    return true if f[:ignore]
-    tgtile = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
-    return if not tgtile
-    if f[:construction]
-        if try_furnish_construction(r, f, tgtile)
-            return true if not f[:item]
+    k[0] += 'A' - 'a';
+    df::building_type bt = df::building_type(-1);
+    find_enum_item(&bt, k);
+    return bt;
+}
+
+bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
+{
+    if (f->count("bld_id"))
+        return true;
+    if (f->count("ignore"))
+        return true;
+    df::coord tgtile = r->min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+    df::tiletype tt = *Maps::getTileType(tgtile);
+    if (f->count("construction"))
+    {
+        if (try_furnish_construction(out, r, f, tgtile))
+        {
+            if (!f->count("item"))
+                return true;
+        }
         else
-            return  # dont try to furnish item before construction is done
-        end
-    end
-    return if tgtile.shape_basic == :Wall
-    case f[:item]
-    when nil
-        return true
-    when :well
-        return try_furnish_well(r, f, tgtile)
-    when :archerytarget
-        return try_furnish_archerytarget(r, f, tgtile)
-    when :gear_assembly
-        return if not itm = df.world.items.other[:TRAPPARTS].find { |i| ai.stocks.is_item_free(i) }
-    when :vertical_axle
-        return if not itm = df.world.items.other[:WOOD].find { |i| ai.stocks.is_item_free(i) }
-    when :windmill
-        return try_furnish_windmill(r, f, tgtile)
-    when :roller
-        return try_furnish_roller(r, f, tgtile)
-    when :minecart_route
-        return try_furnish_minecart_route(r, f, tgtile)
-    end
-
-    return if @cache_nofurnish[f[:item]]
-    if tgtile.occupancy.building != :None
-        # TODO warn if this stays for too long?
-        false
-    elsif tgtile.shape == :RAMP or tgtile.tilemat == :TREE or tgtile.tilemat == :ROOT
-        tgtile.dig(f[:dig] || :Default)
-        false
-    elsif itm ||= ai.stocks.find_furniture_item(f[:item])
-        return if f[:subtype] == :cage and ai.stocks.count[:cage].to_i < 1  # avoid too much spam
-        ai.debug "furnish #{f[:item]} in #{describe_room(r)}"
-        bldn = FurnitureBuilding[f[:item]]
-        subtype = { :cage => :CageTrap, :lever => :Lever, :trackstop => :TrackStop }.fetch(f[:subtype], -1)
-        bld = df.building_alloc(bldn, subtype)
-        df.building_position(bld, tgtile)
-        f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
-        df.building_construct(bld, [itm])
-        if f[:makeroom]
-            r.misc[:bld_id] = bld.id
-        end
-        f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    else
-        @cache_nofurnish[f[:item]] = true
-        false
-    end
-end
-
-def try_furnish_well(r, f, t)
-    if block = df.world.items.other[:BLOCKS].find { |i| ai.stocks.is_item_free(i) } and
-       mecha = df.world.items.other[:TRAPPARTS].find { |i| ai.stocks.is_item_free(i) } and
-       buckt = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) } and
-       chain = df.world.items.other[:CHAIN].find { |i| ai.stocks.is_item_free(i) }
-        bld = df.building_alloc(:Well)
-        df.building_position(bld, t)
-        df.building_construct(bld, [block, mecha, buckt, chain])
-        r.misc[:bld_id] = f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    end
-end
-
-def try_furnish_archerytarget(r, f, t)
-    if bould = df.world.items.other[:BOULDER].find { |i|
-            ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index]
+        {
+            return false; // don't try to furnish item before construction is done
         }
-        bld = df.building_alloc(:ArcheryTarget)
-        bld.archery_direction = (f[:y] > 2 ? :TopToBottom : :BottomToTop)
-        df.building_position(bld, t)
-        df.building_construct(bld, [bould])
-        f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    end
-end
-
-def try_furnish_construction(r, f, t)
-    if t.tilemat == :TREE
-        DwarfAI::Plan.find_tree_base(t).dig
-        return
-    end
-    case ctype = f[:construction]
-    when :NoRamp
-        t.dig if t.shape_basic == :Ramp
-        return (t.designation.dig == :No)
-    when :Wall
-        return true if t.shape_basic == :Wall
-    when :Ramp
-        return true if t.shape_basic == :Ramp
-    when :UpStair, :DownStair, :UpDownStair
-        return true if t.shape_basic == :Stair
-    when :Floor
-        return true if t.shape_basic == :Floor
-        if t.shape_basic == :Ramp
-            t.dig
-            return true
-        end
-
-    when :Track, :TrackRamp
-        wantdir = f[:dir].sort_by { |d| [:n, :s, :e, :w].index(d) }.join.upcase
-        wantshape = :Floor
-        wantshape = :Ramp if ctype == :TrackRamp
-
-        if t.special == :TRACK and t.direction == wantdir and t.shape_basic == wantshape
-            return true
-        end
-
-        case t.tilemat
-        when :MINERAL, :STONE
-            if ctype == :Track and t.shape_basic == :Ramp
-                t.dig
-                return
-            end
-
-            if t.shape_basic == wantshape
-                # carve track
-                t.occupancy.carve_track_north = true if f[:dir].include?(:n)
-                t.occupancy.carve_track_south = true if f[:dir].include?(:s)
-                t.occupancy.carve_track_east  = true if f[:dir].include?(:e)
-                t.occupancy.carve_track_west  = true if f[:dir].include?(:w)
-                t.mapblock.flags.designated = true
-                return true
-            end
-        end
-
-        ctype = (ctype.to_s + wantdir).to_sym
-
-    else
-        raise "ai plan: invalid construction type #{ctype.inspect}"
-    end
-
-    # fall through = must build actual construction
-
-    if t.tilemat == :CONSTRUCTION
-        # remove existing invalid construction
-        t.dig
-        return
-    end
-
-    return if df.world.buildings.all.any? { |b|
-        b.z == t.z and
-        not b.room.extents and
-        b.x1 <= t.x and b.x2 >= t.x and
-        b.y1 <= t.y and b.y2 >= t.y
     }
 
-    if block = df.world.items.other[:BLOCKS].find { |i| ai.stocks.is_item_free(i) }
-        bld = df.building_alloc(:Construction, ctype)
-        df.building_position(bld, t)
-        df.building_construct(bld, [block])
-        true
-    end
-end
+    df::item *itm = nullptr;
 
-def try_furnish_windmill(r, f, t)
-    return if t.shape_basic != :Open
-    mat = (1..4).map {
-        df.world.items.other[:WOOD].find { |i| ai.stocks.is_item_free(i) }
+    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall)
+        return false;
+
+    if (!f->count("item"))
+        return true;
+
+    if (f->at("item") == "well")
+        return try_furnish_well(out, r, f, tgtile);
+
+    if (f->at("item") == "archerytarget")
+        return try_furnish_archerytarget(out, r, f, tgtile);
+
+    if (f->at("item") == "gear_assembly" && !find_item(items_other_id::TRAPPARTS, itm))
+        return false;
+
+    if (f->at("item") == "vertical_axle" && !find_item(items_other_id::WOOD, itm))
+        return false;
+
+    if (f->at("item") == "windmill")
+        return try_furnish_windmill(out, r, f, tgtile);
+
+    if (f->at("item") == "roller")
+        return try_furnish_windmill(out, r, f, tgtile);
+
+    if (f->at("item") == "minecart_route")
+        return try_furnish_minecart_route(out, r, f, tgtile);
+
+    if (cache_nofurnish.count(f->at("item")))
+        return false;
+
+    if (Maps::getTileOccupancy(tgtile)->bits.building != tile_building_occ::None)
+    {
+        // TODO warn if this stays for too long?
+        return false;
     }
-    if mat.compact.length == 4
-        bld = df.building_alloc(:Windmill)
-        df.building_position(bld, t.offset(-1, -1), 3, 3)
-        df.building_construct(bld, mat)
-        f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    end
-end
 
-def try_furnish_roller(r, f, t)
-    if mecha = df.world.items.other[:TRAPPARTS].find { |i| ai.stocks.is_item_free(i) } and
-       chain = df.world.items.other[:CHAIN].find { |i| ai.stocks.is_item_free(i) }
-        bld = df.building_alloc(:Rollers)
-        df.building_position(bld, t)
-        f[:misc_bldprops].each { |k, v| bld.send("#{k}=", v) } if f[:misc_bldprops]
-        df.building_construct(bld, [mecha, chain])
-        r.misc[:bld_id] = f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    end
-end
-
-def try_furnish_minecart_route(r, f, t)
-    return true if f[:route_id]
-    return if not r.dfbuilding
-    # TODO wait roller ?
-    if mcart = df.world.items.other[:TOOL].find { |i|
-        i.subtype.subtype == ai.stocks.class::ManagerSubtype[:MakeWoodenMinecart] and
-        i.stockpile.id == -1 and
-        (!i.vehicle_tg or i.vehicle_tg.route_id == -1)
+    if (ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::RAMP ||
+            ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE ||
+            ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
+    {
+        dig_tile(tgtile, f->count("dig") ? f->at("dig").str : "Default");
+        return false;
     }
-        routelink = DFHack::RouteStockpileLink.cpp_new(:building_id => r.misc[:bld_id], :mode => { :take => true })
-        stop = DFHack::HaulingStop.cpp_new(:id => 1, :pos => t)
-        cond = DFHack::StopDepartCondition.cpp_new(:direction => f[:direction], :mode => :Push,
-                :load_percent => 100, :flags => {})
-        stop.conditions << cond
-        stop.stockpiles << routelink
-        stop.cart_id = mcart.id
-        setup_stockpile_settings(r.subtype, stop)
-        route = DFHack::HaulingRoute.cpp_new(:id => df.ui.hauling.next_id)
-        route.stops << stop
-        route.vehicle_ids << mcart.vehicle_id
-        route.vehicle_stops << 0
-        vehicle = mcart.vehicle_tg
-        vehicle.route_id = route.id
-        r.dfbuilding.linked_stops << stop
-        df.ui.hauling.next_id += 1
-        df.ui.hauling.routes << route
-        #view_* are gui only
-        f[:route_id] = route.id
-        true
-    end
-end
 
-def try_furnish_trap(r, f)
-    t = df.map_tile_at(r.x1+f[:x].to_i, r.y1+f[:y].to_i, r.z1+f[:z].to_i)
+    if (itm == nullptr)
+    {
+        itm = ai->stocks->find_furniture_item(f->at("item"));
+    }
 
-    if t.occupancy.building != :None
-        return
-    elsif t.shape == :RAMP or t.tilemat == :TREE or t.tilemat == :ROOT
-        # XXX dont remove last access ramp ?
-        t.dig(:Default)
-        return
-    end
-
-    if mecha = df.world.items.other[:TRAPPARTS].find { |i| ai.stocks.is_item_free(i) }
-        subtype = {:lever => :Lever, :cage => :CageTrap}.fetch(f[:subtype])
-        bld = df.building_alloc(:Trap, subtype)
-        df.building_position(bld, t)
-        df.building_construct(bld, [mecha])
-        f[:bld_id] = bld.id
-        @tasks << [:checkfurnish, r, f]
-        true
-    end
-end
-
-def try_construct_workshop(r)
-    return unless r.constructions_done?
-
-    case r.subtype
-    when :Dyers
-        # barrel, bucket
-        if barrel = df.world.items.other[:BARREL].find { |i| ai.stocks.is_item_free(i) } and
-           bucket = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) }
-            bld = df.building_alloc(:Workshop, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [barrel, bucket])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :Ashery
-        # block, barrel, bucket
-        if block  = df.world.items.other[:BLOCKS].find { |i| ai.stocks.is_item_free(i) } and
-           barrel = df.world.items.other[:BARREL].find { |i| ai.stocks.is_item_free(i) } and
-           bucket = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) }
-            bld = df.building_alloc(:Workshop, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [block, barrel, bucket])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :SoapMaker
-        # bucket, boulder
-        if ai.stocks.count[:stone] > 0 and
-            buckt = df.world.items.other[:BUCKET].find { |i| ai.stocks.is_item_free(i) } and
-           bould = df.world.items.other[:BOULDER].find { |i|
-               ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
-           }
-            custom = df.world.raws.buildings.all.find { |b| b.code == 'SOAP_MAKER' }.id
-            bld = df.building_alloc(:Workshop, :Custom, custom)
-            df.building_position(bld, r)
-            df.building_construct(bld, [buckt, bould])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :ScrewPress
-        # mechanism*2
-        mechas = df.world.items.other[:TRAPPARTS].find_all { |i| ai.stocks.is_item_free(i) }[0, 2]
-        if mechas.length == 2
-            custom = df.world.raws.buildings.all.find { |b| b.code == 'SCREW_PRESS' }.id
-            bld = df.building_alloc(:Workshop, :Custom, custom)
-            df.building_position(bld, r)
-            df.building_construct(bld, mechas)
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :MetalsmithsForge
-        # anvil, boulder
-        if ai.stocks.count[:stone] > 0 and
-            anvil = df.world.items.other[:ANVIL].find { |i|
-                ai.stocks.is_item_free(i) and i.isTemperatureSafe(11640)
-        } and bould = df.world.items.other[:BOULDER].find { |i|
-                ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+    if (itm != nullptr)
+    {
+        if (f->count("subtype") && f->at("subtype") == "cage" && ai->stocks->count["cage"] < 1)
+        {
+            // avoid too much spam
+            return false;
         }
-            bld = df.building_alloc(:Workshop, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [anvil, bould])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :WoodFurnace, :Smelter, :Kiln, :GlassFurnace
-        # firesafe boulder
-        if ai.stocks.count[:stone] > 0 and
-            bould = df.world.items.other[:BOULDER].find { |i|
-                ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and i.isTemperatureSafe(11640)
+        ai->debug(out, "furnish " + f->at("item").str + " in " + describe_room(r));
+        df::building_type bldn = FurnitureBuilding(f->at("item"));
+        const static std::map<std::string, int> subtypes = {{"cage", trap_type::CageTrap}, {"lever", trap_type::Lever}, {"trackstop", trap_type::TrackStop}};
+        int subtype = f->count("subtype") ? subtypes.at(f->at("subtype")) : -1;
+        df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
+        if (f->count("misc_bldprops"))
+        {
+            f->at("misc_bldprops").bldprops(out, bld);
         }
-            bld = df.building_alloc(:Furnace, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [bould])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :Quern
-        if quern = df.world.items.other[:QUERN].find { |i| ai.stocks.is_item_free(i) }
-            bld = df.building_alloc(:Workshop, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [quern])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
-    when :TradeDepot
-        boulds = df.world.items.other[:BOULDER].find_all { |i| !df.ui.economic_stone[i.mat_index] and ai.stocks.is_item_free(i) }[0, 3]
-        if boulds.length == 3
-            bld = df.building_alloc(:TradeDepot)
-            df.building_position(bld, r)
-            df.building_construct(bld, boulds)
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        end
+        Buildings::constructWithItems(bld, {itm});
+        if (f->count("makeroom"))
+        {
+            r->misc["bld_id"] = bld->id;
+        }
+        (*f)["bld_id"] = bld->id;
+        tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+        return true;
+    }
+
+    cache_nofurnish.insert(f->at("item").str);
+    return false;
+}
+
+bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    df::item *block, *mecha, *buckt, *chain;
+    if (find_item(items_other_id::BLOCKS, block) &&
+            find_item(items_other_id::TRAPPARTS, mecha) &&
+            find_item(items_other_id::BUCKET, buckt) &&
+            find_item(items_other_id::CHAIN, chain))
+    {
+        df::building *bld = Buildings::allocInstance(t, building_type::Well);
+        Buildings::constructWithItems(bld, {block, mecha, buckt, chain});
+        r->misc["bld_id"] = (*f)["bld_id"] = bld->id;
+        tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+        return true;
+    }
+    return false;
+}
+
+bool Plan::try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    df::item *bould = nullptr;
+    if (!find_item(items_other_id::BOULDER, bould, false, true))
+        return false;
+
+    df::building *bld = Buildings::allocInstance(t, building_type::ArcheryTarget);
+    virtual_cast<df::building_archerytargetst>(bld)->archery_direction = f->at("y").id > 2 ? df::building_archerytargetst::TopToBottom : df::building_archerytargetst::BottomToTop;
+    Buildings::constructWithItems(bld, {bould});
+    (*f)["bld_id"] = bld->id;
+    tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+    return true;
+}
+
+bool Plan::try_furnish_construction(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    df::tiletype tt = *Maps::getTileType(t);
+    if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
+    {
+        dig_tile(ai->plan->find_tree_base(t));
+        return false;
+    }
+
+    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
+    std::string ctype = f->at("construction");
+    if (ctype == "NoRamp")
+    {
+        if (sb == tiletype_shape_basic::Ramp)
+        {
+            dig_tile(t);
+        }
+        return Maps::getTileDesignation(t)->bits.dig == tile_dig_designation::No;
+    }
+
+    if (ctype == "Wall")
+    {
+        if (sb == tiletype_shape_basic::Wall)
+        {
+            return true;
+        }
+    }
+
+    if (ctype == "Ramp")
+    {
+        if (sb == tiletype_shape_basic::Ramp)
+        {
+            return true;
+        }
+    }
+
+    if (ctype == "UpStair" || ctype == "DownStair" || ctype == "UpDownStair")
+    {
+        if (sb == tiletype_shape_basic::Stair)
+        {
+            return true;
+        }
+    }
+
+    if (ctype == "Floor")
+    {
+        if (sb == tiletype_shape_basic::Floor)
+        {
+            return true;
+        }
+        if (sb == tiletype_shape_basic::Ramp)
+        {
+            dig_tile(t);
+            return true;
+        }
+    }
+
+    if (ctype == "Track" || ctype == "TrackRamp")
+    {
+        std::string wantdir = f->at("dir");
+        df::tiletype_shape_basic wantshape = tiletype_shape_basic::Floor;
+        if (ctype == "TrackRamp")
+        {
+            wantshape = tiletype_shape_basic::Ramp;
+        }
+
+        if (ENUM_ATTR(tiletype, special, tt) == tiletype_special::TRACK &&
+                ENUM_ATTR_STR(tiletype, direction, tt) == wantdir &&
+                sb == wantshape)
+        {
+            return true;
+        }
+
+        if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL ||
+                ENUM_ATTR(tiletype, material, tt) == tiletype_material::STONE)
+        {
+            if (ctype == "Track" && sb == tiletype_shape_basic::Ramp)
+            {
+                dig_tile(t);
+                return false;
+            }
+
+            if (sb == wantshape)
+            {
+                // carve track
+                df::tile_occupancy *occ = Maps::getTileOccupancy(t);
+                if (wantdir.find("N") != std::string::npos)
+                    occ->bits.carve_track_north = 1;
+                if (wantdir.find("S") != std::string::npos)
+                    occ->bits.carve_track_south = 1;
+                if (wantdir.find("E") != std::string::npos)
+                    occ->bits.carve_track_east = 1;
+                if (wantdir.find("W") != std::string::npos)
+                    occ->bits.carve_track_west = 1;
+
+                Maps::getTileBlock(t)->flags.bits.designated = 1;
+
+                return true;
+            }
+        }
+
+        ctype += wantdir;
+    }
+
+    // fall through = must build actual construction
+
+    if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::CONSTRUCTION)
+    {
+        // remove existing invalid construction
+        dig_tile(t);
+        return false;
+    }
+
+    for (df::building *b : world->buildings.all)
+    {
+        if (b->z == t.z && !b->room.extents &&
+                b->x1 <= t.x && b->x2 >= t.x &&
+                b->y1 <= t.y && b->y2 >= t.y)
+        {
+            return false;
+        }
+    }
+
+    df::item *block = nullptr;
+    if (!find_item(items_other_id::BLOCKS, block))
+        return false;
+
+    df::construction_type sub = df::construction_type(-1);
+    find_enum_item(&sub, ctype);
+
+    df::building *bld = Buildings::allocInstance(t, building_type::Construction, sub);
+    Buildings::constructWithItems(bld, {block});
+    return true;
+}
+
+bool Plan::try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Open)
+        return false;
+
+    std::vector<df::item *> mat;
+    if (!find_items(items_other_id::WOOD, mat, 4))
+        return false;
+
+    df::building *bld = Buildings::allocInstance(t, building_type::Windmill);
+    Buildings::constructWithItems(bld, mat);
+    (*f)["bld_id"] = bld->id;
+    tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+    return true;
+}
+
+bool Plan::try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    df::item *mecha, *chain;
+    if (find_item(items_other_id::TRAPPARTS, mecha) &&
+            find_item(items_other_id::CHAIN, chain))
+    {
+        df::building *bld = Buildings::allocInstance(t, building_type::Rollers);
+        if (f->count("misc_bldprops"))
+            f->at("misc_bldprops").bldprops(out, bld);
+        Buildings::constructWithItems(bld, {mecha, chain});
+        r->misc["bld_id"] = bld->id;
+        (*f)["bld_id"] = bld->id;
+        tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+        return true;
+    }
+    return false;
+}
+
+bool Plan::try_furnish_minecart_route(color_ostream & out, room *r, furniture *f, df::coord t)
+{
+    if (f->count("route_id"))
+        return true;
+    if (!r->dfbuilding())
+        return false;
+    // TODO wait roller ?
+    for (df::item *i : world->items.other[items_other_id::TOOL])
+    {
+        df::item_toolst *mcart = virtual_cast<df::item_toolst>(i);
+        if (mcart &&
+                mcart->subtype->subtype == ai->stocks->manager_subtype["MakeWoodenMinecart"] &&
+                mcart->stockpile.id == -1 &&
+                (mcart->vehicle_id == -1 ||
+                 df::vehicle::find(mcart->vehicle_id)->route_id == -1))
+        {
+            df::route_stockpile_link *routelink = df::allocate<df::route_stockpile_link>();
+            routelink->building_id = r->misc.at("bld_id");
+            routelink->mode.bits.take = 1;
+            df::hauling_stop *stop = df::allocate<df::hauling_stop>();
+            stop->id = 1;
+            stop->pos = t;
+            df::stop_depart_condition *cond = df::allocate<df::stop_depart_condition>();
+            find_enum_item(&cond->direction, f->at("direction"));
+            cond->mode = df::stop_depart_condition::Push;
+            cond->load_percent = 100;
+            stop->conditions.push_back(cond);
+            stop->stockpiles.push_back(routelink);
+            stop->cart_id = mcart->id;
+            setup_stockpile_settings(out, r->subtype, stop->settings);
+            df::hauling_route *route = df::allocate<df::hauling_route>();
+            route->id = ui->hauling.next_id;
+            route->stops.push_back(stop);
+            route->vehicle_ids.push_back(mcart->vehicle_id);
+            route->vehicle_stops.push_back(0);
+            df::vehicle::find(mcart->vehicle_id)->route_id = route->id;
+            virtual_cast<df::building_stockpilest>(r->dfbuilding())->linked_stops.push_back(stop);
+            ui->hauling.next_id++;
+            ui->hauling.routes.push_back(route);
+            // view_* are gui only
+            (*f)["route_id"] = route->id;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Plan::try_furnish_trap(color_ostream & out, room *r, furniture *f)
+{
+    df::coord t = r->min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+
+    if (Maps::getTileOccupancy(t)->bits.building != tile_building_occ::None)
+        return false;
+
+    df::tiletype tt = *Maps::getTileType(t);
+    if (ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::RAMP ||
+            ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE ||
+            ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
+    {
+        // XXX dont remove last access ramp ?
+        dig_tile(t, "Default");
+        return false;
+    }
+
+    df::item *mecha;
+    if (find_item(items_other_id::TRAPPARTS, mecha))
+        return false;
+
+    const static std::map<std::string, df::trap_type> subtypes =
+    {
+        {"lever", trap_type::Lever},
+        {"cage", trap_type::CageTrap},
+    };
+
+    df::trap_type subtype = subtypes.at(f->at("subtype"));
+    df::building *bld = Buildings::allocInstance(t, building_type::Trap, subtype);
+    Buildings::constructWithItems(bld, {mecha});
+    (*f)["bld_id"] = bld->id;
+    tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
+
+    return true;
+}
+
+static int32_t find_custom_building(const std::string & code)
+{
+    for (auto b : world->raws.buildings.all)
+    {
+        if (b->code == code)
+        {
+            return b->id;
+        }
+    }
+    return -1;
+}
+
+bool Plan::try_construct_workshop(color_ostream & out, room *r)
+{
+    if (!r->constructions_done())
+        return false;
+
+    df::workshop_type subtype = df::workshop_type(-1);
+    find_enum_item(&subtype, r->subtype);
+
+    if (r->subtype == "Dyers")
+    {
+        df::item *barrel, *bucket;
+        if (find_item(items_other_id::BARREL, barrel) &&
+                find_item(items_other_id::BUCKET, bucket))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            Buildings::constructWithItems(bld, {barrel, bucket});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "Ashery")
+    {
+        df::item *block, *barrel, *bucket;
+        if (find_item(items_other_id::BLOCKS, block) &&
+                find_item(items_other_id::BARREL, barrel) &&
+                find_item(items_other_id::BUCKET, bucket))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            Buildings::constructWithItems(bld, {block, barrel, bucket});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "SoapMaker")
+    {
+        df::item *buckt, *bould;
+        if (find_item(items_other_id::BUCKET, buckt) &&
+                find_item(items_other_id::BOULDER, bould, false, true))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, workshop_type::Custom, find_custom_building("SOAP_MAKER"));
+            Buildings::constructWithItems(bld, {buckt, bould});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "ScrewPress")
+    {
+        std::vector<df::item *> mechas;
+        if (find_items(items_other_id::TRAPPARTS, mechas, 2))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, workshop_type::Custom, find_custom_building("SCREW_PRESS"));
+            Buildings::constructWithItems(bld, mechas);
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "MetalsmithsForge")
+    {
+        df::item *anvil, *bould;
+        if (find_item(items_other_id::ANVIL, anvil, true) &&
+                find_item(items_other_id::BOULDER, bould, true, true))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            Buildings::constructWithItems(bld, {anvil, bould});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "WoodFurnace" ||
+            r->subtype == "Smelter" ||
+            r->subtype == "Kiln" ||
+            r->subtype == "GlassFurnace")
+    {
+        df::item *bould;
+        if (find_item(items_other_id::BOULDER, bould, true, true))
+        {
+            df::furnace_type furnace_subtype = df::furnace_type(-1);
+            find_enum_item(&furnace_subtype, r->subtype);
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Furnace, furnace_subtype);
+            Buildings::constructWithItems(bld, {bould});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "Quern")
+    {
+        df::item *quern;
+        if (find_item(items_other_id::QUERN, quern))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            Buildings::constructWithItems(bld, {quern});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
+    else if (r->subtype == "TradeDepot")
+    {
+        std::vector<df::item *> boulds;
+        if (find_items(items_other_id::BOULDER, boulds, 3, false, true))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::TradeDepot);
+            Buildings::constructWithItems(bld, boulds);
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+        }
+    }
     else
-        # any non-eco boulder
-        if ai.stocks.count[:stone] > 0 and
-            bould = df.map_tile_at(r).mapblock.items_tg.find { |i|
-                # check map_block.items first
-                i.kind_of?(DFHack::ItemBoulderst) and
-                ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index] and
-                i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2
-        } || df.world.items.other[:BOULDER].find { |i|
-                ai.stocks.is_item_free(i) and !df.ui.economic_stone[i.mat_index]
+    {
+        df::item *bould;
+        if (find_item(items_other_id::BOULDER, bould, false, true))
+        {
+            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            Buildings::constructWithItems(bld, {bould});
+            r->misc["bld_id"] = bld->id;
+            tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
+            return true;
+            // XXX else quarry?
         }
-            bld = df.building_alloc(:Workshop, r.subtype)
-            df.building_position(bld, r)
-            df.building_construct(bld, [bould])
-            r.misc[:bld_id] = bld.id
-            @tasks << [:checkconstruct, r]
-            true
-        # XXX else quarry?
-        end
-    end
-end
+    }
+    return false;
+}
 
-def try_construct_stockpile(r)
-    return unless r.constructions_done?
+bool Plan::try_construct_stockpile(color_ostream & out, room *r)
+{
+    if (!r->constructions_done())
+        return false;
 
-    bld = df.building_alloc(:Stockpile)
-    df.building_position(bld, r)
-    bld.room.extents = df.malloc(r.w*r.h)
-    bld.room.x = r.x1
-    bld.room.y = r.y1
-    bld.room.width = r.w
-    bld.room.height = r.h
-    r.w.times { |x| r.h.times { |y|
-        t = r.maptile1.offset(x, y)
-        bld.room.extents[x+r.w*y] = (t.shape_basic == :Floor ? 1 : 0)
-    } }
-    bld.is_room = 1
-    df.building_construct_abstract(bld)
-    r.misc[:bld_id] = bld.id
-    furnish_room(r)
+    df::coord size = r->size();
 
-    setup_stockpile_settings(r.subtype, bld, r)
-
-    room_items(r) { |i| i.flags.dump = true } if r.misc[:workshop] and r.subtype != :stone
-
-    if r.misc[:stockpile_level] == 0 and not (r.subtype == :stone or r.subtype == :wood)
-        if rr = find_room(:stockpile) { |o| o.subtype == r.subtype and o.misc[:stockpile_level] == 1 }
-            wantdig(rr)
-        end
-    end
-
-    # setup stockpile links with adjacent stockpile_level
-    find_room(:stockpile) { |o|
-        if o.subtype == r.subtype and (o.misc[:stockpile_level] - r.misc[:stockpile_level]).abs == 1 and obld = o.dfbuilding
-            if o.misc[:stockpile_level] > r.misc[:stockpile_level]
-                b_from = obld
-                b_to = bld
+    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(Buildings::allocInstance(r->pos(), building_type::Stockpile));
+    bld->room.extents = new uint8_t[size.x * size.y]();
+    bld->room.x = r->min.x;
+    bld->room.y = r->min.y;
+    bld->room.width = size.x;
+    bld->room.height = size.y;
+    for (int16_t x = 0; x < size.x; x++)
+    {
+        for (int16_t y = 0; y < size.y; y++)
+        {
+            df::tiletype tt = *Maps::getTileType(r->min + df::coord(x, y, 0));
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Floor)
+            {
+                bld->room.extents[x + size.x * y] = 1;
+            }
             else
-                b_from = bld
-                b_to = obld
-            end
-            next if b_to.links.take_from_pile.find { |btf| btf.id == b_from.id }
-            b_to.links.take_from_pile << b_from
-            b_from.links.give_to_pile << b_to
-            false   # loop on all stockpiles
-        end
-    }
-
-    true
-end
-
-def try_construct_activityzone(r)
-    return unless r.constructions_done?
-
-    bld = df.building_alloc(:Civzone, :ActivityZone)
-    bld.zone_flags.active = true
-    case r.type
-    when :infirmary
-        bld.zone_flags.hospital = true
-        bld.hospital.max_splints = 5
-        bld.hospital.max_thread = 75000
-        bld.hospital.max_cloth = 50000
-        bld.hospital.max_crutches = 5
-        bld.hospital.max_plaster = 750
-        bld.hospital.max_buckets = 2
-        bld.hospital.max_soap = 750
-    when :garbagedump
-        bld.zone_flags.garbage_dump = true
-    when :pasture
-        bld.zone_flags.pen_pasture = true
-        # pit_flags |= 2
-    when :pitcage
-        bld.zone_flags.pit_pond = true
-    end
-    df.building_position(bld, r)
-    bld.room.extents = df.malloc(r.w*r.h)
-    bld.room.x = r.x1
-    bld.room.y = r.y1
-    bld.room.width = r.w
-    bld.room.height = r.h
-    r.w.times { |x| r.h.times { |y| bld.room.extents[x+r.w*y] = 1 } }
-    bld.is_room = 1
-    df.building_construct_abstract(bld)
-    r.misc[:bld_id] = bld.id
-
-    true
-end
-
-def setup_stockpile_settings(subtype, bld, r=nil)
-    case subtype
-    when :stone
-        bld.settings.flags.stone = true
-        t = bld.settings.stone.mats
-        if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Masons
-            df.world.raws.inorganics.length.times { |i|
-                t[i] = (df.ui.economic_stone[i] ? 0 : 1)
-            }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Smelter
-            df.world.raws.inorganics.length.times { |i|
-                t[i] = (df.world.raws.inorganics[i].flags[:METAL_ORE] ? 1 : 0)
-            }
-        else
-            df.world.raws.inorganics.length.times { |i| t[i] = 1 }
-        end
-        bld.max_wheelbarrows = 1 if r
-    when :wood
-        bld.settings.flags.wood = true
-        t = bld.settings.wood.mats
-        df.world.raws.plants.all.length.times { |i| t[i] = 1 }
-    when :furniture, :finished_goods, :ammo, :weapons, :armor
-        case subtype
-        when :furniture
-            bld.settings.flags.furniture = true
-            bld.settings.furniture.sand_bags = true
-            s = bld.settings.furniture
-            DFHack::FurnitureType::ENUM.length.times { |i| s.type[i] = true }
-        when :finished_goods
-            bld.settings.flags.finished_goods = true
-            s = bld.settings.finished_goods
-            DFHack::ItemType::ENUM.length.times { |i| s.type[i] = true }
-            bld.max_bins = r.w*r.h if r
-        when :ammo
-            bld.settings.flags.ammo = true
-            s = bld.settings.ammo
-            df.world.raws.itemdefs.ammo.length.times { |i| s.type[i] = true }
-            bld.max_bins = r.w*r.h if r
-        when :weapons
-            bld.settings.flags.weapons = true
-            s = bld.settings.weapons
-            df.world.raws.itemdefs.weapons.length.times { |i| s.weapon_type[i] = true }
-            df.world.raws.itemdefs.trapcomps.length.times { |i| s.trapcomp_type[i] = true }
-            s.usable = true
-            s.unusable = true
-            bld.max_bins = r.w*r.h if r
-        when :armor
-            bld.settings.flags.armor = true
-            s = bld.settings.armor
-            df.world.raws.itemdefs.armor.length.times { |i| s.body[i] = true }
-            df.world.raws.itemdefs.helms.length.times { |i| s.head[i] = true }
-            df.world.raws.itemdefs.shoes.length.times { |i| s.feet[i] = true }
-            df.world.raws.itemdefs.pants.length.times { |i| s.legs[i] = true }
-            df.world.raws.itemdefs.gloves.length.times { |i| s.hands[i] = true }
-            df.world.raws.itemdefs.shields.length.times { |i| s.shield[i] = true }
-            s.usable = true
-            s.unusable = true
-            bld.max_bins = r.w*r.h if r
-        end
-        30.times { |i| s.other_mats[i] = true }
-        df.world.raws.inorganics.length.times { |i| s.mats[i] = true }
-        s.quality_core.map! { true }
-        s.quality_total.map! { true }
-    when :animals
-        bld.settings.flags.animals = true
-        bld.settings.animals.empty_cages =
-        bld.settings.animals.empty_traps = (!r || r.misc[:stockpile_level] > 1 ? true : false)
-        df.world.raws.creatures.all.length.times { |i| bld.settings.animals.enabled[i] = true }
-    when :refuse, :corpses
-        bld.settings.flags.refuse = true
-        bld.settings.refuse.fresh_raw_hide = false
-        bld.settings.refuse.rotten_raw_hide = true
-        t = bld.settings.refuse
-        if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Craftsdwarfs
-            df.world.raws.creatures.all.length.times { |i|
-                t.corpses[i] = t.body_parts[i] = t.hair[i] = false
-                t.skulls[i] = t.bones[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
-            }
-        elsif subtype == :corpses
-            DFHack::ItemType::ENUM.length.times { |i| t.type[i] = true }
-            t.type[DFHack::ItemType::NUME[:REMAINS]] = t.type[DFHack::ItemType::NUME[:PLANT]] = t.type[DFHack::ItemType::NUME[:PLANT_GROWTH]] = false
-            df.world.raws.creatures.all.length.times { |i|
-                t.body_parts[i] = t.corpses[i] = true
-                t.skulls[i] = t.bones[i] = t.hair[i] = t.shells[i] = t.teeth[i] = t.horns[i] = false
-            }
-        else
-            bld.settings.refuse.fresh_raw_hide = true
-            bld.settings.refuse.rotten_raw_hide = false
-            df.world.raws.creatures.all.length.times { |i|
-                t.corpses[i] = t.body_parts[i] = false
-                t.skulls[i] = t.bones[i] = t.hair[i] = t.shells[i] = t.teeth[i] = t.horns[i] = true
-            }
-        end
-    when :food
-        bld.settings.flags.food = true
-        bld.max_barrels = r.w*r.h if r
-        t = bld.settings.food
-        mt = df.world.raws.mat_table
-        if r and r.misc[:workshop] and r.misc[:workshop].type == :farmplot
-            mt.organic_types[:Seed].length.times { |i| t.seeds[i] = true }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Farmers
-            mt.organic_types[:Plants].length.times { |i|
-                # include MILL because the quern is near
-                plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                t.plants[i] = (plant.flags[:THREAD] or plant.flags[:MILL]) if plant
-            }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Still
-            mt.organic_types[:Plants].length.times { |i|
-                plant = df.decode_mat(mt.organic_types[:Plants][i], mt.organic_indexes[:Plants][i]).plant
-                t.plants[i] = plant.flags[:DRINK] if plant
-            }
-            mt.organic_types[:Leaf].length.times { |i|
-                plant = df.decode_mat(mt.organic_types[:Leaf][i], mt.organic_indexes[:Leaf][i]).plant
-                t.leaves[i] = plant.flags[:DRINK] if plant
-            }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Kitchen
-            mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }
-            mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
-            mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
-            mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Fishery
-            mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
-        else
-            bld.settings.food.prepared_meals = true
-            mt.organic_types[:Meat          ].length.times { |i| t.meat[i]            = true }
-            mt.organic_types[:Fish          ].length.times { |i| t.fish[i]            = true }
-            mt.organic_types[:UnpreparedFish].length.times { |i| t.unprepared_fish[i] = true }
-            mt.organic_types[:Eggs          ].length.times { |i| t.egg[i]             = true }
-            mt.organic_types[:Plants        ].length.times { |i| t.plants[i]          = true }
-            mt.organic_types[:PlantDrink    ].length.times { |i| t.drink_plant[i]     = true }
-            mt.organic_types[:CreatureDrink ].length.times { |i| t.drink_animal[i]    = true }
-            mt.organic_types[:PlantCheese   ].length.times { |i| t.cheese_plant[i]    = true }
-            mt.organic_types[:CreatureCheese].length.times { |i| t.cheese_animal[i]   = true }
-            mt.organic_types[:Seed          ].length.times { |i| t.seeds[i]           = true }
-            mt.organic_types[:Leaf          ].length.times { |i| t.leaves[i]          = true }
-            mt.organic_types[:PlantPowder   ].length.times { |i| t.powder_plant[i]    = true }
-            mt.organic_types[:CreaturePowder].length.times { |i| t.powder_creature[i] = true }
-            mt.organic_types[:Glob          ].length.times { |i| t.glob[i]            = true }
-            mt.organic_types[:Paste         ].length.times { |i| t.glob_paste[i]      = true }
-            mt.organic_types[:Pressed       ].length.times { |i| t.glob_pressed[i]    = true }
-            mt.organic_types[:PlantLiquid   ].length.times { |i| t.liquid_plant[i]    = true }
-            mt.organic_types[:CreatureLiquid].length.times { |i| t.liquid_animal[i]   = true }
-            mt.organic_types[:MiscLiquid    ].length.times { |i| t.liquid_misc[i]     = true }
-        end
-    when :cloth
-        bld.settings.flags.cloth = true
-        bld.max_bins = r.w*r.h if r
-        t = bld.settings.cloth
-        if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Loom
-            df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = true ; t.cloth_silk[i]  = false }
-            df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = true ; t.cloth_plant[i] = false }
-            df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = true ; t.cloth_yarn[i]  = false }
-            df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = false; t.cloth_metal[i] = false }
-        elsif r and r.misc[:workshop] and r.misc[:workshop].subtype == :Clothiers
-            df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = false ; t.cloth_silk[i]  = true }
-            df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = false ; t.cloth_plant[i] = true }
-            df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = false ; t.cloth_yarn[i]  = true }
-            df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = false ; t.cloth_metal[i] = true }
-        else
-            df.world.raws.mat_table.organic_types[:Silk       ].length.times { |i| t.thread_silk[i]  = t.cloth_silk[i]  = true }
-            df.world.raws.mat_table.organic_types[:PlantFiber ].length.times { |i| t.thread_plant[i] = t.cloth_plant[i] = true }
-            df.world.raws.mat_table.organic_types[:Yarn       ].length.times { |i| t.thread_yarn[i]  = t.cloth_yarn[i]  = true }
-            df.world.raws.mat_table.organic_types[:MetalThread].length.times { |i| t.thread_metal[i] = t.cloth_metal[i] = true }
-        end
-    when :leather
-        bld.settings.flags.leather = true
-        bld.max_bins = r.w*r.h if r
-        t = bld.settings.leather.mats
-        df.world.raws.mat_table.organic_types[:Leather].length.times { |i| t[i] = true }
-    when :gems
-        bld.settings.flags.gems = true
-        bld.max_bins = r.w*r.h if r
-        t = bld.settings.gems
-        if r and r.misc[:workshop] and r.misc[:workshop].subtype == :Jewelers
-            df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = false }
-            df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = true ; t.cut_mats[i] = false }
-        else
-            df.world.raws.mat_table.builtin.length.times { |i| t.rough_other_mats[i] = t.cut_other_mats[i] = true }
-            df.world.raws.inorganics.length.times { |i| t.rough_mats[i] = t.cut_mats[i] = true }
-        end
-    when :bars_blocks
-        bld.settings.flags.bars_blocks = true
-        bld.max_bins = r.w*r.h if r
-        s = bld.settings.bars_blocks
-        if r and r.misc[:workshop] and r.misc[:workshop].subtype == :MetalsmithsForge
-            df.world.raws.inorganics.length.times { |i| s.bars_mats[i] = df.world.raws.inorganics[i].material.flags[:IS_METAL] }
-            s.bars_other_mats[0] = true  # coal
-            bld.settings.allow_organic = false
-        else
-            df.world.raws.inorganics.length.times { |i| s.bars_mats[i] = s.blocks_mats[i] = true }
-            10.times { |i| s.bars_other_mats[i] = s.blocks_other_mats[i] = true }
-            # bars_other = 5 (coal/potash/ash/pearlash/soap)     blocks_other = 4 (greenglass/clearglass/crystalglass/wood)
-        end
-    when :coins
-        bld.settings.flags.coins = true
-        t = bld.settings.coins.mats
-        df.world.raws.inorganics.length.times { |i| t[i] = true }
-    end
-end
-
-MudType  = DFHack::BuiltinMats.int(:MUD)
-MudIndex = -1
-
-def construct_farmplot(r)
-    (r.x1..r.x2).each { |x| (r.y1..r.y2).each { |y| (r.z1..r.z2).each { |z|
-        if t = df.map_tile_at(x, y, z) and not [:GRASS_DARK, :GRASS_LIGHT, :SOIL].include?(t.tilemat)
-            if not e = t.mapblock.block_events.find { |_e|
-                _e.kind_of?(DFHack::BlockSquareEventMaterialSpatterst) and _e.mat_type == MudType and _e.mat_index == MudIndex
-            }
-                e = DFHack::BlockSquareEventMaterialSpatterst.cpp_new(:mat_type => MudType, :mat_index => MudIndex)
-                e.min_temperature = e.max_temperature = 60001
-                t.mapblock.block_events << e
-            end
-            if e.amount[t.dx][t.dy] < 50
-                ai.debug "cheat: mud invocation (#{x}, #{y}, #{z})"
-                e.amount[t.dx][t.dy] = 50 # small pile of mud
-            end
-        end
-    } } }
-
-    bld = df.building_alloc(:FarmPlot)
-    df.building_position(bld, r)
-    df.building_construct(bld, [])
-    r.misc[:bld_id] = bld.id
-    furnish_room(r)
-    if st = find_room(:stockpile) { |_r| _r.misc[:workshop] == r }
-        digroom(st)
-    end
-    @tasks << [:setup_farmplot, r]
-end
-
-def move_dininghall_fromtemp(r, t)
-    # if we dug a real hall, get rid of the temporary one
-    t.layout.each { |f|
-        if of = r.layout.find { |_f| _f[:item] == f[:item] and _f[:users] == [] }
-            of[:users] = f[:users]
-            of.delete :ignore unless f[:ignore]
-            if f[:bld_id] and bld = df.building_find(f[:bld_id])
-                df.building_deconstruct(bld)
-            end
-        end
-    }
-    @rooms.delete t
-    categorize_all
-end
-
-def smooth_room(r)
-    smooth_xyz!((r.x1-1)..(r.x2+1), (r.y1-1)..(r.y2+1), (r.z1)..(r.z2))
-end
-
-# smooth a room and its accesspath corridors (recursive)
-def smooth_room_access(r)
-    smooth_room(r)
-    r.accesspath.each { |a| smooth_room_access(a) }
-end
-
-def smooth_cistern(r)
-    r.accesspath.each { |a| smooth_room_access(a) }
-
-    tiles = []
-    (r.z1..r.z2).each { |z|
-        ((r.x1-1)..(r.x2+1)).each { |x|
-            ((r.y1-1)..(r.y2+1)).each { |y|
-                next if z != r.z1 and r.x1 <= x and r.x2 >= x and r.y1 <= y and r.y2 >= y
-                next unless t = df.map_tile_at(x, y, z)
-                tiles << t
+            {
+                bld->room.extents[x + size.x * y] = 0;
             }
         }
     }
-    smooth!(*tiles)
-end
+    bld->is_room = 1;
+    Buildings::constructAbstract(bld);
+    r->misc["bld_id"] = bld->id;
+    furnish_room(out, r);
 
-def construct_cistern(r)
-    furnish_room(r)
-    smooth_cistern(r)
+    setup_stockpile_settings(out, r->subtype, bld->settings, bld, r);
 
-    # remove boulders
-    dump_items_access(r)
+    if (r->misc.count("workshop") && r->subtype == "stone")
+    {
+        room_items(out, r, [](df::item *i) { i->flags.bits.dump = 1; });
+    }
 
-    # build levers for floodgates
-    wantdig find_room(:well)
+    if (r->misc.at("stockpile_level") == 0 &&
+            r->subtype != "stone" && r->subtype != "wood")
+    {
+        if (room *rr = find_room("stockpile", [r](room *o) -> bool { return o->subtype == r->subtype && o->misc.at("stockpile_level") == 1; }))
+        {
+            wantdig(out, rr);
+        }
+    }
 
-    # check smoothing progress, channel intermediate levels
-    if r.subtype == :well
-        @tasks << [:dig_cistern, r]
-    end
-end
+    // setup stockpile links with adjacent stockpile_level
+    find_room("stockpile", [r, bld](room *o) -> bool
+            {
+                int32_t diff = o->misc.at("stockpile_level").id - r->misc.at("stockpile_level").id;
+                if (o->subtype == r->subtype && -1 <= diff && diff <= 1)
+                {
+                    if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
+                    {
+                        df::building_stockpilest *b_from, *b_to;
+                        if (o->misc.at("stockpile_level").id > r->misc.at("stockpile_level").id)
+                        {
+                            b_from = obld;
+                            b_to = bld;
+                        }
+                        else
+                        {
+                            b_from = bld;
+                            b_to = obld;
+                        }
+                        for (auto btf : b_to->links.take_from_pile)
+                        {
+                            if (btf->id == b_from->id)
+                            {
+                                return false;
+                            }
+                        }
+                        b_to->links.take_from_pile.push_back(b_from);
+                        b_from->links.give_to_pile.push_back(b_to);
+                    }
+                }
+                return false; // loop on all stockpiles
+            });
 
-# marks all items in room and its access for dumping
-# return true if any item is found
-def dump_items_access(r)
-    found = false
-    todo = [r]
-    while _r = todo.shift
-        room_items(_r) { |i| found = i.flags.dump = true }
-        todo.concat _r.accesspath
-    end
-    found
-end
+    return true;
+}
 
-# yield every on_ground items in the room
-def room_items(r)
-    (r.z1..r.z2).each { |z|
-        ((r.x1 & -16)..r.x2).step(16) { |x|
-            ((r.y1 & -16)..r.y2).step(16) { |y|
-                df.map_tile_at(x, y, z).mapblock.items_tg.each { |i|
-                    yield i if i.flags.on_ground and i.pos.x >= r.x1 and i.pos.x <= r.x2 and i.pos.y >= r.y1 and i.pos.y <= r.y2 and i.pos.z == z
+bool Plan::try_construct_activityzone(color_ostream & out, room *r)
+{
+    if (!r->constructions_done())
+        return false;
+
+    df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->pos(), building_type::Civzone, civzone_type::ActivityZone));
+    bld->zone_flags.bits.active = 1;
+    if (r->type == "infirmary")
+    {
+        bld->zone_flags.bits.hospital = 1;
+        bld->hospital.max_splints = 5;
+        bld->hospital.max_thread = 75000;
+        bld->hospital.max_cloth = 50000;
+        bld->hospital.max_crutches = 5;
+        bld->hospital.max_plaster = 750;
+        bld->hospital.max_buckets = 2;
+        bld->hospital.max_soap = 750;
+    }
+    else if (r->type == "garbagedump")
+    {
+        bld->zone_flags.bits.garbage_dump = 1;
+    }
+    else if (r->type == "pasture")
+    {
+        bld->zone_flags.bits.pen_pasture = 1;
+        // pit_flags |= 2
+    }
+    else if (r->type == "pitcage")
+    {
+        bld->zone_flags.bits.pit_pond = 1;
+    }
+
+    df::coord size = r->size();
+    bld->room.extents = new uint8_t[size.x * size.y]();
+    bld->room.x = r->min.x;
+    bld->room.y = r->min.y;
+    bld->room.width = size.x;
+    bld->room.height = size.y;
+    for (int16_t x = 0; x < size.x; x++)
+    {
+        for (int16_t y = 0; y < size.y; y++)
+        {
+            bld->room.extents[x + size.x * y] = 1;
+        }
+    }
+    bld->is_room = 1;
+    Buildings::constructAbstract(bld);
+    r->misc["bld_id"] = bld->id;
+
+    return true;
+}
+
+void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df::stockpile_settings & settings, df::building_stockpilest *bld, room *r)
+{
+#define NUM_ENUM_VALUES(t) (df::enum_traits<df::t>::last_item_value - df::enum_traits<df::t>::first_item_value + 1)
+    if (subtype == "stone")
+    {
+        settings.flags.bits.stone = 1;
+        auto & t = settings.stone.mats;
+        t.resize(world->raws.inorganics.size());
+        if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Masons")
+        {
+            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
+            {
+                t[i] = !ui->economic_stone[i];
+            }
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Smelter")
+        {
+            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
+            {
+                t[i] = world->raws.inorganics[i]->flags.is_set(inorganic_flags::METAL_ORE);
+            }
+        }
+        else
+        {
+            t.clear();
+            t.resize(world->raws.inorganics.size(), true);
+        }
+        if (r)
+        {
+            bld->max_wheelbarrows = 1;
+        }
+    }
+    else if (subtype == "wood")
+    {
+        settings.flags.bits.wood = 1;
+        auto & t = settings.wood.mats;
+        t.clear();
+        t.resize(world->raws.plants.all.size(), true);
+    }
+    else if (subtype == "furniture")
+    {
+        settings.flags.bits.furniture = 1;
+        settings.furniture.sand_bags = true;
+        auto & s = settings.furniture;
+        s.type.clear();
+        s.type.resize(NUM_ENUM_VALUES(furniture_type), true);
+        s.other_mats.clear();
+        s.other_mats.resize(16, true);
+        s.mats.clear();
+        s.mats.resize(world->raws.inorganics.size(), true);
+        FOR_ENUM_ITEMS(item_quality, i)
+        {
+            s.quality_core[i] = true;
+            s.quality_total[i] = true;
+        }
+    }
+    else if (subtype == "finished_goods")
+    {
+        settings.flags.bits.finished_goods = 1;
+        auto & s = settings.finished_goods;
+        s.type.clear();
+        s.type.resize(NUM_ENUM_VALUES(item_type), true);
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        s.other_mats.clear();
+        s.other_mats.resize(17, true);
+        s.mats.clear();
+        s.mats.resize(world->raws.inorganics.size(), true);
+        FOR_ENUM_ITEMS(item_quality, i)
+        {
+            s.quality_core[i] = true;
+            s.quality_total[i] = true;
+        }
+    }
+    else if (subtype == "ammo")
+    {
+        settings.flags.bits.ammo = 1;
+        auto & s = settings.ammo;
+        s.type.clear();
+        s.type.resize(world->raws.itemdefs.ammo.size(), true);
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        s.other_mats.clear();
+        s.other_mats.resize(2, true);
+        s.mats.clear();
+        s.mats.resize(world->raws.inorganics.size(), true);
+        FOR_ENUM_ITEMS(item_quality, i)
+        {
+            s.quality_core[i] = true;
+            s.quality_total[i] = true;
+        }
+    }
+    else if (subtype == "weapons")
+    {
+        settings.flags.bits.weapons = 1;
+        auto & s = settings.weapons;
+        s.weapon_type.clear();
+        s.weapon_type.resize(world->raws.itemdefs.weapons.size(), true);
+        s.trapcomp_type.clear();
+        s.trapcomp_type.resize(world->raws.itemdefs.trapcomps.size(), true);
+        s.usable = true;
+        s.unusable = true;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        s.other_mats.clear();
+        s.other_mats.resize(11, true);
+        s.mats.clear();
+        s.mats.resize(world->raws.inorganics.size(), true);
+        FOR_ENUM_ITEMS(item_quality, i)
+        {
+            s.quality_core[i] = true;
+            s.quality_total[i] = true;
+        }
+    }
+    else if (subtype == "armor")
+    {
+        settings.flags.bits.armor = 1;
+        auto & s = settings.armor;
+        s.body.clear();
+        s.body.resize(world->raws.itemdefs.armor.size(), true);
+        s.head.clear();
+        s.head.resize(world->raws.itemdefs.helms.size(), true);
+        s.feet.clear();
+        s.feet.resize(world->raws.itemdefs.shoes.size(), true);
+        s.legs.clear();
+        s.legs.resize(world->raws.itemdefs.pants.size(), true);
+        s.hands.clear();
+        s.hands.resize(world->raws.itemdefs.gloves.size(), true);
+        s.shield.clear();
+        s.shield.resize(world->raws.itemdefs.shields.size(), true);
+        s.usable = true;
+        s.unusable = true;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        s.other_mats.clear();
+        s.other_mats.resize(11, true);
+        s.mats.clear();
+        s.mats.resize(world->raws.inorganics.size(), true);
+        FOR_ENUM_ITEMS(item_quality, i)
+        {
+            s.quality_core[i] = true;
+            s.quality_total[i] = true;
+        }
+    }
+    else if (subtype == "animals")
+    {
+        settings.flags.bits.animals = 1;
+        auto & s = settings.animals;
+        s.empty_cages = s.empty_traps = !r || r->misc.at("stockpile_level").id > 1;
+        s.enabled.clear();
+        s.enabled.resize(world->raws.creatures.all.size(), true);
+    }
+    else if (subtype == "refuse" || subtype == "corpses")
+    {
+        settings.flags.bits.refuse = 1;
+        auto & t = settings.refuse;
+        size_t creatures = world->raws.creatures.all.size();
+        t.fresh_raw_hide = false;
+        t.rotten_raw_hide = true;
+        if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Craftsdwarfs")
+        {
+            t.corpses.clear();
+            t.corpses.resize(creatures, false);
+            t.body_parts.clear();
+            t.body_parts.resize(creatures, false);
+            t.hair.clear();
+            t.hair.resize(creatures, false);
+            t.skulls.clear();
+            t.skulls.resize(creatures, true);
+            t.bones.clear();
+            t.bones.resize(creatures, true);
+            t.shells.clear();
+            t.shells.resize(creatures, true);
+            t.teeth.clear();
+            t.teeth.resize(creatures, true);
+            t.horns.clear();
+            t.horns.resize(creatures, true);
+        }
+        else if (subtype == "corpses")
+        {
+            t.type.clear();
+            t.type.resize(NUM_ENUM_VALUES(item_type), true);
+            t.type[item_type::REMAINS] = false;
+            t.type[item_type::PLANT] = false;
+            t.type[item_type::PLANT_GROWTH] = false;
+            t.corpses.clear();
+            t.corpses.resize(creatures, true);
+            t.body_parts.clear();
+            t.body_parts.resize(creatures, true);
+            t.hair.clear();
+            t.hair.resize(creatures, false);
+            t.skulls.clear();
+            t.skulls.resize(creatures, false);
+            t.bones.clear();
+            t.bones.resize(creatures, false);
+            t.shells.clear();
+            t.shells.resize(creatures, false);
+            t.teeth.clear();
+            t.teeth.resize(creatures, false);
+            t.horns.clear();
+            t.horns.resize(creatures, false);
+        }
+        else
+        {
+            t.fresh_raw_hide = true;
+            t.rotten_raw_hide = false;
+            t.corpses.clear();
+            t.corpses.resize(creatures, false);
+            t.body_parts.clear();
+            t.body_parts.resize(creatures, false);
+            t.hair.clear();
+            t.hair.resize(creatures, true);
+            t.skulls.clear();
+            t.skulls.resize(creatures, true);
+            t.bones.clear();
+            t.bones.resize(creatures, true);
+            t.shells.clear();
+            t.shells.resize(creatures, true);
+            t.teeth.clear();
+            t.teeth.resize(creatures, true);
+            t.horns.clear();
+            t.horns.resize(creatures, true);
+        }
+    }
+    else if (subtype == "food")
+    {
+        settings.flags.bits.food = true;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_barrels = size.x * size.y;
+        }
+        auto & t = settings.food;
+        auto & mt = world->raws.mat_table;
+        if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->type == "farmplot")
+        {
+            t.seeds.clear();
+            t.seeds.resize(mt.organic_types[organic_mat_category::Seed].size(), true);
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Farmers")
+        {
+            t.plants.clear();
+            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
+            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Plants].size(); i++)
+            {
+                // include MILL because the quern is near
+                MaterialInfo plant(mt.organic_types[organic_mat_category::Plants][i], mt.organic_indexes[organic_mat_category::Plants][i]);
+                t.plants[i] = plant.plant->flags.is_set(plant_raw_flags::THREAD) || plant.plant->flags.is_set(plant_raw_flags::MILL);
+            }
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Still")
+        {
+            t.plants.clear();
+            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
+            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Plants].size(); i++)
+            {
+                MaterialInfo plant(mt.organic_types[organic_mat_category::Plants][i], mt.organic_indexes[organic_mat_category::Plants][i]);
+                t.plants[i] = plant.plant->flags.is_set(plant_raw_flags::DRINK);
+            }
+            t.leaves.clear();
+            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size());
+            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Leaf].size(); i++)
+            {
+                MaterialInfo plant(mt.organic_types[organic_mat_category::Leaf][i], mt.organic_indexes[organic_mat_category::Leaf][i]);
+                t.leaves[i] = plant.plant->flags.is_set(plant_raw_flags::DRINK);
+            }
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Kitchen")
+        {
+            t.meat.clear();
+            t.meat.resize(mt.organic_types[organic_mat_category::Meat].size(), true);
+            t.fish.clear();
+            t.fish.resize(mt.organic_types[organic_mat_category::Fish].size(), true);
+            t.egg.clear();
+            t.egg.resize(mt.organic_types[organic_mat_category::Eggs].size(), true);
+            t.leaves.clear();
+            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size(), true);
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Fishery")
+        {
+            t.unprepared_fish.clear();
+            t.unprepared_fish.resize(mt.organic_types[organic_mat_category::UnpreparedFish].size(), true);
+        }
+        else
+        {
+            t.prepared_meals = true;
+            t.meat.clear();
+            t.meat.resize(mt.organic_types[organic_mat_category::Meat].size(), true);
+            t.fish.clear();
+            t.fish.resize(mt.organic_types[organic_mat_category::Fish].size(), true);
+            t.unprepared_fish.clear();
+            t.unprepared_fish.resize(mt.organic_types[organic_mat_category::UnpreparedFish].size(), true);
+            t.egg.clear();
+            t.egg.resize(mt.organic_types[organic_mat_category::Eggs].size(), true);
+            t.plants.clear();
+            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size(), true);
+            t.drink_plant.clear();
+            t.drink_plant.resize(mt.organic_types[organic_mat_category::PlantDrink].size(), true);
+            t.drink_animal.clear();
+            t.drink_animal.resize(mt.organic_types[organic_mat_category::CreatureDrink].size(), true);
+            t.cheese_plant.clear();
+            t.cheese_plant.resize(mt.organic_types[organic_mat_category::PlantCheese].size(), true);
+            t.cheese_animal.clear();
+            t.cheese_animal.resize(mt.organic_types[organic_mat_category::CreatureCheese].size(), true);
+            t.seeds.clear();
+            t.seeds.resize(mt.organic_types[organic_mat_category::Seed].size(), true);
+            t.leaves.clear();
+            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size(), true);
+            t.powder_plant.clear();
+            t.powder_plant.resize(mt.organic_types[organic_mat_category::PlantPowder].size(), true);
+            t.powder_creature.clear();
+            t.powder_creature.resize(mt.organic_types[organic_mat_category::CreaturePowder].size(), true);
+            t.glob.clear();
+            t.glob.resize(mt.organic_types[organic_mat_category::Glob].size(), true);
+            t.glob_paste.clear();
+            t.glob_paste.resize(mt.organic_types[organic_mat_category::Paste].size(), true);
+            t.glob_pressed.clear();
+            t.glob_pressed.resize(mt.organic_types[organic_mat_category::Pressed].size(), true);
+            t.liquid_plant.clear();
+            t.liquid_plant.resize(mt.organic_types[organic_mat_category::PlantLiquid].size(), true);
+            t.liquid_animal.clear();
+            t.liquid_animal.resize(mt.organic_types[organic_mat_category::CreatureLiquid].size(), true);
+            t.liquid_misc.clear();
+            t.liquid_misc.resize(mt.organic_types[organic_mat_category::MiscLiquid].size(), true);
+        }
+    }
+    else if (subtype == "cloth")
+    {
+        settings.flags.bits.cloth = 1;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        auto & t = settings.cloth;
+        auto cloth = [&t](bool thread, bool cloth)
+        {
+            auto & mt = world->raws.mat_table;
+            t.thread_silk.clear();
+            t.thread_silk.resize(mt.organic_types[organic_mat_category::Silk].size(), thread);
+            t.cloth_silk.clear();
+            t.cloth_silk.resize(mt.organic_types[organic_mat_category::Silk].size(), cloth);
+            t.thread_plant.clear();
+            t.thread_plant.resize(mt.organic_types[organic_mat_category::PlantFiber].size(), thread);
+            t.cloth_plant.clear();
+            t.cloth_plant.resize(mt.organic_types[organic_mat_category::PlantFiber].size(), cloth);
+            t.thread_yarn.clear();
+            t.thread_yarn.resize(mt.organic_types[organic_mat_category::Yarn].size(), thread);
+            t.cloth_yarn.clear();
+            t.cloth_yarn.resize(mt.organic_types[organic_mat_category::Yarn].size(), cloth);
+            t.thread_metal.clear();
+            t.thread_metal.resize(mt.organic_types[organic_mat_category::MetalThread].size(), thread);
+            t.cloth_metal.clear();
+            t.cloth_metal.resize(mt.organic_types[organic_mat_category::MetalThread].size(), cloth);
+        };
+        if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Loom")
+        {
+            cloth(true, false);
+        }
+        else if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Clothiers")
+        {
+            cloth(false, true);
+        }
+        else
+        {
+            cloth(true, true);
+        }
+    }
+    else if (subtype == "leather")
+    {
+        settings.flags.bits.leather = 1;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        auto & t = settings.leather;
+        t.mats.clear();
+        t.mats.resize(world->raws.mat_table.organic_types[organic_mat_category::Leather].size(), true);
+    }
+    else if (subtype == "gems")
+    {
+        settings.flags.bits.gems = 1;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        auto & t = settings.gems;
+        if (r && r->misc.count("workshop") &&
+                r->misc.at("workshop").r->subtype == "Jewelers")
+        {
+            t.rough_other_mats.clear();
+            t.rough_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), false);
+            t.cut_other_mats.clear();
+            t.cut_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), false);
+            t.rough_mats.clear();
+            t.rough_mats.resize(world->raws.inorganics.size(), true);
+            t.cut_mats.clear();
+            t.cut_mats.resize(world->raws.inorganics.size(), false);
+        }
+        else
+        {
+            t.rough_other_mats.clear();
+            t.rough_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), true);
+            t.cut_other_mats.clear();
+            t.cut_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), true);
+            t.rough_mats.clear();
+            t.rough_mats.resize(world->raws.inorganics.size(), true);
+            t.cut_mats.clear();
+            t.cut_mats.resize(world->raws.inorganics.size(), true);
+        }
+    }
+    else if (subtype == "bars_blocks")
+    {
+        settings.flags.bits.bars_blocks = 1;
+        if (r)
+        {
+            df::coord size = r->size();
+            bld->max_bins = size.x * size.y;
+        }
+        auto & s = settings.bars_blocks;
+        if (r && r->misc.count("workshop") &
+                r->misc.at("workshop").r->subtype == "MetalsmithsForge")
+        {
+            s.bars_mats.clear();
+            s.bars_mats.resize(world->raws.inorganics.size());
+            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
+            {
+                s.bars_mats[i] = world->raws.inorganics[i]->material.flags.is_set(material_flags::IS_METAL);
+            }
+            s.bars_other_mats.clear();
+            s.bars_other_mats.resize(5, false);
+            s.bars_other_mats[0] = true; // coal
+            settings.allow_organic = false;
+        }
+        else
+        {
+            s.bars_mats.clear();
+            s.bars_mats.resize(world->raws.inorganics.size(), true);
+            // coal / potash / ash / pearlash / soap
+            s.bars_other_mats.clear();
+            s.bars_other_mats.resize(5, true);
+            // green/clear/crystal glass / wood
+            s.blocks_other_mats.clear();
+            s.blocks_other_mats.resize(4, true);
+        }
+    }
+    else if (subtype == "coins")
+    {
+        settings.flags.bits.coins = 1;
+        auto & t = settings.coins;
+        t.mats.clear();
+        t.mats.resize(world->raws.inorganics.size(), true);
+    }
+#undef NUM_ENUM_VALUES
+}
+
+
+bool Plan::construct_farmplot(color_ostream & out, room *r)
+{
+    const static std::set<df::tiletype_material> allowed_materials =
+    {
+        tiletype_material::GRASS_DARK,
+        tiletype_material::GRASS_LIGHT,
+        tiletype_material::SOIL,
+    };
+    for (int16_t x = r->min.x; x <= r->max.x; x++)
+    {
+        for (int16_t y = r->min.y; y <= r->max.y; y++)
+        {
+            for (int16_t z = r->min.z; z <= r->max.z; z++)
+            {
+                if (!allowed_materials.count(ENUM_ATTR(tiletype, material, *Maps::getTileType(x, y, z))))
+                {
+                    df::map_block *block = Maps::getTileBlock(x, y, z);
+                    auto e = std::find_if(block->block_events.begin(), block->block_events.end(), [](df::block_square_event *e) -> bool
+                            {
+                                df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(e);
+                                return spatter &&
+                                    spatter->mat_type == builtin_mats::MUD &&
+                                    spatter->mat_index == -1;
+                            });
+                    if (e == block->block_events.end())
+                    {
+                        df::block_square_event_material_spatterst *spatter = df::allocate<df::block_square_event_material_spatterst>();
+                        spatter->mat_type = builtin_mats::MUD;
+                        spatter->mat_index = -1;
+                        spatter->min_temperature = 60001;
+                        spatter->max_temperature = 60001;
+                        e = block->block_events.insert(e, spatter);
+                    }
+                    df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
+                    if (spatter->amount[x & 0xf][y & 0xf] < 50)
+                    {
+                        ai->debug(out, stl_sprintf("cheat: mud invocation (%d, %d, %d)", x, y, z));
+                        spatter->amount[x & 0xf][y & 0xf] = 50; // small pile of mud
+                    }
                 }
             }
         }
     }
-end
 
-def smooth_xyz!(xs, ys, zs)
-    tiles = []
-    xs.each { |x|
-        ys.each { |y|
-            zs.each { |z|
-                tiles << [x, y, z]
+    df::building *bld = Buildings::allocInstance(r->pos(), building_type::FarmPlot);
+    Buildings::setSize(bld, r->size());
+    Buildings::constructWithItems(bld, {});
+    r->misc["bld_id"] = bld->id;
+    furnish_room(out, r);
+    if (room *st = find_room("stockpile", [r](room *o) -> bool { return o->misc.count("workshop") && o->misc.at("workshop") == r; }))
+    {
+        digroom(out, st);
+    }
+    tasks.push_back(new task{horrible_t("setup_farmplot"), horrible_t(r)});
+    return true;
+}
+
+void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
+{
+    // if we dug a real hall, get rid of the temporary one
+    for (furniture *f : t->layout)
+    {
+        for (furniture *of : r->layout)
+        {
+            if (of->at("item").str == f->at("item").str && of->at("users").ids.empty())
+            {
+                of->at("users").ids = f->at("users").ids;
+                if (!f->count("ignore"))
+                {
+                    of->erase("ignore");
+                }
+                if (f->count("bld_id"))
+                {
+                    Buildings::deconstruct(df::building::find(f->at("bld_id").id));
+                }
+                break;
             }
         }
     }
-    smooth!(*tiles)
-end
+    rooms.erase(std::remove(rooms.begin(), rooms.end(), t), rooms.end());
+    delete t;
+    categorize_all();
+}
 
-def smooth!(*tiles)
-    # get df tile references
-    tiles = tiles.map { |tile|
-        if Array === tile
-            df.map_tile_at(*tile)
-        else
-            df.map_tile_at(tile)
-        end
+void Plan::smooth_room(color_ostream & out, room *r)
+{
+    smooth_xyz(r->min - 1, r->max + 1);
+}
+
+// smooth a room and its accesspath corridors (recursive)
+void Plan::smooth_room_access(color_ostream & out, room *r)
+{
+    smooth_room(out, r);
+    for (room *a : r->accesspath)
+    {
+        smooth_room_access(out, r);
+    }
+}
+
+void Plan::smooth_cistern(color_ostream & out, room *r)
+{
+    for (room *a : r->accesspath)
+    {
+        smooth_room_access(out, a);
     }
 
-    # remove tiles that are not smoothable
-    tiles = tiles.reject { |tile|
-        next true unless tile
+    std::set<df::coord> tiles;
+    for (int16_t z = r->min.z; z <= r->max.z; z++)
+    {
+        for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
+        {
+            for (int16_t y = r->min.y - 1; y <= r->max.y + 1; y++)
+            {
+                if (z != r->min.z &&
+                        r->min.x <= x && x <= r->max.x &&
+                        r->min.y <= y && y <= r->max.y)
+                    continue;
 
-        # not a smoothable material
-        next true if tile.tilemat != :STONE and tile.tilemat != :MINERAL
-
-        # already designated for something
-        next true if tile.designation.dig != :No or tile.designation.smooth != 0 or tile.designation.hidden
-
-        # already smooth
-        next true if smooth?(tile)
-
-        # wrong shape
-        next true if tile.shape_basic != :Wall and tile.shape_basic != :Floor
-    }
-
-    # remove tiles that are already being smoothed
-    df.world.job_list.each { |j|
-        if j.job_type == :DetailWall or j.job_type == :DetailFloor
-            tiles = tiles.reject { |tile|
-                df.same_pos?(j, tile)
+                tiles.insert(df::coord(x, y, z));
             }
-        end
+        }
+    }
+    smooth(tiles);
+}
+
+bool Plan::construct_cistern(color_ostream & out, room *r)
+{
+    furnish_room(out, r);
+    smooth_cistern(out, r);
+
+    // remove boulders
+    dump_items_access(out, r);
+
+    // build levers for floodgates
+    wantdig(out, find_room("well"));
+
+    // check smoothing progress, channel intermediate levels
+    if (r->subtype == "well")
+    {
+        tasks.push_back(new task{horrible_t("dig_cistern"), horrible_t(r)});
     }
 
-    # mark the tiles to be smoothed!
-    tiles.each { |tile|
-        tile.designation.smooth = 1
-        tile.mapblock.flags.designated = true
+    return true;
+}
+
+// marks all items in room and its access for dumping
+// return true if any item is found
+bool Plan::dump_items_access(color_ostream & out, room *r)
+{
+    bool found = false;
+    room_items(out, r, [&found](df::item *i)
+            {
+                found = true;
+                i->flags.bits.dump = 1;
+            });
+    for (room *a : r->accesspath)
+    {
+        found = dump_items_access(out, a) || found;
     }
-end
+    return found;
+}
 
-def smooth?(t)
-    return if not t
-    t.tilemat == :SOIL or
-    t.tilemat == :GRASS_LIGHT or
-    t.tilemat == :GRASS_DARK or
-    t.tilemat == :PLANT or
-    t.tilemat == :ROOT or
-    t.special == :TRACK or
-    t.special == :SMOOTH or
-    t.tiletype == :FORTIFICATION or
-    t.shape_basic == :Open or
-    t.shape_basic == :Stair or
-    (t.occupancy.building != :None and
-    t.occupancy.building != :Dynamic)
-end
-
-# check smoothing progress, channel intermediate floors when done
-def try_digcistern(r)
-    # XXX hardcoded layout..
-    cnt = 0
-    acc_y = r.accesspath[0].y1
-    ((r.z1+1)..r.z2).each { |z|
-        (r.x1..r.x2).to_a.reverse.each { |x|
-            stop = false
-            (r.y1..r.y2).each { |y|
-                next unless t = df.map_tile_at(x, y, z)
-                case t.shape_basic
-                when :Floor
-                    if not smooth?(df.map_tile_at(x+1, y-1, z)) or
-                        not smooth?(df.map_tile_at(x+1, y, z)) or
-                        not smooth?(df.map_tile_at(x+1, y+1, z)) or
-                        not nt01 = df.map_tile_at(x-1, y, z)
-                        stop = true
-                        next
-                    end
-                    if nt01.shape_basic == :Floor
-                        t.dig :Channel
-                    else
-                        # last column before stairs
-                        next unless nt10 = df.map_tile_at(x, y-1, z)
-                        next unless nt12 = df.map_tile_at(x, y+1, z)
-                        next unless nt00 = df.map_tile_at(x-1, y-1, z)
-                        next unless nt02 = df.map_tile_at(x-1, y+1, z)
-                        t.dig :Channel if (y > acc_y ? smooth?(nt12) && smooth?(nt02) : smooth?(nt10) && smooth?(nt00))
-                    end
-                when :Open
-                    cnt += 1 if x >= r.x1 and x <= r.x2 and y >= r.y1 and y <= r.y2
-                end
+// yield every on_ground items in the room
+void Plan::room_items(color_ostream & out, room *r, std::function<void(df::item *)> f)
+{
+    for (int16_t z = r->min.z; z <= r->max.z; z++)
+    {
+        for (int16_t x = r->min.x & -16; x <= r->max.x; x += 16)
+        {
+            for (int16_t y = r->min.y & -16; y <= r->max.y; y += 16)
+            {
+                for (int32_t id : Maps::getTileBlock(x, y, z)->items)
+                {
+                    df::item *i = df::item::find(id);
+                    if (i->flags.bits.on_ground &&
+                            r->min.x <= i->pos.x && i->pos.x <= r->max.x &&
+                            r->min.y <= i->pos.y && i->pos.y <= r->max.y &&
+                            z == i->pos.x)
+                    {
+                        f(i);
+                    }
+                }
             }
-            break if stop
+        }
+    }
+}
+
+void Plan::smooth_xyz(df::coord min, df::coord max)
+{
+    std::set<df::coord> tiles;
+    for (int16_t x = min.x; x <= max.y; x++)
+    {
+        for (int16_t y = min.y; y <= max.y; y++)
+        {
+            for (int16_t z = min.z; z <= max.z; z++)
+            {
+                tiles.insert(df::coord(x, y, z));
+            }
+        }
+    }
+    smooth(tiles);
+}
+
+void Plan::smooth(std::set<df::coord> tiles)
+{
+    // remove tiles that are not smoothable
+    for (auto it = tiles.begin(); it != tiles.end(); )
+    {
+        // not a smoothable material
+        df::tiletype tt = *Maps::getTileType(*it);
+        df::tiletype_material mat = ENUM_ATTR(tiletype, material, tt);
+        if (mat != tiletype_material::STONE &&
+                mat != tiletype_material::MINERAL)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        // already designated for something
+        df::tile_designation des = *Maps::getTileDesignation(*it);
+        if (des.bits.dig != tile_dig_designation::No ||
+                des.bits.smooth != 0 ||
+                des.bits.hidden)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        // already smooth
+        if (is_smooth(*it))
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        // wrong shape
+        df::tiletype_shape s = ENUM_ATTR(tiletype, shape, tt);
+        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
+        if (sb != tiletype_shape_basic::Wall &&
+                sb != tiletype_shape_basic::Floor)
+        {
+            tiles.erase(it++);
+            continue;
+        }
+
+        it++;
+    }
+
+    // remove tiles that are already being smoothed
+    for (auto j = world->job_list.next; j != nullptr; j = j->next)
+    {
+        if (j->item->job_type == job_type::DetailWall ||
+                j->item->job_type == job_type::DetailFloor)
+        {
+            tiles.erase(j->item->pos);
         }
     }
 
-    @trycistern_count ||= 0
-    @trycistern_count += 1
-    smooth_cistern(r) if @trycistern_count % 12 == 0
-
-    if cnt == r.w*r.h*(r.h_z-1)
-        r.misc[:channeled] = true
-        true
-    end
-end
-
-def dig_garbagedump
-    @rooms.each { |r|
-        if r.type == :garbagepit and r.status == :plan
-            r.status = :dig
-            r.dig(:Channel)
-            @tasks << [:dig_garbage, r]
-        end
+    // mark the tiles to be smoothed!
+    for (df::coord tile : tiles)
+    {
+        Maps::getTileDesignation(tile)->bits.smooth = 1;
+        Maps::getTileBlock(tile)->flags.bits.designated = 1;
     }
-end
+}
 
-def try_diggarbage(r)
-    if r.dug?(:Open)
-        r.status = :dug
-        # XXX ugly as usual
-        t = df.map_tile_at(r.x1, r.y1, r.z1-1)
-        t.dig(:Default) if t.shape_basic == :Ramp
-        @rooms.each { |r|
-            if r.type == :garbagedump and r.status == :plan
-                try_construct_activityzone(r)
-            end
-        }
-    else
-        # tree ?
-        r.dig(:Channel)
-        false
-    end
-end
+bool Plan::is_smooth(df::coord t)
+{
+    df::tiletype tt = *Maps::getTileType(t);
+    df::tiletype_material mat = ENUM_ATTR(tiletype, material, tt);
+    df::tiletype_shape s = ENUM_ATTR(tiletype, shape, tt);
+    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
+    df::tiletype_special sp = ENUM_ATTR(tiletype, special, tt);
+    df::tile_occupancy occ = *Maps::getTileOccupancy(t);
+    df::tile_building_occ bld = occ.bits.building;
+    return mat == tiletype_material::SOIL ||
+        mat == tiletype_material::GRASS_LIGHT ||
+        mat == tiletype_material::GRASS_DARK ||
+        mat == tiletype_material::PLANT ||
+        mat == tiletype_material::ROOT ||
+        sp == tiletype_special::TRACK ||
+        sp == tiletype_special::SMOOTH ||
+        s == tiletype_shape::FORTIFICATION ||
+        sb == tiletype_shape_basic::Open ||
+        sb == tiletype_shape_basic::Stair ||
+        (bld != tile_building_occ::None &&
+         bld != tile_building_occ::Dynamic);
+}
 
-def try_setup_farmplot(r)
-    bld = r.dfbuilding
-    return true if not bld
-    return if bld.getBuildStage < bld.getMaxBuildStage
-
-    ai.stocks.farmplot(r)
-
-    true
-end
-
-def try_endfurnish(r, f)
-    bld = df.building_find(f[:bld_id]) if f[:bld_id]
-    if not bld
-        #ai.debug "destroyed building ? #{r.inspect} #{f.inspect}"
-        return true
-    end
-    return if bld.getBuildStage < bld.getMaxBuildStage
-
-    case f[:item]
-    when :coffin
-        bld.burial_mode.allow_burial = true
-        bld.burial_mode.no_citizens = false
-        bld.burial_mode.no_pets = true
-    when :door
-        bld.door_flags.pet_passable = true
-        bld.door_flags.internal = true if f[:internal]
-    when :trap
-        return setup_lever(r, f) if f[:subtype] == :lever
-    when :floodgate
-        @rooms.each { |rr|
-            next if rr.status == :plan
-            rr.layout.each { |ff|
-                link_lever(ff, f) if ff[:item] == :trap and ff[:subtype] == :lever and ff[:target] == f
+// check smoothing progress, channel intermediate floors when done
+bool Plan::try_digcistern(color_ostream & out, room *r)
+{
+    // XXX hardcoded layout..
+    size_t cnt = 0;
+    int16_t acc_y = r->accesspath[0]->min.y;
+    for (int16_t z = r->min.z + 1; z <= r->max.z; z++)
+    {
+        for (int16_t x = r->max.x; x >= r->min.x; x--)
+        {
+            bool stop = false;
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                switch (ENUM_ATTR(tiletype_shape, basic_shape,
+                            ENUM_ATTR(tiletype, shape,
+                                *Maps::getTileType(x, y, z))))
+                {
+                    case tiletype_shape_basic::Floor:
+                        if (!is_smooth(df::coord(x + 1, y - 1, z)) ||
+                                !is_smooth(df::coord(x + 1, y, z)) ||
+                                !is_smooth(df::coord(x + 1, y + 1, z)))
+                        {
+                            stop = true;
+                            continue;
+                        }
+                        if (ENUM_ATTR(tiletype_shape, basic_shape,
+                                ENUM_ATTR(tiletype, shape,
+                                    *Maps::getTileType(x - 1, y, z))) ==
+                                tiletype_shape_basic::Floor)
+                        {
+                            dig_tile(df::coord(x, y, z), "Channel");
+                        }
+                        else
+                        {
+                            // last column before stairs
+                            df::coord nt10(x, y - 1, z);
+                            df::coord nt12(x, y + 1, z);
+                            df::coord nt00(x - 1, y - 1, z);
+                            df::coord nt02(x - 1, y + 1, z);
+                            if (y > acc_y ?
+                                    is_smooth(nt12) && is_smooth(nt02) :
+                                    is_smooth(nt10) && is_smooth(nt00))
+                            {
+                                dig_tile(df::coord(x, y, z), "Channel");
+                            }
+                        }
+                        break;
+                    case tiletype_shape_basic::Open:
+                        if (r->min.x <= x && x <= r->max.x &&
+                                r->min.y <= y && y <= r->max.y)
+                        {
+                            cnt++;
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
-        } if f[:way]
-    when :archerytarget
-        f[:makeroom] = true
-    end
-
-    return true unless f[:makeroom]
-    return unless r.dug?
-
-    ai.debug "makeroom #{describe_room(r)}"
-
-    df.free(bld.room.extents._getp) if bld.room.extents
-    bld.room.extents = df.malloc((r.w+2)*(r.h+2))
-    bld.room.x = r.x1-1
-    bld.room.y = r.y1-1
-    bld.room.width = r.w+2
-    bld.room.height = r.h+2
-    set_ext = lambda { |x, y, v| bld.room.extents[bld.room.width*(y-bld.room.y)+(x-bld.room.x)] = v }
-    (r.x1-1 .. r.x2+1).each { |rx| (r.y1-1 .. r.y2+1).each { |ry|
-        if df.map_tile_at(rx, ry, r.z).shape == :WALL
-            set_ext[rx, ry, 2]
-        else
-            set_ext[rx, ry, 3]
-        end
-    } }
-    r.layout.each { |f_|
-        next if f_[:item] != :door
-        x = r.x1 + f_[:x].to_i
-        y = r.y1 + f_[:y].to_i
-        set_ext[x, y, 0]
-        # tile in front of the door tile is 4   (TODO door in corner...)
-        set_ext[x+1, y, 4] if x < r.x1
-        set_ext[x-1, y, 4] if x > r.x2
-        set_ext[x, y+1, 4] if y < r.y1
-        set_ext[x, y-1, 4] if y > r.y2
+            if (stop)
+                break;
+        }
     }
-    bld.is_room = 1
-    df.building_linkrooms(bld)
 
-    set_owner(r, r.owner)
-    furnish_room(r)
+    trycistern_count++;
+    if (trycistern_count % 12 == 0)
+    {
+        smooth_cistern(out, r);
+    }
 
-    case r.type
-    when :dininghall
-        bld.table_flags.meeting_hall = true
+    df::coord size = r->size();
+    if (cnt == size.x * size.y * (size.z - 1))
+    {
+        r->misc["channeled"] = horrible_t();
+        return true;
+    }
+    return false;
+}
 
-    when :barracks
-        bld = r.dfbuilding
-        bld = df.building_find(f[:bld_id]) if f[:item] == :archerytarget
-        if squad_id = r.misc[:squad_id] and bld
-            assign_barrack_squad(bld, squad_id)
-        end
+void Plan::dig_garbagedump(color_ostream & out)
+{
+    find_room("garbagepit", [this](room *r) -> bool
+            {
+                if (r->status == "plan")
+                {
+                    r->status = "dig";
+                    r->dig("Channel");
+                    tasks.push_back(new task{horrible_t("dig_garbage"), horrible_t(r)});
+                }
+                return false;
+            });
+}
 
-    end
+bool Plan::try_diggarbage(color_ostream & out, room *r)
+{
+    if (r->is_dug(tiletype_shape_basic::Open))
+    {
+        r->status = "dug";
+        // XXX ugly as usual
+        df::coord t(r->min.x, r->min.y, r->min.z - 1);
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape,
+                        *Maps::getTileType(t))) == tiletype_shape_basic::Ramp)
+        {
+            dig_tile(t, "Default");
+        }
+        find_room("garbagedump", [this, &out](room *r) -> bool
+                {
+                    if (r->status == "plan")
+                    {
+                        try_construct_activityzone(out, r);
+                    }
+                    return false;
+                });
+        return true;
+    }
+    // tree ?
+    r->dig("Channel");
+    return false;
+}
 
-    true
-end
+bool Plan::try_setup_farmplot(color_ostream & out, room *r)
+{
+    df::building *bld = r->dfbuilding();
+    if (!bld)
+        return true;
+    if (bld->getBuildStage() < bld->getMaxBuildStage())
+        return false;
 
-def setup_lever(r, f)
-    case r.type
-    when :well
-        way = f[:way]
-        f[:target] ||= find_room(:cistern) { |_r| _r.subtype == :reserve }.layout.find { |_f|
-            _f[:item] == :floodgate and _f[:way] == f[:way]
+    ai->stocks->farmplot(out, r);
+
+    return true;
+}
+
+bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
+{
+    df::building *bld = f->count("bld_id") ?
+        df::building::find(f->at("bld_id").id) : nullptr;
+    if (!bld)
+    {
+        // destroyed building?
+        return true;
+    }
+    if (bld->getBuildStage() < bld->getMaxBuildStage())
+        return false;
+
+    if (f->at("item") == "coffin")
+    {
+        df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
+        coffin->burial_mode.bits.allow_burial = 1;
+        coffin->burial_mode.bits.no_citizens = 0;
+        coffin->burial_mode.bits.no_pets = 1;
+    }
+    else if (f->at("item") == "door")
+    {
+        df::building_doorst *door = virtual_cast<df::building_doorst>(bld);
+        door->door_flags.bits.pet_passable = 1;
+        door->door_flags.bits.internal = f->count("internal") ? 1 : 0;
+    }
+    else if (f->at("item") == "trap")
+    {
+        if (f->at("subtype") == "lever")
+        {
+            return setup_lever(out, r, f);
+        }
+    }
+    else if (f->at("item") == "floodgate")
+    {
+        if (f->count("way"))
+        {
+            for (room *rr : rooms)
+            {
+                if (rr->status == "plan")
+                    continue;
+                for (furniture *ff : rr->layout)
+                {
+                    if (ff->at("item") == "trap" &&
+                            ff->at("subtype") == "lever" &&
+                            ff->at("target").f == f)
+                    {
+                        link_lever(out, ff, f);
+                    }
+                }
+            }
+        }
+    }
+    else if (f->at("item") == "archerytarget")
+    {
+        (*f)["makeroom"] = horrible_t();
+    }
+
+    if (!f->count("makeroom"))
+        return true;
+    if (!r->is_dug())
+        return false;
+
+    ai->debug(out, "makeroom " + describe_room(r));
+
+    df::coord size = r->size();
+
+    delete[] bld->room.extents;
+    bld->room.extents = new uint8_t[(size.x + 2) * (size.y + 2)]();
+    bld->room.x = r->min.x - 1;
+    bld->room.y = r->min.y - 1;
+    bld->room.width = size.x + 2;
+    bld->room.height = size.y + 2;
+    auto set_ext = [&bld](int16_t x, int16_t y, uint8_t v)
+    {
+        bld->room.extents[bld->room.width * (y - bld->room.y) + (x - bld->room.x)] = v;
+        if (v != 0)
+        {
+            for (df::building *o : world->buildings.other[buildings_other_id::IN_PLAY])
+            {
+                if (o->z != bld->z || o->is_room)
+                    continue;
+                if (o->x1 == x && o->y1 == y)
+                {
+                    ui->equipment.update.bits.buildings = 1;
+                    bld->children.push_back(o);
+                    o->parents.push_back(bld);
+                }
+            }
+        }
+    };
+    for (int16_t rx = r->min.x - 1; rx <= r->max.x + 1; rx++)
+    {
+        for (int16_t ry = r->min.y - 1; ry <= r->max.y + 1; ry++)
+        {
+            if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(rx, ry, r->min.z)) == tiletype_shape::WALL)
+            {
+                set_ext(rx, ry, 2);
+            }
+            else
+            {
+                set_ext(rx, ry, 3);
+            }
+        }
+    }
+    for (furniture *f_ : r->layout)
+    {
+        if (f->at("item") != "door")
+            continue;
+        int16_t x = r->min.x + (f->count("x") ? f->at("x").id : 0);
+        int16_t y = r->min.y + (f->count("y") ? f->at("y").id : 0);
+        set_ext(x, y, 0);
+        // tile in front of the door tile is 4 (TODO door in corner...)
+        if (x < r->min.x)
+            set_ext(x + 1, y, 4);
+        if (x > r->max.x)
+            set_ext(x - 1, y, 4);
+        if (y < r->min.y)
+            set_ext(x, y + 1, 4);
+        if (y > r->max.y)
+            set_ext(x, y - 1, 4);
+    }
+    bld->is_room = 1;
+
+    set_owner(out, r, r->owner);
+    furnish_room(out, r);
+
+    if (r->type == "dininghall")
+    {
+        virtual_cast<df::building_tablest>(bld)->table_flags.bits.meeting_hall = 1;
+    }
+    else if (r->type == "barracks")
+    {
+        df::building *bld = r->dfbuilding();
+        if (f->at("item") == "archerytarget")
+        {
+            bld = df::building::find(f->at("bld_id"));
+        }
+        if (r->misc.count("squad_id") && bld)
+        {
+            assign_barrack_squad(out, bld, r->misc.at("squad_id").id);
+        }
+    }
+
+    return true;
+}
+
+bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
+{
+    if (r->type == "well")
+    {
+        std::string way = f->at("way").str;
+        if (!f->count("target"))
+        {
+            room *cistern = find_room("cistern", [](room *r) -> bool { return r->subtype == "reserve"; });
+            for (furniture *gate : cistern->layout)
+            {
+                if (gate->at("item") == "floodgate" && gate->at("way") == way)
+                {
+                    (*f)["target"] = gate;
+                    break;
+                }
+            }
         }
 
-        if link_lever(f, f[:target])
-            pull_lever(f)
-            @tasks << [:monitor_cistern] if way == :in
+        if (link_lever(out, f, f->at("target").f))
+        {
+            pull_lever(out, f);
+            if (way == "in")
+            {
+                tasks.push_back(new task{horrible_t("monitor_cistern")});
+            }
 
-            true
-        end
-    end
-end
+            return true;
+        }
+    }
+    return false;
+}
 
-def link_lever(src, dst)
-    return if not src[:bld_id] or not dst[:bld_id]
-    bld = df.building_find(src[:bld_id])
-    return if not bld or bld.getBuildStage < bld.getMaxBuildStage
-    tbld = df.building_find(dst[:bld_id])
-    return if not tbld or tbld.getBuildStage < tbld.getMaxBuildStage
-    return if bld.general_refs.find { |ref| ref.kind_of?(DFHack::GeneralRefBuildingTriggertargetst) and
-            ref.building_id == tbld.id }
-    return if bld.jobs.find { |j| j.job_type == :LinkBuildingToTrigger and
-        j.general_refs.find { |ref| ref.kind_of?(DFHack::GeneralRefBuildingTriggertargetst) and
-            ref.building_id == tbld.id }
+bool Plan::link_lever(color_ostream & out, furniture *src, furniture *dst)
+{
+    if (!src->count("bld_id") || !dst->count("bld_id"))
+        return false;
+    df::building *bld = df::building::find(src->at("bld_id").id);
+    if (!bld || bld->getBuildStage() < bld->getMaxBuildStage())
+        return false;
+    df::building *tbld = df::building::find(dst->at("bld_id").id);
+    if (!tbld || tbld->getBuildStage() < tbld->getMaxBuildStage())
+        return false;
+ 
+    for (auto ref : bld->general_refs)
+    {
+        df::general_ref_building_triggertargetst *tt = virtual_cast<df::general_ref_building_triggertargetst>(ref);
+        if (tt && tt->building_id == tbld->id)
+            return false;
+    }
+    for (auto j : bld->jobs)
+    {
+        if (j->job_type == job_type::LinkBuildingToTrigger)
+        {
+            for (auto ref : j->general_refs)
+            {
+                df::general_ref_building_triggertargetst *tt = virtual_cast<df::general_ref_building_triggertargetst>(ref);
+                if (tt && tt->building_id == tbld->id)
+                    return false;
+            }
+        }
     }
 
-    mechas = df.world.items.other[:TRAPPARTS].find_all { |i| ai.stocks.is_item_free(i) }[0, 2]
-    return if mechas.length < 2
+    std::vector<df::item *> mechas;
+    if (!find_items(items_other_id::TRAPPARTS, mechas, 2))
+        return false;
 
-    reflink = DFHack::GeneralRefBuildingTriggertargetst.cpp_new
-    reflink.building_id = tbld.id
-    refhold = DFHack::GeneralRefBuildingHolderst.cpp_new
-    refhold.building_id = bld.id
+    df::general_ref_building_triggertargetst *reflink = df::allocate<df::general_ref_building_triggertargetst>();
+    reflink->building_id = tbld->id;
+    df::general_ref_building_holderst *refhold = df::allocate<df::general_ref_building_holderst>();
+    refhold->building_id = bld->id;
 
-    job = DFHack::Job.cpp_new
-    job.job_type = :LinkBuildingToTrigger
-    job.general_refs << reflink << refhold
-    bld.jobs << job
-    df.job_link job
+    df::job *job = df::allocate<df::job>();
+    job->job_type = job_type::LinkBuildingToTrigger;
+    job->general_refs.push_back(reflink);
+    job->general_refs.push_back(refhold);
+    bld->jobs.push_back(job);
+    Job::linkIntoWorld(job);
 
-    df.job_attachitem(job, mechas[0], :LinkToTarget)
-    df.job_attachitem(job, mechas[1], :LinkToTrigger)
-end
+    Job::attachJobItem(job, mechas[0], df::job_item_ref::LinkToTarget);
+    Job::attachJobItem(job, mechas[1], df::job_item_ref::LinkToTrigger);
 
-def pull_lever(f)
-    bld = df.building_find(f[:bld_id])
-    if not bld
-        ai.debug "cistern: missing lever #{f[:way]}"
-        return
-    end
-    if not bld.jobs.empty?
-        ai.debug "cistern: lever has job #{f[:way]}"
-        return
-    end
-    ai.debug "cistern: pull lever #{f[:way]}"
+    return true;
+}
 
-    ref = DFHack::GeneralRefBuildingHolderst.cpp_new
-    ref.building_id = bld.id
+bool Plan::pull_lever(color_ostream & out, furniture *f)
+{
+    df::building *bld = df::building::find(f->at("bld_id").id);
+    if (!bld)
+    {
+        ai->debug(out, "cistern: missing lever " + f->at("way").str);
+        return false;
+    }
+    if (!bld->jobs.empty())
+    {
+        ai->debug(out, "cistern: lever has job " + f->at("way").str);
+        return false;
+    }
+    ai->debug(out, "cistern: pull lever " + f->at("way").str);
 
-    job = DFHack::Job.cpp_new
-    job.job_type = :PullLever
-    job.pos = [bld.x1, bld.y1, bld.z]
-    job.general_refs << ref
-    bld.jobs << job
-    df.job_link job
-end
+    df::general_ref_building_holderst *ref = df::allocate<df::general_ref_building_holderst>();
+    ref->building_id = bld->id;
 
-def monitor_cistern
-    if not @m_c_lever_in
-        well = find_room(:well)
-        @m_c_lever_in = well.layout.find { |f| f[:item] == :trap and f[:subtype] == :lever and f[:way] == :in }
-        @m_c_lever_out = well.layout.find { |f| f[:item] == :trap and f[:subtype] == :lever and f[:way] == :out }
-        @m_c_cistern = find_room(:cistern) { |r| r.subtype == :well }
-        @m_c_reserve = find_room(:cistern) { |r| r.subtype == :reserve }
-        @m_c_testgate_delay = 2 if @m_c_reserve.misc[:channel_enable]
-    end
+    df::job *job = df::allocate<df::job>();
+    job->job_type = job_type::PullLever;
+    job->pos = df::coord(bld->x1, bld->y1, bld->z);
+    job->general_refs.push_back(ref);
+    bld->jobs.push_back(job);
+    Job::linkIntoWorld(job);
+    return true;
+}
 
-    l_in = df.building_find(@m_c_lever_in[:bld_id]) if @m_c_lever_in[:bld_id]
-    f_in = df.building_find(@m_c_lever_in[:target][:bld_id]) if @m_c_lever_in[:target] and @m_c_lever_in[:target][:bld_id]
-    l_out = df.building_find(@m_c_lever_out[:bld_id]) if @m_c_lever_out[:bld_id]
-    f_out = df.building_find(@m_c_lever_out[:target][:bld_id]) if @m_c_lever_out[:target] and @m_c_lever_out[:target][:bld_id]
+void Plan::monitor_cistern(color_ostream & out)
+{
+    if (!m_c_lever_in)
+    {
+        room *well = find_room("well");
+        for (furniture *f : well->layout)
+        {
+            if (f->at("item") == "trap" && f->at("subtype") == "lever")
+            {
+                if (f->at("way") == "in")
+                    m_c_lever_in = f;
+                else if (f->at("way") == "out")
+                    m_c_lever_out = f;
+            }
+        }
+        m_c_cistern = find_room("cistern", [](room *r) -> bool { return r->subtype == "well"; });
+        m_c_reserve = find_room("cistern", [](room *r) -> bool { return r->subtype == "reserve"; });
+        if (m_c_reserve->misc.count("channel_enable"))
+        {
+            m_c_testgate_delay = 2;
+        }
+    }
 
-    if l_in and not f_out and l_in.linked_mechanisms.first
-        # f_in is linked, can furnish f_out now without risking walling workers in the reserve
-        @m_c_reserve.layout.each { |l| l.delete :ignore }
-        furnish_room @m_c_reserve
-    end
+    df::building_trapst *l_in = nullptr, *l_out = nullptr;
+    df::building_floodgatest *f_in = nullptr, *f_out = nullptr;
+    if (m_c_lever_in->count("bld_id"))
+        l_in = virtual_cast<df::building_trapst>(df::building::find(m_c_lever_in->at("bld_id").id));
+    if (m_c_lever_in->count("target") && m_c_lever_in->at("target").f->count("bld_id"))
+            f_in = virtual_cast<df::building_floodgatest>(df::building::find(m_c_lever_in->at("target").f->at("bld_id").id));
+    if (m_c_lever_out->count("bld_id"))
+        l_out = virtual_cast<df::building_trapst>(df::building::find(m_c_lever_out->at("bld_id").id));
+    if (m_c_lever_out->count("target") && m_c_lever_out->at("target").f->count("bld_id"))
+            f_out = virtual_cast<df::building_floodgatest>(df::building::find(m_c_lever_out->at("target").f->at("bld_id").id));
 
-    return unless l_in and f_in and l_out and f_out
-    return unless l_in.linked_mechanisms.first and l_out.linked_mechanisms.first
-    return unless l_in.jobs.empty? and l_out.jobs.empty?
+    if (l_in && !f_out && !l_in->linked_mechanisms.empty())
+    {
+        // f_in is linked, can furnish f_out now without risking walling
+        // workers in the reserve
+        for (furniture *l : m_c_reserve->layout)
+        {
+            l->erase("ignore");
+        }
+        furnish_room(out, m_c_reserve);
+    }
 
-    if @fort_entrance.layout.find { |f| f[:ignore] }
-        # may use mechanisms for entrance cage traps now
-        @fort_entrance.layout.each { |ef| ef.delete :ignore }
-        furnish_room(@fort_entrance)
-    end
+    if (!l_in || !f_in || !l_out || !f_out)
+        return;
+    if (l_in->linked_mechanisms.empty() || l_out->linked_mechanisms.empty())
+        return;
+    if (!l_in->jobs.empty() || !l_out->jobs.empty())
+        return;
 
-    f_in_closed = true if f_in.gate_flags.closed or f_in.gate_flags.closing
-    f_in_closed = false if f_in.gate_flags.opening
-    f_out_closed = true if f_out.gate_flags.closed or f_out.gate_flags.closing
-    f_out_closed = false if f_out.gate_flags.opening
+    // may use mechanisms for entrance cage traps now
+    bool furnish_entrance = false;
+    for (furniture *f : fort_entrance->layout)
+    {
+        if (f->erase("ignore"))
+        {
+            furnish_entrance = true;
+        }
+    }
+    if (furnish_entrance)
+    {
+        furnish_room(out, fort_entrance);
+    }
 
-    if @m_c_testgate_delay
-        # expensive, dont check too often
-        @m_c_testgate_delay -= 1
-        return if @m_c_testgate_delay > 0
+    bool f_in_closed = (f_in->gate_flags.bits.closed || f_in->gate_flags.bits.closing) && !f_in->gate_flags.bits.opening;
+    bool f_out_closed = (f_out->gate_flags.bits.closed || f_out->gate_flags.bits.closing) && !f_out->gate_flags.bits.opening;
 
-        # re-dump garbage + smooth reserve accesspath
-        construct_cistern(@m_c_reserve)
+    if (m_c_testgate_delay != -1)
+    {
+        // expensive, dont check too often
+        m_c_testgate_delay--;
+        if (m_c_testgate_delay > 0)
+            return;
 
-        gate = df.map_tile_at(*@m_c_reserve.misc[:channel_enable])
-        if gate.shape_basic == :Wall
-            ai.debug 'cistern: test channel'
-            empty = true
-            todo = [@m_c_reserve]
-            while empty and r = todo.shift
-                todo.concat r.accesspath
-                empty = false if ((r.x1-1)..(r.x2+1)).any? { |x| ((r.y1-1)..(r.y2+1)).any? { |y| (r.z1..r.z2).any? { |z|
-                    next unless t = df.map_tile_at(x, y, z)
-                    if not smooth?(t)
-                        ai.debug "cistern: unsmoothed #{t.inspect}"
-                        true
-                    elsif t.occupancy.unit or t.occupancy.unit_grounded
-                        ai.debug "cistern: unit #{t.inspect} #{DwarfAI::describe_unit(df.unit_find(t))}"
-                        true
-                    elsif t.occupancy.item
-                        ai.debug "cistern: item #{t.inspect} #{DwarfAI::describe_item(df.item_find(t))}"
-                        true
-                    else
-                        false
-                    end
-                } } }
-            end
+        // re-dump garbage + smooth reserve accesspath
+        construct_cistern(out, m_c_reserve);
 
-            if empty and !dump_items_access(@m_c_reserve)
-                if not f_out_closed
-                    # avoid floods. wait for the output to be closed.
-                    pull_lever(@m_c_lever_out)
-                    @m_c_testgate_delay = 4
+        df::coord gate = m_c_reserve->misc.at("channel_enable").c;
+        if (ENUM_ATTR(tiletype_shape, basic_shape,
+                    ENUM_ATTR(tiletype, shape,
+                        *Maps::getTileType(gate))) ==
+                tiletype_shape_basic::Wall)
+        {
+            ai->debug(out, "cistern: test channel");
+            bool empty = true;
+            std::list<room *> todo = {m_c_reserve};
+            while (empty && !todo.empty())
+            {
+                room *r = todo.front();
+                todo.pop_front();
+                todo.insert(todo.end(), r->accesspath.begin(), r->accesspath.end());
+                for (int16_t x = r->min.x - 1; empty && x <= r->max.x + 1; x++)
+                {
+                    for (int16_t y = r->min.y - 1; empty && y <= r->max.y + 1; y++)
+                    {
+                        for (int16_t z = r->min.z; z <= r->max.z; z++)
+                        {
+                            df::coord t(x, y, z);
+                            if (!is_smooth(t))
+                            {
+                                ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d)", x - r->min.x, y - r->min.y, z - r->min.z));
+                                empty = false;
+                                break;
+                            }
+                            df::tile_occupancy occ = *Maps::getTileOccupancy(t);
+                            if (occ.bits.unit || occ.bits.unit_grounded)
+                            {
+                                for (df::unit *u : world->units.active)
+                                {
+                                    if (Units::getPosition(u) == t)
+                                    {
+                                        ai->debug(out, stl_sprintf("cistern: unit (%d, %d, %d) %s", x - r->min.x, y - r->min.y, z - r->min.z, AI::describe_unit(u).c_str()));
+                                        break;
+                                    }
+                                }
+                                empty = false;
+                                break;
+                            }
+                            if (occ.bits.item)
+                            {
+                                for (int32_t id : Maps::getTileBlock(t)->items)
+                                {
+                                    df::item *i = df::item::find(id);
+                                    if (Items::getPosition(i) == t)
+                                    {
+                                        ai->debug(out, stl_sprintf("cistern: item (%d, %d, %d) %s", x - r->min.x, y - r->min.y, z - r->min.z, AI::describe_item(i).c_str()));
+                                    }
+                                }
+                                empty = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (empty && !dump_items_access(out, m_c_reserve))
+            {
+                if (!f_out_closed)
+                {
+                    // avoid floods. wait for the output to be closed.
+                    pull_lever(out, m_c_lever_out);
+                    m_c_testgate_delay = 4;
+                }
                 else
-                    pull_lever(@m_c_lever_in) if f_in_closed
-                    ai.debug 'cistern: do channel'
-                    @cistern_channel_requested = true
-                    gate.offset(0, 0, 1).dig(:Channel)
-                end
-            elsif find_room(:well).maptile1.offset(-2, find_room(:well).h/2).designation.flow_size == 7
-                # something went not as planned, but we have a water source
-                @m_c_testgate_delay = nil
-            else
-                unless @cistern_channel_requested
-                    # make sure we can actually access the cistern
-                    pull_lever(@m_c_lever_in) if f_in_closed
-                    pull_lever(@m_c_lever_out) if f_out_closed
-                end
-                @m_c_testgate_delay = 16
-            end
-        else
-            @m_c_testgate_delay = nil
-            # channel surrounding tiles
-            gate.spiral_search(1, 1) { |tt|
-                tm = tt.tilemat
-                next if tt.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT)
-                if tt.spiral_search(1) { |ttt| ttt.designation.feature_local }
-                    tt.offset(0, 0, 1).dig(:Channel)
-                end
-                false
+                {
+                    if (f_in_closed)
+                    {
+                        pull_lever(out, m_c_lever_in);
+                    }
+                    ai->debug(out, "cistern: do channel");
+                    cistern_channel_requested = true;
+                    dig_tile(gate + df::coord(0, 0, 1), "Channel");
+                    m_c_testgate_delay = 16;
+                }
             }
-        end
-        return
-    end
-
-    return unless @m_c_cistern.misc[:channeled]
-
-    # cistlvl = water level for the top floor
-    # if it is flooded, reserve output tile is probably > 4 and prevents buildingdestroyers from messing with the floodgates
-    cistlvl = df.map_tile_at(@m_c_cistern).offset(0, 0, 1).designation.flow_size
-    resvlvl = df.map_tile_at(@m_c_reserve).designation.flow_size
-
-    if resvlvl <= 1
-        # reserve empty, fill it
-        if not f_out_closed
-            pull_lever(@m_c_lever_out)
-        elsif f_in_closed
-            pull_lever(@m_c_lever_in)
-        end
-    elsif resvlvl == 7
-        # reserve full, empty into cistern if needed
-        if not f_in_closed
-            pull_lever(@m_c_lever_in)
+            else
+            {
+                room *well = find_room("well");
+                if (Maps::getTileDesignation(well->min + df::coord(-2, well->size().y / 2, 0))->bits.flow_size == 7)
+                {
+                    // something went not as planned, but we have a water source
+                    m_c_testgate_delay = -1;
+                }
+                else
+                {
+                    if (!cistern_channel_requested)
+                    {
+                        // make sure we can actually access the cistern
+                        if (f_in_closed)
+                            pull_lever(out, m_c_lever_in);
+                        if (f_out_closed)
+                            pull_lever(out, m_c_lever_out);
+                    }
+                    m_c_testgate_delay = 16;
+                }
+            }
+        }
         else
-            if cistlvl < 7
-                if f_out_closed
-                    pull_lever(@m_c_lever_out)
-                end
+        {
+            m_c_testgate_delay = -1;
+            // channel surrounding tiles
+            for (int16_t x = -1; x <= 1; x++)
+            {
+                for (int16_t y = -1; y <= 1; y++)
+                {
+                    df::tiletype tt = *Maps::getTileType(gate + df::coord(x, y, 0));
+                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall)
+                        continue;
+                    df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+                    if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT)
+                        continue;
+                    if (spiral_search(gate + df::coord(x, y, 0), 1, [](df::coord ttt) -> bool { return Maps::getTileDesignation(ttt)->bits.feature_local; }).isValid())
+                    {
+                        dig_tile(gate + df::coord(x, y, 1), "Channel");
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    if (!m_c_cistern->misc.count("channeled"))
+        return;
+
+    // cistlvl = water level for the top floor
+    // if it is flooded, reserve output tile is probably > 4 and prevents
+    // buildingdestroyers from messing with the floodgates
+    uint32_t cistlvl = Maps::getTileDesignation(m_c_cistern->pos() + df::coord(0, 0, 1))->bits.flow_size;
+    uint32_t resvlvl = Maps::getTileDesignation(m_c_reserve->pos())->bits.flow_size;
+
+    if (resvlvl <= 1)
+    {
+        // reserve empty, fill it
+        if (!f_out_closed)
+        {
+            pull_lever(out, m_c_lever_out);
+        }
+        else if (f_in_closed)
+        {
+            pull_lever(out, m_c_lever_in);
+        }
+    }
+    else if (resvlvl == 7)
+    {
+        // reserve full, empty into cistern if needed
+        if (!f_in_closed)
+        {
+            pull_lever(out, m_c_lever_in);
+        }
+        else
+        {
+            if (cistlvl < 7)
+            {
+                if (f_out_closed)
+                {
+                    pull_lever(out, m_c_lever_out);
+                }
+            }
             else
-                if not f_out_closed
-                    pull_lever(@m_c_lever_out)
-                end
-            end
-        end
+            {
+                if (!f_out_closed)
+                {
+                    pull_lever(out, m_c_lever_out);
+                }
+            }
+        }
+    }
     else
-        # ensure it's either filling up or emptying
-        if f_in_closed and f_out_closed
-            if resvlvl >= 6 and cistlvl < 7
-                pull_lever(@m_c_lever_out)
+    {
+        // ensure it's either filling up or emptying
+        if (f_in_closed && f_out_closed)
+        {
+            if (resvlvl >= 6 && cistlvl < 7)
+            {
+                pull_lever(out, m_c_lever_out);
+            }
             else
-                pull_lever(@m_c_lever_in)
-            end
-        end
-    end
-end
+            {
+                pull_lever(out, m_c_lever_in);
+            }
+        }
+    }
+}
 
-def try_endconstruct(r)
-    bld = r.dfbuilding
-    return if bld and bld.getBuildStage < bld.getMaxBuildStage
-    furnish_room(r)
-    true
-end
+bool Plan::try_endconstruct(color_ostream & out, room *r)
+{
+    df::building *bld = r->dfbuilding();
+    if (bld && bld->getBuildStage() < bld->getMaxBuildStage())
+        return false;
+    furnish_room(out, r);
+    return true;
+}
 
+/*
 # returns one tile of an outdoor river (if one exists)
 def scan_river
     ifeat = df.world.features.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }

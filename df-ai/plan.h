@@ -17,6 +17,7 @@ namespace df
     struct building;
     struct building_stockpilest;
     struct item;
+    struct stockpile_settings;
 }
 
 class AI;
@@ -38,9 +39,16 @@ class Plan
     std::map<int32_t, std::set<df::coord>> map_veins;
     std::vector<std::string> important_workshops;
     std::vector<std::string> important_workshops2;
+    furniture *m_c_lever_in;
+    furniture *m_c_lever_out;
+    room *m_c_cistern;
+    room *m_c_reserve;
+    int32_t m_c_testgate_delay;
     size_t checkroom_idx;
+    size_t trycistern_count;
     bool allow_ice;
     bool past_initial_phase;
+    bool cistern_channel_requested;
 
 public:
     Plan(AI *ai);
@@ -83,6 +91,7 @@ public:
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
+    void dig_tile(df::coord t, std::string mode = "Default");
     void wantdig(color_ostream & out, room *r);
     void digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
@@ -100,7 +109,7 @@ public:
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activityzone(color_ostream & out, room *r);
 
-    void setup_stockpile_settings(color_ostream & out, std::string subtype, df::building_stockpilest *bld, room *r = nullptr);
+    void setup_stockpile_settings(color_ostream & out, std::string subtype, df::stockpile_settings & settings, df::building_stockpilest *bld = nullptr, room *r = nullptr);
 
     bool construct_farmplot(color_ostream & out, room *r);
 
@@ -111,7 +120,7 @@ public:
     void smooth_cistern(color_ostream & out, room *r);
     bool construct_cistern(color_ostream & out, room *r);
     bool dump_items_access(color_ostream & out, room *r);
-    void room_items(color_ostream & out, std::function<void(df::item *)>);
+    void room_items(color_ostream & out, room *r, std::function<void(df::item *)> f);
     void smooth_xyz(df::coord min, df::coord max);
     void smooth(std::set<df::coord> tiles);
     bool is_smooth(df::coord t);

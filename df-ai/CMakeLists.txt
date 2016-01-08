@@ -9,7 +9,6 @@ SET(PROJECT_SRCS
     camera.cpp
     embark.cpp
     event_manager.cpp
-    unit_entity_positions.cpp
 )
 
 SET(PROJECT_HDRS
@@ -21,7 +20,6 @@ SET(PROJECT_HDRS
     embark.h
     room.h
     event_manager.h
-    unit_entity_positions.h
     horrible.h
     dfhack_shared.h
 )

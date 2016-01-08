@@ -20,7 +20,9 @@ struct room;
 class Stocks
 {
     AI *ai;
+public:
     std::map<std::string, size_t> count;
+private:
     OnupdateCallback *onupdate_handle;
     std::vector<std::string> updating;
     std::vector<std::string> updating_count;
@@ -35,7 +37,9 @@ class Stocks
     bool updating_plants;
     bool updating_corpses;
     std::vector<room *> updating_farmplots;
+public:
     std::map<std::string, int16_t> manager_subtype;
+private:
     df::coord last_cutpos;
 
     std::map<int32_t, int16_t> drink_plants;
@@ -96,7 +100,7 @@ public:
         return cuttrees(out, amount, tree_list());
     }
 
-    bool is_item_free(df::item *i, bool allow_nonempty = false);
+    static bool is_item_free(df::item *i, bool allow_nonempty = false);
     bool is_metal_ore(int32_t i);
     bool is_metal_ore(df::item *i);
     std::string is_raw_coke(int32_t i);
