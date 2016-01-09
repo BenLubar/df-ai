@@ -4,8 +4,9 @@
 #include <sstream>
 
 #include "modules/Gui.h"
-#include "modules/Units.h"
 #include "modules/Maps.h"
+#include "modules/Screen.h"
+#include "modules/Units.h"
 
 #include "df/creature_interaction_effect_body_transformationst.h"
 #include "df/graphic.h"
@@ -16,6 +17,7 @@
 #include "df/unit.h"
 #include "df/unit_syndrome.h"
 #include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_movieplayerst.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(gps);
@@ -48,11 +50,18 @@ command_result Camera::onupdate_register(color_ostream & out)
 {
     gps->display_frames = 1;
     onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
-    onstatechange_handle = events.onstatechange_register([](color_ostream & out, state_change_event mode)
+    onstatechange_handle = events.onstatechange_register([this](color_ostream & out, state_change_event mode)
             {
                 if (mode == SC_VIEWSCREEN_CHANGED)
                 {
-                    gps->display_frames = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()) ? 1 : 0;
+                    df::viewscreen *view = Gui::getCurViewscreen();
+                    if (virtual_cast<df::viewscreen_movieplayerst>(view))
+                    {
+                        Screen::dismiss(view);
+                        view = Gui::getCurViewscreen();
+                        check_record_status();
+                    }
+                    gps->display_frames = virtual_cast<df::viewscreen_dwarfmodest>(view) ? 1 : 0;
                 }
             });
     check_record_status();
