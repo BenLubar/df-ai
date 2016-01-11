@@ -7,6 +7,7 @@
 #include "modules/Job.h"
 #include "modules/Maps.h"
 #include "modules/Materials.h"
+#include "modules/Translation.h"
 #include "modules/Units.h"
 
 #include "df/building_archerytargetst.h"
@@ -24,6 +25,8 @@
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
 #include "df/entity_position.h"
+#include "df/feature_init_outdoor_riverst.h"
+#include "df/feature_outdoor_riverst.h"
 #include "df/furniture_type.h"
 #include "df/general_ref_building_holderst.h"
 #include "df/general_ref_building_triggertargetst.h"
@@ -35,6 +38,9 @@
 #include "df/items_other_id.h"
 #include "df/job.h"
 #include "df/organic_mat_category.h"
+#include "df/plant.h"
+#include "df/plant_tree_info.h"
+#include "df/plant_tree_tile.h"
 #include "df/route_stockpile_link.h"
 #include "df/squad.h"
 #include "df/stop_depart_condition.h"
@@ -47,13 +53,16 @@
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-const size_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
-const size_t manager_maxbacklog = 10; // add new masonly if more that this much mason manager orders
-const size_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
-const size_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot tile
-const size_t dwarves_per_farmtile_den = 2;
-const size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
-const size_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
+const static size_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
+const static size_t manager_maxbacklog = 10; // add new masonly if more that this much mason manager orders
+const static size_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
+const static size_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot tile
+const static size_t dwarves_per_farmtile_den = 2;
+const static size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
+const static size_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
+
+const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -5;
+const int16_t Plan::MaxX = 35, Plan::MaxY = 22, Plan::MaxZ = 1;
 
 Plan::Plan(AI *ai) :
     ai(ai),
@@ -76,6 +85,10 @@ Plan::Plan(AI *ai) :
     m_c_testgate_delay(-1),
     checkroom_idx(0),
     trycistern_count(0),
+    map_vein_queue(),
+    dug_veins(),
+    noblesuite(-1),
+    cavern_max_level(-1),
     allow_ice(false),
     past_initial_phase(false),
     cistern_channel_requested(false)
@@ -483,7 +496,7 @@ bool Plan::checkidle(color_ostream & out)
 
     if (is_idle())
     {
-        if (setup_blueprint_caverns(out))
+        if (setup_blueprint_caverns(out) == CR_OK)
         {
             ai->debug(out, "found next cavern");
             categorize_all();
@@ -2944,7 +2957,7 @@ bool Plan::link_lever(color_ostream & out, furniture *src, furniture *dst)
     df::building *tbld = df::building::find(dst->at("bld_id").id);
     if (!tbld || tbld->getBuildStage() < tbld->getMaxBuildStage())
         return false;
- 
+
     for (auto ref : bld->general_refs)
     {
         df::general_ref_building_triggertargetst *tt = virtual_cast<df::general_ref_building_triggertargetst>(ref);
@@ -3289,615 +3302,1113 @@ bool Plan::try_endconstruct(color_ostream & out, room *r)
     return true;
 }
 
-/*
-# returns one tile of an outdoor river (if one exists)
-def scan_river
-    ifeat = df.world.features.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }
-    return if not ifeat
-    feat = ifeat.feature
+// returns one tile of an outdoor river (if one exists)
+df::coord Plan::scan_river(color_ostream & out)
+{
+    df::feature_init_outdoor_riverst *ifeat = nullptr;
+    for (auto f : world->features.map_features)
+    {
+        ifeat = virtual_cast<df::feature_init_outdoor_riverst>(f);
+        if (ifeat)
+            break;
+    }
+    df::coord invalid;
+    invalid.clear();
+    if (!ifeat)
+        return invalid;
+    df::feature_outdoor_riverst *feat = ifeat->feature;
 
-    feat.embark_pos.x.length.times { |i|
-        x = 48*(feat.embark_pos.x[i] - df.world.map.region_x)
-        y = 48*(feat.embark_pos.y[i] - df.world.map.region_y)
-        next if x < 0 or x >= df.world.map.x_count or y < 0 or y >= df.world.map.y_count
-        z1, z2 = feat.min_map_z[i], feat.max_map_z[i]
-        zhalf = (z1+z2)/2 - 1   # the river is most probably here, try it first
-        [zhalf, *(z1..z2)].each { |z|
-            48.times { |dx|
-                48.times { |dy|
-                    t = df.map_tile_at(x+dx, y+dy, z)
-                    return t if t and t.designation.feature_local
+    for (size_t i = 0; i < feat->embark_pos.x.size(); i++)
+    {
+        int16_t x = 48 * (feat->embark_pos.x[i] - world->map.region_x);
+        int16_t y = 48 * (feat->embark_pos.y[i] - world->map.region_y);
+        if (x < 0 || x >= world->map.x_count ||
+                y < 0 || y >= world->map.y_count)
+            continue;
+        int16_t z1 = feat->min_map_z[i];
+        int16_t z2 = feat->max_map_z[i];
+        for (int16_t z = z1; z <= z2; z++)
+        {
+            for (int16_t dx = 0; dx < 48; dx++)
+            {
+                for (int16_t dy = 0; dy < 48; dy++)
+                {
+                    df::coord t(x + dx, y + dy, z);
+                    if (Maps::getTileDesignation(t)->bits.feature_local)
+                    {
+                        return t;
+                    }
                 }
             }
         }
     }
 
-    nil
-end
+    return invalid;
+}
 
-attr_accessor :fort_entrance, :rooms, :corridors
-def setup_blueprint
-    # TODO use existing fort facilities (so we can relay the user or continue from a save)
-    ai.debug 'setting up fort blueprint...'
-    # TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
-    scan_fort_entrance
-    ai.debug 'blueprint found entrance'
-    # TODO if no room for fort body, make surface fort
-    scan_fort_body
-    ai.debug 'blueprint found body'
-    setup_blueprint_rooms
-    ai.debug 'blueprint found rooms'
-    # ensure traps are on the surface
-    @fort_entrance.layout.each { |i|
-        i[:z] = surface_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], true).z-@fort_entrance.z1
+command_result Plan::setup_blueprint(color_ostream & out)
+{
+    command_result res;
+    // TODO use existing fort facilities (so we can relay the user or continue from a save)
+    ai->debug(out, "setting up fort blueprint...");
+    // TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
+    res = scan_fort_entrance(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "blueprint found entrance");
+    // TODO if no room for fort body, make surface fort
+    res = scan_fort_body(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "blueprint found body");
+    res = setup_blueprint_rooms(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "blueprint found rooms");
+    // ensure traps are on the surface
+    for (furniture *i : fort_entrance->layout)
+    {
+        (*i)["z"] = surface_tile_at(fort_entrance->min.x + i->at("x").id, fort_entrance->min.y + i->at("y").id, true).z - fort_entrance->min.z;
     }
-    @fort_entrance.layout.delete_if { |i|
-        t = df.map_tile_at(@fort_entrance.x1+i[:x], @fort_entrance.y1+i[:y], @fort_entrance.z1+i[:z]-1)
-        tm = t.tilemat
-        t.shape_basic != :Wall or (tm != :STONE and tm != :MINERAL and tm != :SOIL and tm != :ROOT and (not @allow_ice or tm != :FROZEN_LIQUID))
-    }
-    list_map_veins
-    setup_outdoor_gathering_zones
-    setup_blueprint_caverns
-    make_map_walkable
-    ai.debug 'LET THE GAME BEGIN!'
-end
+    fort_entrance->layout.erase(std::remove_if(fort_entrance->layout.begin(), fort_entrance->layout.end(), [this](furniture *i) -> bool
+                {
+                    df::coord t = fort_entrance->min + df::coord(i->at("x").id, i->at("y").id, i->at("z").id - 1);
+                    df::tiletype tt = *Maps::getTileType(t);
+                    df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID)))
+                    {
+                        delete i;
+                        return true;
+                    }
+                    return false;
+                }), fort_entrance->layout.end());
+    res = list_map_veins(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "blueprint found veins");
+    res = setup_outdoor_gathering_zones(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "blueprint outdoor gathering zones");
+    res = setup_blueprint_caverns(out);
+    if (res == CR_OK)
+        ai->debug(out, "blueprint found caverns");
+    res = make_map_walkable(out);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "LET THE GAME BEGIN!");
+    return CR_OK;
+}
 
-def make_map_walkable
-    df.onupdate_register_once('df-ai plan make_map_walkable') {
-        # if we don't have a river, we're fine
-        next true unless river = scan_river
-        next true if surface = surface_tile_at(river) and surface.tilemat == :BROOK
+command_result Plan::make_map_walkable(color_ostream & out)
+{
+    events.onupdate_register_once("df-ai plan make_map_walkable", [this](color_ostream & out) -> bool
+            {
+                // if we don't have a river, we're fine
+                df::coord river = scan_river(out);
+                if (!river.isValid())
+                    return true;
+                df::coord surface = surface_tile_at(river.x, river.y);
+                if (surface.isValid() && ENUM_ATTR(tiletype, material, *Maps::getTileType(surface)) == tiletype_material::BROOK)
+                    return true;
 
-        river = spiral_search(river) { |t|
-            # TODO rooms outline
-            (t.y < @fort_entrance.y+MinY or t.y > @fort_entrance.y+MaxY) and
-            t.designation.feature_local
-        }
-        next true unless river
+                river = spiral_search(river, [this](df::coord t) -> bool
+                        {
+                            // TODO rooms outline
+                            int16_t y = fort_entrance->pos().y;
+                            return (t.y < y + MinY || t.y > y + MaxY) && Maps::getTileDesignation(t)->bits.feature_local;
+                        });
+                if (!river.isValid())
+                    return true;
 
-        # find a safe place for the first tile
-        t1 = spiral_search(river) { |t| map_tile_in_rock(t) and st = surface_tile_at(t) and map_tile_in_rock(st.offset(0, 0, -1)) }
-        next true unless t1
-        t1 = surface_tile_at(t1)
+                // find a safe place for the first tile
+                df::coord t1 = spiral_search(river, [this](df::coord t) -> bool
+                        {
+                            if (!map_tile_in_rock(t))
+                                return false;
+                            df::coord st = surface_tile_at(t.x, t.y);
+                            return map_tile_in_rock(st + df::coord(0, 0, -1));
+                        });
+                if (!t1.isValid())
+                    return true;
+                t1 = surface_tile_at(t1.x, t1.y);
 
-        # if the game hasn't done any pathfinding yet, wait until the next frame and try again
-        next false if (t1w = t1.mapblock.walkable[t1.x & 15][t1.y & 15]) == 0
+                // if the game hasn't done any pathfinding yet, wait until the next frame and try again
+                uint16_t t1w = Maps::getTileBlock(t1)->walkable[t1.x & 0xf][t1.y & 0xf];
+                if (t1w == 0)
+                    return false;
 
-        # find the second tile
-        t2 = spiral_search(t1) { |t| tw = t.mapblock.walkable[t.x & 15][t.y & 15] and tw != 0 and tw != t1w }
-        next true unless t2
-        t2w = t2.mapblock.walkable[t2.x & 15][t2.y & 15]
+                // find the second tile
+                df::coord t2 = spiral_search(t1, [this, t1w](df::coord t) -> bool
+                        {
+                            int16_t tw = Maps::getTileBlock(t)->walkable[t.x & 0xf][t.y & 0xf];
+                            return tw != 0 and tw != t1w;
+                        });
+                if (!t2.isValid())
+                    return true;
+                int16_t t2w = Maps::getTileBlock(t2)->walkable[t2.x & 0xf][t2.y & 0xf];
 
-        # make sure the second tile is in a safe place
-        t2 = spiral_search(t2) { |t| t.mapblock.walkable[t.x & 15][t.y & 15] == t2w and map_tile_in_rock(t.offset(0, 0, -1)) }
+                // make sure the second tile is in a safe place
+                t2 = spiral_search(t2, [this, t2w](df::coord t) -> bool
+                        {
+                            return Maps::getTileBlock(t)->walkable[t.x & 0xf][t.y & 0xf] == t2w && map_tile_in_rock(t - df::coord(0, 0, 1));
+                        });
+                if (!t2.isValid())
+                    return true;
 
-        # find the bottom of the staircases
-        z = df.world.features.map_features.find { |f| f.kind_of?(DFHack::FeatureInitOutdoorRiverst) }.feature.min_map_z.min - 1
+                // find the bottom of the staircases
+                int16_t z;
+                for (auto f : world->features.map_features)
+                {
+                    df::feature_init_outdoor_riverst *r = virtual_cast<df::feature_init_outdoor_riverst>(f);
+                    if (r)
+                    {
+                        z = *std::min_element(r->feature->min_map_z.begin(), r->feature->min_map_z.end()) - 1;
+                        break;
+                    }
+                }
 
-        # make the corridors
-        cor = []
-        cor << Corridor.new(t1.x, t1.x, t1.y, t1.y, t1.z, z)
-        cor << Corridor.new(t2.x, t2.x, t2.y, t2.y, t2.z, z)
-        cor << Corridor.new(t1.x - (t1.x <=> t2.x), t2.x - (t2.x <=> t1.x), t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1
-        cor << Corridor.new(t2.x, t2.x, t1.y - (t1.y <=> t2.y), t2.y - (t2.y <=> t1.y), z, z) if (t1.y - t2.y).abs > 1
-        cor << Corridor.new(t2.x, t2.x, t1.y, t1.y, z, z) if (t1.x - t2.x).abs > 1 and (t1.y - t2.y).abs > 1
+                // make the corridors
+                std::vector<room *> cor;
+                cor.push_back(new room(t1, df::coord(t1, z)));
+                cor.push_back(new room(t2, df::coord(t2, z)));
 
-        cor.each do |c|
-            @corridors << c
-            wantdig c
-        end
+                int16_t dx = t1.x - t2.x;
+                if (-1 > dx)
+                    cor.push_back(new room(df::coord(t1.x + 1, t1.y, z), df::coord(t2.x - 1, t1.y, z)));
+                else if (dx > 1)
+                    cor.push_back(new room(df::coord(t1.x - 1, t1.y, z), df::coord(t2.x + 1, t1.y, z)));
 
-        true
-    }
-end
+                int16_t dy = t1.y - t2.y;
+                if (-1 > dy)
+                    cor.push_back(new room(df::coord(t2.x, t1.y + 1, z), df::coord(t2.x, t2.y - 1, z)));
+                else if (dy > 1)
+                    cor.push_back(new room(df::coord(t2.x, t1.y - 1, z), df::coord(t2.x, t2.y + 1, z)));
 
-attr_accessor :map_veins
+                if ((-1 > dx || dx > 1) && (-1 > dy || dy > 1))
+                    cor.push_back(new room(df::coord(t2.x, t1.y, z), df::coord(t2.x, t1.y, z)));
 
-# scan the map, list all map veins in @map_veins (mat_index => [block coords], sorted by z)
-def list_map_veins
-    @map_veins = {}
-    i = 0
-    df.onupdate_register_once('df-ai plan list_map_veins') {
-        if i < df.world.map.z_count
-            df.each_map_block_z(i) { |block|
-                block.block_events.grep(DFHack::BlockSquareEventMineralst).each { |vein|
-                    @map_veins[vein.inorganic_mat] ||= []
-                    @map_veins[vein.inorganic_mat] << [block.map_pos.x, block.map_pos.y, block.map_pos.z]
+                for (room *c : cor)
+                {
+                    corridors.push_back(c);
+                    wantdig(out, c);
+                }
+                return true;
+            });
+}
+
+// scan the map, list all map veins in @map_veins (mat_index => [block coords],
+// sorted by z)
+command_result Plan::list_map_veins(color_ostream & out)
+{
+    map_veins.clear();
+    for (int16_t z = 0; z < world->map.z_count; z++)
+    {
+        for (int16_t xb = 0; xb < world->map.x_count_block; xb++)
+        {
+            for (int16_t yb = 0; yb < world->map.y_count_block; yb++)
+            {
+                auto & block = world->map.block_index[xb][yb][z];
+                for (auto event : block->block_events)
+                {
+                    df::block_square_event_mineralst *vein = virtual_cast<df::block_square_event_mineralst>(event);
+                    if (vein)
+                    {
+                        map_veins[vein->inorganic_mat].insert(block->map_pos);
+                    }
                 }
             }
-            i += 1
-            false
+        }
+    }
+    return CR_OK;
+}
+
+static int32_t mat_index_vein(df::coord t)
+{
+    auto & events = Maps::getTileBlock(t)->block_events;
+    for (auto it = events.rbegin(); it != events.rend(); it++)
+    {
+        df::block_square_event_mineralst *mineral = virtual_cast<df::block_square_event_mineralst>(*it);
+        if (mineral && mineral->getassignment(t.x & 0xf, t.y & 0xf))
+        {
+            return mineral->inorganic_mat;
+        }
+    }
+    return -1;
+}
+
+// mark a vein of a mat for digging, return expected boulder count
+size_t Plan::dig_vein(color_ostream & out, int32_t mat, size_t want_boulders)
+{
+    // mat => [x, y, z, dig_mode] marked for to dig
+    size_t count = 0;
+    // check previously queued veins
+    if (map_vein_queue.count(mat))
+    {
+        auto & q = map_vein_queue.at(mat);
+        q.erase(std::remove_if(q.begin(), q.end(), [this, mat, &count, &out](std::pair<df::coord, std::string> d) -> bool
+                    {
+                        df::tiletype tt = *Maps::getTileType(d.first);
+                        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
+                        if (sb == tiletype_shape_basic::Open)
+                        {
+                            furniture f{{"construction", horrible_t(d.second == "Default" ? "Floor" : d.second)}};
+                            return try_furnish_construction(out, nullptr, &f, d.first);
+                        }
+                        if (sb != tiletype_shape_basic::Wall)
+                        {
+                            return true;
+                        }
+                        if (Maps::getTileDesignation(d.first)->bits.dig == tile_dig_designation::No) // warm/wet tile
+                            dig_tile(d.first, d.second);
+                        if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL && mat_index_vein(d.first) == mat)
+                            count++;
+                        return false;
+                   }), q.end());
+        if (q.empty())
+        {
+            map_vein_queue.erase(mat);
+        }
+    }
+
+    if (!map_veins.count(mat))
+    {
+        return count / 4;
+    }
+
+    // queue new vein
+    // delete it from map_veins
+    // discard tiles that would dig into a plan room/corridor, or into a cavern
+    // (hidden + !wall)
+    // try to find a vein close to one we already dug
+    for (size_t i = 0; i < 16; i++)
+    {
+        if (count / 4 >= want_boulders)
+            break;
+        auto & veins = map_veins.at(mat);
+        auto it = std::find_if(veins.begin(), veins.end(), [this](df::coord c) -> bool
+                {
+                    for (int16_t vx = -1; vx <= 1; vx++)
+                    {
+                        for (int16_t vy = -1; vy <= 1; vy++)
+                        {
+                            if (dug_veins.count(c + df::coord(16 * vx, 16 * vy, 0)))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    return false;
+                });
+        if (it == veins.end())
+            it--;
+        df::coord v = *it;
+        map_veins.at(mat).erase(it);
+        size_t cnt = do_dig_vein(out, mat, v);
+        if (cnt > 0)
+        {
+            dug_veins.insert(v);
+        }
+        count += cnt;
+        if (map_veins.at(mat).empty())
+        {
+            map_veins.erase(mat);
+            break;
+        }
+    }
+
+    return count / 4;
+}
+
+size_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
+{
+    ai->debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
+    size_t count = 0;
+    int16_t fort_minz = 0x7fff;
+    for (room *c : corridors)
+    {
+        if (c->subtype != "veinshaft")
+        {
+            fort_minz = std::min(fort_minz, c->min.z);
+        }
+    }
+    if (b.z >= fort_minz)
+    {
+        int16_t y = fort_entrance->pos().y;
+        // TODO rooms outline
+        if (b.y > y + MinY && b.y < y + MaxY)
+        {
+            return count;
+        }
+    }
+
+    auto & q = map_vein_queue[mat];
+
+    // dig whole block
+    // TODO have the dwarves search for the vein
+    // TODO mine in (visible?) chunks
+    int16_t minx = 16, maxx = -1, miny = 16, maxy = -1;
+    for (int16_t dx = 0; dx < 16; dx++)
+    {
+        if (b.x + dx == 0 || b.x + dx >= world->map.x_count - 1)
+            continue;
+        for (int16_t dy = 0; dy < 16; dy++)
+        {
+            if (b.y + dy == 0 || b.y + dy >= world->map.y_count - 1)
+                continue;
+            df::coord t = b + df::coord(dx, dy, 0);
+            if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(t) == mat)
+            {
+                minx = std::min(minx, dx);
+                maxx = std::max(maxx, dx);
+                miny = std::min(miny, dy);
+                maxy = std::max(maxy, dy);
+            }
+        }
+    }
+
+    if (minx > maxx)
+        return count;
+
+    bool need_shaft = true;
+    std::vector<std::pair<df::coord, std::string>> todo;
+    for (int16_t dx = minx; dx <= maxx; dx++)
+    {
+        for (int16_t dy = miny; dy <= maxy; dy++)
+        {
+            df::coord t = b + df::coord(dx, dy, 0);
+            if (Maps::getTileDesignation(t)->bits.dig == tile_dig_designation::No)
+            {
+                bool ok = true;
+                bool ns = need_shaft;
+                for (int16_t ddx = -1; ddx <= 1; ddx++)
+                {
+                    for (int16_t ddy = -1; ddy <= 1; ddy++)
+                    {
+                        df::coord tt = t + df::coord(ddx, ddy, 0);
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(tt))) != tiletype_shape_basic::Wall)
+                        {
+                            if (Maps::getTileDesignation(tt)->bits.hidden)
+                                ok = false;
+                            else
+                                ns = false;
+                        }
+                        else if (Maps::getTileDesignation(tt)->bits.dig != tile_dig_designation::No)
+                        {
+                            ns = false;
+                        }
+                    }
+                }
+                if (ok)
+                {
+                    todo.push_back(std::make_pair(t, "Default"));
+                    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(t) == mat)
+                        count++;
+                    need_shaft = ns;
+                }
+            }
+        }
+    }
+    for (auto d : todo)
+    {
+        q.push_back(d);
+        dig_tile(d.first, d.second);
+    }
+
+    if (need_shaft)
+    {
+        // TODO minecarts?
+
+        // avoid giant vertical runs: slalom x+-1 every z%16
+
+        df::coord vert = fort_entrance->pos();
+        if (b.y > vert.y)
+        {
+            vert = df::coord(vert.x, vert.y + 30, b.z); // XXX 30...
+        }
         else
-            @map_veins.each { |mat, list|
-                list.replace list.sort_by { |x, y, z| z + rand(6) }
-            }
-            true
-        end
-    }
-end
+        {
+            vert = df::coord(vert.x, vert.y - 30, b.z);
+        }
+        if (vert.z % 32 > 16)
+            vert.x++; // XXX check this
 
-# mark a vein of a mat for digging, return expected boulder count
-def dig_vein(mat, want_boulders = 1)
-    # mat => [x, y, z, dig_mode] marked for to dig
-    @map_vein_queue ||= {}
-    @dug_veins ||= {}
-
-    count = 0
-    # check previously queued veins
-    if q = @map_vein_queue[mat]
-        q.delete_if { |x, y, z, dd|
-            t = df.map_tile_at(x, y, z)
-            if t.shape_basic == :Open
-                try_furnish_construction(nil, {:construction => dd == :Default ? :Floor : dd}, t)
-            elsif t.shape_basic != :Wall
-                true
+        df::coord t0 = b + df::coord(minx + maxx, miny + maxy, 0) / 2;
+        while (t0.y != vert.y)
+        {
+            dig_tile(t0, "Default");
+            q.push_back(std::make_pair(t0, "Default"));
+            if (t0.y > vert.y)
+                t0.y--;
             else
-                t.dig(dd) if t.designation.dig == :No     # warm/wet tile
-                count += 1 if t.tilemat == :MINERAL and t.mat_index_vein == mat
-                false
-            end
+                t0.y++;
         }
-        @map_vein_queue.delete mat if q.empty?
-    end
-
-    # queue new vein
-    # delete it from @map_veins
-    # discard tiles that would dig into a @plan room/corridor, or into a cavern (hidden + !wall)
-    # try to find a vein close to one we already dug
-    16.times {
-        break if count/4 >= want_boulders
-        @map_veins.delete mat if @map_veins[mat] == []
-        break if not @map_veins[mat]
-        v = @map_veins[mat].find { |x, y, z|
-            (-1..1).find { |vx| (-1..1).find { |vy| @dug_veins[[x+16*vx, y+16*vy, z]] } }
-        } || @map_veins[mat].last
-        @map_veins[mat].delete v
-        cnt = do_dig_vein(mat, *v)
-        @dug_veins[v] = true if cnt > 0
-        count += cnt
-    }
-
-    count/4
-end
-
-def do_dig_vein(mat, bx, by, bz)
-    ai.debug "dig_vein #{df.world.raws.inorganics[mat].id}"
-    count = 0
-    fort_minz ||= @corridors.map { |c| c.z1 if c.subtype != :veinshaft }.compact.min
-    if bz >= fort_minz
-        # TODO rooms outline
-        if by > @fort_entrance.y+MinY and by < @fort_entrance.y+MaxY
-            return count
-        end
-    end
-
-    q = @map_vein_queue[mat] ||= []
-
-    # dig whole block
-    # TODO have the dwarves search for the vein
-    # TODO mine in (visible?) chunks
-    dxs = []
-    dys = []
-    (0..15).each { |dx| (0..15).each { |dy|
-        next if bx+dx == 0 or by+dy == 0 or bx+dx >= df.world.map.x_count-1 or by+dy >= df.world.map.y_count-1
-        t = df.map_tile_at(bx+dx, by+dy, bz)
-        if t.tilemat == :MINERAL and t.mat_index_vein == mat
-            dxs |= [dx]
-            dys |= [dy]
-        end
-    } }
-
-    return count if dxs.empty?
-
-    need_shaft = true
-    todo = []
-    ai.debug "do_dig_vein #{dxs.min}..#{dxs.max} #{dys.min}..#{dys.max}"
-    (dxs.min..dxs.max).each { |dx| (dys.min..dys.max).each { |dy|
-        t = df.map_tile_at(bx+dx, by+dy, bz)
-        if t.designation.dig == :No
-            ok = true
-            ns = need_shaft
-            (-1..1).each { |ddx| (-1..1).each { |ddy|
-                tt = t.offset(ddx, ddy)
-                if tt.shape_basic != :Wall
-                    tt.designation.hidden ? ok = false : ns = false
-                elsif tt.designation.dig != :No
-                    ns = false
-                end
-            } }
-            if ok
-                todo << [t.x, t.y, t.z, :Default]
-                count += 1 if t.tilemat == :MINERAL and t.mat_index_vein == mat
-                need_shaft = ns
-            end
-        end
-    } }
-    todo.each { |x, y, z, dd|
-        q << [x, y, z, dd]
-        df.map_tile_at(x, y, z).dig(dd)
-    }
-
-    if need_shaft
-        # TODO minecarts?
-
-        # avoid giant vertical runs: slalom x+-1 every z%16
-
-        if by > @fort_entrance.y
-            vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y+30, bz)   # XXX 30...
-        else
-            vert = df.map_tile_at(@fort_entrance.x, @fort_entrance.y-30, bz)
-        end
-        vert = vert.offset(1, 0) if (vert.z % 32) > 16  # XXX check this
-
-        t0 = df.map_tile_at(bx+(dxs.min+dxs.max)/2, by+(dys.min+dys.max)/2, bz)
-        while t0.y != vert.y
-            t0.dig(:Default)
-            q << [t0.x, t0.y, t0.z, :Default]
-            t0 = t0.offset(0, (t0.y > vert.y ? -1 : 1))
-        end
-        while t0.x != vert.x
-            t0.dig(:Default)
-            q << [t0.x, t0.y, t0.z, :Default]
-            t0 = t0.offset((t0.x > vert.x ? -1 : 1), 0)
-        end
-        while t0.designation.hidden
-            if t0.z % 16 == 0
-                t0.dig(:DownStair)
-                q << [t0.x, t0.y, t0.z, :DownStair]
-                t0 = t0.offset(((t0.z % 32) >= 16 ? 1 : -1), 0)
-                t0.dig(:UpStair)
-                q << [t0.x, t0.y, t0.z, :UpStair]
+        while (t0.x != vert.x)
+        {
+            dig_tile(t0, "Default");
+            q.push_back(std::make_pair(t0, "Default"));
+            if (t0.x > vert.x)
+                t0.x--;
             else
-                t0.dig(:UpDownStair)
-                q << [t0.x, t0.y, t0.z, :UpDownStair]
-            end
-            break if not t0 = t0.offset(0, 0, 1)
-        end
-        if t0 and not t0.designation.hidden and not t0.shape_passablelow and t0.designation.dig == :No
-            t0.dig(:DownStair)
-            q << [t0.x, t0.y, t0.z, :DownStair]
-        end
-    end
-
-    count
-end
-
-# same as tile.spiral_search, but search starting with center of each side first
-def spiral_search(tile, max=100, min=0, step=1)
-    (min..max).step(step) { |rng|
-        if rng != 0
-            [[rng, 0], [0, rng], [-rng, 0], [0, -rng]].each { |dx, dy|
-                next if not tt = tile.offset(dx, dy)
-                return tt if yield(tt)
+                t0.x++;
+        }
+        while (Maps::getTileDesignation(t0)->bits.hidden)
+        {
+            if (t0.z % 16 == 0)
+            {
+                dig_tile(t0, "DownStair");
+                q.push_back(std::make_pair(t0, "DownStair"));
+                if (t0.z % 32 >= 16)
+                    t0.x++;
+                else
+                    t0.x--;
+                dig_tile(t0, "UpStair");
+                q.push_back(std::make_pair(t0, "UpStair"));
             }
-        end
-        if tt = tile.spiral_search(rng, rng, step) { |_tt| yield _tt }
-            return tt
-        end
+            else
+            {
+                dig_tile(t0, "UpDownStair");
+                q.push_back(std::make_pair(t0, "UpDownStair"));
+            }
+            t0.z++;
+        }
+        if (!ENUM_ATTR(tiletype_shape, passable_low, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t0))) && Maps::getTileDesignation(t0)->bits.dig == tile_dig_designation::No)
+        {
+            dig_tile(t0, "DownStair");
+            q.push_back(std::make_pair(t0, "DownStair"));
+        }
     }
-    nil
-end
 
-MinX, MinY, MinZ = -48, -22, -5
-MaxX, MaxY, MaxZ = 35, 22, 1
+    return count;
+}
 
-# search a valid tile for fortress entrance
-def scan_fort_entrance
-    # map center
-    cx = df.world.map.x_count / 2
-    cy = df.world.map.y_count / 2
-    center = surface_tile_at(cx, cy, true)
-    rangez = (0...df.world.map.z_count).to_a.reverse
-    cz = rangez.find { |z| t = df.map_tile_at(cx, cy, z) and tsb = t.shape_basic and (tsb == :Floor or tsb == :Ramp) }
-    center = df.map_tile_at(cx, cy, cz)
+// same as ruby spiral_search, but search starting with center of each side
+df::coord Plan::spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b)
+{
+    if (min == 0)
+    {
+        if (b(t))
+            return t;
+        min += step;
+    }
+    const static std::vector<df::coord> sides{df::coord(0, 1, 0), df::coord(1, 0, 0), df::coord(0, -1, 0), df::coord(-1, 0, 0)};
+    for (int16_t r = min; r < max; r += step)
+    {
+        for (df::coord d : sides)
+        {
+            df::coord tt = t + d * r;
+            if (b(tt))
+                return tt;
+        }
 
-    ent0 = center.spiral_search { |t0|
-        # test the whole map for 3x5 clear spots
-        next unless t = surface_tile_at(t0)
+        for (size_t s = 0; s < sides.size(); s++)
+        {
+            df::coord dr = sides[(s + sides.size() - 1) % sides.size()];
+            df::coord dv = sides[s];
 
-        # make sure we're not too close to the edge of the map.
-        next unless t.offset(MinX, MinY, MinZ) and t.offset(MaxX, MaxY, MaxZ)
+            for (int16_t v = -r; v < r; v += step)
+            {
+                if (v == 0)
+                    continue;
 
-        (-1..1).all? { |_x|
-            (-2..2).all? { |_y|
-                tt = t.offset(_x, _y, -1) and tt.shape == :WALL and tm = tt.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT) and
-                ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
-                 not ttt.designation.hidden and not df.building_find(ttt)
-            }
-        } and (-3..3).all? { |_x|
-            (-4..4).all? { |_y|
-                surface_tile_at(t.x + _x, t.y + _y, true)
+                df::coord tt = t + dr * r + dv * v;
+                if (b(tt))
+                    return tt;
             }
         }
     }
 
-    if not ent0
-        @allow_ice = true
+    df::coord invalid;
+    invalid.clear();
+    return invalid;
+}
 
-        ent0 = center.spiral_search { |t0|
-            # test the whole map for 3x5 clear spots
-            next unless t = surface_tile_at(t0)
+// search a valid tile for fortress entrance
+command_result Plan::scan_fort_entrance(color_ostream & out)
+{
+    // map center
+    int16_t cx = world->map.x_count / 2;
+    int16_t cy = world->map.y_count / 2;
+    df::coord center = surface_tile_at(cx, cy, true);
 
-            # make sure we're not too close to the edge of the map.
-            next unless t.offset(MinX, MinY, MinZ) and t.offset(MaxX, MaxY, MaxZ)
+    df::coord ent0 = spiral_search(center, [this](df::coord t0) -> bool
+            {
+                // test the whole map for 3x5 clear spots
+                df::coord t = surface_tile_at(t0.x, t0.y);
+                if (!t.isValid())
+                    return false;
 
-            (-1..1).all? { |_x|
-                (-2..2).all? { |_y|
-                    tt = t.offset(_x, _y, -1) and tt.shape == :WALL and
-                    ttt = t.offset(_x, _y) and ttt.shape == :FLOOR and ttt.designation.flow_size == 0 and
-                     not ttt.designation.hidden and not df.building_find(ttt)
+                // make sure we're not too close to the edge of the map.
+                if (t.x + MinX < 0 || t.x + MaxX >= world->map.x_count ||
+                        t.y + MinY < 0 || t.y + MaxY >= world->map.y_count ||
+                        t.z + MinZ < 0 || t.z + MaxZ >= world->map.z_count)
+                {
+                    return false;
                 }
-            } and (-3..3).all? { |_x|
-                (-4..4).all? { |_y|
-                    surface_tile_at(t.x + _x, t.y + _y, true)
+
+                for (int16_t _x = -1; _x <= 1; _x++)
+                {
+                    for (int16_t _y = -2; _y <= 2; _y++)
+                    {
+                        df::tiletype tt = *Maps::getTileType(t + df::coord(_x, _y, -1));
+                        if (ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::WALL)
+                            return false;
+                        df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+                        if (!allow_ice &&
+                                tm != tiletype_material::STONE &&
+                                tm != tiletype_material::MINERAL &&
+                                tm != tiletype_material::SOIL &&
+                                tm != tiletype_material::ROOT)
+                            return false;
+                        df::coord ttt = t + df::coord(_x, _y, 0);
+                        if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt)) != tiletype_shape::FLOOR)
+                            return false;
+                        df::tile_designation td = *Maps::getTileDesignation(ttt);
+                        if (td.bits.flow_size != 0 || td.bits.hidden)
+                            return false;
+                        if (Buildings::findAtTile(ttt))
+                            return false;
+                    }
                 }
+                for (int16_t _x = -3; _x <= 3; _x++)
+                {
+                    for (int16_t _y = -4; _y <= 4; _y++)
+                    {
+                        if (!surface_tile_at(t.x + _x, t.y + _y, true).isValid())
+                            return false;
+                    }
+                }
+                return true;
+            });
+
+    if (!ent0.isValid())
+    {
+        if (!allow_ice)
+        {
+            allow_ice = true;
+
+            return scan_fort_entrance(out);
+        }
+
+        ai->debug(out, "Can't find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.");
+        return CR_FAILURE;
+    }
+
+    df::coord ent = surface_tile_at(ent0.x, ent0.y);
+
+    fort_entrance = new room(ent - df::coord(0, 1, 0), ent + df::coord(0, 1, 0));
+    for (int i = 0; i < 3; i++)
+    {
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(i - 1)},
+                    {"y", horrible_t(-1)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(1)},
+                    {"y", horrible_t(i)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(1 - i)},
+                    {"y", horrible_t(3)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(2 - i)},
+                    {"ignore", horrible_t()},
+                });
+    }
+    for (int i = 0; i < 5; i++)
+    {
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(i - 2)},
+                    {"y", horrible_t(-2)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(2)},
+                    {"y", horrible_t(i - 1)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(2 - i)},
+                    {"y", horrible_t(4)},
+                    {"ignore", horrible_t()},
+                });
+        fort_entrance->layout.push_back(new furniture{
+                    {"item", horrible_t("trap")},
+                    {"subtype", horrible_t("cage")},
+                    {"x", horrible_t(-2)},
+                    {"y", horrible_t(3 - i)},
+                    {"ignore", horrible_t()},
+                });
+    }
+
+    return CR_OK;
+}
+
+// search how much we need to dig to find a spot for the full fortress body
+// here we cheat and work as if the map was fully reveal()ed
+command_result Plan::scan_fort_body(color_ostream & out)
+{
+    // use a hardcoded fort layout
+    df::coord c = fort_entrance->pos();
+
+    for (int16_t cz1 = c.z; cz1 >= 0; cz1--)
+    {
+        bool stop = false;
+        // stop searching if we hit a cavern or an aquifer inside our main
+        // staircase
+        for (int16_t x = fort_entrance->min.x; !stop && x <= fort_entrance->max.x; x++)
+        {
+            for (int16_t y = fort_entrance->min.y; !stop && y <= fort_entrance->max.y; y++)
+            {
+                df::coord t(x, y, cz1 + MaxZ);
+                if (!map_tile_nocavern(t) || Maps::getTileDesignation(t)->bits.water_table)
+                    stop = true;
             }
         }
-    end
 
-    raise 'Can\'t find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.' unless ent0
-    ent = surface_tile_at(ent0)
+        auto check = [this, c, cz1, &stop](int16_t dx, int16_t dy, int16_t dz)
+        {
+            df::coord t = df::coord(c, cz1) + df::coord(dx, dy, dz);
+            df::tiletype tt = *Maps::getTileType(t);
+            df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+            if (ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::WALL ||
+                    Maps::getTileDesignation(t)->bits.water_table ||
+                    (tm != tiletype_material::STONE &&
+                     tm != tiletype_material::MINERAL &&
+                     (!allow_ice || tm != tiletype_material::FROZEN_LIQUID) &&
+                     (dz < 0 || (tm != tiletype_material::SOIL &&
+                                 tm != tiletype_material::ROOT))))
+                stop = true;
+        };
 
-    @fort_entrance = Corridor.new(ent.x, ent.x, ent.y-1, ent.y+1, ent.z, ent.z)
-    3.times { |i|
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-1, :y => -1,  :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1,   :y => i,   :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 1-i, :y => 3,   :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -1,  :y => 2-i, :ignore => true}
-    }
-    5.times { |i|
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => i-2, :y => -2,  :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2,   :y => i-1, :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => 2-i, :y => 4,   :ignore => true}
-        @fort_entrance.layout << {:item => :trap, :subtype => :cage, :x => -2,  :y => 3-i, :ignore => true}
-    }
-
-end
-
-# search how much we need to dig to find a spot for the full fortress body
-# here we cheat and work as if the map was fully reveal()ed
-def scan_fort_body
-    # use a hardcoded fort layout
-    cx, cy, cz = @fort_entrance.x, @fort_entrance.y, @fort_entrance.z
-
-    @fort_entrance.z1 = (0..cz).to_a.reverse.find { |cz1|
-        # stop searching if we hit a cavern or an aquifer inside our main staircase
-        break unless (0..0).all? { |dx|
-            (-1..1).all? { |dy|
-                t = df.map_tile_at(cx+dx, cy+dy, cz1+MaxZ) and
-                map_tile_nocavern(t) and
-                not t.designation.water_table
-            }
-        }
-
-        (MinZ..MaxZ).all? { |dz|
-            # scan perimeter first to quickly eliminate caverns / bad rock layers
-            (MinX..MaxX).all? { |dx|
-                [MinY, MaxY].all? { |dy|
-                    t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                    not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
-                }
-            } and
-            [MinX, MaxX].all? { |dx|
-                (MinY..MaxY).all? { |dy|
-                    t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                    not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
+        for (int16_t dz = MinZ; !stop && dz <= MaxZ; dz++)
+        {
+            // scan perimeter first to quickly eliminate caverns / bad rock
+            // layers
+            for (int16_t dx = MinX; !stop && dx <= MaxX; dx++)
+            {
+                for (int16_t dy = MinY; !stop && dy <= MaxY; dy += MaxY - MinY)
+                {
+                    check(dx, dy, dz);
                 }
             }
-        }  and
-        # perimeter ok, full scan
-        (MinZ..MaxZ).all? { |dz|
-            ((MinX+1)..(MaxX-1)).all? { |dx|
-                ((MinY+1)..(MaxY-1)).all? { |dy|
-                    t = df.map_tile_at(cx+dx, cy+dy, cz1+dz) and t.shape == :WALL and
-                    not t.designation.water_table and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or (@allow_ice and tm == :FROZEN_LIQUID) or (dz > -1 and (tm == :SOIL or tm == :ROOT)))
+            for (int16_t dx = MinX; !stop && dx <= MaxX; dx += MaxX - MinX)
+            {
+                for (int16_t dy = MinY + 1; !stop && dy <= MaxY - 1; dy++)
+                {
+                    check(dx, dy, dz);
                 }
+            }
+            // perimeter ok, full scan
+            for (int16_t dx = MinX + 1; !stop && dx <= MaxX - 1; dx++)
+            {
+                for (int16_t dy = MinY + 1; !stop && dy <= MaxY - 1; dy++)
+                {
+                    check(dx, dy, dz);
+                }
+            }
+
+            if (!stop)
+            {
+                fort_entrance->min.z = cz1;
+                return CR_OK;
             }
         }
     }
 
-    raise 'Too many caverns, cant find room for fort. We need more minerals!' unless @fort_entrance.z1
-end
+    ai->debug(out, "Too many caverns, cant find room for fort. We need more minerals!");
+    return CR_FAILURE;
+}
 
-# assign rooms in the space found by scan_fort_*
-def setup_blueprint_rooms
-    # hardcoded layout
-    @corridors << @fort_entrance
+// assign rooms in the space found by scan_fort_*
+command_result Plan::setup_blueprint_rooms(color_ostream & out)
+{
+    // hardcoded layout
+    corridors.push_back(fort_entrance);
 
-    fx = @fort_entrance.x
-    fy = @fort_entrance.y
+    df::coord f = fort_entrance->pos();
 
-    fz = @fort_entrance.z1
-    setup_blueprint_workshops(fx, fy, fz, [@fort_entrance])
+    command_result res;
 
-    fz = @fort_entrance.z1 -= 1
-    setup_blueprint_utilities(fx, fy, fz, [@fort_entrance])
+    f.z = fort_entrance->min.z;
+    res = setup_blueprint_workshops(out, f, {fort_entrance});
+    if (res != CR_OK)
+        return res;
 
-    fz = @fort_entrance.z1 -= 1
-    setup_blueprint_stockpiles(fx, fy, fz, [@fort_entrance])
+    fort_entrance->min.z--;
+    f.z--;
+    res = setup_blueprint_utilities(out, f, {fort_entrance});
+    if (res != CR_OK)
+        return res;
 
-    2.times {
-        fz = @fort_entrance.z1 -= 1
-        setup_blueprint_bedrooms(fx, fy, fz, [@fort_entrance])
+    fort_entrance->min.z--;
+    f.z--;
+    res = setup_blueprint_stockpiles(out, f, {fort_entrance});
+    if (res != CR_OK)
+        return res;
+
+    for (size_t i = 0; i < 2; i++)
+    {
+        fort_entrance->min.z--;
+        f.z--;
+        res = setup_blueprint_bedrooms(out, f, {fort_entrance});
+        if (res != CR_OK)
+            return res;
     }
-end
 
-def setup_blueprint_workshops(fx, fy, fz, entr)
-    corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
-    corridor_center0.accesspath = entr
-    @corridors << corridor_center0
-    corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
-    corridor_center2.accesspath = entr
-    @corridors << corridor_center2
+    return CR_OK;
+}
 
-    # Millstone, Siege, magma workshops/furnaces
-    types = [:Still,:Kitchen, :Fishery,:Butchers, :Leatherworks,:Tanners,
-        :Loom,:Clothiers, :Dyers,:Bowyers, nil,:Kiln]
-    types += [:Masons,:Carpenters, :Mechanics,:Farmers, :Craftsdwarfs,:Jewelers,
-        :Smelter,:MetalsmithsForge, :Ashery,:WoodFurnace, :SoapMaker,:GlassFurnace]
+command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f, std::vector<room *> entr)
+{
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center0->accesspath = entr;
+    corridors.push_back(corridor_center0);
 
-    [-1, 1].each { |dirx|
-        prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
-        ocx = fx + dirx*3
-        (1..6).each { |dx|
-            # segments of the big central horizontal corridor
-            cx = fx + dirx*4*dx
-            cor_x = Corridor.new(ocx, cx + (dx <= 5 ? 0 : dirx), fy-1, fy+1, fz, fz)
-            cor_x.accesspath = [prev_corx]
-            @corridors << cor_x
-            prev_corx = cor_x
-            ocx = cx+dirx
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center2->accesspath = entr;
+    corridors.push_back(corridor_center2);
 
-            if dirx == 1 and dx == 3
-                # stuff a quern&screwpress near the farmers'
-                @rooms << Room.new(:workshop, :Quern, cx-2, cx-2, fy+1, fy+1, fz)
-                @rooms.last.accesspath = [cor_x]
-                @rooms.last.misc[:workshop_level] = 0
+    // Millstone, Siege, magma workshops/furnaces
+    std::vector<std::string> types{
+        "Still", "Kitchen", "Fishery", "Butchers", "Leatherworks", "Tanners",
+        "Loom", "Clothiers", "Dyers", "Bowyers", "", "Kiln",
+        "Masons", "Carpenters", "Mechanics", "Farmers", "Craftsdwarfs", "Jewelers",
+        "Smelter", "MetalsmithsForge", "Ashery", "WoodFurnace", "SoapMaker", "GlassFurnace",
+    };
+    auto type_it = types.begin();
 
-                @rooms << Room.new(:workshop, :Quern, cx-6, cx-6, fy+1, fy+1, fz)
-                @rooms.last.accesspath = [cor_x]
-                @rooms.last.misc[:workshop_level] = 1
+    for (int16_t dirx = -1; dirx <= 1; dirx += 2)
+    {
+        room *prev_corx = dirx < 0 ? corridor_center0 : corridor_center2;
+        int16_t ocx = f.x + dirx * 3;
+        for (int16_t dx = 1; dx <= 6; dx++)
+        {
+            // segments of the big central horizontal corridor
+            int16_t cx = f.x + dirx * 4 * dx;
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + (dx <= 5 ? 0 : dirx), f.y + 1, f.z));
+            cor_x->accesspath.push_back(prev_corx);
+            corridors.push_back(cor_x);
+            prev_corx = cor_x;
+            ocx = cx + dirx;
 
-                @rooms << Room.new(:workshop, :Quern, cx+2, cx+2, fy+1, fy+1, fz)
-                @rooms.last.accesspath = [cor_x]
-                @rooms.last.misc[:workshop_level] = 2
+            if (dirx == 1 && dx == 3)
+            {
+                // stuff a quern&screwpress near the farmers'
+                df::coord c(cx - 2, f.y + 1, f.z);
+                room *r = new room("workshop", "Quern", c, c);
+                r->accesspath.push_back(cor_x);
+                r->misc["workshop_level"] = 0;
+                rooms.push_back(r);
 
-                @rooms << Room.new(:workshop, :ScrewPress, cx-2, cx-2, fy-1, fy-1, fz)
-                @rooms.last.accesspath = [cor_x]
-                @rooms.last.misc[:workshop_level] = 0
-            end
+                c.x = cx - 6;
+                r = new room("workshop", "Quern", c, c);
+                r->accesspath.push_back(cor_x);
+                r->misc["workshop_level"] = 1;
+                rooms.push_back(r);
 
-            t = types.shift
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-5, fy-3, fz)
-            @rooms.last.accesspath = [cor_x]
-            @rooms.last.layout << {:item => :door, :x => 1, :y => 3}
-            @rooms.last.misc[:workshop_level] = 0
-            if dirx == -1 and dx == 1
-                @rooms.last.layout << {:item => :nestbox, :x => -1, :y => 4}
-            end
+                c.x = cx + 2;
+                r = new room("workshop", "Quern", c, c);
+                r->accesspath.push_back(cor_x);
+                r->misc["workshop_level"] = 2;
+                rooms.push_back(r);
 
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-8, fy-6, fz)
-            @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
-            @rooms.last.misc[:workshop_level] = 1
+                c.x = cx - 2;
+                r = new room("workshop", "ScrewPress", c, c);
+                r->accesspath.push_back(cor_x);
+                r->misc["workshop_level"] = 0;
+                rooms.push_back(r);
+            }
 
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy-11, fy-9, fz)
-            @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
-            @rooms.last.misc[:workshop_level] = 2
+            std::string t = *type_it++;
 
-            t = types.shift
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+3, fy+5, fz)
-            @rooms.last.accesspath = [cor_x]
-            @rooms.last.layout << {:item => :door, :x => 1, :y => -1}
-            @rooms.last.misc[:workshop_level] = 0
-            if dirx == -1 and dx == 1
-                @rooms.last.layout << {:item => :nestbox, :x => -1, :y => -2}
-            end
+            room *r = new room("workshop", t, df::coord(cx - 1, f.y - 5, f.z), df::coord(cx + 1, f.y - 3, f.z));
+            r->accesspath.push_back(cor_x);
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(3)},
+                    });
+            r->misc["workshop_level"] = 0;
+            if (dirx == -1 && dx == 1)
+            {
+                r->layout.push_back(new furniture{
+                            {"item", horrible_t("nestbox")},
+                            {"x", horrible_t(-1)},
+                            {"y", horrible_t(4)},
+                        });
+            }
+            rooms.push_back(r);
 
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+6, fy+8, fz)
-            @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
-            @rooms.last.misc[:workshop_level] = 1
+            r = new room("workshop", t, df::coord(cx - 1, f.y - 8, f.z), df::coord(cx + 1, f.y - 6, f.z));
+            r->accesspath.push_back(rooms.back());
+            r->misc["workshop_level"] = 1;
+            rooms.push_back(r);
 
-            @rooms << Room.new(:workshop, t, cx-1, cx+1, fy+9, fy+11, fz)
-            @rooms.last.accesspath = [@rooms[@rooms.length - 2]]
-            @rooms.last.misc[:workshop_level] = 2
+            r = new room("workshop", t, df::coord(cx - 1, f.y - 11, f.z), df::coord(cx + 1, f.y - 9, f.z));
+            r->accesspath.push_back(rooms.back());
+            r->misc["workshop_level"] = 2;
+            rooms.push_back(r);
+
+            t = *type_it++;
+            r = new room("workshop", t, df::coord(cx - 1, f.y + 3, f.z), df::coord(cx + 1, f.y + 5, f.z));
+            r->accesspath.push_back(cor_x);
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(-1)},
+                    });
+            r->misc["workshop_level"] = 0;
+            if (dirx == -1 && dx == 1)
+            {
+                r->layout.push_back(new furniture{
+                            {"item", horrible_t("nestbox")},
+                            {"x", horrible_t(-1)},
+                            {"y", horrible_t(-2)},
+                        });
+            }
+            rooms.push_back(r);
+
+            r = new room("workshop", t, df::coord(cx - 1, f.y + 6, f.z), df::coord(cx + 1, f.y + 8, f.z));
+            r->accesspath.push_back(rooms.back());
+            r->misc["workshop_level"] = 1;
+            rooms.push_back(r);
+
+            r = new room("workshop", t, df::coord(cx - 1, f.y + 9, f.z), df::coord(cx + 1, f.y + 11, f.z));
+            r->accesspath.push_back(rooms.back());
+            r->misc["workshop_level"] = 2;
+            rooms.push_back(r);
         }
     }
 
-    depot_center = spiral_search(df.map_tile_at(@fort_entrance.x - 4, @fort_entrance.y, @fort_entrance.z2 - 1)) { |t|
-        (-2..2).all? { |dx| (-2..2).all? { |dy|
-            tt = t.offset(dx, dy, 0) and
-            map_tile_in_rock(tt) and
-            not map_tile_intersects_room(tt)
-        } } and (-1..1).all? { |dy|
-            tt = t.offset(-3, dy, 0) and
-            map_tile_in_rock(tt) and
-            ttt = tt.offset(0, 0, 1) and
-            ttt.shape_basic == :Floor and
-            not map_tile_intersects_room(tt) and
-            not map_tile_intersects_room(ttt)
-        }
-    }
+    df::coord depot_center = spiral_search(df::coord(f.x - 4, f.y, fort_entrance->max.z - 1), [this](df::coord t) -> bool
+            {
+                for (int16_t dx = -2; dx <= 2; dx++)
+                {
+                    for (int16_t dy = -2; dy <= 2; dy++)
+                    {
+                        df::coord tt = t + df::coord(dx, dy, 0);
+                        if (!map_tile_in_rock(tt))
+                            return false;
+                        if (map_tile_intersects_room(tt))
+                            return false;
+                    }
+                }
+                for (int16_t dy = -1; dy <= 1; dy++)
+                {
+                    df::coord tt = t + df::coord(-3, dy, 0);
+                    if (!map_tile_in_rock(tt))
+                        return false;
+                    df::coord ttt = tt + df::coord(0, 0, 1);
+                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt))) != tiletype_shape_basic::Floor)
+                        return false;
+                    if (map_tile_intersects_room(tt))
+                        return false;
+                    if (map_tile_intersects_room(ttt))
+                        return false;
+                }
+                return true;
+            });
 
-    if depot_center
-        r = Room.new(:workshop, :TradeDepot, depot_center.x-2, depot_center.x+2, depot_center.y-2, depot_center.y+2, depot_center.z)
-        r.misc[:workshop_level] = 0
-        r.layout << { :dig => :Ramp, :x => -1, :y => 1 }
-        r.layout << { :dig => :Ramp, :x => -1, :y => 2 }
-        r.layout << { :dig => :Ramp, :x => -1, :y => 3 }
-        @rooms << r
+    if (depot_center.isValid())
+    {
+        room *r = new room("workshop", "TradeDepot", depot_center - df::coord(2,2, 0), depot_center + df::coord(2, 2, 0));
+        r->misc["workshop_level"] = 0;
+        r->layout.push_back(new furniture{
+                    {"dig", horrible_t("Ramp")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(1)},
+                });
+        r->layout.push_back(new furniture{
+                    {"dig", horrible_t("Ramp")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(2)},
+                });
+        r->layout.push_back(new furniture{
+                    {"dig", horrible_t("Ramp")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(3)},
+                });
+        rooms.push_back(r);
+    }
     else
-        r = Room.new(:workshop, :TradeDepot, @fort_entrance.x-7, @fort_entrance.x-3, @fort_entrance.y-2, @fort_entrance.y+2, @fort_entrance.z2)
-        r.misc[:workshop_level] = 0
-        5.times { |x| 5.times { |y|
-            r.layout << { :construction => :Floor, :x => x, :y => y }
-        } }
-        @rooms << r
-    end
-end
-
-def setup_blueprint_stockpiles(fx, fy, fz, entr)
-    corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
-    corridor_center0.accesspath = entr
-    @corridors << corridor_center0
-    corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
-    corridor_center2.accesspath = entr
-    @corridors << corridor_center2
-
-    types = [:food,:furniture, :wood,:stone, :refuse,:animals, :corpses,:gems]
-    types += [:finished_goods,:cloth, :bars_blocks,:leather, :ammo,:armor, :weapons,:coins]
-
-    # TODO side stairs to workshop level ?
-    [-1, 1].each { |dirx|
-        prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
-        ocx = fx + dirx*3
-        (1..4).each { |dx|
-            # segments of the big central horizontal corridor
-            cx = fx + dirx*(8*dx-4)
-            cor_x = Corridor.new(ocx, cx+dirx, fy-1, fy+1, fz, fz)
-            cor_x.accesspath = [prev_corx]
-            @corridors << cor_x
-            prev_corx = cor_x
-            ocx = cx+2*dirx
-
-            t0, t1 = types.shift, types.shift
-            @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-3, fy-4, fz)
-            @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+3, fy+4, fz)
-            @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 1 }
-            @rooms[-2, 2].each { |r|
-                r.accesspath = [cor_x]
-                r.layout << {:item => :door, :x => 2, :y => (r.y < fy ? 2 : -1)}
-                r.layout << {:item => :door, :x => 4, :y => (r.y < fy ? 2 : -1)}
+    {
+        room *r = new room("workshop", "TradeDepot", df::coord(f.x - 7, f.y - 2, fort_entrance->max.z), df::coord(f.x - 3, f.y + 2, fort_entrance->max.z));
+        r->misc["workshop_level"] = 0;
+        for (int16_t x = 0; x < 5; x++)
+        {
+            for (int16_t y = 0; y < 5; y++)
+            {
+                r->layout.push_back(new furniture{
+                            {"construction", horrible_t("Floor")},
+                            {"x", horrible_t(x)},
+                            {"y", horrible_t(y)},
+                        });
             }
-            @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-5, fy-11, fz)
-            @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+5, fy+11, fz)
-            @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 2 }
-            @rooms << Room.new(:stockpile, t0, cx-3, cx+3, fy-12, fy-20, fz)
-            @rooms << Room.new(:stockpile, t1, cx-3, cx+3, fy+12, fy+20, fz)
-            @rooms[-2, 2].each { |r| r.misc[:stockpile_level] = 3 }
+        }
+        rooms.push_back(r);
+    }
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f, std::vector<room *> entr)
+{
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center0->accesspath = entr;
+    corridors.push_back(corridor_center0);
+
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(2)},
+            });
+
+    std::vector<std::string> types{
+        "food", "furniture", "wood", "stone", "refuse", "animals", "corpses", "gems",
+        "finished_goods", "cloth", "bars_blocks", "leather", "ammo", "armor", "weapons", "coins",
+    };
+    auto type_it = types.begin();
+
+    // TODO side stairs to workshop level ?
+    for (int16_t dirx = -1; dirx <= 1; dirx += 2)
+    {
+        room *prev_corx = dirx < 0 ? corridor_center0 : corridor_center2;
+        int16_t ocx = f.x + dirx * 3;
+        for (int16_t dx = 1; dx <= 4; dx++)
+        {
+            // segments of the big central horizontal corridor
+            int16_t cx = f.x + dirx * (8 * dx - 4);
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + dirx, f.y + 1, f.z));
+            cor_x->accesspath.push_back(prev_corx);
+            corridors.push_back(cor_x);
+            prev_corx = cor_x;
+            ocx = cx + 2 * dirx;
+
+            std::string t0 = *type_it++;
+            std::string t1 = *type_it++;
+            room *r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 4, f.z), df::coord(cx + 3, f.y - 3, f.z));
+            room *r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 3, f.z), df::coord(cx + 3, f.y + 4, f.z));
+            r0->misc["stockpile_level"] = 1;
+            r1->misc["stockpile_level"] = 1;
+            r0->accesspath.push_back(cor_x);
+            r1->accesspath.push_back(cor_x);
+            r0->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(2)},
+                        {"y", horrible_t(2)},
+                    });
+            r0->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(4)},
+                        {"y", horrible_t(2)},
+                    });
+            r1->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(2)},
+                        {"y", horrible_t(-1)},
+                    });
+            r1->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(4)},
+                        {"y", horrible_t(-1)},
+                    });
+            rooms.push_back(r0);
+            rooms.push_back(r1);
+
+            r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
+            r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
+            r0->misc["stockpile_level"] = 2;
+            r1->misc["stockpile_level"] = 2;
+            rooms.push_back(r0);
+            rooms.push_back(r1);
+
+            r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
+            r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
+            r0->misc["stockpile_level"] = 3;
+            r1->misc["stockpile_level"] = 3;
+            rooms.push_back(r0);
+            rooms.push_back(r1);
         }
     }
-    @rooms.each { |r|
-        if r.type == :stockpile and r.subtype == :coins and r.misc[:stockpile_level] > 1
-            r.subtype = :furniture
-            r.misc[:stockpile_level] += 2
-        end
+    for (room *r : rooms)
+    {
+        if (r->type == "stockpile" && r->subtype == "coins" &&
+                r->misc.at("stockpile_level").id > 1)
+        {
+            r->subtype = "furniture";
+            r->misc["stockpile_level"].id += 2;
+        }
     }
 
-    setup_blueprint_minecarts
-    setup_blueprint_pitcage
-end
+    command_result res;
+    res = setup_blueprint_minecarts(out);
+    if (res != CR_OK)
+        return res;
+    res = setup_blueprint_pitcage(out);
+    if (res != CR_OK)
+        return res;
+    return CR_OK;
+}
 
-def setup_blueprint_minecarts
-    return # disabled 2015-02-04 BenLubar
+command_result Plan::setup_blueprint_minecarts(color_ostream & out)
+{
+#if 0
+    // disabled 2015-02-04 BenLubar
 
     last_stone = @rooms.find_all { |r| r.type == :stockpile and r.subtype == :stone }.last
     return if not last_stone
@@ -4000,1088 +4511,1703 @@ def setup_blueprint_minecarts
         st.accesspath = [@rooms.last]
         @rooms << st
     }
-end
-
-def setup_blueprint_pitcage
-    return if not gpit = find_room(:garbagepit)
-    r = Room.new(:pitcage, nil, gpit.x1-1, gpit.x1+1, gpit.y1-1, gpit.y1+1, gpit.z1+10)
-    r.layout << { :construction => :UpStair, :x => -1, :y => 1, :z => -10 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -9 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -8 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -7 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -6 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -5 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -4 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -3 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -2 }
-    r.layout << { :construction => :UpDownStair, :x => -1, :y => 1, :z => -1 }
-    r.layout << { :construction => :DownStair, :x => -1, :y => 1, :z => 0 }
-    [0, 1, 2].each { |dx| [1, 0, 2].each { |dy|
-        if dx == 1 and dy == 1
-            r.layout << { :dig => :Channel, :x => dx, :y => dy }
-        else
-            r.layout << { :construction => :Floor, :x => dx, :y => dy }
-        end
-    } }
-    r.layout << { :construction => :Floor, :x => 3, :y => 1, :item => :hive }
-    @rooms << r
-    stockpile = Room.new(:stockpile, :animals, r.x1, r.x2, r.y1, r.y2, r.z1)
-    stockpile.misc[:stockpile_level] = 0
-    stockpile.layout = r.layout
-    @rooms << stockpile
-end
-
-def setup_blueprint_utilities(fx, fy, fz, entr)
-    corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
-    corridor_center0.accesspath = entr
-    @corridors << corridor_center0
-    corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
-    corridor_center2.accesspath = entr
-    @corridors << corridor_center2
-
-    # dining halls
-    ocx = fx-2
-    old_cor = corridor_center0
-
-    # temporary dininghall, for fort start
-    tmp = Room.new(:dininghall, nil, fx-4, fx-3, fy-1, fy+1, fz)
-    tmp.misc[:temporary] = true
-    [0, 1, 2].each { |dy|
-        tmp.layout << {:item => :table, :x => 0, :y => dy, :users => []}
-        tmp.layout << {:item => :chair, :x => 1, :y => dy, :users => []}
-    }
-    tmp.layout[0][:makeroom] = true
-    tmp.accesspath = [old_cor]
-    @rooms << tmp
-
-
-    # dininghalls x 4 (54 users each)
-    [0, 1].each { |ax|
-        cor = Corridor.new(ocx-1, fx-ax*12-5, fy-1, fy+1, fz, fz)
-        cor.accesspath = [old_cor]
-        @corridors << cor
-        ocx = fx-ax*12-4
-        old_cor = cor
-
-        [-1, 1].each { |dy|
-            dinner = Room.new(:dininghall, nil, fx-ax*12-2-10, fx-ax*12-2, fy+dy*9, fy+dy*3, fz)
-            dinner.layout << {:item => :door, :x => 7, :y => (dy>0 ? -1 : 7)}
-            dinner.layout << {:construction => :Wall, :dig => :No, :x => 2, :y => 3}
-            dinner.layout << {:construction => :Wall, :dig => :No, :x => 8, :y => 3}
-            [5,4,6,3,7,2,8,1,9].each { |dx|
-                [-1, 1].each { |sy|
-                    dinner.layout << {:item => :table, :x => dx, :y => 3+dy*sy*1, :ignore => true, :users => []}
-                    dinner.layout << {:item => :chair, :x => dx, :y => 3+dy*sy*2, :ignore => true, :users => []}
-                }
-            }
-            dinner.layout.find { |f| f[:item] == :table }[:makeroom] = true
-            dinner.accesspath = [cor]
-            @rooms << dinner
-        }
-    }
-
-    if @allow_ice
-        ai.debug "icy embark, no well"
-    elsif river = scan_river
-        setup_blueprint_cistern_fromsource(river, fx, fy, fz)
-    else
-        # TODO pool, pumps, etc
-        ai.debug "no river, no well"
-    end
-
-    # farm plots
-    farm_h = 3
-    farm_w = 3
-    dpf = (@dwarves_per_farmtile * farm_h * farm_w).to_i
-    nrfarms = (220+dpf-1)/dpf
-
-    cx = fx+4*6       # end of workshop corridor (last ws door)
-    cy = fy
-    cz = find_room(:workshop) { |r| r.subtype == :Farmers }.z1
-    ws_cor = Corridor.new(fx+3, cx+1, cy, cy, cz, cz)    # ws_corr.access_path ...
-    @corridors << ws_cor
-    farm_stairs = Corridor.new(cx+2, cx+2, cy, cy, cz, cz)
-    farm_stairs.accesspath = [ws_cor]
-    @corridors << farm_stairs
-    cx += 3
-    soilcnt = {}
-    (cz...df.world.map.z_count).each { |z|
-        scnt = 0
-        if (-1..(nrfarms*farm_w/3)).all? { |dx|
-            (-(3*farm_h+farm_h-1)..(3*farm_h+farm_h-1)).all? { |dy|
-                t = df.map_tile_at(cx+dx, cy+dy, z)
-                next if not t or t.shape != :WALL
-                scnt += 1 if t.tilemat == :SOIL
-                true
-            }
-        }
-            soilcnt[z] = scnt
-        end
-    }
-    cz2 = soilcnt.index(soilcnt.values.max) || cz
-
-    farm_stairs.z2 = cz2
-    cor = Corridor.new(cx, cx+1, cy, cy, cz2, cz2)
-    cor.accesspath = [farm_stairs]
-    @corridors << cor
-    types = [:food, :cloth]
-    [-1, 1].each { |dy|
-        st = types.shift
-        (nrfarms/3).times { |dx|
-            3.times { |ddy|
-                r = Room.new(:farmplot, st, cx+farm_w*dx, cx+farm_w*dx+farm_w-1, cy+dy*2+dy*ddy*farm_h, cy+dy*(2+farm_h-1)+dy*ddy*farm_h, cz2)
-                r.misc[:users] = []
-                if dx == 0 and ddy == 0
-                    r.layout << {:item => :door, :x => 1, :y => (dy>0 ? -1 : farm_h)}
-                    r.accesspath = [cor]
-                else
-                    r.accesspath = [@rooms.last]
-                end
-                @rooms << r
-            }
-        }
-    }
-    # seeds stockpile
-    r = Room.new(:stockpile, :food, cx+2, cx+4, cy, cy, cz2)
-    r.misc[:stockpile_level] = 0
-    r.misc[:workshop] = @rooms[-2*nrfarms]
-    r.accesspath = [cor]
-    @rooms << r
-
-    # garbage dump
-    # TODO ensure flat space, no pools/tree, ...
-    r = Room.new(:garbagedump, nil, cx+5, cx+5, cy, cy, cz)
-    tile = spiral_search(df.map_tile_at(r)) { |t|
-        t = surface_tile_at(t) and
-        (t.x >= cx + 5 or
-        (t.z > cz + 2 and t.x > fx + 5)) and
-        map_tile_in_rock(t.offset(0, 0, -1)) and
-        map_tile_in_rock(t.offset(2, 0, -1)) and
-        t.shape_basic == :Floor and
-        t.offset(1, 0, 0).shape_basic == :Floor and
-        t.offset(2, 0, 0).shape_basic == :Floor and
-        (t.offset(1, 1, 0).shape_basic == :Floor or
-        t.offset(1, -1, 0).shape_basic == :Floor)
-    }
-    r.x1 = r.x2 = tile.x
-    r.y1 = r.y2 = tile.y
-    r.z2 = r.z1 = surface_tile_at(tile).z
-    @rooms << r
-    r = Room.new(:garbagepit, nil, @rooms.last.x + 1, @rooms.last.x + 2, @rooms.last.y, @rooms.last.y, @rooms.last.z)
-    @rooms << r
-
-    # infirmary
-    old_cor = corridor_center2
-    cor = Corridor.new(fx+3, fx+5, fy-1, fy+1, fz, fz)
-    cor.accesspath = [old_cor]
-    @corridors << cor
-    old_cor = cor
-
-    infirmary = Room.new(:infirmary, nil, fx+2, fx+6, fy-3, fy-7, fz)
-    infirmary.layout << {:item => :door, :x => 3, :y => 5}
-    infirmary.layout << {:item => :bed, :x => 0, :y => 1}
-    infirmary.layout << {:item => :table, :x => 1, :y => 1}
-    infirmary.layout << {:item => :bed, :x => 2, :y => 1}
-    infirmary.layout << {:item => :traction_bench, :x => 0, :y => 2}
-    infirmary.layout << {:item => :traction_bench, :x => 2, :y => 2}
-    infirmary.layout << {:item => :bed, :x => 0, :y => 3}
-    infirmary.layout << {:item => :table, :x => 1, :y => 3}
-    infirmary.layout << {:item => :bed, :x => 2, :y => 3}
-    infirmary.layout << {:item => :chest, :x => 4, :y => 1}
-    infirmary.layout << {:item => :chest, :x => 4, :y => 2}
-    infirmary.layout << {:item => :chest, :x => 4, :y => 3}
-    infirmary.accesspath = [cor]
-    @rooms << infirmary
-
-    # cemetary lots (160 spots)
-    cor = Corridor.new(fx+6, fx+14, fy-1, fy+1, fz, fz)
-    cor.accesspath = [old_cor]
-    @corridors << cor
-    old_cor = cor
-
-    500.times { |ry|
-        break if (-1..19).find { |tx| (-1..4).find { |ty|
-            not t = df.map_tile_at(fx+10+tx, fy-3-3*ry-ty, fz) or t.shape_basic != :Wall
-        } }
-        2.times { |rrx|
-            2.times { |rx|
-                ox = fx+10+5*rx + 9*rrx
-                oy = fy-3-3*ry
-                cemetary = Room.new(:cemetary, nil, ox, ox+4, oy, oy-3, fz)
-                4.times { |dx|
-                    2.times { |dy|
-                        cemetary.layout << {:item => :coffin, :x => dx+1-rx, :y =>dy+1, :ignore => true, :users => []}
-                    }
-                }
-                if rx == 0 and ry == 0 and rrx == 0
-                    cemetary.layout << {:item => :door, :x => 4, :y => 4}
-                    cemetary.accesspath = [cor]
-                end
-                @rooms << cemetary
-            }
-        }
-    }
-
-    # barracks
-    # 8 dwarf per squad, 20% pop => 40 soldiers for 200 dwarves => 5 barracks
-    old_cor = corridor_center2
-    oldcx = old_cor.x2+2     # door
-    4.times { |rx|
-        cor = Corridor.new(oldcx, fx+5+10*rx, fy-1, fy+1, fz, fz)
-        cor.accesspath = [old_cor]
-        @corridors << cor
-        old_cor = cor
-        oldcx = cor.x2+1
-
-        [1, -1].each { |ry|
-            next if ry == -1 and rx < 3 # infirmary/cemetary
-
-            barracks = Room.new(:barracks, nil, fx+2+10*rx, fx+2+10*rx+6, fy+3*ry, fy+10*ry, fz)
-            barracks.layout << {:item => :door, :x => 3, :y => (ry > 0 ? -1 : 8)}
-            8.times { |dy|
-                dy = 7-dy if ry < 0
-                barracks.layout << {:item => :armorstand, :x => 5, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :bed, :x => 6, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :cabinet, :x => 0, :y => dy, :ignore => true, :users => []}
-                barracks.layout << {:item => :chest, :x => 1, :y => dy, :ignore => true, :users => []}
-            }
-            barracks.layout << {:item => :weaponrack, :x => 4, :y => (ry>0 ? 7 : 0), :makeroom => true, :users => []}
-            barracks.layout << {:item => :weaponrack, :x => 2, :y => (ry>0 ? 7 : 0), :ignore => true, :users => []}
-            barracks.layout << {:item => :archerytarget, :x => 3, :y => (ry>0 ? 7 : 0), :ignore => true, :users => []}
-            barracks.accesspath = [cor]
-            @rooms << barracks
-        }
-    }
-
-    setup_blueprint_pastures
-    setup_blueprint_outdoor_farms(nrfarms * 2)
-end
-
-def setup_blueprint_cistern_fromsource(src, fx, fy, fz)
-    # TODO dynamic layout, at least move the well/cistern on the side of the river
-    # TODO scan for solid ground for all this
-
-    # well
-    cor = Corridor.new(fx-18, fx-26, fy-1, fy+1, fz, fz)
-    cor.accesspath = [@corridors.last]
-    @corridors << cor
-
-    cx = fx-32
-    well = Room.new(:well, :well, cx-4, cx+4, fy-4, fy+4, fz)
-    well.layout << {:item => :well, :x => 4, :y => 4, :makeroom => true, :dig => :Channel}
-    well.layout << {:item => :door, :x => 9, :y => 3}
-    well.layout << {:item => :door, :x => 9, :y => 5}
-    well.layout << {:item => :trap, :subtype => :lever, :x => 1, :y => 0, :way => :out}
-    well.layout << {:item => :trap, :subtype => :lever, :x => 0, :y => 0, :way => :in}
-    well.accesspath = [cor]
-    @rooms << well
-
-    # water cistern under the well (in the hole of bedroom blueprint)
-    cist_cors = find_corridor_tosurface(df.map_tile_at(cx-8, fy, fz))
-    cist_cors[0].z1 -= 3
-
-    cistern = Room.new(:cistern, :well, cx-7, cx+1, fy-1, fy+1, fz-1)
-    cistern.z1 -= 2
-    cistern.accesspath = [cist_cors[0]]
-
-    # handle low rivers / high mountain forts
-    fz = src.z if fz > src.z
-    # should be fine with cistern auto-fill checks
-    cistern.z1 = fz if cistern.z1 > fz
-
-    # staging reservoir to fill the cistern, one z-level at a time
-    # should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
-    #  cistern is 9x3 + 1 (stairs)
-    #  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
-    reserve = Room.new(:cistern, :reserve, cx-10, cx-14, fy-3, fy+3, fz)
-    reserve.layout << {:item => :floodgate, :x => -1, :y => 3, :way => :in}
-    reserve.layout << {:item => :floodgate, :x =>  5, :y => 3, :way => :out, :ignore => true}
-    reserve.accesspath = [cist_cors[0]]
-
-    # cisterns are dug in order
-    # try to dig reserve first, so we have liquid water even if river freezes
-    @rooms << reserve
-    @rooms << cistern
-
-    # link the cistern reserve to the water source
-
-    # trivial walk of the river tiles to find a spot closer to dst
-    move_river = lambda { |dst|
-        nsrc = src
-        500.times {
-            break if not nsrc
-            src = nsrc
-            dist = src.distance_to(dst)
-            nsrc = spiral_search(src, 1, 1) { |t|
-                next if t.distance_to(dst) > dist
-                t.designation.feature_local
-            }
-        }
-    }
-
-    # 1st end: reservoir input
-    p1 = df.map_tile_at(cx-16, fy, fz)
-    move_river[p1]
-    ai.debug "cistern: reserve/in (#{p1.x}, #{p1.y}, #{p1.z}), river (#{src.x}, #{src.y}, #{src.z})"
-
-    # XXX hardcoded layout again
-    if src.x <= p1.x
-        p = p1
-        r = reserve
-    else
-        # the tunnel should walk around other blueprint rooms
-        p2 = p1.offset(0, (src.y >= p1.y ? 26 : -26))
-        cor = Corridor.new(p1.x, p2.x, p1.y, p2.y, p1.z, p2.z)
-        @corridors << cor
-        reserve.accesspath << cor
-        move_river[p2]
-        p = p2
-        r = cor
-    end
-
-    up = find_corridor_tosurface(p)
-    r.accesspath << up[0]
-
-    dst = up[-1].maptile2.offset(0, 0, -2)
-    dst = df.map_tile_at(dst.x, dst.y, src.z - 1) if src.z <= dst.z
-    move_river[dst]
-
-    if (dst.x - src.x).abs > 1
-        p3 = dst.offset(src.x-dst.x, 0)
-        move_river[p3]
-    end
-
-    # find safe tile near the river
-    out = spiral_search(src) { |t| map_tile_in_rock(t) }
-
-    # find tile to channel to start water flow
-    channel = spiral_search(out, 1, 1) { |t|
-        t.spiral_search(1, 1) { |tt| tt.designation.feature_local }
-    } || spiral_search(out, 1, 1) { |t|
-        t.spiral_search(1, 1) { |tt| tt.designation.flow_size != 0 or tt.tilemat == :FROZEN_LIQUID }
-    }
-    ai.debug "cistern: channel_enable (#{channel.x}, #{channel.y}, #{channel.z})" if channel
-
-    # TODO check that 'channel' is easily channelable (eg river in a hole)
-
-    if (dst.x - out.x).abs > 1
-        cor = Corridor.new(dst.x - (dst.x <=> out.x), out.x - (out.x <=> dst.x), dst.y, dst.y, dst.z, dst.z)
-        @corridors << cor
-        r.accesspath << cor
-        r = cor
-    end
-
-    if (dst.y - out.y).abs > 1
-        cor = Corridor.new(out.x - (out.x <=> dst.x), out.x - (out.x <=> dst.x), dst.y + (out.y <=> dst.y), out.y, dst.z, dst.z)
-        @corridors << cor
-        r.accesspath << cor
-    end
-
-    up = find_corridor_tosurface(df.map_tile_at(out.x, out.y, dst.z))
-    r.accesspath << up[0]
-
-    reserve.misc[:channel_enable] = [channel.x, channel.y, channel.z] if channel
-end
-
-# scan for 11x11 flat areas with grass
-def setup_blueprint_pastures
-    want = 36
-    @fort_entrance.maptile.spiral_search { |_t|
-        next unless sf = surface_tile_at(_t)
-        floortile = 0
-        grasstile = 0
-        if (-5..5).all? { |dx| (-5..5).all? { |dy|
-            if tt = sf.offset(dx, dy) and
-                (tt.shape_basic == :Floor or tt.tilemat == :TREE) and
-                tt.designation.flow_size == 0 and
-                tt.tilemat != :FROZEN_LIQUID
-
-                grasstile += 1 if tt.mapblock.block_events.any? { |be|
-                    be.kind_of?(DFHack::BlockSquareEventGrassst) and be.amount[tt.dx][tt.dy] > 0
-                }
-                floortile += 1
-            end
-
-            tt and not map_tile_intersects_room(tt)
-        } } and floortile >= 9*9 and grasstile >= 8*8
-            @rooms << Room.new(:pasture, nil, sf.x-5, sf.x+5, sf.y-5, sf.y+5, sf.z)
-            @rooms.last.misc[:users] = []
-            want -= 1
-            true if want == 0
-        end
-    }
-end
-
-# scan for 3x3 flat areas with soil
-def setup_blueprint_outdoor_farms(want)
-    @fort_entrance.maptile.spiral_search([df.world.map.x_count, df.world.map.y_count].max, 9, 3) { |_t|
-        next unless sf = surface_tile_at(_t)
-        sd = sf.designation
-        if (-1..1).all? { |dx| (-1..1).all? { |dy|
-            tt = sf.offset(dx, dy) and
-            td = tt.designation and
-            ((sd.subterranean and td.subterranean) or
-            (not sd.subterranean and not td.subterranean and
-                sd.biome == td.biome)) and
-            tt.shape_basic == :Floor and
-            tt.designation.flow_size == 0 and
-            [:GRASS_DARK, :GRASS_LIGHT, :SOIL].include?(tt.tilemat)
-        } }
-            @rooms << Room.new(:farmplot, [:food, :cloth][want % 2], sf.x-1, sf.x+1, sf.y-1, sf.y+1, sf.z)
-            @rooms.last.misc[:users] = []
-            @rooms.last.misc[:outdoor] = true
-            want -= 1
-            true if want == 0
-        end
-    }
-end
-
-def setup_blueprint_bedrooms(fx, fy, fz, entr)
-    corridor_center0 = Corridor.new(fx-1, fx-1, fy-1, fy+1, fz, fz)
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 0}
-    corridor_center0.layout << {:item => :door, :x => -1, :y => 2}
-    corridor_center0.accesspath = entr
-    @corridors << corridor_center0
-    corridor_center2 = Corridor.new(fx+1, fx+1, fy-1, fy+1, fz, fz)
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 0}
-    corridor_center2.layout << {:item => :door, :x => 1, :y => 2}
-    corridor_center2.accesspath = entr
-    @corridors << corridor_center2
-
-    [-1, 1].each { |dirx|
-        prev_corx = (dirx < 0 ? corridor_center0 : corridor_center2)
-        ocx = fx + dirx*3
-        (1..3).each { |dx|
-            # segments of the big central horizontal corridor
-            cx = fx + dirx*(9*dx-4)
-            cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
-            cor_x.accesspath = [prev_corx]
-            @corridors << cor_x
-            prev_corx = cor_x
-            ocx = cx+dirx
-
-            [-1, 1].each { |diry|
-                prev_cory = cor_x
-                ocy = fy + diry*2
-                (1..6).each { |dy|
-                    cy = fy + diry*3*dy
-                    cor_y = Corridor.new(cx, cx-dirx*1, ocy, cy, fz, fz)
-                    cor_y.accesspath = [prev_cory]
-                    @corridors << cor_y
-                    prev_cory = cor_y
-                    ocy = cy+diry
-
-                    @rooms << Room.new(:bedroom, nil, cx-dirx*4, cx-dirx*3, cy, cy+diry, fz)
-                    @rooms << Room.new(:bedroom, nil, cx+dirx*2, cx+dirx*3, cy, cy+diry, fz)
-                    @rooms[-2, 2].each { |r|
-                        r.accesspath = [cor_y]
-                        r.layout << {:item => :bed, :x => (r.x<cx ? 0 : 1), :y => (diry<0 ? 1 : 0), :makeroom => true}
-                        r.layout << {:item => :cabinet, :x => (r.x<cx ? 0 : 1), :y => (diry<0 ? 0 : 1), :ignore => true}
-                        r.layout << {:item => :chest, :x => (r.x<cx ? 1 : 0), :y => (diry<0 ? 0 : 1), :ignore => true}
-                        r.layout << {:item => :door, :x => (r.x<cx ? 2 : -1), :y => (diry<0 ? 1 : 0)}
-                    }
-                }
-            }
-        }
-
-        # noble suites
-        cx = fx + dirx*(9*3-4+6)
-        cor_x = Corridor.new(ocx, cx, fy-1, fy+1, fz, fz)
-        cor_x2 = Corridor.new(ocx-dirx, fx+dirx*3, fy, fy, fz, fz)
-        cor_x.accesspath = [cor_x2]
-        cor_x2.accesspath = [dirx < 0 ? corridor_center0 : corridor_center2]
-        @corridors << cor_x << cor_x2
-
-        [-1, 1].each { |diry|
-            @noblesuite ||= -1
-            @noblesuite += 1
-
-            r = Room.new(:nobleroom, :office, cx-1, cx+1, fy+diry*3, fy+diry*5, fz)
-            r.misc[:noblesuite] = @noblesuite
-            r.accesspath = [cor_x]
-            r.layout << {:item => :chair, :x => 1, :y => 1, :makeroom => true}
-            r.layout << {:item => :chair, :x => 1-dirx, :y => 1}
-            r.layout << {:item => :chest, :x => 1+dirx, :y => 0, :ignore => true}
-            r.layout << {:item => :cabinet, :x => 1+dirx, :y => 2, :ignore => true}
-            r.layout << {:item => :door, :x => 1, :y => 1-2*diry}
-            @rooms << r
-
-            r = Room.new(:nobleroom, :bedroom, cx-1, cx+1, fy+diry*7, fy+diry*9, fz)
-            r.misc[:noblesuite] = @noblesuite
-            r.layout << {:item => :bed, :x => 1, :y => 1, :makeroom => true}
-            r.layout << {:item => :armorstand, :x => 1-dirx, :y => 0, :ignore => true}
-            r.layout << {:item => :weaponrack, :x => 1-dirx, :y => 2, :ignore => true}
-            r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
-            r.accesspath = [@rooms.last]
-            @rooms << r
-
-            r = Room.new(:nobleroom, :diningroom, cx-1, cx+1, fy+diry*11, fy+diry*13, fz)
-            r.misc[:noblesuite] = @noblesuite
-            r.layout << {:item => :table, :x => 1, :y => 1, :makeroom => true}
-            r.layout << {:item => :chair, :x => 1+dirx, :y => 1}
-            r.layout << {:item => :cabinet, :x => 1-dirx, :y => 0, :ignore => true}
-            r.layout << {:item => :chest, :x => 1-dirx, :y => 2, :ignore => true}
-            r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
-            r.accesspath = [@rooms.last]
-            @rooms << r
-
-            r = Room.new(:nobleroom, :tomb, cx-1, cx+1, fy+diry*15, fy+diry*17, fz)
-            r.misc[:noblesuite] = @noblesuite
-            r.layout << {:item => :coffin, :x => 1, :y => 1, :makeroom => true}
-            r.layout << {:item => :door, :x => 1, :y => 1-2*diry, :internal => true}
-            r.accesspath = [@rooms.last]
-            @rooms << r
-        }
-    }
-end
-
-def setup_outdoor_gathering_zones
-    x = 0
-    y = 0
-    i = 0
-    ground = {}
-    bg = df.onupdate_register('df-ai plan setup_outdoor_gathering_zones', 10) do
-        bg.description = "df-ai plan setup_outdoor_gathering_zones #{i}"
-        if x+i == [x+31, df.world.map.x_count].min
-            ground.keys.each do |tz|
-                g = ground[tz]
-                bld = df.building_alloc(:Civzone, :ActivityZone)
-                bld.zone_flags.active = true
-                bld.zone_flags.gather = true
-                bld.gather_flags.pick_trees = true
-                bld.gather_flags.pick_shrubs = true
-                bld.gather_flags.gather_fallen = true
-                w = 31
-                h = 31
-                w = df.world.map.x_count % 31 if x + 31 > df.world.map.x_count
-                h = df.world.map.y_count % 31 if y + 31 > df.world.map.y_count
-                df.building_position(bld, [x, y, tz], w, h)
-                bld.room.extents = df.malloc(w * h)
-                bld.room.x = x
-                bld.room.y = y
-                bld.room.width = w
-                bld.room.height = h
-                w.times do |cx|
-                    h.times do |cy|
-                        bld.room.extents[cx + w * cy] = g[[cx, cy]] ? 1 : 0
-                    end
-                end
-                bld.is_room = 1
-                df.building_construct_abstract(bld)
-            end
-
-            ground.clear
-            i = 0
-            x += 31
-            if x >= df.world.map.x_count
-                x = 0
-                y += 31
-                if y >= df.world.map.y_count
-                    df.onupdate_unregister(bg)
-                    ai.debug 'plan setup_outdoor_gathering_zones finished'
-                    next
-                end
-            end
-            next
-        end
-
-        tx = x + i
-        (y...([y+31, df.world.map.y_count].min)).each do |ty|
-            next unless t = surface_tile_at(tx, ty, true)
-            tz = t.z
-            ground[tz] ||= {}
-            ground[tz][[tx % 31, ty % 31]] = true
-        end
-        i += 1
-    end
-end
-
-def setup_blueprint_caverns
-    wall = nil
-    unless (0...(@cavern_max_level ||= df.world.map.z_count)).to_a.reverse.any? { |z|
-        ai.debug "outpost: searching z-level #{z}"
-        (0...df.world.map.x_count).any? { |x|
-            (0...df.world.map.y_count).any? { |y|
-                t = df.map_tile_at(x, y, z) and
-                map_tile_in_rock(t) and
-                spiral_search(t, 2) { |_t|
-                    map_tile_cavernfloor(_t)
-                } and
-                #@rooms.all? { |r|
-                #    not r.safe_include?(t.x, t.y, r.z)
-                #} and @corridors.all? { |r|
-                #    not r.safe_include?(t.x, t.y, r.z)
-                #} and
-                wall = t
-            }
-        }
-    }
-        ai.debug 'outpost: could not find a cavern wall tile'
-        @cavern_max_level = 0
-        return
-    end
-
-    @cavern_max_level = wall.z + 1
-
-    # find a floor next to the wall
-    unless target = spiral_search(wall, 2) { |t|
-        map_tile_cavernfloor(t)
-    }
-        ai.debug 'outpost: could not find a cavern floor tile'
-        @cavern_max_level = 0
-        return
-    end
-
-    r = Room.new(:outpost, :cavern, target.x, target.x, target.y, target.y, target.z)
-
-    if (wall.x - target.x).abs > 1
-        cor = Corridor.new(wall.x - (wall.x <=> target.x), target.x - (target.x <=> wall.x), wall.y, wall.y, wall.z, wall.z)
-        @corridors << cor
-        r.accesspath << cor
-    end
-
-    if (wall.y - target.y).abs > 1
-        cor = Corridor.new(target.x - (target.x <=> wall.x), target.x - (target.x <=> wall.x), wall.y + (target.y <=> wall.y), target.y, wall.z, wall.z)
-        @corridors << cor
-        r.accesspath << cor
-    end
-
-    up = find_corridor_tosurface(wall)
-    r.accesspath << up[0]
-
-    ai.debug "outpost: wall (#{wall.x}, #{wall.y}, #{wall.z})"
-    ai.debug "outpost: target (#{target.x}, #{target.y}, #{target.z})"
-    ai.debug "outpost: up (#{up.last.x2}, #{up.last.y2}, #{up.last.z2})"
-
-    @rooms << r
-
-    true
-end
-
-# check that tile is surrounded by solid rock/soil walls
-def map_tile_in_rock(tile)
-    tile and (-1..1).all? { |dx| (-1..1).all? { |dy|
-        t = tile.offset(dx, dy) and t.shape_basic == :Wall and tm = t.tilemat and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or (@allow_ice and tm == :FROZEN_LIQUID))
-    } }
-end
-
-# check tile is surrounded by solid walls or visible tile
-def map_tile_nocavern(tile)
-    (-1..1).all? { |dx| (-1..1).all? { |dy|
-        next if not t = tile.offset(dx, dy)
-        tm = t.tilemat
-        if !t.designation.hidden
-            t.designation.flow_size < 4 and (@allow_ice or tm != :FROZEN_LIQUID)
-        else
-            t.shape_basic == :Wall and (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or (@allow_ice and tm == :FROZEN_LIQUID))
-        end
-    } }
-end
-
-# check tile is a hidden floor
-def map_tile_cavernfloor(t)
-    td = t.designation and
-    td.hidden and
-    td.flow_size == 0 and
-    tm = t.tilemat and
-    (tm == :STONE or tm == :MINERAL or tm == :SOIL or tm == :ROOT or tm == :GRASS_LIGHT or tm == :GRASS_DARK or tm == :PLANT or tm == :SOIL) and
-    t.shape_basic == :Floor
-end
-
-# create a new Corridor from origin to surface, through rock
-# may create multiple chunks to avoid obstacles, all parts are added to @corridors
-# returns an array of Corridors, 1st = origin, last = surface
-def find_corridor_tosurface(origin)
-    cors = []
-    while true
-        cor = Corridor.new(origin.x, origin.x, origin.y, origin.y, origin.z, origin.z)
-        cors.last.accesspath << cor unless cors.empty?
-        cors << cor
-
-        cor.z2 += 1 while map_tile_in_rock(cor.maptile2) and not map_tile_intersects_room(cor.maptile2.offset(0, 0, 1))
-
-        if out = cor.maptile2 and (
-            (out.shape_basic != :Ramp and out.shape_basic != :Floor) or
-            out.tilemat == :TREE or
-            out.tilemat == :RAMP or
-            out.designation.flow_size != 0 or
-            out.designation.hidden)
-
-            out2 = spiral_search(out) { |t|
-                t = t.offset(0, 0, 1) while map_tile_in_rock(t)
-
-                (t.shape_basic == :Ramp or t.shape_basic == :Floor) and
-                t.tilemat != :TREE and t.designation.flow_size == 0 and
-                not t.designation.hidden and
-                not map_tile_intersects_room(t)
-            }
-
-            if out.designation.flow_size > 0
-                # damp stone located
-                cor.z2 -= 2
-                out2 = out2.offset(0, 0, -2)
-            else
-                cor.z2 -= 1
-                out2 = out2.offset(0, 0, -1)
-            end
-
-            if (out2.x - out.x).abs > 1
-                cor = Corridor.new(out2.x - (out2.x <=> out.x), out.x - (out.x <=> out2.x), out2.y, out2.y, out2.z, out2.z)
-                cors.last.accesspath << cor
-                cors << cor
-            end
-
-            if (out2.y - out.y).abs > 1
-                cor = Corridor.new(out.x - (out.x <=> out2.x), out.x - (out.x <=> out2.x), out2.y + (out.y <=> out2.y), out.y, out2.z, out2.z)
-                cors.last.accesspath << cor
-                cors << cor
-            end
-
-            raise "find_corridor_tosurface: loop: #{origin.inspect}" if df.same_pos?(origin, out2)
-            ai.debug "find_corridor_tosurface: #{origin.inspect} -> #{out2.inspect}"
-
-            origin = out2
-        else
-            break
-        end
-    end
-    @corridors += cors
-    cors
-end
-
-def surface_tile_at(t, ty=nil, allow_trees=false)
-    @rangez ||= (0...df.world.map.z_count).to_a.reverse
-
-    if ty
-        tx = t
-    else
-        tx, ty = t.x, t.y
-    end
-
-    dx, dy = tx & 15, ty & 15
-
-    tree = false
-    @rangez.each do |z|
-        next unless b = df.map_block_at(tx, ty, z)
-        next unless tt = b.tiletype[dx][dy]
-        next unless ts = DFHack::Tiletype::Shape[tt]
-        next unless tsb = DFHack::TiletypeShape::BasicShape[ts]
-        next if tsb == :Open
-        next unless tm = DFHack::Tiletype::Material[tt]
-        return if tm == :POOL or tm == :RIVER
-        if tsb == :Floor or tsb == :Ramp
-            return df.map_tile_at(tx, ty, z) if tm != :TREE
-        end
-        if tm == :TREE
-            tree = true
-        elsif tree
-            return df.map_tile_at(tx, ty, z + 1) if allow_trees
-            return
-        end
-    end
-    return
-end
-
-def status
-    status = @tasks.inject(Hash.new(0)) { |h, t| h[t[0]] += 1; h }.map { |t, n| "#{t}: #{n}" }.join(', ')
-    if task = digging?
-        status << ", digging: #{describe_room(task[1])}"
-    end
-    status
-end
-
-def categorize_all
-    @room_category = {}
-    @rooms.each { |r|
-        (@room_category[r.type] ||= []) << r
-    }
-    @room_category[:stockpile] = @room_category[:stockpile].sort_by { |r|
-        [r.misc[:stockpile_level], (r.x1 < @fort_entrance.x ? -r.x1 : r.x1), r.y1]
-    } if @room_category[:stockpile]
-end
-
-def describe_room(r)
-    "#{@rooms.index(r) or @corridors.index(r)} #{r}"
-end
-
-def find_room(type, &b)
-    if @room_category.empty?
-        if b
-            @rooms.find { |r| r.type == type and b[r] }
-        else
-            @rooms.find { |r| r.type == type }
-        end
-    else
-        if b
-            @room_category[type].to_a.find(&b)
-        else
-            @room_category[type].to_a.first
-        end
-    end
-end
-
-def serialize
+#endif
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_pitcage(color_ostream & out)
+{
+    room *gpit = find_room("garbagepit");
+    if (!gpit)
+        return CR_OK;
+    auto layout = [](room *r)
     {
-        :rooms     => @rooms.map(&:serialize),
-        :corridors => @corridors.map(&:serialize),
-        :tasks     => @tasks.map{ |t| t.map{ |v|
-            if i = $dwarfAI.plan.instance_variable_get(:@rooms).index(v) # XXX
-                [:room, i]
-            elsif i = $dwarfAI.plan.instance_variable_get(:@corridors).index(v) # XXX
-                [:corridor, i]
-            else
-                v
-            end
-        } },
-    }
-end
-
-def map_tile_intersects_room(t)
-    x, y, z = t.x, t.y, t.z
-    @rooms.any? { |r|
-        r.safe_include?(x, y, z)
-    } or @corridors.any? { |r|
-        r.safe_include?(x, y, z)
-    }
-end
-
-def self.find_tree_base(t)
-    tree = (df.world.plants.tree_dry.to_a | df.world.plants.tree_wet.to_a).find { |tree|
-        next true if tree.pos.x == t.x and tree.pos.y == t.y and tree.pos.z == t.z
-        next unless tree.tree_info and tree.tree_info.body
-        sx = tree.pos.x - tree.tree_info.dim_x / 2
-        sy = tree.pos.y - tree.tree_info.dim_y / 2
-        sz = tree.pos.z
-        next if t.x < sx or t.y < sy or t.z < sz or t.x >= sx + tree.tree_info.dim_x or t.y >= sy + tree.tree_info.dim_y or t.z >= sz + tree.tree_info.body_height
-        next unless tree.tree_info.body[(t.z - sz)]
-        tile = tree.tree_info.body[(t.z - sz)][(t.x - sx) + tree.tree_info.dim_x * (t.y - sy)]
-        tile._whole != 0 and not tile.blocked
-    }
-    if tree
-        df.map_tile_at(tree)
-    else
-        $dwarfAI.debug "failed to find tree at #{t.inspect}"
-        t
-    end
-end
-
-class Corridor
-    attr_accessor :x1, :x2, :y1, :y2, :z1, :z2, :accesspath, :status, :layout, :type
-    attr_accessor :owner, :subtype
-    attr_accessor :misc
-    def w; x2-x1+1; end
-    def h; y2-y1+1; end
-    def h_z; z2-z1+1; end
-    def x; x1+w/2; end
-    def y; y1+h/2; end
-    def z; z1+h_z/2; end
-    def maptile;  df.map_tile_at(x,  y,  z);  end
-    def maptile1; df.map_tile_at(x1, y1, z1); end
-    def maptile2; df.map_tile_at(x2, y2, z2); end
-
-    def initialize(x1, x2, y1, y2, z1, z2)
-        @misc = {}
-        @status = :plan
-        @accesspath = []
-        @layout = []
-        @type = :corridor
-        x1, x2 = x2, x1 if x1 > x2
-        y1, y2 = y2, y1 if y1 > y2
-        z1, z2 = z2, z1 if z1 > z2
-        @x1, @x2, @y1, @y2, @z1, @z2 = x1, x2, y1, y2, z1, z2
-    end
-
-    def dig(mode=nil)
-        if mode == :plan
-            plandig = true
-            mode = nil
-        end
-        (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
-            if t = df.map_tile_at(x, y, z)
-                next if t.tilemat == :CONSTRUCTION
-                dm = mode || dig_mode(t.x, t.y, t.z)
-                if dm != :No and t.tilemat == :TREE
-                    dm = :Default
-                    t = DwarfAI::Plan::find_tree_base(t)
-                end
-                t.dig dm if ((dm == :DownStair or dm == :Channel) and t.shape != :STAIR_DOWN and t.shape_basic != :Open) or
-                        t.shape == :WALL
-            end
-        } } }
-        return if plandig
-        @layout.each { |f|
-            if t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
-                next if t.tilemat == :CONSTRUCTION
-                if f[:dig]
-                    t.dig f[:dig] if t.shape_basic == :Wall or (f[:dig] == :Channel and t.shape_basic != :Open)
-                else
-                    dm = dig_mode(t.x, t.y, t.z)
-                    t.dig dm if (dm == :DownStair and t.shape != :STAIR_DOWN) or t.shape == :WALL
-                end
-            end
-        }
-    end
-
-    def fixup_open
-        (x1..x2).each { |x| (y1..y2).each { |y| (z1..z2).each { |z|
-            if f = layout.find { |f|
-                fx, fy, fz = x1 + f[:x].to_i, y1 + f[:y].to_i, z1 + f[:z].to_i
-                fx == x and fy == y and fz == z
-            }
-                fixup_open_tile(x, y, z, f[:dig] || :Default, f) unless f[:construction]
-            else
-                fixup_open_tile(x, y, z, dig_mode(x, y, z))
-            end
-        } } }
-    end
-
-    def fixup_open_tile(x, y, z, d, f=nil)
-        return unless t = df.map_tile_at(x, y, z)
-        case d
-        when :Channel, :No
-            # do nothing
-        when :Default
-             fixup_open_helper(x, y, z, :Floor, f) if t.shape_basic == :Open
-        when :UpDownStair, :UpStair, :Ramp
-             fixup_open_helper(x, y, z, d, f) if t.shape_basic == :Open or t.shape_basic == :Floor
-        when :DownStair
-             fixup_open_helper(x, y, z, d, f) if t.shape_basic == :Open
-        end
-    end
-
-    def fixup_open_helper(x, y, z, c, f=nil)
-        unless f
-            f = {:x => x - x1, :y => y - y1, :z => z - z1}
-            layout << f
-        end
-        f[:construction] = c
-    end
-
-    def include?(x, y, z)
-        x1 <= x and x2 >= x and y1 <= y and y2 >= y and z1 <= z and z2 >= z
-    end
-
-    def safe_include?(x, y, z)
-        (x1 - 1 <= x and x2 + 1 >= x and y1 - 1 <= y and y2 + 1 >= y and z1 <= z and z2 >= z) or
-        layout.any? { |f|
-            fx, fy, fz = x1 + f[:x].to_i, y1 + f[:y].to_i, z1 + f[:z].to_i
-            fx - 1 <= x and fx + 1 >= x and fy - 1 <= y and fy + 1 >= y and fz == z
-        }
-    end
-
-    def dig_mode(x, y, z)
-        return :Default if @type != :corridor
-        wantup = include?(x, y, z+1)
-        wantdown = include?(x, y, z-1)
-        # XXX
-        wantup ||= $dwarfAI.plan.instance_variable_get(:@corridors).any? { |r|
-            (accesspath.include?(r) or r.z1 != r.z2) and r.include?(x, y, z+1)
-        }
-        wantdown ||= $dwarfAI.plan.instance_variable_get(:@corridors).any? { |r|
-            (accesspath.include?(r) or r.z1 != r.z2) and r.include?(x, y, z-1)
-        }
-
-        if wantup
-            wantdown ? :UpDownStair : :UpStair
-        else
-            wantdown ? :DownStair : :Default
-        end
-    end
-
-    def dug?(want=nil)
-        holes = []
-        @layout.each { |f|
-            next if f[:ignore]
-            return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
-            next holes << t if f[:dig] == :No
-            case t.shape_basic
-            when :Wall; return false
-            when :Open
-            else return false if f[:dig] == :Channel
-            end
-        }
-        (@x1..@x2).each { |x| (@y1..@y2).each { |y| (@z1..@z2).each { |z|
-            if t = df.map_tile_at(x, y, z)
-                return false if (t.shape == :WALL or (want and t.shape_basic != want)) and not holes.find { |h| h.x == t.x and h.y == t.y and h.z == t.z }
-            end
-        } } }
-        true
-    end
-
-    def constructions_done?
-        @layout.each { |f|
-            next if not f[:construction]
-            return if not t = df.map_tile_at(x1+f[:x].to_i, y1+f[:y].to_i, z1+f[:z].to_i)
-            # TODO check actual tile shape vs construction type
-            return if t.shape_basic == :Open
-        }
-    end
-
-    def to_s
-        s = type.to_s
-        s << " (#{subtype})" if subtype
-        if owner and u = df.unit_find(owner)
-            s << " (owned by #{DwarfAI::describe_unit(u)})"
-        end
-        if misc[:squad_id] and squad = df.world.squads.all.binsearch(misc[:squad_id])
-            s << " (used by #{DwarfAI::capitalize_all(squad.name.to_s(true))})"
-        end
-        s << " (#{misc[:stockpile_level]})" if misc[:stockpile_level]
-        s << " (#{misc[:workshop_level]})" if misc[:workshop_level]
-        s << " (#{misc[:workshop]})" if misc[:workshop]
-        s << " (#{misc[:users].length} users)" if misc[:users]
-        s << " (#{status})"
-        s
-    end
-
-    def serialize
+        r->layout.push_back(new furniture{
+                    {"construction", horrible_t("UpStair")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(1)},
+                    {"z", horrible_t(-10)},
+                });
+        for (int16_t z = -9; z <= -1; z++)
         {
-            :x1         => x1,
-            :x2         => x2,
-            :y1         => y1,
-            :y2         => y2,
-            :z1         => z1,
-            :z2         => z2,
-            :accesspath => accesspath.map{ |ap|
-                if i = $dwarfAI.plan.instance_variable_get(:@rooms).index(ap) # XXX
-                    [:room, i]
-                elsif i = $dwarfAI.plan.instance_variable_get(:@corridors).index(ap) # XXX
-                    [:corridor, i]
-                else
-                    raise "access path #{ap.inspect} not in @rooms or @corridors"
-                end
-            },
-            :status     => status,
-            :layout     => layout,
-            :type       => type,
-            :owner      => owner,
-            :subtype    => subtype,
-            :misc       => Hash[misc.map{ |k, v|
-                if k == :workshop
-                    [k, $dwarfAI.plan.instance_variable_get(:@rooms).index(v)] # XXX
-                else
-                    [k, v]
-                end
-            }],
+            r->layout.push_back(new furniture{
+                        {"construction", horrible_t("UpDownStair")},
+                        {"x", horrible_t(-1)},
+                        {"y", horrible_t(1)},
+                        {"z", horrible_t(z)},
+                    });
         }
-    end
-end
+        r->layout.push_back(new furniture{
+                    {"construction", horrible_t("DownStair")},
+                    {"x", horrible_t(-1)},
+                    {"y", horrible_t(1)},
+                    {"z", horrible_t(0)},
+                });
+        std::vector<int16_t> dxs{0, 1, 2};
+        std::vector<int16_t> dys{1, 0, 2};
+        for (int16_t dx : dxs)
+        {
+            for (int16_t dy : dys)
+            {
+                if (dx == 1 && dy == 1)
+                {
+                    r->layout.push_back(new furniture{
+                                {"dig", horrible_t("Channel")},
+                                {"x", horrible_t(dx)},
+                                {"y", horrible_t(dy)},
+                            });
+                }
+                else
+                {
+                    r->layout.push_back(new furniture{
+                                {"construction", horrible_t("Floor")},
+                                {"x", horrible_t(dx)},
+                                {"y", horrible_t(dy)},
+                            });
+                }
+            }
+        }
+        r->layout.push_back(new furniture{
+                    {"construction", horrible_t("Floor")},
+                    {"x", horrible_t(3)},
+                    {"y", horrible_t(1)},
+                    {"item", horrible_t("hive")},
+                });
+    };
 
-class Room < Corridor
-    def initialize(type, subtype, x1, x2, y1, y2, z)
-        super(x1, x2, y1, y2, z, z)
-        @type = type
-        @subtype = subtype
-    end
+    room *r = new room("pitcage", "", gpit->min + df::coord(-1, -1, 10), gpit->min + df::coord(1, 1, 10));
+    layout(r);
+    rooms.push_back(r);
 
-    def dfbuilding
-        df.building_find(misc[:bld_id]) if misc[:bld_id]
-    end
-end
-*/
+    room *stockpile = new room("stockpile", "animals", r->min, r->max);
+    stockpile->misc["stockpile_level"] = 0;
+    layout(stockpile);
+    rooms.push_back(stockpile);
+
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f, std::vector<room *> entr)
+{
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center0->accesspath = entr;
+    corridors.push_back(corridor_center0);
+
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center2->accesspath = entr;
+    corridors.push_back(corridor_center2);
+
+    // dining halls
+    int16_t ocx = f.x - 2;
+    room *old_cor = corridor_center0;
+
+    // temporary dininghall, for fort start
+    room *tmp = new room("dininghall", "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0));
+    tmp->misc["temporary"] = horrible_t();
+    for (int16_t dy = 0; dy <= 2; dy++)
+    {
+        tmp->layout.push_back(new furniture{
+                    {"item", horrible_t("table")},
+                    {"x", horrible_t(0)},
+                    {"y", horrible_t(dy)},
+                    {"users", horrible_t(std::set<int32_t>())},
+                });
+        tmp->layout.push_back(new furniture{
+                    {"item", horrible_t("chair")},
+                    {"x", horrible_t(1)},
+                    {"y", horrible_t(dy)},
+                    {"users", horrible_t(std::set<int32_t>())},
+                });
+    }
+    (*tmp->layout[0])["makeroom"] = horrible_t();
+    tmp->accesspath.push_back(old_cor);
+    rooms.push_back(tmp);
+
+    // dininghalls x 4 (54 users each)
+    for (int16_t ax = 0; ax <= 1; ax++)
+    {
+        room *cor = new room(df::coord(ocx - 1, f.y - 1, f.z), df::coord(f.x - ax * 12 - 5, f.y + 1, f.z));
+        cor->accesspath.push_back(old_cor);
+        corridors.push_back(cor);
+        ocx = f.x - ax * 12 - 4;
+        old_cor = cor;
+
+        for (int16_t dy = -1; dy <= 1; dy += 2)
+        {
+            room *dinner = new room("dininghall", "", df::coord(f.x - ax * 12 - 2 - 10, f.y + dy * 9, f.z), df::coord(f.x - ax * 12 - 2, f.y + dy * 3, f.z));
+            dinner->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(7)},
+                        {"y", horrible_t(dy > 0 ? -1 : 7)},
+                    });
+            dinner->layout.push_back(new furniture{
+                        {"construction", horrible_t("Wall")},
+                        {"dig", horrible_t("No")},
+                        {"x", horrible_t(2)},
+                        {"y", horrible_t(3)},
+                    });
+            dinner->layout.push_back(new furniture{
+                        {"construction", horrible_t("Wall")},
+                        {"dig", horrible_t("No")},
+                        {"x", horrible_t(8)},
+                        {"y", horrible_t(3)},
+                    });
+            const static std::vector<int16_t> dxs{5, 3, 6, 3, 7, 2, 8, 1, 9};
+            for (int16_t dx : dxs)
+            {
+                for (int16_t sy = -1; sy <= 1; sy += 2)
+                {
+                    dinner->layout.push_back(new furniture{
+                                {"item", horrible_t("table")},
+                                {"x", horrible_t(dx)},
+                                {"y", horrible_t(3 + dy * sy * 1)},
+                                {"ignore", horrible_t()},
+                                {"users", horrible_t(std::set<int32_t>())},
+                            });
+                    dinner->layout.push_back(new furniture{
+                                {"item", horrible_t("chair")},
+                                {"x", horrible_t(dx)},
+                                {"y", horrible_t(3 + dy * sy * 2)},
+                                {"ignore", horrible_t()},
+                                {"users", horrible_t(std::set<int32_t>())},
+                            });
+                }
+            }
+            for (furniture *f : dinner->layout)
+            {
+                if (f->count("item") && f->at("item") == "table")
+                {
+                    (*f)["makeroom"] = horrible_t();
+                    break;
+                }
+            }
+            dinner->accesspath.push_back(cor);
+            rooms.push_back(dinner);
+        }
+    }
+
+    if (allow_ice)
+    {
+        ai->debug(out, "icy embark, no well");
+    }
+    else
+    {
+        df::coord river = scan_river(out);
+        if (river.isValid())
+        {
+            command_result res = setup_blueprint_cistern_fromsource(out, river, f);
+            if (res != CR_OK)
+                return res;
+        }
+        else
+        {
+            // TODO pool, pumps, etc
+            ai->debug(out, "no river, no well");
+        }
+    }
+
+    // farm plots
+    const int16_t farm_w = 3;
+    const int16_t farm_h = 3;
+    size_t dpf = farm_w * farm_h * dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+    size_t nrfarms = (220 + dpf - 1) / dpf;
+
+    int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
+    int16_t cy = f.y;;
+    int16_t cz = find_room("workshop", [](room *r) -> bool { return r->subtype == "Farmers"; })->min.z;
+    room *ws_cor = new room(df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz)); // ws_corr->accesspath ...
+    corridors.push_back(ws_cor);
+    room *farm_stairs = new room(df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz));
+    farm_stairs->accesspath.push_back(ws_cor);
+    corridors.push_back(farm_stairs);
+    cx += 3;
+    int16_t cz2 = cz;
+    size_t soilcnt = 0;
+    for (int16_t z = cz; cz < world->map.z_count; z++)
+    {
+        bool ok = true;
+        size_t scnt = 0;
+        for (int16_t dx = -1; dx <= nrfarms * farm_w / 3; dx++)
+        {
+            for (int16_t dy = -3 * farm_h - farm_h + 1; dy <= 3 * farm_h + farm_h - 1; dy++)
+            {
+                df::tiletype *t = Maps::getTileType(cx + dx, cy + dy, z);
+                if (!t || ENUM_ATTR(tiletype, shape, *t) != tiletype_shape::WALL)
+                {
+                    ok = false;
+                    continue;
+                }
+
+                if (ENUM_ATTR(tiletype, material, *t) == tiletype_material::SOIL)
+                {
+                    scnt++;
+                }
+            }
+        }
+
+        if (ok && soilcnt < scnt)
+        {
+            soilcnt = scnt;
+            cz2 = z;
+        }
+    }
+
+    farm_stairs->max.z = cz2;
+    room *cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2));
+    cor->accesspath.push_back(farm_stairs);
+    corridors.push_back(cor);
+    auto make_farms = [this, cor, nrfarms, cx, cy, cz2](int16_t dy, std::string st)
+    {
+        for (int16_t dx = 0; dx < nrfarms / 3; dx++)
+        {
+            for (int16_t ddy = 0; ddy < 3; ddy++)
+            {
+                room *r = new room("farmplot", st, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
+                r->misc["users"] = std::set<int32_t>();
+                if (dx == 0 && ddy == 0)
+                {
+                    r->layout.push_back(new furniture{
+                                {"item", horrible_t("door")},
+                                {"x", horrible_t(1)},
+                                {"y", horrible_t(dy > 0 ? -1 : farm_h)},
+                            });
+                    r->accesspath.push_back(cor);
+                }
+                else
+                {
+                    r->accesspath.push_back(rooms.back());
+                }
+                rooms.push_back(r);
+            }
+        }
+    };
+    make_farms(-1, "food");
+    make_farms(1, "cloth");
+
+    // seeds stockpile
+    room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz));
+    r->misc["stockpile_level"] = 0;
+    r->misc["workshop"] = rooms.at(rooms.size() - 2 * nrfarms);
+    r->accesspath.push_back(cor);
+    rooms.push_back(r);
+
+    // garbage dump
+    // TODO ensure flat space, no pools/tree, ...
+    df::coord tile(cx + 5, cy, cz);
+    r = new room("garbagedump", "", tile, tile);
+    tile = spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
+            {
+                t = surface_tile_at(t.x, t.y);
+                if (!t.isValid())
+                    return false;
+                if (t.x < cx + 5 && (t.z <= cz + 2 || t.x <= f.x + 5))
+                    return false;
+                if (!map_tile_in_rock(t + df::coord(0, 0, -1)))
+                    return false;
+                if (!map_tile_in_rock(t + df::coord(2, 0, -1)))
+                    return false;
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Floor)
+                    return false;
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 0, 0)))) != tiletype_shape_basic::Floor)
+                    return false;
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(2, 0, 0)))) != tiletype_shape_basic::Floor)
+                    return false;
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 1, 0)))) == tiletype_shape_basic::Floor)
+                    return true;
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, -1, 0)))) == tiletype_shape_basic::Floor)
+                    return true;
+                return false;
+            });
+    tile = surface_tile_at(tile.x, tile.y);
+    r->min = r->max = tile;
+    rooms.push_back(r);
+    r = new room("garbagepit", "", tile + df::coord(1, 0, 0), tile + df::coord(2, 0, 0));
+    rooms.push_back(r);
+
+    // infirmary
+    old_cor = corridor_center2;
+    cor = new room(f + df::coord(3, -1, 0), f + df::coord(5, 1, 0));
+    cor->accesspath.push_back(old_cor);
+    corridors.push_back(cor);
+    old_cor = cor;
+
+    room *infirmary = new room("infirmary", "", f + df::coord(2, -3, 0), f + df::coord(6, -7, 0));
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(3)},
+                {"y", horrible_t(5)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("bed")},
+                {"x", horrible_t(0)},
+                {"y", horrible_t(1)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("table")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(1)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("bed")},
+                {"x", horrible_t(2)},
+                {"y", horrible_t(1)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("traction_bench")},
+                {"x", horrible_t(0)},
+                {"y", horrible_t(2)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("traction_bench")},
+                {"x", horrible_t(2)},
+                {"y", horrible_t(2)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("bed")},
+                {"x", horrible_t(0)},
+                {"y", horrible_t(3)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("table")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(3)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("bed")},
+                {"x", horrible_t(2)},
+                {"y", horrible_t(3)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("chest")},
+                {"x", horrible_t(4)},
+                {"y", horrible_t(1)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("chest")},
+                {"x", horrible_t(4)},
+                {"y", horrible_t(2)},
+            });
+    infirmary->layout.push_back(new furniture{
+                {"item", horrible_t("chest")},
+                {"x", horrible_t(4)},
+                {"y", horrible_t(3)},
+            });
+    infirmary->accesspath.push_back(cor);
+    rooms.push_back(infirmary);
+
+    // cemetary lots (160 spots)
+    cor = new room(f + df::coord(6, -1, 0), f + df::coord(14, 1, 0));
+    cor->accesspath.push_back(old_cor);
+    corridors.push_back(cor);
+    old_cor = cor;
+
+    for (int16_t ry = 0; ry < 500; ry++)
+    {
+        bool stop = false;
+        for (int16_t tx = -1; !stop && tx <= 19; tx++)
+        {
+            for (int16_t ty = -1; !stop && ty <= 4; ty++)
+            {
+                df::tiletype *t = Maps::getTileType(f + df::coord(10 + tx, -3 - 3 * ry - ty, 0));
+                if (!t || ENUM_ATTR(tiletype_shape, basic_shape,
+                            ENUM_ATTR(tiletype, shape, *t)) !=
+                        tiletype_shape_basic::Wall)
+                {
+                    stop = true;
+                }
+            }
+        }
+        if (stop)
+            break;
+
+        for (int16_t rrx = 0; rrx < 2; rrx++)
+        {
+            for (int16_t rx = 0; rx < 2; rx++)
+            {
+                df::coord o = f + df::coord(10 + 5 * rx + 9 * rrx, -3 - 3 * ry, 0);
+                room *cemetary = new room("cemetary", "", o, o + df::coord(4, -3, 0));
+                for (int16_t dx = 0; dx < 4; dx++)
+                {
+                    for (int16_t dy = 0; dy < 2; dy++)
+                    {
+                        cemetary->layout.push_back(new furniture{
+                                    {"item", horrible_t("coffin")},
+                                    {"x", horrible_t(dx + 1 - rx)},
+                                    {"y", horrible_t(dy + 1)},
+                                    {"ignore", horrible_t()},
+                                    {"users", horrible_t(std::set<int32_t>())},
+                                });
+                    }
+                }
+                if (rx == 0 && ry == 0 && rrx == 0)
+                {
+                    cemetary->layout.push_back(new furniture{
+                                {"item", horrible_t("door")},
+                                {"x", horrible_t(4)},
+                                {"y", horrible_t(4)},
+                            });
+                    cemetary->accesspath.push_back(cor);
+                }
+                rooms.push_back(cemetary);
+            }
+        }
+    }
+
+    // barracks
+    // 8 dwarf per squad, 20% pop => 40 soldiers for 200 dwarves => 5 barracks
+    old_cor = corridor_center2;
+    int16_t oldcx = old_cor->max.x + 2; // door
+    for (int16_t rx = 0; rx < 4; rx++)
+    {
+        cor = new room(df::coord(oldcx, f.y - 1, f.z), df::coord(f.x + 5 + 10 * rx, f.y + 1, f.z));
+        cor->accesspath.push_back(old_cor);
+        corridors.push_back(old_cor);
+        old_cor = cor;
+        oldcx = cor->max.x + 1;
+
+        for (int16_t ry = -1; ry <= 1; ry += 2)
+        {
+            if (ry == -1 && rx < 3) // infirmary/cemetary
+                continue;
+
+            room *barracks = new room("barracks", "", df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z));
+            barracks->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(3)},
+                        {"y", horrible_t(ry > 0 ? -1 : 8)},
+                    });
+            for (int16_t dy_ = 0; dy_ < 8; dy_++)
+            {
+                int16_t dy = ry < 0 ? 7 - dy_ : dy_;
+                barracks->layout.push_back(new furniture{
+                            {"item", horrible_t("armorstand")},
+                            {"x", horrible_t(5)},
+                            {"y", horrible_t(dy)},
+                            {"ignore", horrible_t()},
+                            {"users", horrible_t(std::set<int32_t>())},
+                        });
+                barracks->layout.push_back(new furniture{
+                            {"item", horrible_t("bed")},
+                            {"x", horrible_t(6)},
+                            {"y", horrible_t(dy)},
+                            {"ignore", horrible_t()},
+                            {"users", horrible_t(std::set<int32_t>())},
+                        });
+                barracks->layout.push_back(new furniture{
+                            {"item", horrible_t("cabinet")},
+                            {"x", horrible_t(0)},
+                            {"y", horrible_t(dy)},
+                            {"ignore", horrible_t()},
+                            {"users", horrible_t(std::set<int32_t>())},
+                        });
+                barracks->layout.push_back(new furniture{
+                            {"item", horrible_t("chest")},
+                            {"x", horrible_t(1)},
+                            {"y", horrible_t(dy)},
+                            {"ignore", horrible_t()},
+                            {"users", horrible_t(std::set<int32_t>())},
+                        });
+            }
+            barracks->layout.push_back(new furniture{
+                        {"item", horrible_t("weaponrack")},
+                        {"x", horrible_t(4)},
+                        {"y", horrible_t(ry > 0 ? 7 : 0)},
+                        {"makeroom", horrible_t()},
+                        {"users", horrible_t(std::set<int32_t>())},
+                    });
+            barracks->layout.push_back(new furniture{
+                        {"item", horrible_t("weaponrack")},
+                        {"x", horrible_t(2)},
+                        {"y", horrible_t(ry > 0 ? 7 : 0)},
+                        {"ignore", horrible_t()},
+                        {"users", horrible_t(std::set<int32_t>())},
+                    });
+            barracks->layout.push_back(new furniture{
+                        {"item", horrible_t("archerytarget")},
+                        {"x", horrible_t(3)},
+                        {"y", horrible_t(ry > 0 ? 7 : 0)},
+                        {"ignore", horrible_t()},
+                        {"users", horrible_t(std::set<int32_t>())},
+                    });
+            barracks->accesspath.push_back(cor);
+            rooms.push_back(barracks);
+        }
+    }
+
+    command_result res;
+    res = setup_blueprint_pastures(out);
+    if (res != CR_OK)
+        return res;
+    res = setup_blueprint_outdoor_farms(out, nrfarms * 2);
+    if (res != CR_OK)
+        return res;
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f)
+{
+    // TODO dynamic layout, at least move the well/cistern on the side of the river
+    // TODO scan for solid ground for all this
+
+    // well
+    room *cor = new room(f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0));
+    cor->accesspath.push_back(corridors.back());
+    corridors.push_back(cor);
+
+    df::coord c = f - df::coord(32, 0, 0);
+    room *well = new room("well", "well", c - df::coord(4, 4, 0), c + df::coord(4, 4, 0));
+    well->layout.push_back(new furniture{
+                {"item", horrible_t("well")},
+                {"x", horrible_t(4)},
+                {"y", horrible_t(4)},
+                {"makeroom", horrible_t()},
+                {"dig", horrible_t("Channel")},
+            });
+    well->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(9)},
+                {"y", horrible_t(3)},
+            });
+    well->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(9)},
+                {"y", horrible_t(5)},
+            });
+    well->layout.push_back(new furniture{
+                {"item", horrible_t("trap")},
+                {"subtype", horrible_t("lever")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(0)},
+                {"way", horrible_t("out")},
+            });
+    well->layout.push_back(new furniture{
+                {"item", horrible_t("trap")},
+                {"subtype", horrible_t("lever")},
+                {"x", horrible_t(0)},
+                {"y", horrible_t(0)},
+                {"way", horrible_t("in")},
+            });
+    well->accesspath.push_back(cor);
+    rooms.push_back(well);
+
+    // water cistern under the well (in the hole of bedroom blueprint)
+    std::vector<room *> cist_cors = find_corridor_tosurface(out, c - df::coord(8, 0, 0));
+    cist_cors.at(0)->min.z -= 3;
+
+    room *cistern = new room("cistern", "well", c + df::coord(-7, -1, -3), c + df::coord(1, 1, -1));
+    cistern->accesspath.push_back(cist_cors.at(0));
+
+    // handle low rivers / high mountain forts
+    if (f.z > src.z)
+        f.z = c.z = src.z;
+    // should be fine with cistern auto-fill checks
+    if (cistern->min.z > f.z)
+        cistern->min.z = f.z;
+
+    // staging reservoir to fill the cistern, one z-level at a time
+    // should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
+    //  cistern is 9x3 + 1 (stairs)
+    //  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
+    room *reserve = new room("cistern", "reserve", c + df::coord(-10, -3, 0), c + df::coord(-14, 3, 0));
+    reserve->layout.push_back(new furniture{
+                {"item", horrible_t("floodgate")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(3)},
+                {"way", horrible_t("in")},
+            });
+    reserve->layout.push_back(new furniture{
+                {"item", horrible_t("floodgate")},
+                {"x", horrible_t(5)},
+                {"y", horrible_t(3)},
+                {"way", horrible_t("out")},
+                {"ignore", horrible_t()},
+            });
+    reserve->accesspath.push_back(cist_cors.at(0));
+
+    // cisterns are dug in order
+    // try to dig reserve first, so we have liquid water even if river freezes
+    rooms.push_back(reserve);
+    rooms.push_back(cistern);
+
+    // link the cistern reserve to the water source
+
+    // trivial walk of the river tiles to find a spot closer to dst
+    auto move_river = [this, &src](df::coord dst)
+    {
+        auto distance = [](df::coord a, df::coord b) -> int16_t
+        {
+            df::coord d = a - b;
+            return d.x * d.x + d.y * d.y + d.z * d.z;
+        };
+
+        df::coord nsrc = src;
+        for (size_t i = 0; i < 500; i++)
+        {
+            if (!nsrc.isValid())
+                break;
+            src = nsrc;
+            int16_t dist = distance(src, dst);
+            nsrc = spiral_search(src, 1, 1, [distance, dist, dst](df::coord t) -> bool
+                    {
+                        if (distance(t, dst) > dist)
+                            return false;
+                        return Maps::getTileDesignation(t)->bits.feature_local;
+                    });
+        }
+    };
+
+    // 1st end: reservoir input
+    df::coord p1 = c - df::coord(16, 0, 0);
+    move_river(p1);
+    ai->debug(out, stl_sprintf("cistern: reserve/in (%d, %d, %d), river (%d, %d, %d)", p1.x, p1.y, p1.z, src.x, src.y, src.z));
+
+    df::coord p = p1;
+    room *r = reserve;
+    // XXX hardcoded layout again
+    if (src.x > p1.x)
+    {
+        // the tunnel should walk around other blueprint rooms
+        df::coord p2 = p1 + df::coord(0, src.y >= p1.y ? 26 : -26, 0);
+        cor = new room(p1, p2);
+        corridors.push_back(cor);
+        reserve->accesspath.push_back(cor);
+        move_river(p2);
+        p = p2;
+        r = cor;
+    }
+
+    std::vector<room *> up = find_corridor_tosurface(out, p);
+    r->accesspath.push_back(up.at(0));
+
+    df::coord dst = up.back()->max - df::coord(0, 0, 2);
+    if (src.z <= dst.z)
+        dst.z = src.z - 1;
+    move_river(dst);
+
+    if (std::abs(dst.x - src.x) > 1)
+    {
+        df::coord p3(src.x, dst.y, dst.z);
+        move_river(p3);
+    }
+
+    // find safe tile near the river
+    df::coord output = spiral_search(src, [this](df::coord t) -> bool { return map_tile_in_rock(t); });
+
+    // find tile to channel to start water flow
+    df::coord channel = spiral_search(output, 1, 1, [this](df::coord t) -> bool
+            {
+                return spiral_search(t, 1, 1, [this](df::coord tt) -> bool
+                        {
+                            return Maps::getTileDesignation(tt)->bits.feature_local;
+                        }).isValid();
+            });
+    if (!channel.isValid())
+        channel = spiral_search(output, 1, 1, [this](df::coord t) -> bool
+                {
+                    return spiral_search(t, 1, 1, [this](df::coord tt) -> bool
+                            {
+                                return Maps::getTileDesignation(tt)->bits.flow_size != 0 ||
+                                        ENUM_ATTR(tiletype, material, *Maps::getTileType(tt)) == tiletype_material::FROZEN_LIQUID;
+                            }).isValid();
+                });
+    if (channel.isValid())
+    {
+        ai->debug(out, stl_sprintf("cistern: channel_enable (%d, %d, %d)", channel.x, channel.y, channel.z));
+    }
+
+    // TODO check that 'channel' is easily channelable (eg river in a hole)
+
+    int16_t y_x = 0;
+    if (dst.x - 1 > output.x)
+    {
+        cor = new room(df::coord(dst.x - 1, dst.y, dst.z), df::coord(output.x + 1, dst.y, dst.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+        r = cor;
+        y_x = 1;
+    }
+    else if (output.x - 1 > dst.x)
+    {
+        cor = new room(df::coord(dst.x + 1, dst.y, dst.z), df::coord(output.x - 1, dst.y, dst.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+        r = cor;
+        y_x = -1;
+    }
+
+    if (dst.y - 1 > output.y)
+    {
+        cor = new room(df::coord(output.x + y_x, dst.y + 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+    }
+    else if (output.y - 1 > dst.y)
+    {
+        cor = new room(df::coord(output.x + y_x, dst.y - 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+    }
+
+    up = find_corridor_tosurface(out, df::coord(output, dst.z));
+    r->accesspath.push_back(up.at(0));
+
+    if (channel.isValid())
+    {
+        reserve->misc["channel_enable"] = channel;
+    }
+    return CR_OK;
+}
+
+// scan for 11x11 flat areas with grass
+command_result Plan::setup_blueprint_pastures(color_ostream & out)
+{
+    size_t want = 36;
+    spiral_search(fort_entrance->pos(), [this, &out, &want](df::coord _t) -> bool
+            {
+                df::coord sf = surface_tile_at(_t.x, _t.y);
+                if (!sf.isValid())
+                    return false;
+                size_t floortile = 0;
+                size_t grasstile = 0;
+                bool ok = true;
+                for (int16_t dx = -5; ok && dx <= 5; dx++)
+                {
+                    for (int16_t dy = -5; ok && dy <= 5; dy++)
+                    {
+                        df::coord t = sf + df::coord(dx, dy, 0);
+                        df::tiletype *tt = Maps::getTileType(t);
+                        if (!tt || map_tile_intersects_room(t))
+                        {
+                            ok = false;
+                            continue;
+                        }
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE)
+                        {
+                            continue;
+                        }
+                        if (Maps::getTileDesignation(t)->bits.flow_size != 0)
+                        {
+                            continue;
+                        }
+                        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::FROZEN_LIQUID)
+                        {
+                            continue;
+                        }
+                        floortile++;
+                        for (auto be : Maps::getTileBlock(t)->block_events)
+                        {
+                            df::block_square_event_grassst *grass = virtual_cast<df::block_square_event_grassst>(be);
+                            if (grass && grass->amount[t.x & 0xf][t.y & 0xf] > 0)
+                            {
+                                grasstile++;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
+                {
+                    room *r = new room("pasture", "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
+                    r->misc["users"] = std::set<int32_t>();
+                    rooms.push_back(r);
+                    want--;
+                }
+                return want == 0;
+            });
+}
+
+// scan for 3x3 flat areas with soil
+command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t want)
+{
+    spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 9, 3, [this, &out, &want](df::coord _t) -> bool
+            {
+                df::coord sf = surface_tile_at(_t.x, _t.y);
+                if (!sf.isValid())
+                    return false;
+                df::tile_designation sd = *Maps::getTileDesignation(sf);
+                for (int16_t dx = -1; dx <= 1; dx++)
+                {
+                    for (int16_t dy = -1; dy <= 1; dy++)
+                    {
+                        df::coord t = sf + df::coord(dx, dy, 0);
+                        df::tile_designation *td = Maps::getTileDesignation(t);
+                        if (!td)
+                        {
+                            return false;
+                        }
+                        if (sd.bits.subterranean != td->bits.subterranean)
+                        {
+                            return false;
+                        }
+                        if (!sd.bits.subterranean &&
+                                sd.bits.biome != td->bits.biome)
+                        {
+                            return false;
+                        }
+                        df::tiletype tt = *Maps::getTileType(t);
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Floor)
+                        {
+                            return false;
+                        }
+                        if (td->bits.flow_size != 0)
+                        {
+                            return false;
+                        }
+                        const static std::set<df::tiletype_material> allowed_materials{tiletype_material::GRASS_DARK, tiletype_material::GRASS_LIGHT, tiletype_material::SOIL};
+                        if (!allowed_materials.count(ENUM_ATTR(tiletype, material, tt)))
+                        {
+                            return false;
+                        }
+                    }
+                }
+                room *r = new room("farmplot", want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
+                r->misc["users"] = std::set<int32_t>();
+                r->misc["outdoor"] = horrible_t();
+                want--;
+                return want == 0;
+            });
+}
+
+command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, std::vector<room *> entr)
+{
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center0->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(-1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center0->accesspath = entr;
+    corridors.push_back(corridor_center0);
+
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(0)},
+            });
+    corridor_center2->layout.push_back(new furniture{
+                {"item", horrible_t("door")},
+                {"x", horrible_t(1)},
+                {"y", horrible_t(2)},
+            });
+    corridor_center2->accesspath = entr;
+    corridors.push_back(corridor_center2);
+
+    for (int16_t dirx = -1; dirx <= 1; dirx += 2)
+    {
+        room *prev_corx = dirx < 0 ? corridor_center0 : corridor_center2;
+        int16_t ocx = f.x + dirx * 3;
+        for (int16_t dx = 1; dx <= 3; dx++)
+        {
+            // segments of the big central horizontal corridor
+            int16_t cx = f.x + dirx * (9 * dx - 4);
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z));
+            cor_x->accesspath.push_back(prev_corx);
+            corridors.push_back(cor_x);
+            prev_corx = cor_x;
+            ocx = cx + dirx;
+
+            for (int16_t diry = -1; diry <= 1; diry += 2)
+            {
+                room *prev_cory = cor_x;
+                int16_t ocy = f.y + diry * 2;
+                for (int16_t dy = 1; dy <= 6; dy++)
+                {
+                    int16_t cy = f.y + diry * 3 * dy;
+                    room *cor_y = new room(df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z));
+                    cor_y->accesspath.push_back(prev_cory);
+                    corridors.push_back(cor_y);
+                    prev_cory = cor_y;
+                    ocy = cy + diry;
+
+                    auto bedroom = [this, cx, diry, cor_y](room *r)
+                    {
+                        r->accesspath.push_back(cor_y);
+                        r->layout.push_back(new furniture{
+                                    {"item", horrible_t("bed")},
+                                    {"x", horrible_t(r->min.x < cx ? 0 : 1)},
+                                    {"y", horrible_t(diry < 0 ? 1 : 0)},
+                                    {"makeroom", horrible_t()},
+                                });
+                        r->layout.push_back(new furniture{
+                                    {"item", horrible_t("cabinet")},
+                                    {"x", horrible_t(r->min.x < cx ? 0 : 1)},
+                                    {"y", horrible_t(diry < 0 ? 0 : 1)},
+                                    {"ignore", horrible_t()},
+                                });
+                        r->layout.push_back(new furniture{
+                                    {"item", horrible_t("chest")},
+                                    {"x", horrible_t(r->min.x < cx ? 1 : 0)},
+                                    {"y", horrible_t(diry < 0 ? 0 : 1)},
+                                    {"ignore", horrible_t()},
+                                });
+                        r->layout.push_back(new furniture{
+                                    {"item", horrible_t("door")},
+                                    {"x", horrible_t(r->min.x < cx ? 2 : -1)},
+                                    {"y", horrible_t(diry < 0 ? 1 : 0)},
+                                });
+                        rooms.push_back(r);
+                    };
+                    bedroom(new room("bedroom", "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z)));
+                    bedroom(new room("bedroom", "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z)));
+                }
+            }
+        }
+
+        // noble suites
+        int16_t cx = f.x + dirx * (9 * 3 - 4 + 6);
+        room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z));
+        room *cor_x2 = new room(df::coord(ocx - dirx, f.y, f.z), df::coord(f.x + dirx * 3, f.y, f.z));
+        cor_x->accesspath.push_back(cor_x2);
+        cor_x2->accesspath.push_back(dirx < 0 ? corridor_center0 : corridor_center2);
+        corridors.push_back(cor_x);
+        corridors.push_back(cor_x2);
+
+        for (int16_t diry = -1; diry <= 1; diry += 2)
+        {
+            noblesuite++;
+
+            room *r = new room("nobleroom", "office", df::coord(cx - 1, f.y + diry * 3, f.z), df::coord(cx + 1, f.y + diry * 5, f.z));
+            r->misc["noblesuite"] = noblesuite;
+            r->accesspath.push_back(cor_x);
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("chair")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1)},
+                        {"makeroom", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("chair")},
+                        {"x", horrible_t(1 - dirx)},
+                        {"y", horrible_t(1)},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("chest")},
+                        {"x", horrible_t(1 + dirx)},
+                        {"y", horrible_t(0)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("cabinet")},
+                        {"x", horrible_t(1 + dirx)},
+                        {"y", horrible_t(2)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1 - 2 * diry)},
+                    });
+            rooms.push_back(r);
+
+            r = new room("nobleroom", "bedroom", df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
+            r->misc["noblesuite"] = noblesuite;
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("bed")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1)},
+                        {"makeroom", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("armorstand")},
+                        {"x", horrible_t(1 - dirx)},
+                        {"y", horrible_t(0)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("weaponrack")},
+                        {"x", horrible_t(1 - dirx)},
+                        {"y", horrible_t(2)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1 - 2 * diry)},
+                        {"internal", horrible_t()},
+                    });
+            r->accesspath.push_back(rooms.back());
+            rooms.push_back(r);
+
+            r = new room("nobleroom", "diningroom", df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
+            r->misc["noblesuite"] = noblesuite;
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("table")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1)},
+                        {"makeroom", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("chair")},
+                        {"x", horrible_t(1 + dirx)},
+                        {"y", horrible_t(1)},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("cabinet")},
+                        {"x", horrible_t(1 - dirx)},
+                        {"y", horrible_t(0)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("chest")},
+                        {"x", horrible_t(1 - dirx)},
+                        {"y", horrible_t(2)},
+                        {"ignore", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1 - 2 * diry)},
+                        {"internal", horrible_t()},
+                    });
+            r->accesspath.push_back(rooms.back());
+            rooms.push_back(r);
+
+            r = new room("nobleroom", "tomb", df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
+            r->misc["noblesuite"] = noblesuite;
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("coffin")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1)},
+                        {"makeroom", horrible_t()},
+                    });
+            r->layout.push_back(new furniture{
+                        {"item", horrible_t("door")},
+                        {"x", horrible_t(1)},
+                        {"y", horrible_t(1 - 2 * diry)},
+                        {"internal", horrible_t()},
+                    });
+            r->accesspath.push_back(rooms.back());
+            rooms.push_back(r);
+        }
+    }
+    return CR_OK;
+}
+
+command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
+{
+    int16_t x = 0;
+    int16_t y = 0;
+    int16_t i = 0;
+    std::map<int16_t, std::set<df::coord2d>> ground;
+    events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this, &x, &y, &i, &ground](color_ostream & out) -> bool
+            {
+                if (i == 31 || x + i == world->map.x_count)
+                {
+                    for (auto g : ground)
+                    {
+                        df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(df::coord(x, y, g.first), building_type::Civzone, civzone_type::ActivityZone));
+                        bld->zone_flags.bits.active = 1;
+                        bld->zone_flags.bits.gather = 1;
+                        bld->gather_flags.bits.pick_trees = 1;
+                        bld->gather_flags.bits.pick_shrubs = 1;
+                        bld->gather_flags.bits.gather_fallen = 1;
+                        int16_t w = 31;
+                        int16_t h = 31;
+                        if (x + 31 > world->map.x_count)
+                            w = world->map.x_count % 31;
+                        if (y + 31 > world->map.y_count)
+                            h = world->map.y_count % 31;
+                        bld->room.extents = new uint8_t[w * h];
+                        bld->room.x = x;
+                        bld->room.y = y;
+                        bld->room.width = w;
+                        bld->room.height = h;
+                        for (int16_t cx = 0; cx < w; cx++)
+                        {
+                            for (int16_t cy = 0; cy < h; cy++)
+                            {
+                                bld->room.extents[cx + w * cy] = g.second.count(df::coord2d(cx, cy));
+                            }
+                        }
+                        bld->is_room = 1;
+                        Buildings::constructAbstract(bld);
+                    }
+
+                    ground.clear();
+                    i = 0;
+                    x += 31;
+                    if (x >= world->map.x_count)
+                    {
+                        x = 0;
+                        y += 31;
+                        if (y >= world->map.y_count)
+                        {
+                            ai->debug(out, "plan setup_outdoor_gathering_zones finished");
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                int16_t tx = x + i;
+                for (int16_t ty = y; ty < y + 31 && ty < world->map.y_count; ty++)
+                {
+                    df::coord t = surface_tile_at(tx, ty, true);
+                    if (!t.isValid())
+                        continue;
+                    ground[t.z].insert(df::coord2d(tx % 31, ty % 31));
+                }
+                i++;
+                return false;
+            });
+
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_caverns(color_ostream & out)
+{
+    df::coord wall;
+    wall.clear();
+    int16_t & z = cavern_max_level;
+    if (z == -1)
+    {
+        z = world->map.z_count - 1;
+    }
+    df::coord target;
+    for (; !wall.isValid() && z > 0; z--)
+    {
+        ai->debug(out, stl_sprintf("outpost: searching z-level %d", z));
+        for (int16_t x = 0; !wall.isValid() && x < world->map.x_count; x++)
+        {
+            for (int16_t y = 0; !wall.isValid() && y < world->map.y_count; y++)
+            {
+                df::coord t(x, y, z);
+                if (!map_tile_in_rock(t))
+                    continue;
+                // find a floor next to the wall
+                target = spiral_search(t, 2, 2, [this](df::coord _t) -> bool
+                        {
+                            return map_tile_cavernfloor(_t);
+                        });
+                if (target.isValid())
+                    wall = t;
+            }
+        }
+    }
+    if (!wall.isValid())
+    {
+        ai->debug(out, "outpost: could not find a cavern wall tile");
+        return CR_FAILURE;
+    }
+
+    room *r = new room("outpost", "cavern", target, target);
+
+    int16_t y_x = 0;
+    if (wall.x - 1 > target.x)
+    {
+        room *cor = new room(df::coord(wall.x + 1, wall.y, wall.z), df::coord(target.x - 1, wall.y, wall.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+        y_x = 1;
+    }
+    else if (target.x - 1 > wall.x)
+    {
+        room *cor = new room(df::coord(wall.x - 1, wall.y, wall.z), df::coord(target.x + 1, wall.y, wall.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+        y_x = -1;
+    }
+
+    if (wall.y - 1 > target.y)
+    {
+        room *cor = new room(df::coord(target.x + y_x, wall.y + 1, wall.z), df::coord(target.x + y_x, target.y, wall.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+    }
+    else if (target.y - 1 > wall.y)
+    {
+        room *cor = new room(df::coord(target.x + y_x, wall.y - 1, wall.z), df::coord(target.x + y_x, target.y, wall.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+    }
+
+    std::vector<room *> up = find_corridor_tosurface(out, wall);
+    r->accesspath.push_back(up.at(0));
+
+    ai->debug(out, stl_sprintf("outpost: wall (%d, %d, %d)", wall.x, wall.y, wall.z));
+    ai->debug(out, stl_sprintf("outpost: target (%d, %d, %d)", target.x, target.y, target.z));
+    ai->debug(out, stl_sprintf("outpost: up (%d, %d, %d)", up.back()->max.x, up.back()->max.y, up.back()->max.z));
+
+    rooms.push_back(r);
+
+    return CR_OK;
+}
+
+// check that tile is surrounded by solid rock/soil walls
+bool Plan::map_tile_in_rock(df::coord tile)
+{
+    for (int16_t dx = -1; dx <= 1; dx++)
+    {
+        for (int16_t dy = -1; dy <= 1; dy++)
+        {
+            df::tiletype *tt = Maps::getTileType(tile + df::coord(dx, dy, 0));
+            if (!tt)
+            {
+                return false;
+            }
+
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall)
+            {
+                return false;
+            }
+
+            df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
+            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// check tile is surrounded by solid walls or visible tile
+bool Plan::map_tile_nocavern(df::coord tile)
+{
+    for (int16_t dx = -1; dx <= 1; dx++)
+    {
+        for (int16_t dy = -1; dy <= 1; dy++)
+        {
+            df::coord t = tile + df::coord(dx, dy, 0);
+            df::tile_designation *td = Maps::getTileDesignation(t);
+            if (!td)
+            {
+                continue;
+            }
+
+
+            if (!td->bits.hidden)
+            {
+                if (td->bits.flow_size >= 4)
+                    return false;
+                if (!allow_ice && ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID)
+                    return false;
+                continue;
+            }
+
+            df::tiletype tt = *Maps::getTileType(t);
+
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall)
+            {
+                return false;
+            }
+
+            df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// check tile is a hidden floor
+bool Plan::map_tile_cavernfloor(df::coord t)
+{
+    df::tile_designation *td = Maps::getTileDesignation(t);
+    if (!td)
+        return false;
+    if (!td->bits.hidden)
+        return false;
+    if (td->bits.flow_size != 0)
+        return false;
+    df::tiletype tt = *Maps::getTileType(t);
+    df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+    if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && tm != tiletype_material::GRASS_LIGHT && tm != tiletype_material::GRASS_DARK && tm != tiletype_material::PLANT && tm != tiletype_material::SOIL)
+        return false;
+    return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Floor;
+}
+
+// create a new Corridor from origin to surface, through rock
+// may create multiple chunks to avoid obstacles, all parts are added to corridors
+// returns an array of Corridors, 1st = origin, last = surface
+std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord origin)
+{
+    std::vector<room *> cors;
+    for (;;)
+    {
+        room *cor = new room(origin, origin);
+        if (!cors.empty())
+        {
+            cors.back()->accesspath.push_back(cor);
+        }
+        cors.push_back(cor);
+
+        while (map_tile_in_rock(cor->max) && !map_tile_intersects_room(cor->max + df::coord(0, 0, 1)))
+        {
+            cor->max.z++;
+        }
+
+        df::tiletype tt = *Maps::getTileType(cor->max);
+        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
+        df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+        df::tile_designation td = *Maps::getTileDesignation(cor->max);
+        if ((sb == tiletype_shape_basic::Ramp ||
+                    sb == tiletype_shape_basic::Floor) &&
+                tm != tiletype_material::TREE &&
+                td.bits.flow_size == 0 &&
+                !td.bits.hidden)
+        {
+            break;
+        }
+
+        df::coord out2 = spiral_search(cor->max, [this](df::coord t) -> bool
+                {
+                    while (map_tile_in_rock(t))
+                    {
+                        t.z++;
+                    }
+
+                    df::tiletype tt = *Maps::getTileType(t);
+                    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
+                    df::tile_designation td = *Maps::getTileDesignation(t);
+
+                    return (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Floor) &&
+                            ENUM_ATTR(tiletype, material, tt) != tiletype_material::TREE &&
+                            td.bits.flow_size == 0 &&
+                            !td.bits.hidden &&
+                            !map_tile_intersects_room(t);
+                });
+
+        if (Maps::getTileDesignation(cor->max)->bits.flow_size > 0)
+        {
+            // damp stone located
+            cor->max.z--;
+            out2.z--;
+        }
+        cor->max.z--;
+        out2.z--;
+
+        int16_t y_x = cor->max.x;
+        if (cor->max.x - 1 > out2.x)
+        {
+            cor = new room(df::coord(out2.x - 1, out2.y, out2.z), df::coord(cor->max.x + 1, out2.y, out2.z));
+            cors.back()->accesspath.push_back(cor);
+            cors.push_back(cor);
+            y_x++;
+        }
+        else if (out2.x - 1 > cor->max.x)
+        {
+            cor = new room(df::coord(out2.x + 1, out2.y, out2.z), df::coord(cor->max.x - 1, out2.y, out2.z));
+            cors.back()->accesspath.push_back(cor);
+            cors.push_back(cor);
+            y_x--;
+        }
+
+        if (cor->max.y - 1 > out2.y)
+        {
+            cor = new room(df::coord(y_x, out2.y - 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
+            cors.back()->accesspath.push_back(cor);
+            cors.push_back(cor);
+        }
+        else if (out2.y - 1 > cor->max.y)
+        {
+            cor = new room(df::coord(y_x, out2.y + 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
+            cors.back()->accesspath.push_back(cor);
+            cors.push_back(cor);
+        }
+
+        if (origin == out2)
+        {
+            ai->debug(out, stl_sprintf("find_corridor_tosurface: loop: %d, %d, %d", origin.x, origin.y, origin.z));
+            break;
+        }
+        ai->debug(out, stl_sprintf("find_corridor_tosurface: %d, %d, %d -> %d, %d, %d", origin.x, origin.y, origin.z, out2.x, out2.y, out2.z));
+
+        origin = out2;
+    }
+    corridors.insert(corridors.end(), cors.begin(), cors.end());
+    return cors;
+}
+
+df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
+{
+    int16_t dx = tx & 0xf;
+    int16_t dy = ty & 0xf;
+
+    bool tree = false;
+    for (int16_t z = world->map.z_count - 1; z >= 0; z--)
+    {
+        df::map_block *b = Maps::getTileBlock(tx, ty, z);
+        if (!b)
+            continue;
+        df::tiletype tt = b->tiletype[dx][dy];
+        df::tiletype_shape ts = ENUM_ATTR(tiletype, shape, tt);
+        df::tiletype_shape_basic tsb = ENUM_ATTR(tiletype_shape, basic_shape, ts);
+        if (tsb == tiletype_shape_basic::Open)
+            continue;
+        df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+        if (tm == tiletype_material::POOL || tm == tiletype_material::RIVER)
+        {
+            df::coord invalid;
+            invalid.clear();
+            return invalid;
+        }
+        if (tm == tiletype_material::TREE)
+        {
+            tree = true;
+        }
+        else if (tsb == tiletype_shape_basic::Floor || tsb == tiletype_shape_basic::Ramp)
+        {
+            return df::coord(tx, ty, z);
+        }
+        else if (tree)
+        {
+            df::coord c(tx, ty, z + 1);
+            if (!allow_trees)
+                c.clear();
+            return c;
+        }
+    }
+    df::coord invalid;
+    invalid.clear();
+    return invalid;
+}
+
+std::string Plan::status()
+{
+    std::map<std::string, size_t> task_count;
+    for (task *t : tasks)
+    {
+        task_count[t->at(0).str]++;
+    }
+    std::ostringstream s;
+    for (auto tc : task_count)
+    {
+        if (!s.str().empty())
+        {
+            s << ", ";
+        }
+        s << tc.first << ": " << tc.second;
+    }
+    if (task *t = is_digging())
+    {
+        s << ", digging: " << describe_room(t->at(1).r);
+    }
+    return s.str();
+}
+
+void Plan::categorize_all()
+{
+    room_category.clear();
+    for (room *r : rooms)
+    {
+        room_category[r->type].push_back(r);
+    }
+
+    if (room_category.count("stockpile"))
+    {
+        auto & stockpiles = room_category.at("stockpile");
+        std::sort(stockpiles.begin(), stockpiles.end(), [this](room *a, room *b) -> bool
+                {
+                    int32_t alevel = a->misc.at("stockpile_level").id;
+                    int32_t blevel = b->misc.at("stockpile_level").id;
+                    if (alevel < blevel)
+                        return true;
+                    if (alevel > blevel)
+                        return false;
+
+                    int16_t ax = a->min.x < fort_entrance->min.x ? -a->min.x : a->min.x;
+                    int16_t bx = b->min.x < fort_entrance->min.x ? -b->min.x : b->min.x;
+                    if (ax < bx)
+                        return true;
+                    if (ax > bx)
+                        return false;
+
+                    return a->min.y < b->min.y;
+                });
+    }
+}
+
+std::string Plan::describe_room(room *r)
+{
+    std::ostringstream s;
+    s << r->type;
+    if (!r->subtype.empty())
+    {
+        s << " (" << r->subtype << ")";
+    }
+
+    if (df::unit *u = df::unit::find(r->owner))
+    {
+        s << " (owned by " << AI::describe_unit(u) << ")";
+    }
+
+    if (r->misc.count("squad_id"))
+    {
+        if (df::squad *squad = df::squad::find(r->misc.at("squad_id").id))
+        {
+            s << " (used by " << Translation::capitalize(Translation::TranslateName(&squad->name, true)) << ")";
+        }
+    }
+
+    if (r->misc.count("stockpile_level"))
+    {
+        s << " (" << r->misc.at("stockpile_level").id << ")";
+    }
+
+    if (r->misc.count("workshop_level"))
+    {
+        s << " (" << r->misc.at("workshop_level").id << ")";
+    }
+
+    if (r->misc.count("workshop"))
+    {
+        s << " (" << describe_room(r->misc.at("workshop").r) << ")";
+    }
+
+    if (r->misc.count("users"))
+    {
+        s << " (" << r->misc.at("users").ids.size() << " users)";
+    }
+
+    s << " (" << r->status << ")";
+
+    return s.str();
+}
+
+room *Plan::find_room(std::string type)
+{
+    if (room_category.empty())
+    {
+        for (room *r : rooms)
+        {
+            if (r->type == type)
+            {
+                return r;
+            }
+        }
+        return nullptr;
+    }
+
+    if (room_category.count(type))
+    {
+        return room_category.at(type).front();
+    }
+
+    return nullptr;
+}
+
+room *Plan::find_room(std::string type, std::function<bool(room *)> b)
+{
+    if (room_category.empty())
+    {
+        for (room *r : rooms)
+        {
+            if (r->type == type && b(r))
+            {
+                return r;
+            }
+        }
+        return nullptr;
+    }
+
+    if (room_category.count(type))
+    {
+        for (room *r : room_category.at(type))
+        {
+            if (b(r))
+            {
+                return r;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+bool Plan::map_tile_intersects_room(df::coord t)
+{
+    for (room *r : rooms)
+    {
+        if (r->safe_include(t))
+            return true;
+    }
+    for (room *r : corridors)
+    {
+        if (r->safe_include(t))
+            return true;
+    }
+    return false;
+}
+
+df::coord Plan::find_tree_base(df::coord t)
+{
+    auto find = [t](df::plant *tree) -> bool
+    {
+        if (tree->pos == t)
+        {
+            return true;
+        }
+
+        if (!tree->tree_info || !tree->tree_info->body)
+        {
+            return false;
+        }
+
+        df::coord s = tree->pos - df::coord(tree->tree_info->dim_x, tree->tree_info->dim_y, 0) / 2;
+        if (t.x < s.x || t.y < s.y || t.z < s.z ||
+                t.x >= s.x + tree->tree_info->dim_x ||
+                t.x >= s.y + tree->tree_info->dim_y ||
+                t.z >= s.z + tree->tree_info->body_height)
+        {
+            return false;
+        }
+
+        if (!tree->tree_info->body[t.z - s.z])
+        {
+            return false;
+        }
+        df::plant_tree_tile tile = tree->tree_info->body[t.z - s.z][(t.x - s.x) + tree->tree_info->dim_x * (t.y - s.y)];
+        return tile.whole != 0 && !tile.bits.blocked;
+    };
+
+    for (df::plant *tree : world->plants.tree_dry)
+    {
+        if (find(tree))
+        {
+            return tree->pos;
+        }
+    }
+
+    for (df::plant *tree : world->plants.tree_wet)
+    {
+        if (find(tree))
+        {
+            return tree->pos;
+        }
+    }
+
+    df::coord invalid;
+    invalid.clear();
+    return invalid;
+}
 
 // vim: et:sw=4:ts=4

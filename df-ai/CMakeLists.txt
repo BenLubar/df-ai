@@ -8,6 +8,7 @@ SET(PROJECT_SRCS
     stocks.cpp
     camera.cpp
     embark.cpp
+    room.cpp
     event_manager.cpp
 )
 

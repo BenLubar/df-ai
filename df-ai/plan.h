@@ -46,6 +46,10 @@ class Plan
     int32_t m_c_testgate_delay;
     size_t checkroom_idx;
     size_t trycistern_count;
+    std::map<int32_t, std::vector<std::pair<df::coord, std::string>>> map_vein_queue;
+    std::set<df::coord> dug_veins;
+    int32_t noblesuite;
+    int16_t cavern_max_level;
     bool allow_ice;
     bool past_initial_phase;
     bool cistern_channel_requested;
@@ -142,18 +146,18 @@ public:
     df::coord scan_river(color_ostream & out);
 
     command_result setup_blueprint(color_ostream & out);
-    void make_map_walkable(color_ostream & out);
-    void list_map_veins(color_ostream & out);
+    command_result make_map_walkable(color_ostream & out);
+    command_result list_map_veins(color_ostream & out);
 
     size_t dig_vein(color_ostream & out, int32_t mat, size_t want_boulders = 1);
-    size_t do_dig_vein(color_ostream & out, int32_t mat, int32_t bx, int32_t by, int32_t bz);
+    size_t do_dig_vein(color_ostream & out, int32_t mat, df::coord b);
 
-    static df::coord spiral_search(df::coord t, int32_t max, int32_t min, int32_t step, std::function<bool(df::coord)> b);
-    static inline df::coord spiral_search(df::coord t, int32_t max, int32_t min, std::function<bool(df::coord)> b)
+    static df::coord spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b);
+    static inline df::coord spiral_search(df::coord t, int16_t max, int16_t min, std::function<bool(df::coord)> b)
     {
         return spiral_search(t, max, min, 1, b);
     }
-    static inline df::coord spiral_search(df::coord t, int32_t max, std::function<bool(df::coord)> b)
+    static inline df::coord spiral_search(df::coord t, int16_t max, std::function<bool(df::coord)> b)
     {
         return spiral_search(t, max, 0, 1, b);
     }
@@ -162,8 +166,8 @@ public:
         return spiral_search(t, 100, 0, 1, b);
     }
 
-    const static int32_t MIN_X, MIN_Y, MIN_Z;
-    const static int32_t MAX_X, MAX_Y, MAX_Z;
+    const static int16_t MinX, MinY, MinZ;
+    const static int16_t MaxX, MaxY, MaxZ;
 
     command_result scan_fort_entrance(color_ostream & out);
     command_result scan_fort_body(color_ostream & out);
@@ -175,7 +179,7 @@ public:
     command_result setup_blueprint_utilities(color_ostream & out, df::coord f, std::vector<room *> entr);
     command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f);
     command_result setup_blueprint_pastures(color_ostream & out);
-    command_result setup_blueprint_outdoor_farms(color_ostream & out);
+    command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
     command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, std::vector<room *> entr);
     command_result setup_outdoor_gathering_zones(color_ostream & out);
     command_result setup_blueprint_caverns(color_ostream & out);
