@@ -95,7 +95,7 @@ public:
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
-    void dig_tile(df::coord t, std::string mode = "Default");
+    static void dig_tile(df::coord t, std::string mode = "Default");
     void wantdig(color_ostream & out, room *r);
     void digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
@@ -204,6 +204,10 @@ public:
     bool map_tile_intersects_room(df::coord t);
 
     static df::coord find_tree_base(df::coord t);
+
+protected:
+    bool corridor_include_hack(const room *r, df::coord t);
+    friend struct room;
 };
 
 // vim: et:sw=4:ts=4

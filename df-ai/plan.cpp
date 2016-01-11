@@ -6210,4 +6210,29 @@ df::coord Plan::find_tree_base(df::coord t)
     return invalid;
 }
 
+// XXX
+bool Plan::corridor_include_hack(const room *r, df::coord t)
+{
+    for (room *c : corridors)
+    {
+        if (!c->include(t))
+        {
+            continue;
+        }
+
+        if (c->min.z != c->max.z)
+        {
+            return true;
+        }
+        for (room *a : c->accesspath)
+        {
+            if (a == r)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // vim: et:sw=4:ts=4

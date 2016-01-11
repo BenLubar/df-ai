@@ -36,8 +36,8 @@ struct room
 
     void dig(std::string mode = "");
     void fixup_open();
-    void fixup_open_tile(df::coord t, std::string d, furniture *f);
-    void fixup_open_helper(df::coord t, std::string c, furniture *f);
+    void fixup_open_tile(df::coord t, std::string d, furniture *f = nullptr);
+    void fixup_open_helper(df::coord t, std::string c, furniture *f = nullptr);
 
     bool include(df::coord t) const;
     bool safe_include(df::coord t) const;
