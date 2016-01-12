@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 && cd /df_linux \
 && rm -rf /dfhack \
 && echo "enable df-ai" > /df_linux/dfhack.init \
-&& apt-get purge -y \
+&& apt-get purge -y --auto-remove \
 	ca-certificates \
 	cmake \
 	g++-multilib \
@@ -34,6 +34,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libxml-libxslt-perl \
 	make \
 	zlib1g-dev:i386 \
-&& apt-get autoremove -y \
 && apt-get clean \
 && rm -rf /var/lib/apt/lists/*
