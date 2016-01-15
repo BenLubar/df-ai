@@ -33,14 +33,18 @@ class Population
     };
 
     AI *ai;
+public:
     std::set<int32_t> citizen;
+private:
     std::map<int32_t, int32_t> military;
     std::vector<int32_t> idlers;
     std::map<int32_t, pet_flags> pet;
     size_t update_counter;
     OnupdateCallback *onupdate_handle;
-    std::map<df::unit_labor, int32_t> labor_worker;
-    std::map<int32_t, df::unit_labor> worker_labor;
+public:
+    std::map<df::unit_labor, std::set<int32_t>> labor_worker;
+private:
+    std::map<int32_t, std::set<df::unit_labor>> worker_labor;
     std::map<df::unit_labor, size_t> labor_needmore;
     std::set<int32_t> medic;
     std::vector<int32_t> workers;

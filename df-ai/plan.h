@@ -35,8 +35,10 @@ class Plan
     std::map<std::string, std::vector<room *>> room_category;
     std::vector<room *> corridors;
     std::set<std::string> cache_nofurnish;
+public:
     room *fort_entrance;
     std::map<int32_t, std::set<df::coord>> map_veins;
+private:
     std::vector<std::string> important_workshops;
     std::vector<std::string> important_workshops2;
     furniture *m_c_lever_in;
@@ -51,7 +53,9 @@ class Plan
     int32_t noblesuite;
     int16_t cavern_max_level;
     bool allow_ice;
+public:
     bool past_initial_phase;
+private:
     bool cistern_channel_requested;
 
 public:

@@ -22,6 +22,7 @@ SET(PROJECT_HDRS
     room.h
     event_manager.h
     horrible.h
+    cache_hash.h
     dfhack_shared.h
 )
 

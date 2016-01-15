@@ -21,7 +21,7 @@ class Stocks
 {
     AI *ai;
 public:
-    std::map<std::string, size_t> count;
+    std::map<std::string, int32_t> count;
 private:
     OnupdateCallback *onupdate_handle;
     std::vector<std::string> updating;
@@ -38,9 +38,12 @@ private:
     bool updating_corpses;
     std::vector<room *> updating_farmplots;
 public:
+    // depends on raws.itemdefs, wait until a world is loaded
     std::map<std::string, int16_t> manager_subtype;
 private:
+    std::set<df::coord, std::function<bool(df::coord, df::coord)>> last_treelist;
     df::coord last_cutpos;
+    std::time_t last_warn_food;
 
     std::map<int32_t, int16_t> drink_plants;
     std::map<int32_t, int16_t> drink_fruits;
@@ -52,11 +55,14 @@ private:
     std::map<int32_t, int16_t> milk_creatures;
     std::set<int32_t> clay_stones;
     std::map<int32_t, std::string> raw_coke;
+    std::map<std::string, int32_t> raw_coke_inv;
 
     std::vector<int32_t> metal_digger_pref;
     std::vector<int32_t> metal_weapon_pref;
     std::vector<int32_t> metal_armor_pref;
     std::vector<int32_t> metal_anvil_pref;
+
+    std::set<std::tuple<std::string, bool, int8_t>> complained_about_no_plants;
 
 public:
     Stocks(AI *ai);
@@ -77,25 +83,25 @@ public:
     void update_corpses(color_ostream & out);
 
     void act(color_ostream & out, std::string key);
-    size_t count_stocks(color_ostream & out, std::string k);
-    size_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE);
-    size_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
-    size_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
+    int32_t count_stocks(color_ostream & out, std::string k);
+    int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE);
+    int32_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
+    int32_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
 
-    void queue_need(color_ostream & out, std::string what, size_t amount);
-    void queue_need_weapon(color_ostream & out, size_t needed, df::job_skill skill = job_skill::NONE);
+    void queue_need(color_ostream & out, std::string what, int32_t amount);
+    void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE);
     void queue_need_armor(color_ostream & out, df::items_other_id oidx);
     void queue_need_anvil(color_ostream & out);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
-    void queue_need_coffin_bld(color_ostream & out, size_t amount);
-    void queue_use(color_ostream & out, std::string what, size_t amount);
-    void queue_use_gems(color_ostream & out, size_t amount);
-    void queue_use_metal_ore(color_ostream & out, size_t amount);
-    void queue_use_raw_coke(color_ostream & out, size_t amount);
+    void queue_need_coffin_bld(color_ostream & out, int32_t amount);
+    void queue_use(color_ostream & out, std::string what, int32_t amount);
+    void queue_use_gems(color_ostream & out, int32_t amount);
+    void queue_use_metal_ore(color_ostream & out, int32_t amount);
+    void queue_use_raw_coke(color_ostream & out, int32_t amount);
 
-    std::set<df::coord> tree_list();
-    df::coord cuttrees(color_ostream & out, size_t amount, std::set<df::coord> list);
-    inline df::coord cuttrees(color_ostream & out, size_t amount)
+    std::set<df::coord, std::function<bool(df::coord, df::coord)>> tree_list();
+    df::coord cuttrees(color_ostream & out, int32_t amount, std::set<df::coord, std::function<bool(df::coord, df::coord)>> list);
+    inline df::coord cuttrees(color_ostream & out, int32_t amount)
     {
         return cuttrees(out, amount, tree_list());
     }
@@ -108,18 +114,18 @@ public:
     bool is_gypsum(int32_t i);
     bool is_gypsum(df::item *i);
 
-    size_t may_forge_metal_bars(int32_t mat_index, size_t div = 1);
+    int32_t may_forge_bars(color_ostream & out, int32_t mat_index, int32_t div = 1);
 
-    command_result init_manager_subtype(color_ostream & out);
+    void init_manager_subtype();
 
     std::vector<df::manager_order *> find_manager_orders(std::string order);
-    size_t count_manager_orders_matcat(std::string matcat, df::job_type order = df::job_type(-1));
-    void add_manager_order(color_ostream & out, std::string order, size_t amount = 1, size_t maxmerge = 30);
+    int32_t count_manager_orders_matcat(std::string matcat, df::job_type order = df::job_type(-1));
+    void add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
 
     std::string furniture_order(std::string k);
     std::function<bool(df::item *)> furniture_find(std::string k);
     df::item *find_furniture_item(std::string itm);
-    size_t find_furniture_itemcount(std::string itm);
+    int32_t find_furniture_itemcount(std::string itm);
 
     bool is_cutting_trees();
 
