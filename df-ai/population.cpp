@@ -1,981 +1,1758 @@
-/*
-class DwarfAI
-    class Population
-        class Citizen
-            attr_accessor :id
-            def initialize(id)
-                @id = id
-            end
-
-            def dfunit
-                df.unit_find(@id)
-            end
-
-            def serialize
-                id
-            end
-        end
-
-        attr_accessor :ai, :citizen, :military, :pet
-        attr_accessor :labor_worker, :worker_labor
-        attr_accessor :onupdate_handle
-        def initialize(ai)
-            @ai = ai
-            @citizen = {}
-            @military = {}
-            @idlers = []
-            @pet = {}
-            @update_counter = 0
-        end
-
-        def startup
-            df.standing_orders_forbid_used_ammo = 0
-        end
-
-        def onupdate_register
-            @onupdate_handle = df.onupdate_register('df-ai pop', 360, 10) { update }
-        end
-
-        def onupdate_unregister
-            df.onupdate_unregister(@onupdate_handle)
-        end
-
-        def update
-            @update_counter += 1
-            @onupdate_handle.description = "df-ai pop #{@update_counter % 10}"
-            case @update_counter % 10
-            when 1; update_citizenlist
-            when 2; update_nobles
-            when 3; update_jobs
-            when 4; update_military
-            when 5; update_pets
-            when 6; update_deads
-            when 7; update_caged
-            end
-            @onupdate_handle.description = "df-ai pop"
-
-            i = 0
-            bga = df.onupdate_register('df-ai pop autolabors', 3) {
-                bga.description = "df-ai pop autolabors #{i}"
-                autolabors(i)
-                df.onupdate_unregister(bga) if i > 10
-                i += 1
-            } if @update_counter % 3 == 0
-        end
-
-        def new_citizen(id)
-            c = Citizen.new(id)
-            @citizen[id] = c
-            ai.plan.new_citizen(id)
-            c
-        end
-
-        def del_citizen(id)
-            @citizen.delete id
-            @military.delete id
-            ai.plan.del_citizen(id)
-        end
-
-        def update_citizenlist
-            old = @citizen.dup
-
-            # add new fort citizen to our list
-            df.unit_citizens.each { |u|
-                next if u.profession == :BABY
-                @citizen[u.id] ||= new_citizen(u.id)
-                old.delete u.id
-            }
-
-            # del those who are no longer here
-            old.each { |id, c|
-                # u.counters.death_tg.flags.discovered dead/missing
-                del_citizen(id)
-            }
-        end
-
-        def update_jobs
-            df.world.job_list.each { |j|
-                j.flags.suspend = false if j.flags.suspend and not j.flags.repeat
-            }
-        end
-
-        def update_deads
-            df.world.units.all.each { |u|
-                ai.stocks.queue_slab(u.hist_figure_id) if u.flags3.ghostly
-            }
-        end
-
-        def update_caged
-            count = 0
-            df.world.items.other[:CAGE].each do |cage|
-                next if not cage.flags.on_ground
-                cage.general_refs.each do |ref|
-                    case ref
-                    when DFHack::GeneralRefContainsItemst
-                        next if ref.item_tg.flags.dump
-                        count += 1
-                        ref.item_tg.flags.dump = true
-
-                    when DFHack::GeneralRefContainsUnitst
-                        u = ref.unit_tg
-
-                        if df.ui.main.fortress_entity.histfig_ids.include?(u.hist_figure_id)
-                            # TODO rescue caged dwarves
-                        else
-                            u.inventory.each do |it|
-                                next if it.item.flags.dump
-                                count += 1
-                                it.item.flags.dump = true
-                            end
-
-                            if u.inventory.empty? and r = ai.plan.find_room(:pitcage) { |_r| _r.dfbuilding } and ai.plan.spiral_search(r.maptile, 1, 1) { |t| df.same_pos?(t, cage) }
-                                assign_unit_to_zone(u, r.dfbuilding)
-                                military_random_squad_attack_unit(u)
-                                ai.debug "pop: marked #{DwarfAI::describe_unit(u)} for pitting"
-                            end
-                        end
-                    end
-                end
-            end
-            ai.debug "pop: dumped #{count} items from cages" if count > 0
-        end
-
-        def update_military
-            # check for new soldiers, allocate barracks
-            newsoldiers = []
-
-            df.unit_citizens.each { |u|
-                if u.military.squad_id == -1
-                    if @military.delete u.id
-                        ai.plan.freesoldierbarrack(u.id)
-                    end
-                else
-                    if not @military[u.id]
-                        @military[u.id] = u.military.squad_id
-                        newsoldiers << u.id
-                    end
-                end
-            }
-
-            # enlist new soldiers if needed
-            maydraft = df.unit_citizens.reject { |u|
-                u.profession == :CHILD or
-                u.profession == :BABY or
-                u.mood != :None
-            }
-            while @military.length < maydraft.length/5
-                ns = military_find_new_soldier(maydraft)
-                break if not ns
-                @military[ns.id] = ns.military.squad_id
-                newsoldiers << ns.id
-            end
-
-            newsoldiers.each { |uid|
-                ai.plan.getsoldierbarrack(uid)
-            }
-
-            df.ui.main.fortress_entity.squads_tg.each { |sq|
-                soldier_count = sq.positions.count { |sp| sp.occupant != -1 }
-                sq.schedule[1].each { |sc|
-                    sc.orders.each { |so|
-                        next unless so.order.kind_of?(DFHack::SquadOrderTrainst)
-                        so.min_count = (soldier_count > 3 ? soldier_count-1 : soldier_count)
-                        so.min_count = 0 if r = ai.plan.find_room(:barracks) { |_r| _r.misc[:squad_id] == sq.id } and r.status != :finished
-                    }
-                }
-            }
-        end
-
-        def military_random_squad_attack_unit(u)
-            squad = df.ui.main.fortress_entity.squads_tg.sort_by { |sq|
-                sq.positions.count { |sp| sp.occupant != -1 } - sq.orders.length
-            }.last
-            return unless squad
-
-            squad.orders << DFHack::SquadOrderKillListst.cpp_new(
-                :units => [u.id],
-                :title => DwarfAI::describe_unit(u)
-            )
-        end
-
-        def military_find_commander_or_captain_pos(commander)
-            if commander
-                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.responsibilities[:MILITARY_STRATEGY] and a.flags[:SITE]
-                        return a.code
-                    end
-                end
-            else
-                df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                    if a.flags[:MILITARY_SCREEN_ONLY] and a.flags[:SITE]
-                        return a.code
-                    end
-                end
-            end
-        end
-
-        # returns an unit newly assigned to a military squad
-        def military_find_new_soldier(unitlist)
-            ns = unitlist.find_all { |u|
-                u.military.squad_id == -1
-            }.sort_by { |u|
-                unit_totalxp(u) + 5000*df.unit_entitypositions(u).length
-            }.first
-            return if not ns
-
-            squad_id = military_find_free_squad
-            return if not squad_id
-            squad = df.world.squads.all.binsearch(squad_id)
-            pos = squad.positions.index { |p| p.occupant == -1 }
-            return if not pos
-
-            squad.positions[pos].occupant = ns.hist_figure_id
-            ns.military.squad_id = squad_id
-            ns.military.squad_position = pos
-
-            ent = df.ui.main.fortress_entity
-            if !ent.positions.assignments.find { |a| a.squad_id == squad_id }
-                if ent.assignments_by_type[:MILITARY_STRATEGY].empty?
-                    assign_new_noble(military_find_commander_or_captain_pos(true), ns).squad_id = squad_id
-                else
-                    assign_new_noble(military_find_commander_or_captain_pos(false), ns).squad_id = squad_id
-                end
-            end
-
-            ns
-        end
-
-        # return a squad index with an empty slot
-        def military_find_free_squad
-            squad_sz = 8
-            squad_sz = 6 if @military.length < 4*6
-            squad_sz = 4 if @military.length < 3*4
-
-            if not squad_id = df.ui.main.fortress_entity.squads.find { |sqid| @military.count { |k, v| v == sqid } < squad_sz }
-
-                # create a new squad using the UI
-                df.curview.feed_keys(:D_MILITARY)
-                df.curview.feed_keys(:D_MILITARY_CREATE_SQUAD)
-                df.curview.feed_keys(:STANDARDSCROLL_UP)
-                df.curview.feed_keys(:SELECT)
-                df.curview.feed_keys(:LEAVESCREEN)
-
-                # get the squad and its id
-                squad_id = df.ui.main.fortress_entity.squads.last
-                squad    = df.ui.main.fortress_entity.squads_tg.last
-
-                squad.cur_alert_idx = 1     # train
-                squad.uniform_priority = 2
-                squad.carry_food = 2
-                squad.carry_water = 2
-
-                item_type = {
-                    :Body => :ARMOR,
-                    :Head => :HELM,
-                    :Pants => :PANTS,
-                    :Gloves => :GLOVES,
-                    :Shoes => :SHOES,
-                    :Shield => :SHIELD,
-                    :Weapon => :WEAPON
-                }
-                # uniform
-                squad.positions.each { |pos|
-                    item_type.each { |t, it|
-                        next unless pos.uniform[t].empty?
-                        pos.uniform[t] << DFHack::SquadUniformSpec.cpp_new(
-                            :color => -1,
-                            :item_filter => {
-                                :item_type => it,
-                                :material_class => :Armor,
-                                :mattype => -1,
-                                :matindex => -1
-                            })
-                    }
-                    pos.uniform[:Weapon][0].item_filter.material_class = :None
-                    pos.flags.exact_matches = true
-                }
-
-                if df.ui.main.fortress_entity.squads.length % 3 == 0
-                    # ranged squad
-                    squad.positions.each { |pos|
-                        pos.uniform[:Weapon][0].indiv_choice.ranged = true
-                    }
-                    squad.ammunition << DFHack::SquadAmmoSpec.cpp_new(
-                        :item_filter => {
-                            :item_type => :AMMO,
-                            :item_subtype => 0, # subtype = bolts
-                            :material_class => :None
-                        },
-                        :amount => 500,
-                        :flags => {
-                            :use_combat => true,
-                            :use_training => true
-                        })
-                else
-                    # we don't want all the axes being used up by the military.
-                    weapons = df.ui.main.fortress_entity.entity_raw.equipment.weapon_tg.find_all { |idef|
-                        idef.skill_melee != :MINING and
-                        idef.skill_melee != :AXE and
-                        idef.skill_ranged == :NONE and
-                        not idef.flags[:TRAINING]
-                    }
-                    if weapons.empty?
-                        squad.positions.each { |pos|
-                            pos.uniform[:Weapon][0].indiv_choice.melee = true
-                        }
-                    else
-                        squad.positions.each { |pos|
-                            pos.uniform[:Weapon][0].item_filter.item_subtype = weapons[rand(weapons.length)].subtype
-                        }
-                    end
-                end
-
-                ## schedule
-                #df.ui.alerts.list.each { |alert|
-                #    # squad.schedule.index = alerts.list.index (!= alert.id)
-                #    squad.schedule << DFHack.malloc(DFHack::SquadScheduleEntry._sizeof*12)
-                #    12.times { |i|
-                #        scm = squad.schedule.last[i]
-                #        scm._cpp_init
-                #        10.times { scm.order_assignments << -1 }
-                #
-                #        case squad.schedule.length  # currently definied alert + 1
-                #        when 2
-                #            # train for 2 month, free the 3rd
-                #            next if i % 3 == df.ui.main.fortress_entity.squads.length % 3
-                #            scm.orders << DFHack::SquadScheduleOrder.cpp_new(:min_count => 0,
-                #                    :positions => [false]*10, :order => DFHack::SquadOrderTrainst.cpp_new)
-                #        end
-                #    }
-                #}
-            end
-
-            squad_id
-        end
-
-
-        LaborList = DFHack::UnitLabor::ENUM.sort.transpose[1] - [:NONE]
-        LaborTool = { :MINE => true, :CUTWOOD => true, :HUNT => true }
-        LaborSkill = DFHack::JobSkill::Labor.invert
-        LaborIdle = { :PLANT => true, :HERBALISM => true, :FISH => true, :DETAIL => true }
-        LaborMedical = { :DIAGNOSE => true, :SURGERY => true, :BONE_SETTING => true, :SUTURING => true, :DRESSING_WOUNDS => true, :FEED_WATER_CIVILIANS => true }
-        LaborStocks = { :PLANT => [:food, :drink, :cloth], :HERBALISM => [:food, :drink, :cloth], :FISH => [:food] }
-        LaborHauling = { :FEED_WATER_CIVILIANS => true, :RECOVER_WOUNDED => true }
-        LaborList.each { |lb|
-            if lb.to_s =~ /HAUL/
-                LaborHauling[lb] = true
-            end
-        }
-
-        LaborMin = Hash.new(2).update :DETAIL => 4, :PLANT => 4, :HERBALISM => 1
-        LaborMax = Hash.new(8).update :FISH => 1
-        LaborMinPct = Hash.new(0).update :DETAIL => 5, :PLANT => 30, :FISH => 1, :HERBALISM => 10
-        LaborMaxPct = Hash.new(0).update :DETAIL => 20, :PLANT => 60, :FISH => 10, :HERBALISM => 30
-        LaborHauling.keys.each { |lb|
-            LaborMinPct[lb] = 30
-            LaborMaxPct[lb] = 100
-        }
-        LaborWontWorkJob = { :AttendParty => true, :Rest => true, :UpdateStockpileRecords => true }
-
-        def autolabors(step)
-            case step
-            when 1
-                @workers = []
-                @idlers = []
-                @labor_needmore = Hash.new(0)
-                nonworkers = []
-                @medic = {}
-                df.ui.main.fortress_entity.assignments_by_type[:HEALTH_MANAGEMENT].each { |n|
-                    next unless hf = df.world.history.figures.binsearch(n.histfig)
-                    @medic[hf.unit_id] = true
-                }
-
-                merchant = df.world.units.all.any? { |u|
-                    u.flags1.merchant and not u.flags1.dead
-                }
-
-                set_up_trading(merchant)
-
-                citizen.each_value { |c|
-                    next if not u = c.dfunit
-                    if u.mood != :None
-                        nonworkers << [c, "has mood: #{u.mood}"]
-                    elsif u.profession == :CHILD
-                        nonworkers << [c, 'is a child', true]
-                    elsif u.profession == :BABY
-                        nonworkers << [c, 'is a baby', true]
-                    elsif unit_hasmilitaryduty(u)
-                        nonworkers << [c, 'has military duty']
-                    elsif u.flags1.caged
-                        nonworkers << [c, 'caged']
-                    elsif @citizen.length >= 20 and
-                        df.world.manager_orders.last and
-                        df.world.manager_orders.last.is_validated == 0 and
-                        df.unit_entitypositions(u).find { |n| n.responsibilities[:MANAGE_PRODUCTION] }
-                        nonworkers << [c, 'validating work orders']
-                    elsif merchant and df.unit_entitypositions(u).find { |n| n.responsibilities[:TRADE] }
-                        nonworkers << [c, 'trading']
-                    elsif u.job.current_job and LaborWontWorkJob[u.job.current_job.job_type]
-                        nonworkers << [c, DFHack::JobType::Caption[u.job.current_job.job_type]]
-                    elsif u.status.misc_traits.find { |mt| mt.id == :OnBreak }
-                        nonworkers << [c, 'on break']
-                    elsif u.specific_refs.find { |sr| sr.type == :ACTIVITY }
-                        nonworkers << [c, 'has activity']
-                    else
-                        # TODO filter nobles that will not work
-                        @workers << c
-                        @idlers << c if not u.job.current_job
-                    end
-                }
-
-                # free non-workers
-                nonworkers.each { |c|
-                    u = c[0].dfunit
-                    ul = u.status.labors
-                    LaborList.each { |lb|
-                        if LaborHauling[lb]
-                            if not ul[lb] and not c[2]
-                                ul[lb] = true
-                                u.military.pickup_flags.update = true if LaborTool[lb]
-                                ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
-                            end
-                        elsif ul[lb]
-                            next if LaborMedical[lb] and @medic[u.id]
-                            ul[lb] = false
-                            u.military.pickup_flags.update = true if LaborTool[lb]
-                            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (non-worker: #{c[1]})"
-                        end
-                    }
-                }
-
-            when 2
-                seen_workshop = {}
-                df.world.job_list.each { |job|
-                    ref_bld = job.general_refs.grep(DFHack::GeneralRefBuildingHolderst).first
-                    ref_wrk = job.general_refs.grep(DFHack::GeneralRefUnitWorkerst).first
-                    next if ref_bld and seen_workshop[ref_bld.building_id]
-
-                    if not ref_wrk
-                        job_labor = DFHack::JobSkill::Labor[DFHack::JobType::Skill[job.job_type]]
-                        job_labor = DFHack::JobType::Labor.fetch(job.job_type, job_labor)
-                        if job_labor and job_labor != :NONE
-                            @labor_needmore[job_labor] += 1
-
-                        else
-                            case job.job_type
-                            when :ConstructBuilding, :DestroyBuilding
-                                # TODO
-                                @labor_needmore[:UNKNOWN_BUILDING_LABOR_PLACEHOLDER] += 1
-                            when :CustomReaction
-                                reac = df.world.raws.reactions.find { |r| r.code == job.reaction_name }
-                                if reac and job_labor = DFHack::JobSkill::Labor[reac.skill]
-                                    @labor_needmore[job_labor] += 1 if job_labor != :NONE
-                                end
-                            when :PenSmallAnimal, :PenLargeAnimal
-                                @labor_needmore[:HAUL_ANIMAL] += 1
-                            when :StoreItemInStockpile, :StoreItemInBag, :StoreItemInHospital,
-                                    :StoreItemInChest, :StoreItemInCabinet, :StoreWeapon,
-                                    :StoreArmor, :StoreItemInBarrel, :StoreItemInBin, :StoreItemInVehicle
-                                LaborHauling.keys.each { |lb|
-                                    @labor_needmore[lb] += 1
-                                }
-                            else
-                                if job.material_category.wood
-                                    @labor_needmore[:CARPENTER] += 1
-                                elsif job.material_category.bone
-                                    @labor_needmore[:BONE_CARVE] += 1
-                                elsif job.material_category.shell
-                                    @labor_needmore[:BONE_CARVE] += 1
-                                elsif job.material_category.cloth
-                                    @labor_needmore[:CLOTHESMAKER] += 1
-                                elsif job.material_category.leather
-                                    @labor_needmore[:LEATHER] += 1
-                                elsif job.mat_type == 0
-                                    # XXX metalcraft ?
-                                    @labor_needmore[:MASON] += 1
-                                else
-                                    @seen_badwork ||= {}
-                                    ai.debug "unknown labor for #{job.job_type} #{job.inspect}" if not @seen_badwork[job.job_type]
-                                    @seen_badwork[job.job_type] = true
-                                end
-                            end
-                        end
-                    end
-
-                    if ref_bld
-                        case ref_bld.building_tg
-                        when DFHack::BuildingFarmplotst, DFHack::BuildingStockpilest
-                            # parallel work allowed
-                        else
-                            seen_workshop[ref_bld.building_id] = true
-                        end
-                    end
-                }
-
-            when 3
-                # count active labors
-                @labor_worker = LaborList.inject({}) { |h, lb| h.update lb => [] }
-                @worker_labor = @workers.inject({}) { |h, c| h.update c.id => [] }
-                @workers.each { |c|
-                    ul = c.dfunit.status.labors
-                    LaborList.each { |lb|
-                        if ul[lb]
-                            @labor_worker[lb] << c.id
-                            @worker_labor[c.id] << lb
-                        end
-                    }
-                }
-
-                if @workers.length > 15
-                    # if one has too many labors, free him up (one per round)
-                    lim = 4*LaborList.length/[@workers.length, 1].max
-                    lim = 4 if lim < 4
-                    lim += LaborHauling.length
-                    if cid = @worker_labor.keys.find { |id| @worker_labor[id].length > lim }
-                        c = citizen[cid]
-                        u = c.dfunit
-                        ul = u.status.labors
-
-                        LaborList.each { |lb|
-                            if ul[lb]
-                                next if LaborMedical[lb] and @medic[u.id]
-                                @worker_labor[c.id].delete lb
-                                @labor_worker[lb].delete c.id
-                                ul[lb] = false
-                                u.military.pickup_flags.update = true if LaborTool[lb]
-                            end
-                        }
-                        ai.debug "unassigned all labors from #{DwarfAI::describe_unit(u)} (too many labors)"
-                    end
-                end
-
-            when 4
-                labormin = LaborMin
-                labormax = LaborMax
-                laborminpct = LaborMinPct
-                labormaxpct = LaborMaxPct
-
-                LaborList.each { |lb|
-                    max = labormax[lb]
-                    maxpc = labormaxpct[lb] * @workers.length / 100
-                    max = maxpc if maxpc > max
-                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
-
-                    @labor_needmore.delete lb if @labor_worker[lb].length >= max
-                }
-
-                if @labor_needmore.empty? and not @idlers.empty? and ai.plan.past_initial_phase and (not @last_idle_year or @last_idle_year != df.cur_year)
-                    ai.plan.idleidle
-                    @last_idle_year = df.cur_year
-                end
-
-                # handle low-number of workers + tool labors
-                mintool = LaborTool.keys.inject(0) { |s, lb|
-                    min = labormin[lb]
-                    minpc = laborminpct[lb] * @workers.length / 100
-                    min = minpc if minpc > min
-                    s + min
-                }
-                if @workers.length < mintool
-                    labormax = labormax.dup
-                    LaborTool.each_key { |lb| labormax[lb] = 0 }
-                    case @workers.length
-                    when 0
-                        # meh
-                    when 1
-                        # switch mine or cutwood based on time (1/2 dwarf month each)
-                        if (df.cur_year_tick / (1200*28/2)) % 2 == 0
-                            labormax[:MINE] = 1
-                        else
-                            labormax[:CUTWOOD] = 1
-                        end
-                    else
-                        @workers.length.times { |i|
-                            # divide equally between labors, with priority
-                            # to mine, then wood, then hunt
-                            # XXX new labortools ?
-                            lb = [:MINE, :CUTWOOD, :HUNT][i%3]
-                            labormax[lb] += 1
-                        }
-                    end
-                end
-
-                # list of dwarves with an exclusive labor
-                exclusive = {}
-                [
-                    [:CARPENTER, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Carpenters and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
-                    [:MINE, lambda { ai.plan.digging? }],
-                    [:MASON, lambda { ai.plan.find_room(:workshop) { |r| r.subtype == :Masons and r.dfbuilding and not r.dfbuilding.jobs.empty? } }],
-                    [:CUTWOOD, lambda { ai.stocks.cutting_trees? }],
-                    [:DETAIL, lambda { r = ai.plan.find_room(:cistern) { |_r| _r.subtype == :well } and not r.misc[:channeled] }],
-                ].each { |lb, test|
-                    if @workers.length > exclusive.length+2 and @labor_needmore[lb] > 0 and test[]
-                        # keep last run's choice
-                        cid = @labor_worker[lb].sort_by { |i| @worker_labor[i].length }.first
-                        next if not cid
-                        exclusive[cid] = lb
-                        @idlers.delete_if { |_c| _c.id == cid }
-                        c = citizen[cid]
-                        @worker_labor[cid].dup.each { |llb|
-                            next if llb == lb
-                            next if LaborTool[llb]
-                            autolabor_unsetlabor(c, llb, "has exclusive labor: #{lb}")
-                        }
-                    end
-                }
-
-                # autolabor!
-                LaborList.each { |lb|
-                    min = labormin[lb]
-                    max = labormax[lb]
-                    minpc = laborminpct[lb] * @workers.length / 100
-                    maxpc = labormaxpct[lb] * @workers.length / 100
-                    min = minpc if minpc > min
-                    max = maxpc if maxpc > max
-                    max = @workers.length if @labor_needmore.empty? and LaborIdle[lb]
-                    max = 0 if lb == :FISH and fishery = ai.plan.find_room(:workshop) { |_r| _r.subtype == :Fishery } and fishery.status == :plan
-                    max = 0 if LaborStocks[lb] and LaborStocks[lb].all? { |s| not ai.stocks.need_more?(s) }
-                    min = max if min > max
-                    min = @workers.length if min > @workers.length
-
-                    cnt = @labor_worker[lb].length
-                    if cnt > max
-                        next if @labor_needmore.empty?
-                        sk = LaborSkill[lb]
-                        @labor_worker[lb] = @labor_worker[lb].sort_by { |_cid|
-                            if sk
-                                if usk = df.unit_find(_cid).status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                    DFHack::SkillRating.int(usk.rating)
-                                else
-                                    0
-                                end
-                            else
-                                rand
-                            end
-                        }
-                        (cnt-max).times {
-                            cid = @labor_worker[lb].shift
-                            autolabor_unsetlabor(citizen[cid], lb, 'too many dwarves')
-                        }
-
-                    elsif cnt < min
-                        min += 1 if min < max and not LaborTool[lb]
-                        (min-cnt).times {
-                            c = @workers.sort_by { |_c|
-                                malus = @worker_labor[_c.id].length * 10
-                                malus += df.unit_entitypositions(_c.dfunit).length * 40
-                                if sk = LaborSkill[lb] and usk = _c.dfunit.status.current_soul.skills.find { |_usk| _usk.id == sk }
-                                    malus -= DFHack::SkillRating.int(usk.rating) * 4    # legendary => 15
-                                end
-                                [malus, rand]
-                            }.find { |_c|
-                                next if exclusive[_c.id]
-                                next if LaborTool[lb] and @worker_labor[_c.id].find { |_lb| LaborTool[_lb] }
-                                not @worker_labor[_c.id].include?(lb)
-                            }
-
-                            autolabor_setlabor(c, lb, 'not enough dwarves')
-                        }
-
-                    elsif not @idlers.empty?
-                        more, desc = @labor_needmore[lb], 'idle'
-                        more, desc = max - cnt, 'idleidle' if @labor_needmore.empty?
-                        more.times do
-                            break if @labor_worker[lb].length >= max
-                            c = @idlers[rand(@idlers.length)]
-                            autolabor_setlabor(c, lb, desc)
-                        end
-                    end
-                }
-            end
-        end
-
-        def autolabor_setlabor(c, lb, reason='no reason given')
-            return if not c
-            return if @worker_labor[c.id].include?(lb)
-            @labor_worker[lb] << c.id
-            @worker_labor[c.id] << lb
-            u = c.dfunit
-            if LaborTool[lb]
-                LaborTool.keys.each { |_lb| u.status.labors[_lb] = false }
-            end
-            u.status.labors[lb] = true
-            u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "assigning labor #{lb} to #{DwarfAI::describe_unit(u)} (#{reason})"
-        end
-
-        def autolabor_unsetlabor(c, lb, reason='no reason given')
-            return if not c
-            return if not @worker_labor[c.id].include?(lb)
-            u = c.dfunit
-            return if LaborMedical[lb] and @medic[u.id]
-            @labor_worker[lb].delete c.id
-            @worker_labor[c.id].delete lb
-            u.status.labors[lb] = false
-            u.military.pickup_flags.update = true if LaborTool[lb]
-            ai.debug "unassigning labor #{lb} from #{DwarfAI::describe_unit(u)} (#{reason})"
-        end
-
-        def set_up_trading(should_be_trading)
-            return unless r = ai.plan.find_room(:workshop) { |_r| _r.subtype == :TradeDepot }
-            return unless bld = r.dfbuilding
-            return if bld.getBuildStage < bld.getMaxBuildStage
-            return if bld.trade_flags.trader_requested == should_be_trading
-            return unless view = df.curview and view._raw_rtti_classname == 'viewscreen_dwarfmodest'
-
-            view.feed_keys(:D_BUILDJOB)
-            df.center_viewscreen(r)
-            view.feed_keys(:CURSOR_LEFT)
-            view.feed_keys(:BUILDJOB_DEPOT_REQUEST_TRADER)
-            view.feed_keys(:LEAVESCREEN)
-        end
-
-        def unit_hasmilitaryduty(u)
-            return if u.military.squad_id == -1
-            squad = df.world.squads.all.binsearch(u.military.squad_id)
-            curmonth = squad.schedule[squad.cur_alert_idx][df.cur_year_tick / (1200*28)]
-            !curmonth.orders.empty? and !(curmonth.orders.length == 1 and curmonth.orders[0].min_count == 0)
-        end
-
-        def unit_totalxp(u)
-            u.status.current_soul.skills.inject(0) { |t, sk|
-                rat = DFHack::SkillRating.int(sk.rating)
-                t + 400*rat + 100*rat*(rat+1)/2 + sk.experience
-            }
-        end
-
-        def positionCode(responsibility)
-            df.world.entities.all.binsearch(df.ui.civ_id).entity_raw.positions.each do |a|
-                if a.responsibilities[responsibility]
-                    return a.code
-                end
-            end
-        end
-
-        def update_nobles
-            cz = df.unit_citizens.sort_by { |u| unit_totalxp(u) }.find_all { |u| u.profession != :BABY and u.profession != :CHILD }
-            ent = df.ui.main.fortress_entity
-
-
-            if ent.assignments_by_type[:MANAGE_PRODUCTION].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            } || cz.first
-                # TODO do check population caps, ...
-                assign_new_noble(positionCode(:MANAGE_PRODUCTION), tg)
-            end
-
-
-            if ent.assignments_by_type[:ACCOUNTING].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id } and !u.status.labors[:MINE]
-            }
-                assign_new_noble(positionCode(:ACCOUNTING), tg)
-                df.ui.bookkeeper_settings = 4
-            end
-
-
-            if ent.assignments_by_type[:HEALTH_MANAGEMENT].empty? and
-                    hosp = ai.plan.find_room(:infirmary) and hosp.status != :plan and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            }
-                assign_new_noble(positionCode(:HEALTH_MANAGEMENT), tg)
-            elsif ass = ent.assignments_by_type[:HEALTH_MANAGEMENT].first and hf = df.world.history.figures.binsearch(ass.histfig) and doc = df.unit_find(hf.unit_id)
-                # doc => healthcare
-                LaborList.each { |lb|
-                    case lb
-                    when :DIAGNOSE, :SURGERY, :BONE_SETTING, :SUTURING, :DRESSING_WOUNDS, :FEED_WATER_CIVILIANS
-                        doc.status.labors[lb] = true
-                    end
-                }
-            end
-
-
-            if ent.assignments_by_type[:TRADE].empty? and tg = cz.find { |u|
-                u.military.squad_id == -1 and !ent.positions.assignments.find { |a| a.histfig == u.hist_figure_id }
-            }
-                assign_new_noble(positionCode(:TRADE), tg)
-            end
-
-            check_noble_appartments
-        end
-
-        def check_noble_appartments
-            noble_ids = df.ui.main.fortress_entity.assignments_by_type.map { |alist|
-                alist.map { |a| a.histfig_tg.unit_id }
-            }.flatten.uniq.sort
-
-            noble_ids.delete_if { |id|
-                not df.unit_entitypositions(df.unit_find(id)).find { |ep|
-                    ep.required_office > 0 or ep.required_dining > 0 or ep.required_tomb > 0
-                }
-            }
-
-            ai.plan.attribute_noblerooms(noble_ids)
-        end
-
-        def assign_new_noble(pos_code, unit)
-            ent = df.ui.main.fortress_entity
-
-            pos = ent.positions.own.find { |p| p.code == pos_code }
-            raise "no noble position #{pos_code}" if not pos
-
-            if not assign = ent.positions.assignments.find { |a| a.position_id == pos.id and a.histfig == -1 }
-                a_id = ent.positions.next_assignment_id
-                ent.positions.next_assignment_id = a_id+1
-                assign = DFHack::EntityPositionAssignment.cpp_new(:id => a_id, :position_id => pos.id)
-                assign.flags.resize(ent.positions.assignments.first.flags.length/8)   # XXX
-                assign.flags[0] = true  # XXX
-                ent.positions.assignments << assign
-            end
-
-            poslink = DFHack::HistfigEntityLinkPositionst.cpp_new(:link_strength => 100, :start_year => df.cur_year)
-            poslink.entity_id = df.ui.main.fortress_entity.id
-            poslink.assignment_id = assign.id
-
-            unit.hist_figure_tg.entity_links << poslink
-            assign.histfig = unit.hist_figure_id
-
-            pos.responsibilities.each_with_index { |r, k|
-                ent.assignments_by_type[k] << assign if r
-            }
-
-            assign
-        end
-
-        def update_pets
-            needmilk = -ai.stocks.find_manager_orders(:MilkCreature).inject(0) { |s, o| s + o.amount_left }
-            needshear = -ai.stocks.find_manager_orders(:ShearCreature).inject(0) { |s, o| s + o.amount_left }
-
-            forSlaughter = Hash.new { |h, k| h[k] = [] }
-
-            np = @pet.dup
-            df.world.units.active.each { |u|
-                next if u.civ_id != df.ui.civ_id
-                next if u.race == df.ui.race_id
-                next if u.flags1.dead or u.flags1.merchant or u.flags1.forest or u.flags2.slaughter
-
-                cst = u.caste_tg
-                age = (df.cur_year - u.relations.birth_year) * 12 * 28 + (df.cur_year_tick - u.relations.birth_time) / 1200 # days
-
-                if @pet[u.id]
-                    if cst.body_size_2.last <= age and # full grown
-                        u.profession != :TRAINED_HUNTER and # not trained
-                        u.profession != :TRAINED_WAR and # not trained
-                        u.relations.pet_owner_id == -1 # not owned
-
-                        if (u.body.wounds.any? { |w| w.parts.any? { |p| p.flags2.gelded } } or # gelded
-                            (cst.gender == 0 and not u.status.current_soul.orientation_flags.marry_male) or # lesbian
-                            (cst.gender == 1 and not u.status.current_soul.orientation_flags.marry_female)) # gay
-
-                            # animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
-                            u.flags2.slaughter = true
-                            ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (can't reproduce)"
-                            next
-                        end
-
-                        forSlaughter[u.caste_tg] << [age, u]
-                    end
-
-                    if @pet[u.id].include?(:MILKABLE) and u.profession != :BABY and u.profession != :CHILD
-                        if not u.status.misc_traits.find { |mt| mt.id == :MilkCounter }
-                            needmilk += 1
-                        end
-                    end
-
-                    if @pet[u.id].include?(:SHEARABLE) and u.profession != :BABY and u.profession != :CHILD
-                        if cst.shearable_tissue_layer.find { |stl|
-                            stl.bp_modifiers_idx.find { |bpi|
-                                u.appearance.bp_modifiers[bpi] >= stl.length
-                            }
-                        }
-                            needshear += 1
-                        end
-                    end
-
-                    np.delete u.id
-                    next
-                end
-
-                @pet[u.id] = []
-
-                if cst.flags[:MILKABLE]
-                    @pet[u.id] << :MILKABLE
-                end
-
-                if cst.shearable_tissue_layer.length > 0
-                    @pet[u.id] << :SHEARABLE
-                end
-
-                if cst.flags[:HUNTS_VERMIN]
-                    @pet[u.id] << :HUNTS_VERMIN
-                end
-
-                if cst.flags[:GRAZER]
-                    @pet[u.id] << :GRAZER
-
-                    if bld = ai.plan.getpasture(u.id)
-                        assign_unit_to_zone(u, bld)
-                        # TODO monitor grass levels
-                    else
-                        # TODO slaughter best candidate, keep this one
-                        # also avoid killing named pets
-                        u.flags2.slaughter = true
-                        ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (no pasture)"
-                    end
-                end
-            }
-
-            np.each_key { |id|
-                ai.plan.freepasture(id)
-                @pet.delete id
-            }
-
-            forSlaughter.each { |cst, candidates|
-                # we have reproductively viable animals, but there are more than 5 of this sex (full-grown). kill the oldest ones for meat/leather/bones.
-
-                candidates = candidates.sort_by(&:first)
-                while candidates.length > 5
-                    candidate = candidates.pop
-                    age, u = candidate[0], candidate[1]
-                    u.flags2.slaughter = true
-                    ai.debug "marked #{age / 12 / 28}y#{age % (12 * 28)}d old #{u.race_tg.creature_id}:#{cst.caste_id} for slaughter (too many adults)"
-                end
-            }
-
-            needmilk = 30 if needmilk > 30
-            ai.stocks.add_manager_order(:MilkCreature, needmilk) if needmilk > 0
-
-            needshear = 30 if needshear > 30
-            ai.stocks.add_manager_order(:ShearCreature, needshear) if needshear > 0
-        end
-
-        def assign_unit_to_zone(u, bld)
-            # remove existing zone assignments
-            # TODO remove existing chains/cages ?
-            while ridx = u.general_refs.index { |ref| ref.kind_of?(DFHack::GeneralRefBuildingCivzoneAssignedst) }
-                ref = u.general_refs[ridx]
-                cidx = ref.building_tg.assigned_units.index(u.id)
-                ref.building_tg.assigned_units.delete_at(cidx)
-                u.general_refs.delete_at(ridx)
-                df.free(ref._memaddr)
-            end
-
-            u.general_refs << DFHack::GeneralRefBuildingCivzoneAssignedst.cpp_new(:building_id => bld.id)
-            bld.assigned_units << u.id
-        end
-
-        def status
-            "#{@citizen.length} citizen, #{@military.length} military, #{@idlers.length} idle, #{@pet.length} pets"
-        end
-
-        def serialize
+#include "ai.h"
+#include "population.h"
+#include "plan.h"
+#include "stocks.h"
+
+#include "modules/Gui.h"
+#include "modules/Units.h"
+
+#include "df/building_civzonest.h"
+#include "df/building_farmplotst.h"
+#include "df/building_stockpilest.h"
+#include "df/building_tradedepotst.h"
+#include "df/building_workshopst.h"
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
+#include "df/entity_position.h"
+#include "df/entity_position_assignment.h"
+#include "df/entity_position_raw.h"
+#include "df/entity_raw.h"
+#include "df/general_ref_building_civzone_assignedst.h"
+#include "df/general_ref_building_holderst.h"
+#include "df/general_ref_contains_itemst.h"
+#include "df/general_ref_contains_unitst.h"
+#include "df/general_ref_unit_workerst.h"
+#include "df/histfig_entity_link_positionst.h"
+#include "df/historical_entity.h"
+#include "df/historical_figure.h"
+#include "df/itemdef_weaponst.h"
+#include "df/job.h"
+#include "df/manager_order.h"
+#include "df/reaction.h"
+#include "df/squad.h"
+#include "df/squad_ammo_spec.h"
+#include "df/squad_order_kill_listst.h"
+#include "df/squad_order_trainst.h"
+#include "df/squad_position.h"
+#include "df/squad_schedule_order.h"
+#include "df/squad_uniform_spec.h"
+#include "df/ui.h"
+#include "df/uniform_category.h"
+#include "df/unit_misc_trait.h"
+#include "df/unit_skill.h"
+#include "df/unit_soul.h"
+#include "df/unit_wound.h"
+#include "df/viewscreen_dwarfmodest.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(cur_year_tick);
+REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
+REQUIRE_GLOBAL(ui);
+REQUIRE_GLOBAL(world);
+
+Population::Population(AI *ai) :
+    ai(ai),
+    citizen(),
+    military(),
+    idlers(),
+    pet(),
+    update_counter(0),
+    onupdate_handle(nullptr),
+    labor_worker(),
+    worker_labor(),
+    labor_needmore(),
+    medic(),
+    workers(),
+    seen_badwork(),
+    last_idle_year(-1)
+{
+}
+
+Population::~Population()
+{
+}
+
+command_result Population::startup(color_ostream & out)
+{
+    *standing_orders_forbid_used_ammo = 0;
+    return CR_OK;
+}
+
+command_result Population::onupdate_register(color_ostream & out)
+{
+    onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
+    return CR_OK;
+}
+
+command_result Population::onupdate_unregister(color_ostream & out)
+{
+    events.onupdate_unregister(onupdate_handle);
+    return CR_OK;
+}
+
+void Population::update(color_ostream & out)
+{
+    update_counter++;
+    switch (update_counter % 10)
+    {
+        case 1:
+            update_citizenlist(out);
+            break;
+        case 2:
+            update_nobles(out);
+            break;
+        case 3:
+            update_jobs(out);
+            break;
+        case 4:
+            update_military(out);
+            break;
+        case 5:
+            update_pets(out);
+            break;
+        case 6:
+            update_deads(out);
+            break;
+        case 7:
+            update_caged(out);
+            break;
+    }
+
+    if (update_counter % 3 == 0)
+    {
+        size_t i = 0;
+        events.onupdate_register_once("df-ai pop autolabors", 3, [this, &i](color_ostream & out) -> bool
+                {
+                    autolabors(out, i);
+                    i++;
+                    return i > 10;
+                });
+    }
+}
+
+void Population::new_citizen(color_ostream & out, int32_t id)
+{
+    citizen.insert(id);
+    ai->plan->new_citizen(out, id);
+}
+
+void Population::del_citizen(color_ostream & out, int32_t id)
+{
+    citizen.erase(id);
+    military.erase(id);
+    ai->plan->del_citizen(out, id);
+}
+
+void Population::update_citizenlist(color_ostream & out)
+{
+    std::set<int32_t> old = citizen;
+
+    // add new fort citizen to our list
+    for (df::unit *u : world->units.active)
+    {
+        if (Units::isCitizen(u) && !Units::isBaby(u))
+        {
+            if (old.count(u->id))
             {
-                :citizen  => Hash[@citizen.map{ |k, v| [k, v.serialize] }],
-                :military => Hash[@military.map{ |k, v| [k, v.serialize] }],
-                :pet      => @pet,
+                old.erase(u->id);
             }
-        end
-    end
-end
-*/
+            else
+            {
+                new_citizen(out, u->id);
+            }
+        }
+    }
+
+    // del those who are no longer here
+    for (int32_t id : old)
+    {
+        // u.counters.death_tg.flags.discovered dead/missing
+        del_citizen(out, id);
+    }
+}
+
+void Population::update_jobs(color_ostream & out)
+{
+    for (auto j = world->job_list.next; j; j = j->next)
+    {
+        if (j->item->flags.bits.suspend && !j->item->flags.bits.repeat)
+        {
+            j->item->flags.bits.suspend = 0;
+        }
+    }
+}
+
+void Population::update_deads(color_ostream & out)
+{
+    for (df::unit *u : world->units.all)
+    {
+        if (u->flags3.bits.ghostly)
+        {
+            ai->stocks->queue_slab(out, u->hist_figure_id);
+        }
+    }
+}
+
+void Population::update_caged(color_ostream & out)
+{
+    int32_t count = 0;
+    for (df::item *cage : world->items.other[items_other_id::CAGE])
+    {
+        if (!cage->flags.bits.on_ground)
+        {
+            continue;
+        }
+        for (auto ref : cage->general_refs)
+        {
+            if (virtual_cast<df::general_ref_contains_itemst>(ref))
+            {
+                df::item *i = ref->getItem();
+                if (i->flags.bits.dump)
+                {
+                    continue;
+                }
+                count++;
+                i->flags.bits.dump = 1;
+            }
+            else if (virtual_cast<df::general_ref_contains_unitst>(ref))
+            {
+                df::unit *u = ref->getUnit();
+                if (Units::isOwnCiv(u))
+                {
+                    // TODO rescue caged dwarves
+                }
+                else
+                {
+                    for (auto it : u->inventory)
+                    {
+                        if (it->item->flags.bits.dump)
+                        {
+                            continue;
+                        }
+                        count++;
+                        it->item->flags.bits.dump = 1;
+                    }
+
+                    if (u->inventory.empty())
+                    {
+                        room *r = ai->plan->find_room("pitcage", [](room *r) -> bool { return r->dfbuilding(); });
+                        if (r && ai->plan->spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
+                        {
+                            assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
+                            military_random_squad_attack_unit(u);
+                            ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (count > 0)
+    {
+        ai->debug(out, stl_sprintf("pop: dumped %d items from cages", count));
+    }
+}
+
+void Population::update_military(color_ostream & out)
+{
+    // check for new soldiers, allocate barracks
+    std::vector<int32_t> newsoldiers;
+
+    for (df::unit *u : world->units.active)
+    {
+        if (Units::isCitizen(u))
+        {
+            if (u->military.squad_id == -1)
+            {
+                if (military.erase(u->id))
+                {
+                    ai->plan->freesoldierbarrack(out, u->id);
+                }
+            }
+            else
+            {
+                if (!military.count(u->id))
+                {
+                    military[u->id] = u->military.squad_id;
+                    newsoldiers.push_back(u->id);
+                }
+            }
+        }
+    }
+
+    // enlist new soldiers if needed
+    std::vector<df::unit *> maydraft;
+    for (df::unit *u : world->units.active)
+    {
+        if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None)
+        {
+            maydraft.push_back(u);
+        }
+    }
+    while (military.size() < maydraft.size() / 5)
+    {
+        df::unit *ns = military_find_new_soldier(out, maydraft);
+        if (!ns)
+        {
+            break;
+        }
+        military[ns->id] = ns->military.squad_id;
+        newsoldiers.push_back(ns->id);
+    }
+
+    for (int32_t uid : newsoldiers)
+    {
+        ai->plan->getsoldierbarrack(out, uid);
+    }
+
+    for (int32_t sqid : ui->main.fortress_entity->squads)
+    {
+        df::squad *sq = df::squad::find(sqid);
+        int32_t soldier_count = 0;
+        for (auto sp : sq->positions)
+        {
+            if (sp->occupant != -1)
+            {
+                soldier_count++;
+            }
+        }
+        for (int32_t month = 0; month < 12; month++)
+        {
+            for (df::squad_schedule_order *so : sq->schedule[1][month]->orders)
+            {
+                df::squad_order_trainst *sot = virtual_cast<df::squad_order_trainst>(so->order);
+                if (!sot)
+                {
+                    continue;
+                }
+                so->min_count = soldier_count > 3 ? soldier_count - 1 : soldier_count;
+                room *r = ai->plan->find_room("barracks", [sqid](room *r) -> bool { return r->misc.count("squad_id") && r->misc.at("squad_id") == sqid; });
+                if (r && r->status != "finished")
+                {
+                    so->min_count = 0;
+                }
+            }
+        }
+    }
+}
+
+void Population::military_random_squad_attack_unit(df::unit *u)
+{
+    df::squad *squad = nullptr;
+    int32_t best;
+    for (int32_t sqid : ui->main.fortress_entity->squads)
+    {
+        df::squad *sq = df::squad::find(sqid);
+
+        int32_t score = 0;
+        for (auto sp : sq->positions)
+        {
+            if (sp->occupant != -1)
+            {
+                score++;
+            }
+        }
+        score -= sq->orders.size();
+
+        if (!squad || best < score)
+        {
+            squad = sq;
+            best = score;
+        }
+    }
+    if (!squad)
+    {
+        return;
+    }
+
+    df::squad_order_kill_listst *so = df::allocate<df::squad_order_kill_listst>();
+    so->units.push_back(u->id);
+    so->title = AI::describe_unit(u);
+    squad->orders.push_back(so);
+}
+
+std::string Population::military_find_commander_pos()
+{
+    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    {
+        if (a->responsibilities[entity_position_responsibility::MILITARY_STRATEGY] && a->flags.is_set(entity_position_raw_flags::SITE))
+        {
+            return a->code;
+        }
+    }
+    return "";
+}
+
+std::string Population::military_find_captain_pos()
+{
+    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    {
+        if (a->flags.is_set(entity_position_raw_flags::MILITARY_SCREEN_ONLY) && a->flags.is_set(entity_position_raw_flags::SITE))
+        {
+            return a->code;
+        }
+    }
+    return "";
+}
+
+// returns an unit newly assigned to a military squad
+df::unit *Population::military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist)
+{
+    df::unit *ns = nullptr;
+    int32_t best;
+    for (df::unit *u : unitlist)
+    {
+        if (u->military.squad_id == -1)
+        {
+            std::vector<Units::NoblePosition> positions;
+            Units::getNoblePositions(&positions, u);
+            int32_t score = unit_totalxp(u) + 5000 * positions.size();
+            if (!ns || score < best)
+            {
+                ns = u;
+                best = score;
+            }
+        }
+    }
+    if (!ns)
+    {
+        return nullptr;
+    }
+
+    int32_t squad_id = military_find_free_squad();
+    df::squad *squad = df::squad::find(squad_id);
+    auto pos = std::find_if(squad->positions.begin(), squad->positions.end(), [](df::squad_position *p) -> bool { return p->occupant == -1; });
+    if (pos == squad->positions.end())
+    {
+        return nullptr;
+    }
+
+    (*pos)->occupant = ns->hist_figure_id;
+    ns->military.squad_id = squad_id;
+    ns->military.squad_position = pos - squad->positions.begin();
+
+    for (df::entity_position_assignment *a : ui->main.fortress_entity->positions.assignments)
+    {
+        if (a->squad_id == squad_id)
+        {
+            return ns;
+        }
+    }
+
+    if (ui->main.fortress_entity->assignments_by_type[entity_position_responsibility::MILITARY_STRATEGY].empty())
+    {
+        assign_new_noble(out, military_find_commander_pos(), ns)->squad_id = squad_id;
+    }
+    else
+    {
+        assign_new_noble(out, military_find_captain_pos(), ns)->squad_id = squad_id;
+    }
+
+    return ns;
+}
+
+// return a squad index with an empty slot
+int32_t Population::military_find_free_squad()
+{
+    int32_t squad_sz = 8;
+    if (military.size() < 4 * 6)
+        squad_sz = 6;
+    if (military.size() < 3 * 4)
+        squad_sz = 4;
+
+    for (int32_t sqid : ui->main.fortress_entity->squads)
+    {
+        int32_t count = 0;
+        for (auto u : military)
+        {
+            if (u.second == sqid)
+            {
+                count++;
+            }
+        }
+        if (count < squad_sz)
+        {
+            return sqid;
+        }
+    }
+
+    // create a new squad using the UI
+    std::set<df::interface_key> keys;
+    keys.insert(interface_key::D_MILITARY);
+    Gui::getCurViewscreen()->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::D_MILITARY_CREATE_SQUAD);
+    Gui::getCurViewscreen()->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::STANDARDSCROLL_UP);
+    Gui::getCurViewscreen()->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::SELECT);
+    Gui::getCurViewscreen()->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen()->feed(&keys);
+
+    // get the squad and its id
+    int32_t squad_id = ui->main.fortress_entity->squads.back();
+    df::squad *squad = df::squad::find(squad_id);
+
+    squad->cur_alert_idx = 1; // train
+    squad->uniform_priority = 2;
+    squad->carry_food = 2;
+    squad->carry_water = 2;
+
+    const static std::vector<std::pair<df::uniform_category, df::item_type>> item_type
+    {
+        {uniform_category::body, item_type::ARMOR},
+        {uniform_category::head, item_type::HELM},
+        {uniform_category::pants, item_type::PANTS},
+        {uniform_category::gloves, item_type::GLOVES},
+        {uniform_category::shoes, item_type::SHOES},
+        {uniform_category::shield, item_type::SHIELD},
+        {uniform_category::weapon, item_type::WEAPON},
+    };
+    // uniform
+    for (df::squad_position *pos : squad->positions)
+    {
+        for (auto it : item_type)
+        {
+            if (!pos->uniform[it.first].empty())
+            {
+                df::squad_uniform_spec *sus = df::allocate<df::squad_uniform_spec>();
+                sus->color = -1;
+                sus->item_filter.item_type = it.second;
+                sus->item_filter.material_class = it.first == uniform_category::weapon ? entity_material_category::None : entity_material_category::Armor;
+                sus->item_filter.mattype = -1;
+                sus->item_filter.matindex = -1;
+                pos->uniform[it.first].push_back(sus);
+            }
+        }
+        pos->flags.bits.exact_matches = 1;
+    }
+
+    if (ui->main.fortress_entity->squads.size() % 3 == 0)
+    {
+        // ranged squad
+        for (df::squad_position *pos : squad->positions)
+        {
+            pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.ranged = 1;
+        }
+        df::squad_ammo_spec *sas = df::allocate<df::squad_ammo_spec>();
+        sas->item_filter.item_type = item_type::AMMO;
+        sas->item_filter.item_subtype = 0; // XXX bolts
+        sas->item_filter.material_class = entity_material_category::None;
+        sas->amount = 500;
+        sas->flags.bits.use_combat = 1;
+        sas->flags.bits.use_training = 1;
+        squad->ammunition.push_back(sas);
+    }
+    else
+    {
+        // we don't want all the axes being used up by the military.
+        std::vector<int32_t> weapons;
+        for (int32_t id : ui->main.fortress_entity->entity_raw->equipment.weapon_id)
+        {
+            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
+            if (idef->skill_melee != job_skill::MINING && idef->skill_melee != job_skill::AXE && idef->skill_ranged == job_skill::NONE && !idef->flags.is_set(weapon_flags::TRAINING))
+            {
+                weapons.push_back(id);
+            }
+        }
+        if (weapons.empty())
+        {
+            for (df::squad_position *pos : squad->positions)
+            {
+                pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.melee = 1;
+            }
+        }
+        else
+        {
+            int32_t n = ui->main.fortress_entity->squads.size();
+            n -= n / 3 + 1;
+            n *= 10;
+            for (df::squad_position *pos : squad->positions)
+            {
+                pos->uniform[uniform_category::weapon][0]->item_filter.item_subtype = weapons[n % weapons.size()];
+                n++;
+            }
+        }
+    }
+
+    return squad_id;
+}
+
+const static struct LaborInfo
+{
+    std::vector<df::unit_labor> list;
+    std::set<df::unit_labor> tool;
+    std::map<df::unit_labor, df::job_skill> skill;
+    std::set<df::unit_labor> idle;
+    std::set<df::unit_labor> medical;
+    std::map<df::unit_labor, std::set<std::string>> stocks;
+    std::set<df::unit_labor> hauling;
+    std::map<df::unit_labor, int32_t> min, max, min_pct, max_pct;
+    std::set<df::job_type> wont_work_job;
+
+    LaborInfo()
+    {
+        FOR_ENUM_ITEMS(unit_labor, ul)
+        {
+            if (ul != unit_labor::NONE)
+            {
+                list.push_back(ul);
+            }
+        }
+
+        tool.insert(unit_labor::MINE);
+        tool.insert(unit_labor::CUTWOOD);
+        tool.insert(unit_labor::HUNT);
+
+        FOR_ENUM_ITEMS(job_skill, js)
+        {
+            df::unit_labor ul = ENUM_ATTR(job_skill, labor, js);
+            if (ul != unit_labor::NONE)
+            {
+                skill[ul] = js;
+                min[ul] = 2;
+                max[ul] = 8;
+                min_pct[ul] = 0;
+                max_pct[ul] = 0;
+                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
+                {
+                    hauling.insert(ul);
+                }
+            }
+        }
+
+        idle.insert(unit_labor::PLANT);
+        idle.insert(unit_labor::HERBALIST);
+        idle.insert(unit_labor::FISH);
+        idle.insert(unit_labor::DETAIL);
+
+        medical.insert(unit_labor::DIAGNOSE);
+        medical.insert(unit_labor::SURGERY);
+        medical.insert(unit_labor::BONE_SETTING);
+        medical.insert(unit_labor::SUTURING);
+        medical.insert(unit_labor::DRESSING_WOUNDS);
+        medical.insert(unit_labor::FEED_WATER_CIVILIANS);
+
+        stocks[unit_labor::PLANT] = {"food", "drink", "cloth"};
+        stocks[unit_labor::HERBALIST] = {"food", "drink", "cloth"};
+        stocks[unit_labor::FISH] = {"food"};
+
+        hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
+        hauling.insert(unit_labor::RECOVER_WOUNDED);
+
+        wont_work_job.insert(job_type::AttendParty);
+        wont_work_job.insert(job_type::Rest);
+        wont_work_job.insert(job_type::UpdateStockpileRecords);
+
+        min[unit_labor::DETAIL] = 4;
+        min[unit_labor::PLANT] = 4;
+        min[unit_labor::HERBALIST] = 1;
+
+        max[unit_labor::FISH] = 1;
+
+        min_pct[unit_labor::DETAIL] = 5;
+        min_pct[unit_labor::PLANT] = 30;
+        min_pct[unit_labor::FISH] = 1;
+        min_pct[unit_labor::HERBALIST] = 10;
+
+        max_pct[unit_labor::DETAIL] = 20;
+        max_pct[unit_labor::PLANT] = 60;
+        max_pct[unit_labor::FISH] = 10;
+        max_pct[unit_labor::HERBALIST] = 30;
+
+        for (df::unit_labor ul : hauling)
+        {
+            min_pct[ul] = 30;
+            max_pct[ul] = 100;
+        }
+    }
+} labors;
+
+void Population::autolabors(color_ostream & out, size_t step)
+{
+    switch (step)
+    {
+        case 1:
+            {
+                workers.clear();
+                idlers.clear();
+                labor_needmore.clear();
+                std::vector<std::tuple<int32_t, std::string, bool>> nonworkers;
+                medic.clear();
+                for (df::entity_position_assignment *n : ui->main.fortress_entity->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT])
+                {
+                    if (df::historical_figure *hf = df::historical_figure::find(n->histfig))
+                    {
+                        medic.insert(hf->unit_id);
+                    }
+                }
+
+                bool merchant = false;
+                for (df::unit *u : world->units.all)
+                {
+                    if (u->flags1.bits.merchant && !u->flags1.bits.dead)
+                    {
+                        merchant = true;
+                        break;
+                    }
+                }
+
+                set_up_trading(merchant);
+
+                for (int32_t c : citizen)
+                {
+                    df::unit *u = df::unit::find(c);
+                    std::vector<Units::NoblePosition> positions;
+                    if (!u)
+                    {
+                        continue;
+                    }
+
+                    if (u->mood != mood_type::None)
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "has mood: " + ENUM_KEY_STR(mood_type, u->mood), false));
+                    }
+                    else if (Units::isChild(u))
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "is a child", true));
+                    }
+                    else if (Units::isBaby(u))
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "is a baby", true));
+                    }
+                    else if (unit_hasmilitaryduty(u))
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "has military duty", false));
+                    }
+                    else if (u->flags1.bits.caged)
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "caged", false));
+                    }
+                    else if (citizen.size() >= 20 && !world->manager_orders.empty() && !world->manager_orders.back()->is_validated && Units::getNoblePositions(&positions, u) && std::find_if(positions.begin(), positions.end(), [](const Units::NoblePosition & pos) -> bool { return pos.position->responsibilities[entity_position_responsibility::MANAGE_PRODUCTION]; }) != positions.end())
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "validating work orders", false));
+                    }
+                    else if (merchant && Units::getNoblePositions(&positions, u) && std::find_if(positions.begin(), positions.end(), [](const Units::NoblePosition & pos) -> bool { return pos.position->responsibilities[entity_position_responsibility::TRADE]; }) != positions.end())
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "trading", false));
+                    }
+                    else if (u->job.current_job && labors.wont_work_job.count(u->job.current_job->job_type))
+                    {
+                        nonworkers.push_back(std::make_tuple(c, ENUM_ATTR(job_type, caption, u->job.current_job->job_type), false));
+                    }
+                    else if (std::find_if(u->status.misc_traits.begin(), u->status.misc_traits.end(), [](df::unit_misc_trait *mt) -> bool { return mt->id == misc_trait_type::OnBreak; }) != u->status.misc_traits.end())
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "on break", false));
+                    }
+                    else if (std::find_if(u->specific_refs.begin(), u->specific_refs.end(), [](df::specific_ref *sr) -> bool { return sr->type == specific_ref_type::ACTIVITY; }) != u->specific_refs.end())
+                    {
+                        nonworkers.push_back(std::make_tuple(c, "has activity", false));
+                    }
+                    else
+                    {
+                        // TODO filter nobles that will not work
+                        workers.push_back(c);
+                        if (!u->job.current_job)
+                        {
+                            idlers.push_back(c);
+                        }
+                    }
+                }
+
+                // free non-workers
+                for (auto c : nonworkers)
+                {
+                    df::unit *u = df::unit::find(std::get<0>(c));
+                    auto & ul = u->status.labors;
+                    for (df::unit_labor lb : labors.list)
+                    {
+                        if (labors.hauling.count(lb))
+                        {
+                            if (!ul[lb] && !std::get<2>(c))
+                            {
+                                ul[lb] = true;
+                                if (labors.tool.count(lb))
+                                {
+                                    u->military.pickup_flags.bits.update = 1;
+                                }
+                                ai->debug(out, "assigning labor " + ENUM_KEY_STR(unit_labor, lb) + " to " + AI::describe_unit(u) + " (non-worker: " + std::get<1>(c) + ")");
+                            }
+                        }
+                        else if (ul[lb])
+                        {
+                            if (labors.medical.count(lb) && medic.count(u->id))
+                            {
+                                continue;
+                            }
+                            ul[lb] = false;
+                            if (labors.tool.count(lb))
+                            {
+                                u->military.pickup_flags.bits.update = 1;
+                            }
+                            ai->debug(out, "unassigning labor " + ENUM_KEY_STR(unit_labor, lb) + " from " + AI::describe_unit(u) + " (non-worker: " + std::get<1>(c) + ")");
+                        }
+                    }
+                }
+            }
+            break;
+
+        case 2:
+            {
+                std::set<int32_t> seen_workshop;
+                for (auto job = world->job_list.next; job; job = job->next)
+                {
+                    df::general_ref_building_holderst *ref_bld = nullptr;
+                    for (df::general_ref *ref : job->item->general_refs)
+                    {
+                        ref_bld = virtual_cast<df::general_ref_building_holderst>(ref);
+                        if (ref_bld)
+                        {
+                            break;
+                        }
+                    }
+                    df::general_ref_unit_workerst *ref_wrk = nullptr;
+                    for (df::general_ref *ref : job->item->general_refs)
+                    {
+                        ref_wrk = virtual_cast<df::general_ref_unit_workerst>(ref);
+                        if (ref_wrk)
+                        {
+                            break;
+                        }
+                    }
+                    if (ref_bld && seen_workshop.count(ref_bld->building_id))
+                    {
+                        continue;
+                    }
+
+                    if (!ref_wrk)
+                    {
+                        df::unit_labor job_labor = ENUM_ATTR(job_type, labor, job->item->job_type);
+                        if (job_labor == unit_labor::NONE)
+                            job_labor = ENUM_ATTR(job_skill, labor, ENUM_ATTR(job_type, skill, job->item->job_type));
+                        if (job_labor != unit_labor::NONE)
+                        {
+                            labor_needmore[job_labor]++;
+                        }
+                        else
+                        {
+                            switch (job->item->job_type)
+                            {
+                                case job_type::ConstructBuilding:
+                                case job_type::DestroyBuilding:
+                                    {
+                                        // TODO
+                                        // labor_needmore[UNKNOWN_BUILDING_LABOR_PLACEHOLDER]++;
+                                    }
+                                    break;
+
+                                case job_type::CustomReaction:
+                                    {
+                                        df::reaction *reac = nullptr;
+                                        for (df::reaction *r : world->raws.reactions)
+                                        {
+                                            if (r->code == job->item->reaction_name)
+                                            {
+                                                reac = r;
+                                                break;
+                                            }
+                                        }
+                                        if (reac && (job_labor = ENUM_ATTR(job_skill, labor, reac->skill)) != unit_labor::NONE)
+                                        {
+                                            labor_needmore[job_labor]++;
+                                        }
+                                    }
+                                    break;
+                                case job_type::PenSmallAnimal:
+                                case job_type::PenLargeAnimal:
+                                    {
+                                        labor_needmore[unit_labor::HAUL_ANIMALS]++;
+                                    }
+                                    break;
+                                case job_type::StoreItemInStockpile:
+                                case job_type::StoreItemInBag:
+                                case job_type::StoreItemInHospital:
+                                case job_type::StoreWeapon:
+                                case job_type::StoreArmor:
+                                case job_type::StoreItemInBarrel:
+                                case job_type::StoreItemInBin:
+                                case job_type::StoreItemInVehicle:
+                                    {
+                                        for (df::unit_labor lb : labors.hauling)
+                                        {
+                                            labor_needmore[lb]++;
+                                        }
+                                    }
+                                    break;
+                                default:
+                                    {
+                                        if (job->item->material_category.bits.wood)
+                                        {
+                                            labor_needmore[unit_labor::CARPENTER]++;
+                                        }
+                                        else if (job->item->material_category.bits.bone)
+                                        {
+                                            labor_needmore[unit_labor::BONE_CARVE]++;
+                                        }
+                                        else if (job->item->material_category.bits.shell)
+                                        {
+                                            labor_needmore[unit_labor::BONE_CARVE]++;
+                                        }
+                                        else if (job->item->material_category.bits.cloth)
+                                        {
+                                            labor_needmore[unit_labor::CLOTHESMAKER]++;
+                                        }
+                                        else if (job->item->material_category.bits.leather)
+                                        {
+                                            labor_needmore[unit_labor::LEATHER]++;
+                                        }
+                                        else if (job->item->mat_type == 0)
+                                        {
+                                            // XXX metalcraft ?
+                                            labor_needmore[unit_labor::MASON]++;
+                                        }
+                                        else
+                                        {
+                                            if (seen_badwork.insert(job->item->job_type).second)
+                                            {
+                                                ai->debug(out, "unknown labor for " + ENUM_KEY_STR(job_type, job->item->job_type));
+                                            }
+                                        }
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+
+                    if (ref_bld)
+                    {
+                        df::building *bld = ref_bld->getBuilding();
+                        if (virtual_cast<df::building_farmplotst>(bld) || virtual_cast<df::building_stockpilest>(bld))
+                        {
+                            // parallel work allowed
+                        }
+                        else
+                        {
+                            seen_workshop.insert(ref_bld->building_id);
+                        }
+                    }
+                }
+            }
+            break;
+
+        case 3:
+            {
+                // count active labors
+                labor_worker.clear();
+                worker_labor.clear();
+                for (df::unit_labor lb : labors.list)
+                {
+                    labor_worker[lb] = std::set<int32_t>();
+                }
+                for (int32_t c : workers)
+                {
+                    worker_labor[c] = std::set<df::unit_labor>();
+                    auto & ul = df::unit::find(c)->status.labors;
+                    for (df::unit_labor lb : labors.list)
+                    {
+                        if (ul[lb])
+                        {
+                            labor_worker[lb].insert(c);
+                            worker_labor[c].insert(lb);
+                        }
+                    }
+                }
+
+                if (workers.size() > 15)
+                {
+                    // if one has too many labors, free him up (one per round)
+                    int32_t lim = 4 * labors.list.size() / workers.size();
+                    if (lim < 4)
+                        lim = 4;
+                    lim += labors.hauling.size();
+                    for (auto & wl : worker_labor)
+                    {
+                        if (wl.second.size() > lim)
+                        {
+                            int32_t c = wl.first;
+                            df::unit *u = df::unit::find(c);
+                            auto & ul = u->status.labors;
+
+                            for (df::unit_labor lb : labors.list)
+                            {
+                                if (ul[lb])
+                                {
+                                    if (labors.medical.count(lb) && medic.count(u->id))
+                                    {
+                                        continue;
+                                    }
+                                    worker_labor[c].erase(lb);
+                                    labor_worker[lb].erase(c);
+                                    ul[lb] = false;
+                                    if (labors.tool.count(lb))
+                                    {
+                                        u->military.pickup_flags.bits.update = 1;
+                                    }
+                                }
+                            }
+                            ai->debug(out, "unassigned all labors from " + AI::describe_unit(u) + " (too many labors)");
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+
+        case 4:
+            {
+                std::map<df::unit_labor, int32_t> labormin = labors.min;
+                std::map<df::unit_labor, int32_t> labormax = labors.max;
+                std::map<df::unit_labor, int32_t> laborminpct = labors.min_pct;
+                std::map<df::unit_labor, int32_t> labormaxpct = labors.max_pct;
+
+                for (df::unit_labor lb : labors.list)
+                {
+                    int32_t max = labormax.at(lb);
+                    int32_t maxpc = labormaxpct.at(lb) * workers.size() / 100;
+                    if (max < maxpc)
+                        max = maxpc;
+                    if (labors.stocks.count(lb))
+                    {
+                        for (std::string s : labors.stocks.at(lb))
+                        {
+                            if (!ai->stocks->need_more(s))
+                            {
+                                max = 0;
+                                break;
+                            }
+                        }
+                    }
+                    if (lb == unit_labor::FISH && !ai->plan->find_room("workshop", [](room *r) -> bool { return r->subtype == "Fishery" && r->status != "plan"; }))
+                    {
+                        max = 0;
+                    }
+                    labormax[lb] = max;
+
+                    if (labor_worker.at(lb).size() >= max)
+                    {
+                        labor_needmore.erase(lb);
+                    }
+                }
+
+                if (labor_needmore.empty() && !idlers.empty() && ai->plan->past_initial_phase && last_idle_year != *cur_year)
+                {
+                    ai->plan->idleidle(out);
+                    last_idle_year = *cur_year;
+                }
+
+                // handle low-number of workers + tool labors
+                int32_t mintool = 0;
+                for (df::unit_labor lb : labors.tool)
+                {
+                    int32_t min = labormin.at(lb);
+                    int32_t minpc = laborminpct.at(lb) * workers.size() / 100;
+                    if (min < minpc)
+                    {
+                        mintool += minpc;
+                    }
+                    else
+                    {
+                        mintool += min;
+                    }
+                }
+                if (workers.size() < mintool)
+                {
+                    for (df::unit_labor lb : labors.tool)
+                    {
+                        labormax[lb] = 0;
+                    }
+                    if (workers.size() == 0)
+                    {
+                        // meh
+                    }
+                    else if (workers.size() == 1)
+                    {
+                        // switch mine or cutwood based on time (1/2 dwarf month each)
+                        if (*cur_year_tick / (1200 * 28 / 2) % 2 == 0)
+                        {
+                            labormax[unit_labor::MINE]++;
+                        }
+                        else
+                        {
+                            labormax[unit_labor::CUTWOOD]++;
+                        }
+                    }
+                    else
+                    {
+                        for (int32_t i = 0; i < workers.size(); i++)
+                        {
+                            // divide equally between labors, with priority to
+                            // mine, then wood, then hunt
+                            // XXX new labortools ?
+                            switch (i % 3)
+                            {
+                                case 0:
+                                    labormax[unit_labor::MINE]++;
+                                    break;
+                                case 1:
+                                    labormax[unit_labor::CUTWOOD]++;
+                                    break;
+                                case 2:
+                                    labormax[unit_labor::HUNT]++;
+                                    break;
+                            }
+                        }
+                    }
+
+                    // list of dwarves with an exclusive labor
+                    std::map<int32_t, df::unit_labor> exclusive;
+                    for (auto lbtest : std::vector<std::pair<df::unit_labor, bool>>
+                            {
+                                {unit_labor::CARPENTER, ai->plan->find_room("workshop", [](room *r) -> bool { df::building_workshopst *bld = virtual_cast<df::building_workshopst>(r->dfbuilding()); return r->subtype == "Carpenters" && bld && !bld->jobs.empty(); })},
+                                {unit_labor::MINE, ai->plan->is_digging()},
+                                {unit_labor::MASON, ai->plan->find_room("workshop", [](room *r) -> bool { df::building_workshopst *bld = virtual_cast<df::building_workshopst>(r->dfbuilding()); return r->subtype == "Masons" && bld && !bld->jobs.empty(); })},
+                                {unit_labor::CUTWOOD, ai->stocks->is_cutting_trees()},
+                                {unit_labor::DETAIL, ai->plan->find_room("cistern", [](room *r) -> bool { return r->subtype == "well" && !r->misc.count("channeled"); })},
+                            })
+                    {
+                        if (workers.size() > exclusive.size() + 2 && labor_needmore.count(lbtest.first) && lbtest.second)
+                        {
+                            // keep last run's choice
+                            auto c = std::min_element(labor_worker.at(lbtest.first).begin(), labor_worker.at(lbtest.first).end(), [this](int32_t a, int32_t b) -> bool { return worker_labor.at(a).size() < worker_labor.at(b).size(); });
+                            if (c == labor_worker.at(lbtest.first).end())
+                            {
+                                continue;
+                            }
+                            int32_t cid = *c;
+
+                            exclusive[cid] = lbtest.first;
+                            idlers.erase(std::remove(idlers.begin(), idlers.end(), cid), idlers.end());
+                            std::set<df::unit_labor> labors_copy = worker_labor.at(cid);
+                            for (df::unit_labor llb : labors_copy)
+                            {
+                                if (llb == lbtest.first)
+                                    continue;
+                                if (labors.tool.count(llb))
+                                    continue;
+                                autolabor_unsetlabor(out, cid, llb, "has exclusive labor: " + ENUM_KEY_STR(unit_labor, lbtest.first));
+                            }
+                        }
+                    }
+
+                    // autolabor!
+                    for (df::unit_labor lb : labors.list)
+                    {
+                        int32_t min = labormin.at(lb);
+                        int32_t max = labormax.at(lb);
+                        int32_t minpc = laborminpct.at(lb) * workers.size() / 100;
+                        if (min < minpc)
+                            min = minpc;
+                        if (max != 0 && labor_needmore.empty() && labors.idle.count(lb))
+                            max = workers.size();
+                        if (min > max)
+                            min = max;
+                        if (min > workers.size())
+                            min = workers.size();
+
+                        int32_t cnt = labor_worker.at(lb).size();
+                        if (cnt > max)
+                        {
+                            if (labor_needmore.empty())
+                            {
+                                continue;
+                            }
+                            std::vector<int32_t> least_skilled(labor_worker.at(lb).begin(), labor_worker.at(lb).end());
+                            if (labors.skill.count(lb))
+                            {
+                                df::job_skill sk = labors.skill.at(lb);
+                                auto skill_rating = [sk](df::unit *u) -> int32_t
+                                {
+                                    for (auto usk : u->status.current_soul->skills)
+                                    {
+                                        if (usk->id == sk)
+                                        {
+                                            return int32_t(usk->rating);
+                                        }
+                                    }
+                                    return 0;
+                                };
+                                std::sort(least_skilled.begin(), least_skilled.end(), [skill_rating](int32_t a, int32_t b) -> bool
+                                        {
+                                            return skill_rating(df::unit::find(a)) < skill_rating(df::unit::find(b));
+                                        });
+                            }
+                            else
+                            {
+                                std::shuffle(least_skilled.begin(), least_skilled.end(), ai->rng);
+                            }
+                            while (least_skilled.size() > max)
+                            {
+                                autolabor_unsetlabor(out, least_skilled.back(), lb, "too many dwarves");
+                                least_skilled.pop_back();
+                            }
+                        }
+                        else if (cnt < min)
+                        {
+                            if (min < max && !labors.tool.count(lb))
+                            {
+                                min++;
+                            }
+                            std::function<int32_t(df::unit *)> skill_score = [](df::unit *) -> int32_t { return 0; };
+                            if (labors.skill.count(lb))
+                            {
+                                df::job_skill sk = labors.skill.at(lb);
+                                skill_score = [sk](df::unit *u) -> int32_t
+                                {
+                                    for (auto usk : u->status.current_soul->skills)
+                                    {
+                                        if (usk->id == sk)
+                                        {
+                                            return int32_t(usk->rating) * 4;
+                                        }
+                                    }
+                                    return 0;
+                                };
+                            }
+                            for (; cnt < min; cnt++)
+                            {
+                                int32_t c = -1;
+                                int32_t best;
+                                for (int32_t _c : workers)
+                                {
+                                    if (exclusive.count(_c))
+                                    {
+                                        continue;
+                                    }
+                                    if (labors.tool.count(lb))
+                                    {
+                                        bool found = false;
+                                        for (df::unit_labor _lb : labors.tool)
+                                        {
+                                            if (worker_labor.at(_c).count(_lb))
+                                            {
+                                                found = true;
+                                                break;
+                                            }
+                                        }
+                                        if (found)
+                                        {
+                                            continue;
+                                        }
+                                    }
+                                    if (worker_labor.at(_c).count(lb))
+                                    {
+                                        continue;
+                                    }
+                                    df::unit *u = df::unit::find(_c);
+                                    int32_t score = worker_labor.at(_c).size() * 10;
+                                    std::vector<Units::NoblePosition> positions;
+                                    Units::getNoblePositions(&positions, u);
+                                    score += positions.size() * 40;
+                                    score -= skill_score(u);
+
+                                    if (c == -1 || score < best)
+                                    {
+                                        c = _c;
+                                        best = score;
+                                    }
+                                }
+
+                                if (c == -1)
+                                {
+                                    break;
+                                }
+
+                                autolabor_setlabor(out, c, lb, "not enough dwarves");
+                            }
+                        }
+                        else if (!idlers.empty() && labor_needmore.empty())
+                        {
+                            for (int32_t i = 0; i < max - cnt; i++)
+                            {
+                                autolabor_setlabor(out, idlers[std::uniform_int_distribution<size_t>(0, idlers.size() - 1)(ai->rng)], lb, "idleidle");
+                            }
+                        }
+                        else if (!idlers.empty() && labor_needmore.count(lb))
+                        {
+                            for (int32_t i = 0; i < std::min(labor_needmore.at(lb), max - cnt); i++)
+                            {
+                                autolabor_setlabor(out, idlers[std::uniform_int_distribution<size_t>(0, idlers.size() - 1)(ai->rng)], lb, "idle");
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+    }
+}
+
+void Population::autolabor_setlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason)
+{
+    if (worker_labor.count(c) && worker_labor.at(c).count(lb))
+    {
+        return;
+    }
+    labor_worker[lb].insert(c);
+    worker_labor[c].insert(lb);
+    df::unit *u = df::unit::find(c);
+    if (labors.tool.count(lb))
+    {
+        for (df::unit_labor _lb : labors.tool)
+        {
+            autolabor_unsetlabor(out, c, _lb, "conflicts with " + ENUM_KEY_STR(unit_labor, lb) + " (" + reason + ")");
+        }
+    }
+    u->status.labors[lb] = true;
+    if (labors.tool.count(lb))
+    {
+        u->military.pickup_flags.bits.update = 1;
+    }
+    ai->debug(out, "assigning labor " + ENUM_KEY_STR(unit_labor, lb) + " to " + AI::describe_unit(u) + " (" + reason + ")");
+}
+
+void Population::autolabor_unsetlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason)
+{
+    if (!worker_labor.count(c) || !worker_labor.at(c).count(lb))
+    {
+        return;
+    }
+    df::unit *u = df::unit::find(c);
+    if (labors.medical.count(lb) && medic.count(c))
+    {
+        return;
+    }
+    labor_worker[lb].erase(c);
+    worker_labor[c].erase(lb);
+    u->status.labors[lb] = false;
+    if (labors.tool.count(lb))
+    {
+        u->military.pickup_flags.bits.update = 1;
+    }
+    ai->debug(out, "unassigning labor " + ENUM_KEY_STR(unit_labor, lb) + " from " + AI::describe_unit(u) + " (" + reason + ")");
+}
+
+void Population::set_up_trading(bool should_be_trading)
+{
+    room *r = ai->plan->find_room("workshop", [](room *r) -> bool { return r->subtype == "TradeDepot"; });
+    if (!r)
+    {
+        return;
+    }
+    df::building_tradedepotst *bld = virtual_cast<df::building_tradedepotst>(r->dfbuilding());
+    if (!bld || bld->getBuildStage() < bld->getMaxBuildStage())
+    {
+        return;
+    }
+    if (bld->trade_flags.bits.trader_requested == should_be_trading)
+    {
+        return;
+    }
+    df::viewscreen *view = Gui::getCurViewscreen();
+    if (!view || !strict_virtual_cast<df::viewscreen_dwarfmodest>(view))
+    {
+        return;
+    }
+
+    std::set<df::interface_key> keys;
+    keys.insert(interface_key::D_BUILDJOB);
+    view->feed(&keys);
+
+    df::coord pos = r->pos();
+    Gui::revealInDwarfmodeMap(pos, true);
+    Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+    keys.clear();
+    keys.insert(interface_key::CURSOR_LEFT);
+    view->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+    view->feed(&keys);
+
+    keys.clear();
+    keys.insert(interface_key::LEAVESCREEN);
+    view->feed(&keys);
+}
+
+bool Population::unit_hasmilitaryduty(df::unit *u)
+{
+    if (u->military.squad_id == -1)
+    {
+        return false;
+    }
+    df::squad *squad = df::squad::find(u->military.squad_id);
+    std::vector<df::squad_schedule_order *> & curmonth = squad->schedule[squad->cur_alert_idx][*cur_year_tick / 28 / 1200]->orders;
+    return !curmonth.empty() && (curmonth.size() != 1 || curmonth[0]->min_count != 0);
+}
+
+int32_t Population::unit_totalxp(df::unit *u)
+{
+    int32_t t = 0;
+    for (auto sk : u->status.current_soul->skills)
+    {
+        int32_t rat = sk->rating;
+        t += 400 * rat + 100 * rat * (rat + 1) / 2 + sk->experience;
+    }
+    return t;
+}
+
+std::string Population::positionCode(df::entity_position_responsibility responsibility)
+{
+    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    {
+        if (a->responsibilities[responsibility])
+        {
+            return a->code;
+        }
+    }
+    return "";
+}
+
+void Population::update_nobles(color_ostream & out)
+{
+    std::vector<df::unit *> cz;
+    for (df::unit *u : world->units.active)
+    {
+        std::vector<Units::NoblePosition> positions;
+        if (Units::isCitizen(u) && !Units::isBaby(u) && !Units::isChild(u) && u->military.squad_id == -1 && !Units::getNoblePositions(&positions, u))
+        {
+            cz.push_back(u);
+        }
+    }
+    std::sort(cz.begin(), cz.end(), [this](df::unit *a, df::unit *b) -> bool
+            {
+                return unit_totalxp(a) > unit_totalxp(b);
+            });
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    if (ent->assignments_by_type[entity_position_responsibility::MANAGE_PRODUCTION].empty() && !cz.empty())
+    {
+        // TODO do check population caps, ...
+        assign_new_noble(out, positionCode(entity_position_responsibility::MANAGE_PRODUCTION), cz.back());
+        cz.pop_back();
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::ACCOUNTING].empty() && !cz.empty())
+    {
+        for (auto it = cz.rbegin(); it != cz.rend(); it++)
+        {
+            if (!(*it)->status.labors[unit_labor::MINE])
+            {
+                assign_new_noble(out, positionCode(entity_position_responsibility::ACCOUNTING), *it);
+                ui->bookkeeper_settings = 4;
+                cz.erase(it.base());
+                break;
+            }
+        }
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != "plan"; }) && !cz.empty())
+    {
+        assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());
+        cz.pop_back();
+    }
+
+    if (!ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty())
+    {
+        df::entity_position_assignment *asn = ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].at(0);
+        df::historical_figure *hf = df::historical_figure::find(asn->histfig);
+        df::unit *doctor = df::unit::find(hf->unit_id);
+        // doc => healthcare
+        for (df::unit_labor lb : labors.medical)
+        {
+            doctor->status.labors[lb] = true;
+        }
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty() && !cz.empty())
+    {
+        assign_new_noble(out, positionCode(entity_position_responsibility::TRADE), cz.back());
+        cz.pop_back();
+    }
+
+    check_noble_appartments(out);
+}
+
+void Population::check_noble_appartments(color_ostream & out)
+{
+    std::set<int32_t> noble_ids;
+
+    for (df::entity_position_assignment *asn : ui->main.fortress_entity->positions.assignments)
+    {
+        df::entity_position *pos = binsearch_in_vector(ui->main.fortress_entity->positions.own, asn->position_id);
+        if (pos->required_office > 0 || pos->required_dining > 0 || pos->required_tomb > 0)
+        {
+            df::historical_figure *hf = df::historical_figure::find(asn->histfig);
+            noble_ids.insert(hf->unit_id);
+        }
+    }
+
+    ai->plan->attribute_noblerooms(out, noble_ids);
+}
+
+df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::string pos_code, df::unit *unit)
+{
+    df::historical_entity *ent = ui->main.fortress_entity;
+
+    df::entity_position *pos = nullptr;
+    for (df::entity_position *p : ent->positions.own)
+    {
+        if (p->code == pos_code)
+        {
+            pos = p;
+            break;
+        }
+    }
+    assert(pos);
+
+    df::entity_position_assignment *assign = nullptr;
+    for (df::entity_position_assignment *a : ent->positions.assignments)
+    {
+        if (a->position_id == pos->id && a->histfig == -1)
+        {
+            assign = a;
+            break;
+        }
+    }
+    if (!assign)
+    {
+        int32_t a_id = ent->positions.next_assignment_id;
+        ent->positions.next_assignment_id++;
+        assign = df::allocate<df::entity_position_assignment>();
+        assign->id = a_id;
+        assign->position_id = pos->id;
+        assign->flags.resize(ent->positions.assignments[0]->flags.size); // XXX
+        assign->flags.set(0, true); // XXX
+        ent->positions.assignments.push_back(assign);
+    }
+
+    df::histfig_entity_link_positionst *poslink = df::allocate<df::histfig_entity_link_positionst>();
+    poslink->link_strength = 100;
+    poslink->start_year = *cur_year;
+    poslink->entity_id = ent->id;
+    poslink->assignment_id = assign->id;
+
+    df::historical_figure::find(unit->hist_figure_id)->entity_links.push_back(poslink);
+    assign->histfig = unit->hist_figure_id;
+
+    FOR_ENUM_ITEMS(entity_position_responsibility, r)
+    {
+        if (pos->responsibilities[r])
+        {
+            ent->assignments_by_type[r].push_back(assign);
+        }
+    }
+
+    return assign;
+}
+
+void Population::update_pets(color_ostream & out)
+{
+    int32_t needmilk = 0;
+    int32_t needshear = 0;
+    for (df::manager_order *mo : world->manager_orders)
+    {
+        if (mo->job_type == job_type::MilkCreature)
+        {
+            needmilk -= mo->amount_left;
+        }
+        else if (mo->job_type == job_type::ShearCreature)
+        {
+            needshear -= mo->amount_left;
+        }
+    }
+
+    std::map<df::caste_raw *, std::set<std::pair<int32_t, df::unit *>>> forSlaughter;
+
+    std::map<int32_t, pet_flags> np = pet;
+    for (df::unit *u : world->units.active)
+    {
+        if (!Units::isOwnCiv(u) || Units::isOwnRace(u))
+        {
+            continue;
+        }
+        if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.slaughter)
+        {
+            continue;
+        }
+
+        df::creature_raw *race = df::creature_raw::find(u->race);
+        df::caste_raw *cst = race->caste[u->caste];
+        int32_t age = (*cur_year - u->relations.birth_year) * 12 * 28 + (*cur_year_tick - u->relations.birth_time) / 1200; // days
+
+        if (pet.count(u->id))
+        {
+            if (cst->body_size_2.back() <= age && // full grown
+                    u->profession != profession::TRAINED_HUNTER && // not trained
+                    u->profession != profession::TRAINED_WAR && // not trained
+                    u->relations.pet_owner_id == -1) // not owned
+            {
+
+                if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || // gelded
+                        (cst->gender == 0 && !u->status.current_soul->orientation_flags.bits.marry_male) || // lesbian
+                        (cst->gender == 1 && !u->status.current_soul->orientation_flags.bits.marry_female)) // gay
+                {
+                    // animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
+                    u->flags2.bits.slaughter = true;
+                    ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (can't reproduce)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
+                    continue;
+                }
+
+                forSlaughter[cst].insert(std::make_pair(age, u));
+            }
+
+            if (pet.at(u->id).bits.milkable && !Units::isBaby(u) && !Units::isChild(u))
+            {
+                bool have = false;
+                for (auto mt : u->status.misc_traits)
+                {
+                    if (mt->id == misc_trait_type::MilkCounter)
+                    {
+                        have = true;
+                        break;
+                    }
+                }
+                if (!have)
+                {
+                    needmilk++;
+                }
+            }
+
+            if (pet.at(u->id).bits.shearable && !Units::isBaby(u) && !Units::isChild(u))
+            {
+                bool found = false;
+                for (auto stl : cst->shearable_tissue_layer)
+                {
+                    for (auto bpi : stl->bp_modifiers_idx)
+                    {
+                        if (u->appearance.bp_modifiers[bpi] >= stl->length)
+                        {
+                            needshear++;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (found)
+                        break;
+                }
+            }
+
+            np.erase(u->id);
+            continue;
+        }
+
+        pet_flags flags;
+
+        if (cst->flags.is_set(caste_raw_flags::MILKABLE))
+        {
+            flags.bits.milkable = 1;
+        }
+
+        if (!cst->shearable_tissue_layer.empty())
+        {
+            flags.bits.shearable = 1;
+        }
+
+        if (cst->flags.is_set(caste_raw_flags::HUNTS_VERMIN))
+        {
+            flags.bits.hunts_vermin = 1;
+        }
+
+        if (cst->flags.is_set(caste_raw_flags::GRAZER))
+        {
+            flags.bits.grazer = 1;
+
+            if (df::building_civzonest *bld = virtual_cast<df::building_civzonest>(ai->plan->getpasture(out, u->id)))
+            {
+                assign_unit_to_zone(u, bld);
+                // TODO monitor grass levels
+            }
+            else
+            {
+                // TODO slaughter best candidate, keep this one
+                // also avoid killing named pets
+                u->flags2.bits.slaughter = 1;
+                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
+                continue;
+            }
+        }
+
+        pet[u->id] = flags;
+    }
+
+    for (auto p : np)
+    {
+        ai->plan->freepasture(out, p.first);
+        pet.erase(p.first);
+    }
+
+    for (auto cst : forSlaughter)
+    {
+        // we have reproductively viable animals, but there are more than 5 of
+        // this sex (full-grown). kill the oldest ones for meat/leather/bones.
+
+        if (cst.second.size() > 5)
+        {
+            // remove the youngest 5
+            auto it = cst.second.begin();
+            std::advance(it, 5);
+            cst.second.erase(cst.second.begin(), it);
+
+            for (auto candidate : cst.second)
+            {
+                int32_t age = candidate.first;
+                df::unit *u = candidate.second;
+                df::creature_raw *race = df::creature_raw::find(u->race);
+                u->flags2.bits.slaughter = 1;
+                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst.first->caste_id.c_str()));
+            }
+        }
+    }
+
+    if (needmilk > 30)
+        needmilk = 30;
+    if (needmilk > 0)
+        ai->stocks->add_manager_order(out, "MilkCreature", needmilk);
+
+    if (needshear > 30)
+        needshear = 30;
+    if (needshear > 0)
+        ai->stocks->add_manager_order(out, "ShearCreature", needshear);
+}
+
+void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
+{
+    // remove existing zone assignments
+    // TODO remove existing chains/cages ?
+    u->general_refs.erase(std::remove_if(u->general_refs.begin(), u->general_refs.end(), [u](df::general_ref *ref) -> bool
+            {
+                if (!virtual_cast<df::general_ref_building_civzone_assignedst>(ref))
+                {
+                    return false;
+                }
+                df::building_civzonest *bld = virtual_cast<df::building_civzonest>(ref->getBuilding());
+                bld->assigned_units.erase(std::remove(bld->assigned_units.begin(), bld->assigned_units.end(), u->id), bld->assigned_units.end());
+                delete ref;
+                return true;
+            }), u->general_refs.end());
+
+    df::general_ref_building_civzone_assignedst *ref = df::allocate<df::general_ref_building_civzone_assignedst>();
+    ref->building_id = bld->id;
+    u->general_refs.push_back(ref);
+    bld->assigned_units.push_back(u->id);
+}
+
+std::string Population::status()
+{
+    return stl_sprintf("%d citizen, %d military, %d idle, %d pets", citizen.size(), military.size(), idlers.size(), pet.size());
+}
 
 // vim: et:sw=4:ts=4

@@ -45,7 +45,7 @@ public:
     std::map<df::unit_labor, std::set<int32_t>> labor_worker;
 private:
     std::map<int32_t, std::set<df::unit_labor>> worker_labor;
-    std::map<df::unit_labor, size_t> labor_needmore;
+    std::map<df::unit_labor, int32_t> labor_needmore;
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
@@ -61,8 +61,8 @@ public:
 
     void update(color_ostream & out);
 
-    void new_citizen(int32_t id);
-    void del_citizen(int32_t id);
+    void new_citizen(color_ostream & out, int32_t id);
+    void del_citizen(color_ostream & out, int32_t id);
 
     void update_citizenlist(color_ostream & out);
     void update_jobs(color_ostream & out);
@@ -74,13 +74,13 @@ public:
     std::string military_find_commander_pos();
     std::string military_find_captain_pos();
 
-    df::unit *military_find_new_soldier(const std::vector<df::unit *> & unitlist);
+    df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
 
     void autolabors(color_ostream & out, size_t step);
 
-    void autolabor_setlabor(color_ostream & out, df::unit *c, df::unit_labor lb, std::string reason = "no reason given");
-    void autolabor_unsetlabor(color_ostream & out, df::unit *c, df::unit_labor lb, std::string reason = "no reason given");
+    void autolabor_setlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason = "no reason given");
+    void autolabor_unsetlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason = "no reason given");
 
     void set_up_trading(bool should_be_trading);
 

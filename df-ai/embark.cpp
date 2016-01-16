@@ -35,6 +35,10 @@ Embark::Embark(AI *ai) :
     }
 }
 
+Embark::~Embark()
+{
+}
+
 command_result Embark::startup(color_ostream & out)
 {
     // do nothing
