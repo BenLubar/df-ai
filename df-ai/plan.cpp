@@ -1753,6 +1753,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             // XXX else quarry?
         }
     }
+    ai->debug(out, "couldn't build " + describe_room(r));
     return false;
 }
 
@@ -1827,6 +1828,10 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         return false;
 
     df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
+    Buildings::setSize(bld, r->size());
+    Buildings::constructAbstract(bld);
+    r->misc["bld_id"] = bld->id;
+
     bld->zone_flags.bits.active = 1;
     if (r->type == "infirmary")
     {
@@ -1852,10 +1857,6 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     {
         bld->zone_flags.bits.pit_pond = 1;
     }
-
-    Buildings::setSize(bld, r->size());
-    Buildings::constructAbstract(bld);
-    r->misc["bld_id"] = bld->id;
 
     return true;
 }
@@ -5633,11 +5634,6 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
                     for (auto g : ground)
                     {
                         df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(df::coord(x, y, g.first), building_type::Civzone, civzone_type::ActivityZone));
-                        bld->zone_flags.bits.active = 1;
-                        bld->zone_flags.bits.gather = 1;
-                        bld->gather_flags.bits.pick_trees = 1;
-                        bld->gather_flags.bits.pick_shrubs = 1;
-                        bld->gather_flags.bits.gather_fallen = 1;
                         int16_t w = 31;
                         int16_t h = 31;
                         if (x + 31 > world->map.x_count)
@@ -5645,7 +5641,20 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
                         if (y + 31 > world->map.y_count)
                             h = world->map.y_count % 31;
                         Buildings::setSize(bld, df::coord(w, h, 1));
+                        for (int16_t dx = 0; dx < w; dx++)
+                        {
+                            for (int16_t dy = 0; dy < h; dy++)
+                            {
+                                bld->room.extents[dx + w * dy] = g.second.count(df::coord2d(dx, dy)) ? 1 : 0;
+                            }
+                        }
                         Buildings::constructAbstract(bld);
+
+                        bld->zone_flags.bits.active = 1;
+                        bld->zone_flags.bits.gather = 1;
+                        bld->gather_flags.bits.pick_trees = 1;
+                        bld->gather_flags.bits.pick_shrubs = 1;
+                        bld->gather_flags.bits.gather_fallen = 1;
                     }
 
                     ground.clear();
