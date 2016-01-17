@@ -51,6 +51,96 @@ REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
+const static struct LaborInfo
+{
+    std::vector<df::unit_labor> list;
+    std::set<df::unit_labor> tool;
+    std::map<df::unit_labor, df::job_skill> skill;
+    std::set<df::unit_labor> idle;
+    std::set<df::unit_labor> medical;
+    std::map<df::unit_labor, std::set<std::string>> stocks;
+    std::set<df::unit_labor> hauling;
+    std::map<df::unit_labor, int32_t> min, max, min_pct, max_pct;
+    std::set<df::job_type> wont_work_job;
+
+    LaborInfo()
+    {
+        FOR_ENUM_ITEMS(unit_labor, ul)
+        {
+            if (ul != unit_labor::NONE)
+            {
+                list.push_back(ul);
+                min[ul] = 2;
+                max[ul] = 8;
+                min_pct[ul] = 0;
+                max_pct[ul] = 0;
+                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
+                {
+                    hauling.insert(ul);
+                }
+            }
+        }
+
+        tool.insert(unit_labor::MINE);
+        tool.insert(unit_labor::CUTWOOD);
+        tool.insert(unit_labor::HUNT);
+
+        FOR_ENUM_ITEMS(job_skill, js)
+        {
+            df::unit_labor ul = ENUM_ATTR(job_skill, labor, js);
+            if (ul != unit_labor::NONE)
+            {
+                skill[ul] = js;
+            }
+        }
+
+        idle.insert(unit_labor::PLANT);
+        idle.insert(unit_labor::HERBALIST);
+        idle.insert(unit_labor::FISH);
+        idle.insert(unit_labor::DETAIL);
+
+        medical.insert(unit_labor::DIAGNOSE);
+        medical.insert(unit_labor::SURGERY);
+        medical.insert(unit_labor::BONE_SETTING);
+        medical.insert(unit_labor::SUTURING);
+        medical.insert(unit_labor::DRESSING_WOUNDS);
+        medical.insert(unit_labor::FEED_WATER_CIVILIANS);
+
+        stocks[unit_labor::PLANT] = {"food", "drink", "cloth"};
+        stocks[unit_labor::HERBALIST] = {"food", "drink", "cloth"};
+        stocks[unit_labor::FISH] = {"food"};
+
+        hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
+        hauling.insert(unit_labor::RECOVER_WOUNDED);
+
+        wont_work_job.insert(job_type::AttendParty);
+        wont_work_job.insert(job_type::Rest);
+        wont_work_job.insert(job_type::UpdateStockpileRecords);
+
+        min[unit_labor::DETAIL] = 4;
+        min[unit_labor::PLANT] = 4;
+        min[unit_labor::HERBALIST] = 1;
+
+        max[unit_labor::FISH] = 1;
+
+        min_pct[unit_labor::DETAIL] = 5;
+        min_pct[unit_labor::PLANT] = 30;
+        min_pct[unit_labor::FISH] = 1;
+        min_pct[unit_labor::HERBALIST] = 10;
+
+        max_pct[unit_labor::DETAIL] = 20;
+        max_pct[unit_labor::PLANT] = 60;
+        max_pct[unit_labor::FISH] = 10;
+        max_pct[unit_labor::HERBALIST] = 30;
+
+        for (df::unit_labor ul : hauling)
+        {
+            min_pct[ul] = 30;
+            max_pct[ul] = 100;
+        }
+    }
+} labors;
+
 Population::Population(AI *ai) :
     ai(ai),
     citizen(),
@@ -281,6 +371,19 @@ void Population::update_military(color_ostream & out)
     {
         if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None)
         {
+            bool hasTool = false;
+            for (df::unit_labor lb : labors.tool)
+            {
+                if (u->status.labors[lb])
+                {
+                    hasTool = true;
+                    break;
+                }
+            }
+            if (hasTool)
+            {
+                continue;
+            }
             maydraft.push_back(u);
         }
     }
@@ -582,96 +685,6 @@ int32_t Population::military_find_free_squad()
 
     return squad_id;
 }
-
-const static struct LaborInfo
-{
-    std::vector<df::unit_labor> list;
-    std::set<df::unit_labor> tool;
-    std::map<df::unit_labor, df::job_skill> skill;
-    std::set<df::unit_labor> idle;
-    std::set<df::unit_labor> medical;
-    std::map<df::unit_labor, std::set<std::string>> stocks;
-    std::set<df::unit_labor> hauling;
-    std::map<df::unit_labor, int32_t> min, max, min_pct, max_pct;
-    std::set<df::job_type> wont_work_job;
-
-    LaborInfo()
-    {
-        FOR_ENUM_ITEMS(unit_labor, ul)
-        {
-            if (ul != unit_labor::NONE)
-            {
-                list.push_back(ul);
-                min[ul] = 2;
-                max[ul] = 8;
-                min_pct[ul] = 0;
-                max_pct[ul] = 0;
-                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
-                {
-                    hauling.insert(ul);
-                }
-            }
-        }
-
-        tool.insert(unit_labor::MINE);
-        tool.insert(unit_labor::CUTWOOD);
-        tool.insert(unit_labor::HUNT);
-
-        FOR_ENUM_ITEMS(job_skill, js)
-        {
-            df::unit_labor ul = ENUM_ATTR(job_skill, labor, js);
-            if (ul != unit_labor::NONE)
-            {
-                skill[ul] = js;
-            }
-        }
-
-        idle.insert(unit_labor::PLANT);
-        idle.insert(unit_labor::HERBALIST);
-        idle.insert(unit_labor::FISH);
-        idle.insert(unit_labor::DETAIL);
-
-        medical.insert(unit_labor::DIAGNOSE);
-        medical.insert(unit_labor::SURGERY);
-        medical.insert(unit_labor::BONE_SETTING);
-        medical.insert(unit_labor::SUTURING);
-        medical.insert(unit_labor::DRESSING_WOUNDS);
-        medical.insert(unit_labor::FEED_WATER_CIVILIANS);
-
-        stocks[unit_labor::PLANT] = {"food", "drink", "cloth"};
-        stocks[unit_labor::HERBALIST] = {"food", "drink", "cloth"};
-        stocks[unit_labor::FISH] = {"food"};
-
-        hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
-        hauling.insert(unit_labor::RECOVER_WOUNDED);
-
-        wont_work_job.insert(job_type::AttendParty);
-        wont_work_job.insert(job_type::Rest);
-        wont_work_job.insert(job_type::UpdateStockpileRecords);
-
-        min[unit_labor::DETAIL] = 4;
-        min[unit_labor::PLANT] = 4;
-        min[unit_labor::HERBALIST] = 1;
-
-        max[unit_labor::FISH] = 1;
-
-        min_pct[unit_labor::DETAIL] = 5;
-        min_pct[unit_labor::PLANT] = 30;
-        min_pct[unit_labor::FISH] = 1;
-        min_pct[unit_labor::HERBALIST] = 10;
-
-        max_pct[unit_labor::DETAIL] = 20;
-        max_pct[unit_labor::PLANT] = 60;
-        max_pct[unit_labor::FISH] = 10;
-        max_pct[unit_labor::HERBALIST] = 30;
-
-        for (df::unit_labor ul : hauling)
-        {
-            min_pct[ul] = 30;
-            max_pct[ul] = 100;
-        }
-    }
-} labors;
 
 void Population::autolabors(color_ostream & out, size_t step)
 {
