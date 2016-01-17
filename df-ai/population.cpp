@@ -300,6 +300,7 @@ void Population::update_military(color_ostream & out)
         ai->plan->getsoldierbarrack(out, uid);
     }
 
+    /*
     for (int32_t sqid : ui->main.fortress_entity->squads)
     {
         df::squad *sq = df::squad::find(sqid);
@@ -329,6 +330,7 @@ void Population::update_military(color_ostream & out)
             }
         }
     }
+    */
 }
 
 void Population::military_random_squad_attack_unit(df::unit *u)
@@ -516,7 +518,7 @@ int32_t Population::military_find_free_squad()
     {
         for (auto it : item_type)
         {
-            if (!pos->uniform[it.first].empty())
+            if (pos->uniform[it.first].empty())
             {
                 df::squad_uniform_spec *sus = df::allocate<df::squad_uniform_spec>();
                 sus->color = -1;
@@ -1429,6 +1431,7 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::MANAGE_PRODUCTION].empty() && !cz.empty())
     {
+        ai->debug(out, "assigning new manager: " + AI::describe_unit(cz.back()));
         // TODO do check population caps, ...
         assign_new_noble(out, positionCode(entity_position_responsibility::MANAGE_PRODUCTION), cz.back());
         cz.pop_back();
@@ -1440,9 +1443,10 @@ void Population::update_nobles(color_ostream & out)
         {
             if (!(*it)->status.labors[unit_labor::MINE])
             {
+                ai->debug(out, "assigning new bookkeeper: " + AI::describe_unit(*it));
                 assign_new_noble(out, positionCode(entity_position_responsibility::ACCOUNTING), *it);
                 ui->bookkeeper_settings = 4;
-                cz.erase(it.base());
+                cz.erase(it.base() - 1);
                 break;
             }
         }
@@ -1450,6 +1454,7 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != "plan"; }) && !cz.empty())
     {
+        ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());
         cz.pop_back();
     }
@@ -1468,6 +1473,7 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty() && !cz.empty())
     {
+        ai->debug(out, "assigning new broker: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, positionCode(entity_position_responsibility::TRADE), cz.back());
         cz.pop_back();
     }
@@ -1484,8 +1490,10 @@ void Population::check_noble_appartments(color_ostream & out)
         df::entity_position *pos = binsearch_in_vector(ui->main.fortress_entity->positions.own, asn->position_id);
         if (pos->required_office > 0 || pos->required_dining > 0 || pos->required_tomb > 0)
         {
-            df::historical_figure *hf = df::historical_figure::find(asn->histfig);
-            noble_ids.insert(hf->unit_id);
+            if (df::historical_figure *hf = df::historical_figure::find(asn->histfig))
+            {
+                noble_ids.insert(hf->unit_id);
+            }
         }
     }
 

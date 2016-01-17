@@ -818,7 +818,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
     find_furniture("chest");
     find_furniture("archerytarget");
 
-    if (r->status == "finsihed")
+    if (r->status == "finished")
     {
         furnish_room(out, r);
     }
@@ -1081,7 +1081,7 @@ void Plan::digroom(color_ostream & out, room *r)
 
     for (furniture *f : r->layout)
     {
-        if (f->at("item") == "floodgate")
+        if (!f->count("item") || f->at("item") == "floodgate")
             continue;
         if (f->count("dig"))
             continue;
@@ -3990,6 +3990,10 @@ command_result Plan::scan_fort_body(color_ostream & out)
                     stop = true;
             }
         }
+        if (stop)
+        {
+            break;
+        }
 
         auto check = [this, c, cz1, &stop](int16_t dx, int16_t dy, int16_t dz)
         {
@@ -4032,12 +4036,12 @@ command_result Plan::scan_fort_body(color_ostream & out)
                     check(dx, dy, dz);
                 }
             }
+        }
 
-            if (!stop)
-            {
-                fort_entrance->min.z = cz1;
-                return CR_OK;
-            }
+        if (!stop)
+        {
+            fort_entrance->min.z = cz1;
+            return CR_OK;
         }
     }
 

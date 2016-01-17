@@ -12,7 +12,7 @@ class cache_hash
 
 public:
     cache_hash(std::function<V(const K &)> b) :
-        proc(),
+        proc(b),
         hash()
     {
     }
