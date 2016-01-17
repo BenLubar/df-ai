@@ -31,7 +31,7 @@ struct room
     room(std::string type, std::string subtype, df::coord min, df::coord max);
     ~room();
 
-    inline df::coord size() const { return max - min + 1; }
+    inline df::coord size() const { return max - min + df::coord(1, 1, 1); }
     inline df::coord pos() const { return min + size() / 2; }
 
     void dig(std::string mode = "");

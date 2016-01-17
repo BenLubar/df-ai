@@ -1296,6 +1296,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         {
             f->at("misc_bldprops").bldprops(out, bld);
         }
+        Buildings::setSize(bld, r->size());
         Buildings::constructWithItems(bld, {itm});
         if (f->count("makeroom"))
         {
@@ -1319,6 +1320,7 @@ bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coor
             find_item(items_other_id::CHAIN, chain))
     {
         df::building *bld = Buildings::allocInstance(t, building_type::Well);
+        Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {block, mecha, buckt, chain});
         r->misc["bld_id"] = (*f)["bld_id"] = bld->id;
         tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
@@ -1334,6 +1336,7 @@ bool Plan::try_furnish_archerytarget(color_ostream & out, room *r, furniture *f,
         return false;
 
     df::building *bld = Buildings::allocInstance(t, building_type::ArcheryTarget);
+    Buildings::setSize(bld, df::coord(1, 1, 1));
     virtual_cast<df::building_archerytargetst>(bld)->archery_direction = f->at("y").id > 2 ? df::building_archerytargetst::TopToBottom : df::building_archerytargetst::BottomToTop;
     Buildings::constructWithItems(bld, {bould});
     (*f)["bld_id"] = bld->id;
@@ -1472,6 +1475,7 @@ bool Plan::try_furnish_construction(color_ostream & out, room *r, furniture *f, 
     find_enum_item(&sub, ctype);
 
     df::building *bld = Buildings::allocInstance(t, building_type::Construction, sub);
+    Buildings::setSize(bld, df::coord(1, 1, 1));
     Buildings::constructWithItems(bld, {block});
     return true;
 }
@@ -1485,7 +1489,8 @@ bool Plan::try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::
     if (!find_items(items_other_id::WOOD, mat, 4))
         return false;
 
-    df::building *bld = Buildings::allocInstance(t, building_type::Windmill);
+    df::building *bld = Buildings::allocInstance(t - df::coord(1, 1, 0), building_type::Windmill);
+    Buildings::setSize(bld, df::coord(3, 3, 1));
     Buildings::constructWithItems(bld, mat);
     (*f)["bld_id"] = bld->id;
     tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
@@ -1501,6 +1506,7 @@ bool Plan::try_furnish_roller(color_ostream & out, room *r, furniture *f, df::co
         df::building *bld = Buildings::allocInstance(t, building_type::Rollers);
         if (f->count("misc_bldprops"))
             f->at("misc_bldprops").bldprops(out, bld);
+        Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {mecha, chain});
         r->misc["bld_id"] = bld->id;
         (*f)["bld_id"] = bld->id;
@@ -1586,6 +1592,7 @@ bool Plan::try_furnish_trap(color_ostream & out, room *r, furniture *f)
 
     df::trap_type subtype = subtypes.at(f->at("subtype"));
     df::building *bld = Buildings::allocInstance(t, building_type::Trap, subtype);
+    Buildings::setSize(bld, df::coord(1, 1, 1));
     Buildings::constructWithItems(bld, {mecha});
     (*f)["bld_id"] = bld->id;
     tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
@@ -1610,16 +1617,14 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    df::workshop_type subtype = df::workshop_type(-1);
-    find_enum_item(&subtype, r->subtype);
-
     if (r->subtype == "Dyers")
     {
         df::item *barrel, *bucket;
         if (find_item(items_other_id::BARREL, barrel) &&
                 find_item(items_other_id::BUCKET, bucket))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Dyers);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {barrel, bucket});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1633,7 +1638,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
                 find_item(items_other_id::BARREL, barrel) &&
                 find_item(items_other_id::BUCKET, bucket))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Ashery);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {block, barrel, bucket});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1646,7 +1652,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         if (find_item(items_other_id::BUCKET, buckt) &&
                 find_item(items_other_id::BOULDER, bould, false, true))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, workshop_type::Custom, find_custom_building("SOAP_MAKER"));
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SOAP_MAKER"));
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {buckt, bould});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1658,7 +1665,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         std::vector<df::item *> mechas;
         if (find_items(items_other_id::TRAPPARTS, mechas, 2))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, workshop_type::Custom, find_custom_building("SCREW_PRESS"));
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SCREW_PRESS"));
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, mechas);
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1671,7 +1679,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         if (find_item(items_other_id::ANVIL, anvil, true) &&
                 find_item(items_other_id::BOULDER, bould, true, true))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::MetalsmithsForge);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {anvil, bould});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1687,8 +1696,12 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         if (find_item(items_other_id::BOULDER, bould, true, true))
         {
             df::furnace_type furnace_subtype = df::furnace_type(-1);
-            find_enum_item(&furnace_subtype, r->subtype);
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Furnace, furnace_subtype);
+            if (!find_enum_item(&furnace_subtype, r->subtype))
+            {
+                ai->debug(out, "could not find furnace subtype for " + r->subtype);
+            }
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, furnace_subtype);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {bould});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1700,7 +1713,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         df::item *quern;
         if (find_item(items_other_id::QUERN, quern))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Quern);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {quern});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1712,7 +1726,8 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         std::vector<df::item *> boulds;
         if (find_items(items_other_id::BOULDER, boulds, 3, false, true))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::TradeDepot);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::TradeDepot);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, boulds);
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1721,10 +1736,16 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
     }
     else
     {
+        df::workshop_type subtype = df::workshop_type(-1);
+        if (!find_enum_item(&subtype, r->subtype))
+        {
+            ai->debug(out, "could not find workshop subtype for " + r->subtype);
+        }
         df::item *bould;
         if (find_item(items_other_id::BOULDER, bould, false, true))
         {
-            df::building *bld = Buildings::allocInstance(r->pos(), building_type::Workshop, subtype);
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, subtype);
+            Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {bould});
             r->misc["bld_id"] = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
@@ -1742,28 +1763,8 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
 
     df::coord size = r->size();
 
-    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(Buildings::allocInstance(r->pos(), building_type::Stockpile));
-    bld->room.extents = new uint8_t[size.x * size.y]();
-    bld->room.x = r->min.x;
-    bld->room.y = r->min.y;
-    bld->room.width = size.x;
-    bld->room.height = size.y;
-    for (int16_t x = 0; x < size.x; x++)
-    {
-        for (int16_t y = 0; y < size.y; y++)
-        {
-            df::tiletype tt = *Maps::getTileType(r->min + df::coord(x, y, 0));
-            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Floor)
-            {
-                bld->room.extents[x + size.x * y] = 1;
-            }
-            else
-            {
-                bld->room.extents[x + size.x * y] = 0;
-            }
-        }
-    }
-    bld->is_room = 1;
+    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(Buildings::allocInstance(r->min, building_type::Stockpile));
+    Buildings::setSize(bld, r->size());
     Buildings::constructAbstract(bld);
     r->misc["bld_id"] = bld->id;
     furnish_room(out, r);
@@ -1788,7 +1789,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     find_room("stockpile", [r, bld](room *o) -> bool
             {
                 int32_t diff = o->misc.at("stockpile_level").id - r->misc.at("stockpile_level").id;
-                if (o->subtype == r->subtype && -1 <= diff && diff <= 1)
+                if (o->subtype == r->subtype && (diff == -1 || diff == 1))
                 {
                     if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
                     {
@@ -1825,7 +1826,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->pos(), building_type::Civzone, civzone_type::ActivityZone));
+    df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
     bld->zone_flags.bits.active = 1;
     if (r->type == "infirmary")
     {
@@ -1852,20 +1853,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         bld->zone_flags.bits.pit_pond = 1;
     }
 
-    df::coord size = r->size();
-    bld->room.extents = new uint8_t[size.x * size.y]();
-    bld->room.x = r->min.x;
-    bld->room.y = r->min.y;
-    bld->room.width = size.x;
-    bld->room.height = size.y;
-    for (int16_t x = 0; x < size.x; x++)
-    {
-        for (int16_t y = 0; y < size.y; y++)
-        {
-            bld->room.extents[x + size.x * y] = 1;
-        }
-    }
-    bld->is_room = 1;
+    Buildings::setSize(bld, r->size());
     Buildings::constructAbstract(bld);
     r->misc["bld_id"] = bld->id;
 
@@ -2397,7 +2385,7 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
         }
     }
 
-    df::building *bld = Buildings::allocInstance(r->pos(), building_type::FarmPlot);
+    df::building *bld = Buildings::allocInstance(r->min, building_type::FarmPlot);
     Buildings::setSize(bld, r->size());
     Buildings::constructWithItems(bld, {});
     r->misc["bld_id"] = bld->id;
@@ -5656,19 +5644,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
                             w = world->map.x_count % 31;
                         if (y + 31 > world->map.y_count)
                             h = world->map.y_count % 31;
-                        bld->room.extents = new uint8_t[w * h];
-                        bld->room.x = x;
-                        bld->room.y = y;
-                        bld->room.width = w;
-                        bld->room.height = h;
-                        for (int16_t cx = 0; cx < w; cx++)
-                        {
-                            for (int16_t cy = 0; cy < h; cy++)
-                            {
-                                bld->room.extents[cx + w * cy] = g.second.count(df::coord2d(cx, cy));
-                            }
-                        }
-                        bld->is_room = 1;
+                        Buildings::setSize(bld, df::coord(w, h, 1));
                         Buildings::constructAbstract(bld);
                     }
 
