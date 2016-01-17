@@ -5,7 +5,7 @@ REQUIRE_GLOBAL(cur_year_tick);
 
 EventManager events;
 
-OnupdateCallback::OnupdateCallback(std::string descr, std::function<void(color_ostream &)> cb) :
+OnupdateCallback::OnupdateCallback(std::string descr, std::function<bool(color_ostream &)> cb) :
     callback(cb),
     ticklimit(0),
     minyear(0),
@@ -15,7 +15,7 @@ OnupdateCallback::OnupdateCallback(std::string descr, std::function<void(color_o
 {
 }
 
-OnupdateCallback::OnupdateCallback(std::string descr, std::function<void(color_ostream &)> cb, int32_t tl, int32_t initdelay) :
+OnupdateCallback::OnupdateCallback(std::string descr, std::function<bool(color_ostream &)> cb, int32_t tl, int32_t initdelay) :
     callback(cb),
     ticklimit(tl),
     minyear(*cur_year),
@@ -44,7 +44,10 @@ bool OnupdateCallback::check_run(color_ostream & out, int32_t year, int32_t year
         }
     }
 
-    callback(out);
+    if (callback(out))
+    {
+        events.onupdate_unregister(this);
+    }
     return true;
 }
 
@@ -82,22 +85,7 @@ static bool update_cmp(OnupdateCallback *a, OnupdateCallback *b)
 
 OnupdateCallback *EventManager::onupdate_register(std::string descr, int32_t ticklimit, int32_t initialtickdelay, std::function<void(color_ostream &)> b)
 {
-    OnupdateCallback *h = new OnupdateCallback(descr, b, ticklimit, initialtickdelay);
-    onupdate_list.push_back(h);
-    std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
-    return h;
-}
-
-OnupdateCallback *EventManager::onupdate_register_once(std::string descr, int32_t ticklimit, std::function<bool(color_ostream &)> b)
-{
-    OnupdateCallback *h;
-    h = new OnupdateCallback(descr, [this, &h, b](color_ostream & out)
-            {
-                if (b(out))
-                {
-                    onupdate_unregister(h);
-                }
-            }, ticklimit, ticklimit);
+    OnupdateCallback *h = new OnupdateCallback(descr, [b](color_ostream & out) -> bool { b(out); return false; }, ticklimit, initialtickdelay);
     onupdate_list.push_back(h);
     std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
     return h;
@@ -105,24 +93,32 @@ OnupdateCallback *EventManager::onupdate_register_once(std::string descr, int32_
 
 OnupdateCallback *EventManager::onupdate_register_once(std::string descr, std::function<bool(color_ostream &)> b)
 {
-    OnupdateCallback *h;
-    h = new OnupdateCallback(descr, [this, &h, b](color_ostream & out)
-            {
-                if (b(out))
-                {
-                    onupdate_unregister(h);
-                }
-            });
+    OnupdateCallback *h = new OnupdateCallback(descr, b);
     onupdate_list.push_back(h);
     std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
     return h;
 }
 
-void EventManager::onupdate_unregister(OnupdateCallback *&b)
+OnupdateCallback *EventManager::onupdate_register_once(std::string descr, int32_t ticklimit, std::function<bool(color_ostream &)> b)
+{
+    OnupdateCallback *h = new OnupdateCallback(descr, b, ticklimit, ticklimit);
+    onupdate_list.push_back(h);
+    std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
+    return h;
+}
+
+OnupdateCallback *EventManager::onupdate_register_once(std::string descr, int32_t ticklimit, int32_t initialtickdelay, std::function<bool(color_ostream &)> b)
+{
+    OnupdateCallback *h = new OnupdateCallback(descr, b, ticklimit, initialtickdelay);
+    onupdate_list.push_back(h);
+    std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
+    return h;
+}
+
+void EventManager::onupdate_unregister(OnupdateCallback *b)
 {
     onupdate_list.erase(std::remove(onupdate_list.begin(), onupdate_list.end(), b), onupdate_list.end());
     delete b;
-    b = nullptr;
 }
 
 OnstatechangeCallback *EventManager::onstatechange_register(std::function<void(color_ostream &, state_change_event)> b)

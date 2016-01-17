@@ -121,6 +121,7 @@ void AI::debug(color_ostream & out, std::string str)
         logger << str.substr(pos, end) << "\n                 ";
         pos = end + 1;
     }
+    logger.flush();
 }
 
 command_result AI::startup(color_ostream & out)
@@ -413,6 +414,8 @@ void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)
             });
 }
 
+static std::time_t last_unpause;
+
 command_result AI::onupdate_register(color_ostream & out)
 {
     command_result res = CR_OK;
@@ -429,8 +432,8 @@ command_result AI::onupdate_register(color_ostream & out)
     if (res == CR_OK)
     {
         status_onupdate = events.onupdate_register("df-ai status", 3*28*1200, 3*28*1200, [this](color_ostream & out) { debug(out, status()); });
-        std::time_t last_unpause = std::time(nullptr);
-        pause_onupdate = events.onupdate_register_once("df-ai unpause", [this, &last_unpause](color_ostream & out) -> bool
+        last_unpause = std::time(nullptr);
+        pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream & out) -> bool
                 {
                     if (std::time(nullptr) < last_unpause + 11)
                         return false;

@@ -191,6 +191,8 @@ command_result Plan::onupdate_unregister(color_ostream & out)
     return CR_OK;
 }
 
+static bool want_reupdate = false;
+
 void Plan::update(color_ostream & out)
 {
     if (bg_idx != tasks.end())
@@ -212,8 +214,8 @@ void Plan::update(color_ostream & out)
             nrdig++;
     }
 
-    bool want_reupdate = false;
-    events.onupdate_register_once("df-ai plan bg", [this, &want_reupdate](color_ostream & out) -> bool
+    want_reupdate = false;
+    events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
             {
                 if (bg_idx == tasks.end())
                 {
@@ -313,6 +315,7 @@ task *Plan::is_digging()
         if (((*t)[0] == "wantdig" || (*t)[0] == "digroom") && (*t)[1].r->type != "corridor")
             return t;
     }
+    return nullptr;
 }
 
 bool Plan::is_idle()
@@ -508,10 +511,12 @@ bool Plan::checkidle(color_ostream & out)
     return false;
 }
 
+static std::vector<room *> idleidle_tab;
+
 void Plan::idleidle(color_ostream & out)
 {
     ai->debug(out, "smooth fort");
-    std::vector<room *> tab;
+    idleidle_tab.clear();
     for (auto r : rooms)
     {
         if (r->status != "plan" && r->status != "dig" &&
@@ -522,24 +527,22 @@ void Plan::idleidle(color_ostream & out)
                  r->type == "cemetary" ||
                  r->type == "infirmary" ||
                  r->type == "barracks"))
-            tab.push_back(r);
+            idleidle_tab.push_back(r);
     }
     for (auto r : corridors)
     {
         if (r->status != "plan" && r->status != "dig")
-            tab.push_back(r);
+            idleidle_tab.push_back(r);
     }
 
-    auto it = tab.begin();
-
-    events.onupdate_register_once("df-ai plan idleidle", 4, [this, tab, &it](color_ostream & out)
+    events.onupdate_register_once("df-ai plan idleidle", 4, [this](color_ostream & out)
             {
-                if (it == tab.end())
+                if (idleidle_tab.empty())
                 {
                     return true;
                 }
-                smooth_room(out, *it);
-                it++;
+                smooth_room(out, idleidle_tab.back());
+                idleidle_tab.pop_back();
                 return false;
             });
 }
@@ -694,6 +697,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                                 f->at("users").ids.size() < dwarves_per_table)
                             return true;
                     }
+                    return false;
                 }))
     {
         wantdig(out, r);
@@ -967,6 +971,7 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
                             }
                         }
                     }
+                    return false;
                 });
     }
 }
@@ -2311,7 +2316,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
             bld->max_bins = size.x * size.y;
         }
         auto & s = settings.bars_blocks;
-        if (r && r->misc.count("workshop") &
+        if (r && r->misc.count("workshop") &&
                 r->misc.at("workshop").r->subtype == "MetalsmithsForge")
         {
             s.bars_mats.clear();
@@ -3495,6 +3500,7 @@ command_result Plan::make_map_walkable(color_ostream & out)
                 }
                 return true;
             });
+    return CR_OK;
 }
 
 // scan the map, list all map veins in @map_veins (mat_index => [block coords],
@@ -4053,18 +4059,21 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
     res = setup_blueprint_workshops(out, f, {fort_entrance});
     if (res != CR_OK)
         return res;
+    ai->debug(out, "workshop floor ready");
 
     fort_entrance->min.z--;
     f.z--;
     res = setup_blueprint_utilities(out, f, {fort_entrance});
     if (res != CR_OK)
         return res;
+    ai->debug(out, "utility floor ready");
 
     fort_entrance->min.z--;
     f.z--;
     res = setup_blueprint_stockpiles(out, f, {fort_entrance});
     if (res != CR_OK)
         return res;
+    ai->debug(out, "stockpile floor ready");
 
     for (size_t i = 0; i < 2; i++)
     {
@@ -4073,6 +4082,7 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
         res = setup_blueprint_bedrooms(out, f, {fort_entrance});
         if (res != CR_OK)
             return res;
+        ai->debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
     }
 
     return CR_OK;
@@ -4743,7 +4753,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     cx += 3;
     int16_t cz2 = cz;
     size_t soilcnt = 0;
-    for (int16_t z = cz; cz < world->map.z_count; z++)
+    for (int16_t z = cz; z < world->map.z_count; z++)
     {
         bool ok = true;
         size_t scnt = 0;
@@ -5334,6 +5344,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
                 }
                 return want == 0;
             });
+    return CR_OK;
 }
 
 // scan for 3x3 flat areas with soil
@@ -5386,6 +5397,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
                 want--;
                 return want == 0;
             });
+    return CR_OK;
 }
 
 command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, std::vector<room *> entr)
@@ -5609,14 +5621,21 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
     return CR_OK;
 }
 
+static int16_t setup_outdoor_gathering_zones_counters[3];
+static std::map<int16_t, std::set<df::coord2d>> setup_outdoor_gathering_zones_ground;
+
 command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
 {
-    int16_t x = 0;
-    int16_t y = 0;
-    int16_t i = 0;
-    std::map<int16_t, std::set<df::coord2d>> ground;
-    events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this, &x, &y, &i, &ground](color_ostream & out) -> bool
+    setup_outdoor_gathering_zones_counters[0] = 0;
+    setup_outdoor_gathering_zones_counters[1] = 0;
+    setup_outdoor_gathering_zones_counters[2] = 0;
+    setup_outdoor_gathering_zones_ground.clear();
+    events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this](color_ostream & out) -> bool
             {
+                int16_t & x = setup_outdoor_gathering_zones_counters[0];
+                int16_t & y = setup_outdoor_gathering_zones_counters[0];
+                int16_t & i = setup_outdoor_gathering_zones_counters[0];
+                std::map<int16_t, std::set<df::coord2d>> & ground = setup_outdoor_gathering_zones_ground;
                 if (i == 31 || x + i == world->map.x_count)
                 {
                     for (auto g : ground)
@@ -6175,7 +6194,7 @@ df::coord Plan::find_tree_base(df::coord t)
         df::coord s = tree->pos - df::coord(tree->tree_info->dim_x, tree->tree_info->dim_y, 0) / 2;
         if (t.x < s.x || t.y < s.y || t.z < s.z ||
                 t.x >= s.x + tree->tree_info->dim_x ||
-                t.x >= s.y + tree->tree_info->dim_y ||
+                t.y >= s.y + tree->tree_info->dim_y ||
                 t.z >= s.z + tree->tree_info->body_height)
         {
             return false;

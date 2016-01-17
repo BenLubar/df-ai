@@ -81,7 +81,7 @@ command_result Population::startup(color_ostream & out)
 
 command_result Population::onupdate_register(color_ostream & out)
 {
-    onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
+    onupdate_handle = events.onupdate_register("df-ai pop", 36, 1, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
@@ -94,40 +94,34 @@ command_result Population::onupdate_unregister(color_ostream & out)
 void Population::update(color_ostream & out)
 {
     update_counter++;
-    switch (update_counter % 10)
+    switch (update_counter % 100)
     {
-        case 1:
+        case 10:
             update_citizenlist(out);
             break;
-        case 2:
+        case 20:
             update_nobles(out);
             break;
-        case 3:
+        case 30:
             update_jobs(out);
             break;
-        case 4:
+        case 40:
             update_military(out);
             break;
-        case 5:
+        case 50:
             update_pets(out);
             break;
-        case 6:
+        case 60:
             update_deads(out);
             break;
-        case 7:
+        case 70:
             update_caged(out);
             break;
     }
 
     if (update_counter % 3 == 0)
     {
-        size_t i = 0;
-        events.onupdate_register_once("df-ai pop autolabors", 3, [this, &i](color_ostream & out) -> bool
-                {
-                    autolabors(out, i);
-                    i++;
-                    return i > 10;
-                });
+        autolabors(out, update_counter / 3 % 10);
     }
 }
 
@@ -606,6 +600,14 @@ const static struct LaborInfo
             if (ul != unit_labor::NONE)
             {
                 list.push_back(ul);
+                min[ul] = 2;
+                max[ul] = 8;
+                min_pct[ul] = 0;
+                max_pct[ul] = 0;
+                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
+                {
+                    hauling.insert(ul);
+                }
             }
         }
 
@@ -619,14 +621,6 @@ const static struct LaborInfo
             if (ul != unit_labor::NONE)
             {
                 skill[ul] = js;
-                min[ul] = 2;
-                max[ul] = 8;
-                min_pct[ul] = 0;
-                max_pct[ul] = 0;
-                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
-                {
-                    hauling.insert(ul);
-                }
             }
         }
 

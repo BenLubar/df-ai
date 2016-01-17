@@ -20,7 +20,7 @@
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
 
-std::string AI_RANDOM_EMBARK_WORLD = "";
+std::string AI_RANDOM_EMBARK_WORLD = "region1";
 
 Embark::Embark(AI *ai) :
     ai(ai),
@@ -304,7 +304,7 @@ bool Embark::update(color_ostream & out)
         }
         else
         {
-            ai->debug(out, stl_sprintf("searching foor a site (%d/%d, %d/%d)",
+            ai->debug(out, stl_sprintf("searching for a site (%d/%d, %d/%d)",
                         view->finder.search_x,
                         world->world_data->world_width / 16,
                         view->finder.search_y,

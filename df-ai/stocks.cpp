@@ -283,6 +283,7 @@ command_result Stocks::onupdate_register(color_ostream & out)
 command_result Stocks::onupdate_unregister(color_ostream & out)
 {
     events.onupdate_unregister(onupdate_handle);
+    return CR_OK;
 }
 
 std::string Stocks::status()
@@ -441,7 +442,7 @@ void Stocks::update_kitchen(color_ostream & out)
         int16_t subtype = -1;
         auto key = std::make_tuple(mat_type, mat_index, type, subtype);
         bool exists = already_banned.count(key);
-        if (exists && already_banned.at(key) & 1 == 1)
+        if (exists && (already_banned.at(key) & 1) == 1)
             return;
         already_banned[key] |= 1;
         MaterialInfo mat(mat_type, mat_index);
@@ -803,7 +804,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
         std::set<std::tuple<df::item_type, int16_t, int16_t, int32_t>> forbidden;
         for (size_t i = 0; i < ui->kitchen.item_types.size(); i++)
         {
-            if (ui->kitchen.exc_types[i] & 1 == 1)
+            if ((ui->kitchen.exc_types[i] & 1) == 1)
             {
                 forbidden.insert(std::make_tuple(ui->kitchen.item_types[i], ui->kitchen.item_subtypes[i], ui->kitchen.mat_types[i], ui->kitchen.mat_indices[i]));
             }
@@ -3417,7 +3418,7 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
     }
     df::manager_order *o = df::allocate<df::manager_order>();
     o->job_type = job_type::EngraveSlab;
-    o->item_type == item_type::NONE;
+    o->item_type = item_type::NONE;
     o->item_subtype = -1;
     o->mat_type = 0;
     o->mat_index = -1;
@@ -3434,7 +3435,7 @@ bool Stocks::need_more(std::string type)
     if (NeededPerDwarf.count(type))
         want += NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 10;
 
-    return count.at(type) < want;
+    return (count.count(type) ? count.at(type) : 0) < want;
 }
 
 // vim: et:sw=4:ts=4

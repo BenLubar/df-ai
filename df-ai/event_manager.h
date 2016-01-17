@@ -6,15 +6,15 @@
 
 struct OnupdateCallback
 {
-    std::function<void(color_ostream &)> callback;
+    std::function<bool(color_ostream &)> callback;
     int32_t ticklimit;
     int32_t minyear;
     int32_t minyeartick;
     std::string description;
     bool hasTickLimit;
 
-    OnupdateCallback(std::string descr, std::function<void(color_ostream &)> cb);
-    OnupdateCallback(std::string descr, std::function<void(color_ostream &)> cb, int32_t tl, int32_t initdelay = 0);
+    OnupdateCallback(std::string descr, std::function<bool(color_ostream &)> cb);
+    OnupdateCallback(std::string descr, std::function<bool(color_ostream &)> cb, int32_t tl, int32_t initdelay = 0);
 
     bool check_run(color_ostream & out, int32_t year, int32_t yeartick);
 };
@@ -32,9 +32,10 @@ public:
     ~EventManager();
 
     OnupdateCallback *onupdate_register(std::string descr, int32_t ticklimit, int32_t initialtickdelay, std::function<void(color_ostream &)> b);
+    OnupdateCallback *onupdate_register_once(std::string descr, int32_t ticklimit, int32_t initialtickdelay, std::function<bool(color_ostream &)> b);
     OnupdateCallback *onupdate_register_once(std::string descr, int32_t ticklimit, std::function<bool(color_ostream &)> b);
     OnupdateCallback *onupdate_register_once(std::string descr, std::function<bool(color_ostream &)> b);
-    void onupdate_unregister(OnupdateCallback *&b);
+    void onupdate_unregister(OnupdateCallback *b);
 
     OnstatechangeCallback *onstatechange_register(std::function<void(color_ostream &, state_change_event)> b);
     OnstatechangeCallback *onstatechange_register_once(std::function<bool(color_ostream &, state_change_event)> b);
