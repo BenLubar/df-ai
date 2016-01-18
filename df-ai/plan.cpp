@@ -1833,6 +1833,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     Buildings::setSize(bld, r->size());
     Buildings::constructAbstract(bld);
     r->misc["bld_id"] = bld->id;
+    bld->is_room = true;
 
     bld->zone_flags.bits.active = 1;
     if (r->type == "infirmary")
@@ -1853,7 +1854,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     else if (r->type == "pasture")
     {
         bld->zone_flags.bits.pen_pasture = 1;
-        // pit_flags |= 2
+        bld->pit_flags.whole |= 2;
     }
     else if (r->type == "pitcage")
     {
@@ -5657,6 +5658,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
                             }
                         }
                         Buildings::constructAbstract(bld);
+                        bld->is_room = true;
 
                         bld->zone_flags.bits.active = 1;
                         bld->zone_flags.bits.gather = 1;
