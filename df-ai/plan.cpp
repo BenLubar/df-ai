@@ -1742,7 +1742,9 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             ai->debug(out, "could not find workshop subtype for " + r->subtype);
         }
         df::item *bould;
-        if (find_item(items_other_id::BOULDER, bould, false, true))
+        if (find_item(items_other_id::BOULDER, bould, false, true) ||
+                // use wood if we can't find stone
+                find_item(items_other_id::WOOD, bould))
         {
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, subtype);
             Buildings::setSize(bld, r->size());
@@ -2428,7 +2430,7 @@ void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
 
 void Plan::smooth_room(color_ostream & out, room *r)
 {
-    smooth_xyz(r->min - 1, r->max + 1);
+    smooth_xyz(r->min - df::coord(1, 1, 0), r->max + df::coord(1, 1, 0));
 }
 
 // smooth a room and its accesspath corridors (recursive)
@@ -3728,7 +3730,7 @@ size_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         if (vert.z % 32 > 16)
             vert.x++; // XXX check this
 
-        df::coord t0 = b + df::coord(minx + maxx, miny + maxy, 0) / 2;
+        df::coord t0 = b + df::coord((minx + maxx) / 2, (miny + maxy) / 2, 0);
         while (t0.y != vert.y)
         {
             dig_tile(t0, "Default");
@@ -6180,7 +6182,7 @@ df::coord Plan::find_tree_base(df::coord t)
             return false;
         }
 
-        df::coord s = tree->pos - df::coord(tree->tree_info->dim_x, tree->tree_info->dim_y, 0) / 2;
+        df::coord s = tree->pos - df::coord(tree->tree_info->dim_x / 2, tree->tree_info->dim_y / 2, 0);
         if (t.x < s.x || t.y < s.y || t.z < s.z ||
                 t.x >= s.x + tree->tree_info->dim_x ||
                 t.y >= s.y + tree->tree_info->dim_y ||

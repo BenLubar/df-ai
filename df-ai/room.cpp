@@ -7,12 +7,12 @@
 
 #include "df/building.h"
 
-room::room(df::coord min, df::coord max) :
+room::room(df::coord mins, df::coord maxs) :
     status("plan"),
     type("corridor"),
     subtype(""),
-    min(min),
-    max(max),
+    min(mins),
+    max(maxs),
     accesspath(),
     layout(),
     owner(-1),
@@ -26,12 +26,12 @@ room::room(df::coord min, df::coord max) :
         std::swap(min.z, max.z);
 }
 
-room::room(std::string type, std::string subtype, df::coord min, df::coord max) :
+room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs) :
     status("plan"),
     type(type),
     subtype(subtype),
-    min(min),
-    max(max),
+    min(mins),
+    max(maxs),
     accesspath(),
     layout(),
     owner(-1),
@@ -41,7 +41,7 @@ room::room(std::string type, std::string subtype, df::coord min, df::coord max) 
         std::swap(min.x, max.x);
     if (min.y > max.y)
         std::swap(min.y, max.y);
-    max.z = min.z;
+    assert(min.z == max.z);
 }
 
 room::~room()
