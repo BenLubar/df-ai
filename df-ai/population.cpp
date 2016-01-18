@@ -1611,9 +1611,7 @@ void Population::update_pets(color_ostream & out)
                     u->relations.pet_owner_id == -1) // not owned
             {
 
-                if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || // gelded
-                        (cst->gender == 0 && !u->status.current_soul->orientation_flags.bits.marry_male) || // lesbian
-                        (cst->gender == 1 && !u->status.current_soul->orientation_flags.bits.marry_female)) // gay
+                if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || cst->gender == -1)
                 {
                     // animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
                     u->flags2.bits.slaughter = true;
