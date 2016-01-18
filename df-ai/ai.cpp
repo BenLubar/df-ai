@@ -365,9 +365,9 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                         Gui::getCurViewscreen()->feed(&keys);
                     });
         }
-        else
+        else if (virtual_identity *ident = virtual_identity::get(curview))
         {
-            std::string cvname = virtual_identity::get(curview)->getName();
+            std::string cvname = ident->getName();
             if (seen_cvname.insert(cvname).second)
             {
                 debug(out, "paused in unknown viewscreen " + cvname);
