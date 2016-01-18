@@ -3437,7 +3437,12 @@ command_result Plan::make_map_walkable(color_ostream & out)
                 // find the second tile
                 df::coord t2 = spiral_search(t1, [this, t1w](df::coord t) -> bool
                         {
-                            int16_t tw = Maps::getTileBlock(t)->walkable[t.x & 0xf][t.y & 0xf];
+                            df::map_block *block = Maps::getTileBlock(t);
+                            if (!block)
+                            {
+                                return false;
+                            }
+                            int16_t tw = block->walkable[t.x & 0xf][t.y & 0xf];
                             return tw != 0 and tw != t1w;
                         });
                 if (!t2.isValid())
@@ -3447,7 +3452,8 @@ command_result Plan::make_map_walkable(color_ostream & out)
                 // make sure the second tile is in a safe place
                 t2 = spiral_search(t2, [this, t2w](df::coord t) -> bool
                         {
-                            return Maps::getTileBlock(t)->walkable[t.x & 0xf][t.y & 0xf] == t2w && map_tile_in_rock(t - df::coord(0, 0, 1));
+                            df::map_block *block = Maps::getTileBlock(t);
+                            return block && block->walkable[t.x & 0xf][t.y & 0xf] == t2w && map_tile_in_rock(t - df::coord(0, 0, 1));
                         });
                 if (!t2.isValid())
                     return true;
