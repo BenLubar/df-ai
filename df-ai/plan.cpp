@@ -5066,14 +5066,17 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         }
     }
 
+    ai->debug(out, "finished interior utilities");
     command_result res;
     res = setup_blueprint_pastures(out);
     if (res != CR_OK)
         return res;
+    ai->debug(out, "finished pastures");
     res = setup_blueprint_outdoor_farms(out, nrfarms * 2);
     if (res != CR_OK)
         return res;
     return CR_OK;
+    ai->debug(out, "finished outdoor farms");
 }
 
 command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f)
@@ -5294,7 +5297,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 command_result Plan::setup_blueprint_pastures(color_ostream & out)
 {
     size_t want = 36;
-    spiral_search(fort_entrance->pos(), [this, &out, &want](df::coord _t) -> bool
+    spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 10, 5, [this, &out, &want](df::coord _t) -> bool
             {
                 df::coord sf = surface_tile_at(_t.x, _t.y);
                 if (!sf.isValid())
@@ -5308,13 +5311,14 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
                     {
                         df::coord t = sf + df::coord(dx, dy, 0);
                         df::tiletype *tt = Maps::getTileType(t);
-                        if (!tt || map_tile_intersects_room(t))
+                        if (!tt)
                         {
                             ok = false;
                             continue;
                         }
                         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE)
                         {
+                            ok = false;
                             continue;
                         }
                         if (Maps::getTileDesignation(t)->bits.flow_size != 0)
