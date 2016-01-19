@@ -2440,7 +2440,7 @@ void Plan::smooth_room_access(color_ostream & out, room *r)
     smooth_room(out, r);
     for (room *a : r->accesspath)
     {
-        smooth_room_access(out, r);
+        smooth_room_access(out, a);
     }
 }
 
