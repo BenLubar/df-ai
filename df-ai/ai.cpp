@@ -106,7 +106,7 @@ void AI::debug(color_ostream & out, std::string str)
 
     if (DEBUG)
     {
-        out << "AI: " << ts << " " << str << "\n";
+        out << "AI: " << ts << " " << DF2CONSOLE(str) << "\n";
     }
     logger << ts << " ";
     size_t pos = 0;
@@ -115,10 +115,10 @@ void AI::debug(color_ostream & out, std::string str)
         size_t end = str.find('\n', pos);
         if (end == std::string::npos)
         {
-            logger << str.substr(pos) << "\n";
+            logger << DF2UTF(str.substr(pos)) << "\n";
             break;
         }
-        logger << str.substr(pos, end) << "\n                 ";
+        logger << DF2UTF(str.substr(pos, end)) << "\n                 ";
         pos = end + 1;
     }
     logger.flush();
