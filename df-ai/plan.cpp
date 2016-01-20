@@ -703,7 +703,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         wantdig(out, r);
         for (furniture *f : r->layout)
         {
-            if (f->at("item") == "table" &&
+            if (f->count("item") && f->at("item") == "table" &&
                     f->at("users").ids.size() < dwarves_per_table)
             {
                 f->erase("ignore");
@@ -713,7 +713,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         }
         for (furniture *f : r->layout)
         {
-            if (f->at("item") == "chair" &&
+            if (f->count("item") && f->at("item") == "chair" &&
                     f->at("users").ids.size() < dwarves_per_table)
             {
                 f->erase("ignore");
