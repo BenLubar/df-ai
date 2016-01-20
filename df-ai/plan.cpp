@@ -2409,9 +2409,13 @@ void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
     // if we dug a real hall, get rid of the temporary one
     for (furniture *f : t->layout)
     {
+        if (!f->count("item") || !f->count("users"))
+        {
+            continue;
+        }
         for (furniture *of : r->layout)
         {
-            if (of->at("item").str == f->at("item").str && of->at("users").ids.empty())
+            if (of->count("item") && of->at("item").str == f->at("item").str && of->count("users") && of->at("users").ids.empty())
             {
                 of->at("users").ids = f->at("users").ids;
                 if (!f->count("ignore"))
@@ -2427,6 +2431,18 @@ void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
         }
     }
     rooms.erase(std::remove(rooms.begin(), rooms.end(), t), rooms.end());
+    for (auto it = tasks.begin(); it != tasks.end(); )
+    {
+        if ((*it)->size() > 1 && (*it)->at(1).r == t)
+        {
+            delete *it;
+            tasks.erase(it++);
+        }
+        else
+        {
+            it++;
+        }
+    }
     delete t;
     categorize_all();
 }
