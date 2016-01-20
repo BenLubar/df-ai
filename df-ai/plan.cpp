@@ -6077,6 +6077,11 @@ std::string Plan::describe_room(room *r)
         s << " (" << r->subtype << ")";
     }
 
+    if (!r->comment.empty())
+    {
+        s << " (" << r->comment << ")";
+    }
+
     if (df::unit *u = df::unit::find(r->owner))
     {
         s << " (owned by " << AI::describe_unit(u) << ")";

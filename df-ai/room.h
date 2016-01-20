@@ -21,14 +21,15 @@ struct room
     std::string status;
     std::string type;
     std::string subtype;
+    std::string comment;
     df::coord min, max;
     std::vector<room *> accesspath;
     std::vector<furniture *> layout;
     int32_t owner;
     std::map<std::string, horrible_t> misc;
 
-    room(df::coord min, df::coord max);
-    room(std::string type, std::string subtype, df::coord min, df::coord max);
+    room(df::coord min, df::coord max, std::string comment = "");
+    room(std::string type, std::string subtype, df::coord min, df::coord max, std::string comment = "");
     ~room();
 
     inline df::coord size() const { return max - min + df::coord(1, 1, 1); }
