@@ -1193,6 +1193,8 @@ bool Plan::furnish_room(color_ostream & out, room *r)
 
 static df::building_type FurnitureBuilding(std::string k)
 {
+    if (k == "chest")
+        return building_type::Box;
     if (k == "gear_assembly")
         return building_type::GearAssembly;
     if (k == "vertical_axle")
