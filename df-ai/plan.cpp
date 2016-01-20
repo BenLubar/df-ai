@@ -2826,8 +2826,10 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
                     continue;
                 for (furniture *ff : rr->layout)
                 {
-                    if (ff->at("item") == "trap" &&
+                    if (f->count("item") &&
+                            ff->at("item") == "trap" &&
                             ff->at("subtype") == "lever" &&
+                            ff->count("target") &&
                             ff->at("target").f == f)
                     {
                         link_lever(out, ff, f);
