@@ -2887,16 +2887,12 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         if (y > r->max.y)
             set_ext(x, y - 1, 4);
     }
-    bld->is_room = 1;
+    bld->is_room = true;
 
     set_owner(out, r, r->owner);
     furnish_room(out, r);
 
-    if (r->type == "dininghall")
-    {
-        virtual_cast<df::building_tablest>(bld)->table_flags.bits.meeting_hall = 1;
-    }
-    else if (r->type == "barracks")
+    if (r->type == "barracks")
     {
         df::building *bld = r->dfbuilding();
         if (f->at("item") == "archerytarget")
