@@ -1292,11 +1292,11 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         const static std::map<std::string, int> subtypes = {{"cage", trap_type::CageTrap}, {"lever", trap_type::Lever}, {"trackstop", trap_type::TrackStop}};
         int subtype = f->count("subtype") ? subtypes.at(f->at("subtype")) : -1;
         df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
+        Buildings::setSize(bld, df::coord(1, 1, 1));
         if (f->count("misc_bldprops"))
         {
             f->at("misc_bldprops").bldprops(out, bld);
         }
-        Buildings::setSize(bld, r->size());
         Buildings::constructWithItems(bld, {itm});
         if (f->count("makeroom"))
         {
