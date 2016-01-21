@@ -280,16 +280,16 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview);
         if (view)
         {
-            std::string text;
+            std::ostringstream text;
             for (auto t : view->formatted_text)
             {
                 if (t->text)
                 {
-                    text += " " + *t->text;
+                    text << " " << t->text;
                 }
             }
 
-            std::string stripped = text;
+            std::string stripped = text.str();
             stripped.erase(std::remove(stripped.begin(), stripped.end(), ' '), stripped.end());
 
             if (stripped.find("I" "am" "your" "liaison" "from" "the" "Mountainhomes." "Let's" "discuss" "your" "situation.") != std::string::npos ||
@@ -299,7 +299,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
                     stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos)
             {
-                debug(out, "exit diplomat textviewerst:" + text);
+                debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
                             interface_key_set keys;
@@ -312,7 +312,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     stripped.find("The" "enemy" "have" "come" "and" "are" "laying" "siege" "to" "the" "fortress.") != std::string::npos ||
                     stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
             {
-                debug(out, "exit siege textviewerst:" + text);
+                debug(out, "exit siege textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
                             interface_key_set keys;
@@ -325,14 +325,14 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     stripped.find("Your" "settlement" "has" "crumbled" "to" "its" "end.") != std::string::npos ||
                     stripped.find("Your" "settlement" "has" "been" "abandoned.") != std::string::npos)
             {
-                debug(out, "you just lost the game:" + text);
+                debug(out, "you just lost the game:" + text.str());
                 debug(out, "Exiting AI");
                 onupdate_unregister(out);
                 // don't unpause, to allow for 'die'
             }
             else
             {
-                debug(out, "paused in unknown textviewerst:" + text);
+                debug(out, "paused in unknown textviewerst:" + text.str());
             }
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
