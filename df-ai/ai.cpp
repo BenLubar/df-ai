@@ -118,7 +118,7 @@ void AI::debug(color_ostream & out, std::string str)
             logger << DF2UTF(str.substr(pos)) << "\n";
             break;
         }
-        logger << DF2UTF(str.substr(pos, end)) << "\n                 ";
+        logger << DF2UTF(str.substr(pos, end - pos)) << "\n                 ";
         pos = end + 1;
     }
     logger.flush();
