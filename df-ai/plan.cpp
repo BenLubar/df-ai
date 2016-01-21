@@ -2670,11 +2670,11 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                                 *Maps::getTileType(x, y, z))))
                 {
                     case tiletype_shape_basic::Floor:
+                        stop = true;
                         if (!is_smooth(df::coord(x + 1, y - 1, z)) ||
                                 !is_smooth(df::coord(x + 1, y, z)) ||
                                 !is_smooth(df::coord(x + 1, y + 1, z)))
                         {
-                            stop = true;
                             continue;
                         }
                         if (ENUM_ATTR(tiletype_shape, basic_shape,
