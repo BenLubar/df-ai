@@ -133,7 +133,7 @@ static bool find_item(df::items_other_id idx, df::item *&item, bool fire_safe = 
     {
         if (Stocks::is_item_free(i) &&
                 (!fire_safe || i->isTemperatureSafe(1)) &&
-                (!non_economic || ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
+                (!non_economic || !ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
         {
             item = i;
             return true;
