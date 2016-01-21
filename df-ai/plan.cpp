@@ -2850,31 +2850,17 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
 
     ai->debug(out, "makeroom " + describe_room(r));
 
-    df::coord size = r->size();
+    df::coord size = r->size() + df::coord(2, 2, 0);
 
     delete[] bld->room.extents;
-    bld->room.extents = new uint8_t[(size.x + 2) * (size.y + 2)]();
+    bld->room.extents = new uint8_t[size.x * size.y]();
     bld->room.x = r->min.x - 1;
     bld->room.y = r->min.y - 1;
-    bld->room.width = size.x + 2;
-    bld->room.height = size.y + 2;
+    bld->room.width = size.x;
+    bld->room.height = size.y;
     auto set_ext = [&bld](int16_t x, int16_t y, uint8_t v)
     {
         bld->room.extents[bld->room.width * (y - bld->room.y) + (x - bld->room.x)] = v;
-        if (v != 0)
-        {
-            for (df::building *o : world->buildings.other[buildings_other_id::IN_PLAY])
-            {
-                if (o->z != bld->z || o->is_room)
-                    continue;
-                if (o->x1 == x && o->y1 == y)
-                {
-                    ui->equipment.update.bits.buildings = 1;
-                    bld->children.push_back(o);
-                    o->parents.push_back(bld);
-                }
-            }
-        }
     };
     for (int16_t rx = r->min.x - 1; rx <= r->max.x + 1; rx++)
     {
@@ -2886,7 +2872,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
             }
             else
             {
-                set_ext(rx, ry, 3);
+                set_ext(rx, ry, r->include(df::coord(rx, ry, r->min.z)) ? 3 : 4);
             }
         }
     }
@@ -2912,7 +2898,25 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     set_owner(out, r, r->owner);
     furnish_room(out, r);
 
-    if (r->type == "barracks")
+    std::ostringstream ss;
+    for (int16_t y = 0; y < bld->room.height; y++)
+    {
+        if (y != 0)
+        {
+            ss << "\n";
+        }
+        for (int16_t x = 0; x < bld->room.width; x++)
+        {
+            ss << int(bld->room.extents[x + y * bld->room.width]);
+        }
+    }
+    ai->debug(out, ss.str());
+
+    if (r->type == "dininghall")
+    {
+        virtual_cast<df::building_tablest>(bld)->table_flags.bits.meeting_hall = 1;
+    }
+    else if (r->type == "barracks")
     {
         df::building *bld = r->dfbuilding();
         if (f->at("item") == "archerytarget")
