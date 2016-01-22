@@ -2646,8 +2646,8 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         }
     }
 
-    df::tile_designation td = *Maps::getTileDesignation(Items::getPosition(i));
-    return !td.bits.hidden && td.bits.flow_size < 4;
+    df::tile_designation *td = Maps::getTileDesignation(Items::getPosition(i));
+    return td && !td->bits.hidden && td->bits.flow_size < 4;
 }
 
 bool Stocks::is_metal_ore(int32_t mi)
