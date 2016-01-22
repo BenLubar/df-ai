@@ -2826,7 +2826,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
                     continue;
                 for (furniture *ff : rr->layout)
                 {
-                    if (f->count("item") &&
+                    if (ff->count("item") &&
                             ff->at("item") == "trap" &&
                             ff->at("subtype") == "lever" &&
                             ff->count("target") &&
