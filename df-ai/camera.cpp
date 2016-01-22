@@ -110,7 +110,7 @@ void Camera::update(color_ostream & out)
     std::vector<df::unit *> targets1;
     for (df::unit *u : world->units.active)
     {
-        if (u->flags1.bits.dead || Maps::getTileDesignation(u->pos)->bits.hidden)
+        if (u->flags1.bits.dead || Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
             continue;
         if (u->flags1.bits.marauder ||
                 u->flags1.bits.active_invader ||
@@ -231,7 +231,7 @@ void Camera::update(color_ostream & out)
 
     if (following != -1 && !*pause_state)
     {
-        Gui::revealInDwarfmodeMap(following_unit->pos, true);
+        Gui::revealInDwarfmodeMap(Units::getPosition(following_unit), true);
         ui->follow_unit = following;
     }
 
