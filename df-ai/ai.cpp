@@ -52,6 +52,8 @@ AI::~AI()
     delete plan;
     delete pop;
     logger.close();
+    for (auto u : events.onstatechange_list)
+        delete u;
     events.onstatechange_list.clear();
     for (auto u : events.onupdate_list)
         delete u;
@@ -328,6 +330,17 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "you just lost the game:" + text.str());
                 debug(out, "Exiting AI");
                 onupdate_unregister(out);
+
+                // get rid of all the remaining event handlers
+                for (auto u : events.onstatechange_list)
+                    delete u;
+                events.onstatechange_list.clear();
+                for (auto u : events.onupdate_list)
+                    delete u;
+                events.onupdate_list.clear();
+
+                embark->register_restart_timer(out);
+
                 // don't unpause, to allow for 'die'
             }
             else

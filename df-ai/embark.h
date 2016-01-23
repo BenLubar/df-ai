@@ -14,6 +14,7 @@ public:
     command_result startup(color_ostream & out);
     command_result onupdate_register(color_ostream & out);
     command_result onupdate_unregister(color_ostream & out);
+    void register_restart_timer(color_ostream & out);
 
     bool update(color_ostream & out);
 };

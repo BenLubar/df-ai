@@ -53,6 +53,11 @@ command_result Embark::onupdate_register(color_ostream & out)
 
 command_result Embark::onupdate_unregister(color_ostream & out)
 {
+    return CR_OK;
+}
+
+void Embark::register_restart_timer(color_ostream & out)
+{
     if (AI_RANDOM_EMBARK)
     {
         ai->debug(out, "game over. restarting in 1 minute.");
@@ -82,7 +87,6 @@ command_result Embark::onupdate_unregister(color_ostream & out)
                             });
                 });
     }
-    return CR_OK;
 }
 
 bool Embark::update(color_ostream & out)
