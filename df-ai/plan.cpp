@@ -631,7 +631,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
     }
     else
     {
-        ai->debug(out, stl_sprintf("AI can't getbedroom(%d)", id));
+        ai->debug(out, stl_sprintf("[ERROR] AI can't getbedroom(%d)", id));
     }
 }
 
@@ -776,7 +776,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         r = find_room("barracks", [](room *r) -> bool { return !r->misc.count("squad_id") || r->misc.at("squad_id") == -1; });
         if (!r)
         {
-            ai->debug(out, "no free barracks");
+            ai->debug(out, "[ERROR] no free barracks");
             return;
         }
         r->misc["squad_id"] = squad_id;
@@ -3914,7 +3914,7 @@ command_result Plan::scan_fort_entrance(color_ostream & out)
             return scan_fort_entrance(out);
         }
 
-        ai->debug(out, "Can't find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.");
+        ai->debug(out, "[ERROR] Can't find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.");
         return CR_FAILURE;
     }
 
@@ -4063,7 +4063,7 @@ command_result Plan::scan_fort_body(color_ostream & out)
         }
     }
 
-    ai->debug(out, "Too many caverns, cant find room for fort. We need more minerals!");
+    ai->debug(out, "[ERROR] Too many caverns, cant find room for fort. We need more minerals!");
     return CR_FAILURE;
 }
 
@@ -5978,7 +5978,7 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord
 
         if (origin == out2)
         {
-            ai->debug(out, stl_sprintf("find_corridor_tosurface: loop: %d, %d, %d", origin.x, origin.y, origin.z));
+            ai->debug(out, stl_sprintf("[ERROR] find_corridor_tosurface: loop: %d, %d, %d", origin.x, origin.y, origin.z));
             break;
         }
         ai->debug(out, stl_sprintf("find_corridor_tosurface: %d, %d, %d -> %d, %d, %d", origin.x, origin.y, origin.z, out2.x, out2.y, out2.z));

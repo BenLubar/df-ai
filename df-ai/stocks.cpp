@@ -3384,7 +3384,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         {
             if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->subtype, subterranean, season)).second)
             {
-                ai->debug(out, stl_sprintf("stocks: no legal plants for %s farm plot (%s) for season %d", r->subtype.c_str(), subterranean ? "underground" : "outdoor", season));
+                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", r->subtype.c_str(), subterranean ? "underground" : "outdoor", season));
             }
         }
         else

@@ -345,7 +345,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             }
             else
             {
-                debug(out, "paused in unknown textviewerst:" + text.str());
+                debug(out, "[ERROR] paused in unknown textviewerst:" + text.str());
             }
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
@@ -383,7 +383,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             std::string cvname = ident->getName();
             if (seen_cvname.insert(cvname).second)
             {
-                debug(out, "paused in unknown viewscreen " + cvname);
+                debug(out, "[ERROR] paused in unknown viewscreen " + cvname);
             }
         }
     }
