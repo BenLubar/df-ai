@@ -2153,7 +2153,7 @@ void Stocks::queue_need_coffin_bld(color_ostream & out, int32_t amount)
                 {
                     for (furniture *f : r->layout)
                     {
-                        if (f->at("item") == "coffin" && !f->count("bld_id") && !f->count("ignore"))
+                        if (f->item == "coffin" && f->bld_id == -1 && !f->ignore)
                             amount--;
                     }
                     return amount <= 0;

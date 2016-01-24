@@ -21,7 +21,6 @@ SET(PROJECT_HDRS
     embark.h
     room.h
     event_manager.h
-    horrible.h
     cache_hash.h
     dfhack_shared.h
 )

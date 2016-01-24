@@ -124,18 +124,18 @@ void room::dig(std::string mode)
 
     for (furniture *f : layout)
     {
-        df::coord t = min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+        df::coord t = min + df::coord(f->x, f->y, f->z);
         df::tiletype *tt = Maps::getTileType(t);
         if (tt)
         {
             if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::CONSTRUCTION)
                 continue;
 
-            if (f->count("dig"))
+            if (f->dig != tile_dig_designation::Default)
             {
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) == tiletype_shape_basic::Wall || (f->at("dig") == "Channel" && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) == tiletype_shape_basic::Open))
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) == tiletype_shape_basic::Wall || (f->dig == tile_dig_designation::Channel && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) == tiletype_shape_basic::Open))
                 {
-                    Plan::dig_tile(t, f->at("dig").str);
+                    Plan::dig_tile(t, ENUM_KEY_STR(tile_dig_designation, f->dig));
                 }
             }
             else
@@ -161,12 +161,12 @@ void room::fixup_open()
                 df::coord t(x, y, z);
                 for (furniture *f : layout)
                 {
-                    df::coord ft = min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+                    df::coord ft = min + df::coord(f->x, f->y, f->z);
                     if (t == ft)
                     {
-                        if (!f->count("construction"))
+                        if (f->construction == df::construction_type(-1))
                         {
-                            fixup_open_tile(ft, f->count("dig") ? f->at("dig").str : "default", f);
+                            fixup_open_tile(ft, ENUM_KEY_STR(tile_dig_designation, f->dig), f);
                         }
                         t.clear();
                         break;
@@ -221,14 +221,13 @@ void room::fixup_open_helper(df::coord t, std::string c, furniture *f)
 {
     if (!f)
     {
-        f = new furniture{
-            {"x", horrible_t(t.x - min.x)},
-            {"y", horrible_t(t.y - min.y)},
-            {"z", horrible_t(t.z - min.z)},
-        };
+        f = new furniture();
+        f->x = t.x - min.x;
+        f->y = t.y - min.y;
+        f->z = t.z - min.z;
         layout.push_back(f);
     }
-    (*f)["construction"] = c;
+    find_enum_item(&f->construction, c);
 }
 
 bool room::include(df::coord t) const
@@ -243,7 +242,7 @@ bool room::safe_include(df::coord t) const
 
     for (furniture *f : layout)
     {
-        df::coord ft = min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+        df::coord ft = min + df::coord(f->x, f->y, f->z);
         if (ft.x - 1 <= t.x && ft.x + 1 >= t.x && ft.y - 1 <= t.y && ft.y + 1 >= t.y && ft.z == t.z)
             return true;
     }
@@ -276,12 +275,12 @@ bool room::is_dug(df::tiletype_shape_basic want) const
     std::set<df::coord> holes;
     for (furniture *f : layout)
     {
-        if (f->count("ignore"))
+        if (f->ignore)
             continue;
 
-        df::coord ft = min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+        df::coord ft = min + df::coord(f->x, f->y, f->z);
 
-        if (f->count("dig") && f->at("dig") == "No")
+        if (f->dig == tile_dig_designation::No)
         {
             holes.insert(ft);
             continue;
@@ -294,7 +293,7 @@ bool room::is_dug(df::tiletype_shape_basic want) const
             case tiletype_shape_basic::Open:
                 break;
             default:
-                if (f->count("dig") && f->at("dig") == "Channel")
+                if (f->dig == tile_dig_designation::Channel)
                     return false;
                 break;
         }
@@ -332,9 +331,9 @@ bool room::constructions_done() const
 {
     for (furniture *f : layout)
     {
-        if (!f->count("construction"))
+        if (f->construction == df::construction_type(-1))
             continue;
-        df::coord ft = min + df::coord(f->count("x") ? f->at("x").id : 0, f->count("y") ? f->at("y").id : 0, f->count("z") ? f->at("z").id : 0);
+        df::coord ft = min + df::coord(f->x, f->y, f->z);
         // TODO check actual tile shape vs construction type
         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft))) == tiletype_shape_basic::Open)
             return false;

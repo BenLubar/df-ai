@@ -4,7 +4,9 @@
 #include <string>
 #include <vector>
 
+#include "df/construction_type.h"
 #include "df/coord.h"
+#include "df/tile_dig_designation.h"
 #include "df/tiletype_shape_basic.h"
 
 namespace df
@@ -12,9 +14,7 @@ namespace df
     struct building;
 }
 
-struct horrible_t;
-
-typedef std::map<std::string, horrible_t> furniture;
+struct furniture;
 
 struct room
 {
@@ -58,6 +58,27 @@ struct room
     bool is_dug(df::tiletype_shape_basic want = tiletype_shape_basic::None) const;
     bool constructions_done() const;
     df::building *dfbuilding() const;
+};
+
+struct furniture
+{
+    std::string item;
+    std::string subtype;
+    df::construction_type construction = df::construction_type(-1);
+    df::tile_dig_designation dig = tile_dig_designation::Default;
+    std::string direction;
+    std::string way;
+    int32_t bld_id = -1;
+    int32_t route_id = -1;
+    int16_t x = 0;
+    int16_t y = 0;
+    int16_t z = 0;
+    furniture *target = nullptr;
+    std::set<int32_t> users;
+    bool has_users = false;
+    bool ignore = false;
+    bool makeroom = false;
+    bool internal = false;
 };
 
 // vim: et:sw=4:ts=4

@@ -2,7 +2,6 @@
 
 #include "event_manager.h"
 #include "room.h"
-#include "horrible.h"
 
 #include <functional>
 #include <list>
@@ -22,7 +21,20 @@ namespace df
 
 class AI;
 
-typedef std::vector<horrible_t> task;
+struct task
+{
+    std::string type;
+    room *r;
+    furniture *f;
+
+    task(std::string type, room *r = nullptr, furniture *f = nullptr) :
+        type(type), r(r), f(f)
+    {
+    }
+    ~task()
+    {
+    }
+};
 
 class Plan
 {
@@ -110,7 +122,6 @@ public:
     bool try_furnish_construction(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_minecart_route(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_trap(color_ostream & out, room *r, furniture *f);
 
     bool try_construct_workshop(color_ostream & out, room *r);
@@ -178,7 +189,6 @@ public:
     command_result setup_blueprint_rooms(color_ostream & out);
     command_result setup_blueprint_workshops(color_ostream & out, df::coord f, std::vector<room *> entr);
     command_result setup_blueprint_stockpiles(color_ostream & out, df::coord f, std::vector<room *> entr);
-    command_result setup_blueprint_minecarts(color_ostream & out);
     command_result setup_blueprint_pitcage(color_ostream & out);
     command_result setup_blueprint_utilities(color_ostream & out, df::coord f, std::vector<room *> entr);
     command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f);
