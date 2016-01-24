@@ -26,7 +26,19 @@ struct room
     std::vector<room *> accesspath;
     std::vector<furniture *> layout;
     int32_t owner;
-    std::map<std::string, horrible_t> misc;
+    int32_t bld_id;
+    int32_t squad_id;
+    int32_t level;
+    int32_t noblesuite;
+    room *workshop;
+    std::set<int32_t> users;
+    df::coord channel_enable;
+    bool has_users;
+    bool furnished;
+    bool queue_dig;
+    bool temporary;
+    bool outdoor;
+    bool channeled;
 
     room(df::coord min, df::coord max, std::string comment = "");
     room(std::string type, std::string subtype, df::coord min, df::coord max, std::string comment = "");

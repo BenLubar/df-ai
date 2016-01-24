@@ -17,8 +17,21 @@ room::room(df::coord mins, df::coord maxs, std::string comment) :
     accesspath(),
     layout(),
     owner(-1),
-    misc()
+    bld_id(-1),
+    squad_id(-1),
+    level(-1),
+    noblesuite(-1),
+    workshop(nullptr),
+    users(),
+    channel_enable(),
+    has_users(false),
+    furnished(false),
+    queue_dig(false),
+    temporary(false),
+    outdoor(false),
+    channeled(false)
 {
+    channel_enable.clear();
     if (min.x > max.x)
         std::swap(min.x, max.x);
     if (min.y > max.y)
@@ -37,8 +50,21 @@ room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs
     accesspath(),
     layout(),
     owner(-1),
-    misc()
+    bld_id(-1),
+    squad_id(-1),
+    level(-1),
+    noblesuite(-1),
+    workshop(nullptr),
+    users(),
+    channel_enable(),
+    has_users(false),
+    furnished(false),
+    queue_dig(false),
+    temporary(false),
+    outdoor(false),
+    channeled(false)
 {
+    channel_enable.clear();
     if (min.x > max.x)
         std::swap(min.x, max.x);
     if (min.y > max.y)
@@ -318,9 +344,7 @@ bool room::constructions_done() const
 
 df::building *room::dfbuilding() const
 {
-    if (misc.count("bld_id"))
-        return df::building::find(misc.at("bld_id").id);
-    return nullptr;
+    return df::building::find(bld_id);
 }
 
 // vim: et:sw=4:ts=4

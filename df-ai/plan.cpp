@@ -168,11 +168,11 @@ command_result Plan::startup(color_ostream & out)
 
     categorize_all();
 
-    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Masons" && r->misc.at("workshop_level") == 0; }));
-    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Carpenters" && r->misc.at("workshop_level") == 0; }));
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->misc.at("workshop_level") == 0; })->subtype = "Masons";
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->misc.at("workshop_level") == 1; })->subtype = "Masons";
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->misc.at("workshop_level") == 2; })->subtype = "Masons";
+    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Masons" && r->level == 0; }));
+    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Carpenters" && r->level == 0; }));
+    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 0; })->subtype = "Masons";
+    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 1; })->subtype = "Masons";
+    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 2; })->subtype = "Masons";
 
     dig_garbagedump(out);
 
@@ -385,7 +385,7 @@ bool Plan::checkidle(color_ostream & out)
             {
                 if (r->subtype == important_workshops.back() &&
                         r->status == "plan" &&
-                        r->misc.at("workshop_level") == 0)
+                        r->level == 0)
                 {
                     important_workshops.pop_back();
                     return true;
@@ -400,7 +400,7 @@ bool Plan::checkidle(color_ostream & out)
             {
                 if (r->subtype == important_workshops2.back() &&
                         r->status == "plan" &&
-                        r->misc.at("workshop_level") == 0)
+                        r->level == 0)
                 {
                     important_workshops2.pop_back();
                     return true;
@@ -411,15 +411,15 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, "stockpile", [](room *r) -> bool
             {
                 return r->status == "plan" &&
-                        r->misc.at("stockpile_level") <= 1;
+                        r->level <= 1;
             });
     FIND_ROOM(true, "workshop", [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
                         r->status == "plan" &&
-                        r->misc.at("workshop_level") == 0;
+                        r->level == 0;
             });
-    if (r == nullptr && !fort_entrance->misc.count("furnished"))
+    if (r == nullptr && !fort_entrance->furnished)
         r = fort_entrance;
     if (r == nullptr)
         past_initial_phase = true;
@@ -431,7 +431,7 @@ bool Plan::checkidle(color_ostream & out)
             {
                 return !r->subtype.empty() &&
                         r->status == "plan" &&
-                        r->misc.at("workshop_level") == 1;
+                        r->level == 1;
             });
     FIND_ROOM(true, "bedroom", [&freebed](room *r) -> bool
             {
@@ -444,7 +444,7 @@ bool Plan::checkidle(color_ostream & out)
             });
     auto finished_nofurnished = [](room *r) -> bool
     {
-        return r->status == "finished" && !r->misc.count("furnished");
+        return r->status == "finished" && !r->furnished;
     };
     FIND_ROOM(true, "nobleroom", finished_nofurnished);
     FIND_ROOM(true, "bederoom", finished_nofurnished);
@@ -469,7 +469,7 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, "stockpile", [](room *r) -> bool
             {
                 return r->status == "plan" &&
-                        r->misc.at("stockpile_level") <= 3;
+                        r->level <= 3;
             });
     FIND_ROOM(true, "workshop", [](room *r) -> bool
             {
@@ -486,7 +486,7 @@ bool Plan::checkidle(color_ostream & out)
         wantdig(out, r);
         if (r->status == "finished")
         {
-            r->misc["furnished"] = horrible_t();
+            r->furnished = true;
             for (furniture *f : r->layout)
             {
                 f->erase("ignore");
@@ -605,10 +605,10 @@ void Plan::checkroom(color_ostream & out, room *r)
             }
         }
         // tantrumed building
-        if (r->misc.count("bld_id") && !r->dfbuilding())
+        if (r->bld_id != -1 && !r->dfbuilding())
         {
             ai->debug(out, "rebuild " + describe_room(r), r->pos());
-            r->misc.erase("bld_id");
+            r->bld_id = -1;
             construct_room(out, r);
         }
     }
@@ -620,7 +620,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
     if (!r)
         r = find_room("bedroom", [](room *r) -> bool { return r->status != "plan" && r->owner == -1; });
     if (!r)
-        r = find_room("bedroom", [](room *r) -> bool { return r->status == "plan" && !r->misc.count("queue_dig"); });
+        r = find_room("bedroom", [](room *r) -> bool { return r->status == "plan" && !r->queue_dig; });
     if (r)
     {
         wantdig(out, r);
@@ -641,52 +641,52 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                 {
                     df::coord size = r->size();
                     return r->subtype == "food" &&
-                        !r->misc.count("outdoor") &&
-                        r->misc["users"].ids.size() < size.x * size.y *
+                        !r->outdoor &&
+                        r->users.size() < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
         wantdig(out, r);
-        r->misc["users"].ids.insert(id);
+        r->users.insert(id);
     }
 
     if (room *r = find_room("farmplot", [](room *r) -> bool
                 {
                     df::coord size = r->size();
                     return r->subtype == "cloth" &&
-                        !r->misc.count("outdoor") &&
-                        r->misc["users"].ids.size() < size.x * size.y *
+                        !r->outdoor &&
+                        r->users.size() < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
         wantdig(out, r);
-        r->misc["users"].ids.insert(id);
+        r->users.insert(id);
     }
 
     if (room *r = find_room("farmplot", [](room *r) -> bool
                 {
                     df::coord size = r->size();
                     return r->subtype == "food" &&
-                        r->misc.count("outdoor") &&
-                        r->misc["users"].ids.size() < size.x * size.y *
+                        r->outdoor &&
+                        r->users.size() < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
         wantdig(out, r);
-        r->misc["users"].ids.insert(id);
+        r->users.insert(id);
     }
 
     if (room *r = find_room("farmplot", [](room *r) -> bool
                 {
                     df::coord size = r->size();
                     return r->subtype == "cloth" &&
-                        r->misc.count("outdoor") &&
-                        r->misc["users"].ids.size() < size.x * size.y *
+                        r->outdoor &&
+                        r->users.size() < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
         wantdig(out, r);
-        r->misc["users"].ids.insert(id);
+        r->users.insert(id);
     }
 
     if (room *r = find_room("dininghall", [](room *r) -> bool
@@ -744,7 +744,7 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
         if (!base)
             base = find_room("nobleroom", [](room *r) -> bool { return r->owner == -1; });
         std::set<std::string> seen;
-        while (room *r = find_room("nobleroom", [base, seen](room *r) -> bool { return r->misc.at("noblesuite").id == base->misc.at("noblesuite").id && !seen.count(r->subtype); }))
+        while (room *r = find_room("nobleroom", [base, seen](room *r) -> bool { return r->noblesuite == base->noblesuite && !seen.count(r->subtype); }))
         {
             seen.insert(r->subtype);
             set_owner(out, r, id);
@@ -770,24 +770,21 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         return;
 
 
-    room *r = find_room("barracks", [squad_id](room *r) -> bool { return r->misc.count("squad_id") && r->misc.at("squad_id") == squad_id; });
+    room *r = find_room("barracks", [squad_id](room *r) -> bool { return r->squad_id == squad_id; });
     if (!r)
     {
-        r = find_room("barracks", [](room *r) -> bool { return !r->misc.count("squad_id") || r->misc.at("squad_id") == -1; });
+        r = find_room("barracks", [](room *r) -> bool { return r->squad_id == -1; });
         if (!r)
         {
             ai->debug(out, "[ERROR] no free barracks");
             return;
         }
-        r->misc["squad_id"] = squad_id;
+        r->squad_id = squad_id;
         ai->debug(out, stl_sprintf("squad %d assign %s", squad_id, describe_room(r).c_str()));
         wantdig(out, r);
-        if (r->misc.count("bld_id"))
+        if (df::building *bld = r->dfbuilding())
         {
-            if (df::building *bld = r->dfbuilding())
-            {
-                assign_barrack_squad(out, bld, squad_id);
-            }
+            assign_barrack_squad(out, bld, squad_id);
         }
     }
 
@@ -899,7 +896,7 @@ void Plan::freebedroom(color_ostream & out, int32_t id)
                 }
             }
         }
-        r->misc.erase("bld_id");
+        r->bld_id = -1;
     }
 }
 
@@ -919,14 +916,14 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
     {
         find_room(subtype, [id](room *r) -> bool
                 {
-                    r->misc.at("users").ids.erase(id);
-                    if (r->misc.count("bld_id") && r->misc.at("users").ids.empty())
+                    r->users.erase(id);
+                    if (r->bld_id != -1 && r->users.empty())
                     {
                         if (df::building *bld = r->dfbuilding())
                         {
                             Buildings::deconstruct(bld);
                         }
-                        r->misc.erase("bld_id");
+                        r->bld_id = -1;
                     }
                     return false;
                 });
@@ -944,7 +941,7 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
                         if (f->at("users").ids.erase(id) && f->at("users").ids.empty())
                         {
                             // delete the specific table/chair/bed/etc for the dwarf
-                            if (f->count("bld_id") && (!r->misc.count("bld_id") || (int32_t) f->at("bld_id") != r->misc.at("bld_id")))
+                            if (f->count("bld_id") && f->at("bld_id").id != r->bld_id)
                             {
                                 if (df::building *bld = df::building::find(f->at("bld_id")))
                                 {
@@ -955,18 +952,18 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
                             }
 
                             // clear the whole room if it is entirely unused
-                            if (r->misc.count("bld_id") && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool { return f->count("users") && !f->at("users").ids.empty(); }) == r->layout.end())
+                            if (r->bld_id != -1 && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool { return f->count("users") && !f->at("users").ids.empty(); }) == r->layout.end())
                             {
                                 if (df::building *bld = r->dfbuilding())
                                 {
                                     Buildings::deconstruct(bld);
                                 }
-                                r->misc.erase("bld_id");
+                                r->bld_id = -1;
 
-                                if (r->misc.count("squad_id"))
+                                if (r->squad_id != -1)
                                 {
-                                    ai->debug(out, stl_sprintf("squad %d free %s", r->misc.at("squad_id").id, describe_room(r).c_str()), r->pos());
-                                    r->misc.erase("squad_id");
+                                    ai->debug(out, stl_sprintf("squad %d free %s", r->squad_id, describe_room(r).c_str()), r->pos());
+                                    r->squad_id = -1;
                                 }
                             }
                         }
@@ -988,7 +985,7 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
     if (room *r = find_room("pasture", [limit](room *r) -> bool
                 {
                     size_t sum = 0;
-                    for (int32_t id : r->misc.at("users").ids)
+                    for (int32_t id : r->users)
                     {
                         df::unit *u = df::unit::find(id);
                         // 11*11 == pasture dimensions
@@ -997,8 +994,8 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
                     return sum < limit;
                 }))
     {
-        r->misc["users"].ids.insert(pet_id);
-        if (!r->misc.count("bld_id"))
+        r->users.insert(pet_id);
+        if (r->bld_id == -1)
             construct_room(out, r);
         return r->dfbuilding();
     }
@@ -1007,16 +1004,16 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
 
 void Plan::freepasture(color_ostream & out, int32_t pet_id)
 {
-    if (room *r = find_room("pasture", [pet_id](room *r) -> bool { return r->misc.at("users").ids.count(pet_id); }))
+    if (room *r = find_room("pasture", [pet_id](room *r) -> bool { return r->users.count(pet_id); }))
     {
-        r->misc.at("users").ids.erase(pet_id);
+        r->users.erase(pet_id);
     }
 }
 
 void Plan::set_owner(color_ostream & out, room *r, int32_t uid)
 {
     r->owner = uid;
-    if (r->misc.count("bld_id"))
+    if (r->bld_id != -1)
     {
         df::unit *u = df::unit::find(uid);
         if (df::building *bld = r->dfbuilding())
@@ -1054,10 +1051,10 @@ void Plan::dig_tile(df::coord t, std::string mode)
 // queue a room for digging when other dig jobs are finished
 void Plan::wantdig(color_ostream & out, room *r)
 {
-    if (r->misc.count("queue_dig") || r->status != "plan")
+    if (r->queue_dig || r->status != "plan")
         return;
     ai->debug(out, "wantdig " + describe_room(r));
-    r->misc["queue_dig"] = horrible_t();
+    r->queue_dig = true;
     r->dig("plan");
     tasks.push_back(new task{horrible_t("wantdig"), horrible_t(r)});
 }
@@ -1067,7 +1064,7 @@ void Plan::digroom(color_ostream & out, room *r)
     if (r->status != "plan")
         return;
     ai->debug(out, "digroom " + describe_room(r));
-    r->misc.erase("queue_dig");
+    r->queue_dig = false;
     r->status = "dig";
     r->fixup_open();
     r->dig();
@@ -1088,7 +1085,7 @@ void Plan::digroom(color_ostream & out, room *r)
         tasks.push_back(new task{horrible_t("furnish"), horrible_t(r), horrible_t(f)});
     }
 
-    if (r->type == "workshop" && r->misc.at("workshop_level") == 0)
+    if (r->type == "workshop" && r->level == 0)
     {
         // add minimal stockpile in front of workshop
         const static std::map<std::string, std::string> sptypes =
@@ -1103,8 +1100,8 @@ void Plan::digroom(color_ostream & out, room *r)
             // XXX hardcoded fort layout
             int16_t y = r->layout[0]->at("y") > 0 ? r->max.y + 2 : r->min.y - 2; // check door position
             room *sp = new room("stockpile", sptypes.at(r->subtype), df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
-            sp->misc["workshop"] = r;
-            sp->misc["stockpile_level"] = 0;
+            sp->workshop = r;
+            sp->level = 0;
             rooms.push_back(sp);
             categorize_all();
             digroom(out, sp);
@@ -1168,9 +1165,9 @@ bool Plan::construct_room(color_ostream & out, room *r)
 
     if (r->type == "dininghall")
     {
-        if (!r->misc.count("temporary"))
+        if (!r->temporary)
         {
-            if (room *t = find_room("dininghall", [](room *r) -> bool { return r->misc.count("temporary"); }))
+            if (room *t = find_room("dininghall", [](room *r) -> bool { return r->temporary; }))
             {
                 move_dininghall_fromtemp(out, r, t);
             }
@@ -1302,7 +1299,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         Buildings::constructWithItems(bld, {itm});
         if (f->count("makeroom"))
         {
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
         }
         (*f)["bld_id"] = bld->id;
         tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
@@ -1324,7 +1321,7 @@ bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coor
         df::building *bld = Buildings::allocInstance(t, building_type::Well);
         Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {block, mecha, buckt, chain});
-        r->misc["bld_id"] = (*f)["bld_id"] = bld->id;
+        r->bld_id = (*f)["bld_id"] = bld->id;
         tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
         return true;
     }
@@ -1510,7 +1507,7 @@ bool Plan::try_furnish_roller(color_ostream & out, room *r, furniture *f, df::co
             f->at("misc_bldprops").bldprops(out, bld);
         Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {mecha, chain});
-        r->misc["bld_id"] = bld->id;
+        r->bld_id = bld->id;
         (*f)["bld_id"] = bld->id;
         tasks.push_back(new task{horrible_t("checkfurnish"), horrible_t(r), horrible_t(f)});
         return true;
@@ -1535,7 +1532,7 @@ bool Plan::try_furnish_minecart_route(color_ostream & out, room *r, furniture *f
                  df::vehicle::find(mcart->vehicle_id)->route_id == -1))
         {
             df::route_stockpile_link *routelink = df::allocate<df::route_stockpile_link>();
-            routelink->building_id = r->misc.at("bld_id");
+            routelink->building_id = r->bld_id;
             routelink->mode.bits.take = 1;
             df::hauling_stop *stop = df::allocate<df::hauling_stop>();
             stop->id = 1;
@@ -1628,7 +1625,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Dyers);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {barrel, bucket});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1643,7 +1640,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Ashery);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {block, barrel, bucket});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1657,7 +1654,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SOAP_MAKER"));
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {buckt, bould});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1670,7 +1667,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SCREW_PRESS"));
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, mechas);
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1684,7 +1681,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::MetalsmithsForge);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {anvil, bould});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1705,7 +1702,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, furnace_subtype);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {bould});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1718,7 +1715,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Quern);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {quern});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1731,7 +1728,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::TradeDepot);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, boulds);
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
         }
@@ -1751,7 +1748,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, subtype);
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {bould});
-            r->misc["bld_id"] = bld->id;
+            r->bld_id = bld->id;
             tasks.push_back(new task{horrible_t("checkconstruct"), horrible_t(r)});
             return true;
             // XXX else quarry?
@@ -1771,35 +1768,35 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(Buildings::allocInstance(r->min, building_type::Stockpile));
     Buildings::setSize(bld, r->size());
     Buildings::constructAbstract(bld);
-    r->misc["bld_id"] = bld->id;
+    r->bld_id = bld->id;
     furnish_room(out, r);
 
     setup_stockpile_settings(out, r->subtype, bld->settings, bld, r);
 
-    if (r->misc.count("workshop") && r->subtype == "stone")
+    if (r->workshop && r->subtype == "stone")
     {
         room_items(out, r, [](df::item *i) { i->flags.bits.dump = 1; });
     }
 
-    if (r->misc.at("stockpile_level") == 0 &&
+    if (r->level == 0 &&
             r->subtype != "stone" && r->subtype != "wood")
     {
-        if (room *rr = find_room("stockpile", [r](room *o) -> bool { return o->subtype == r->subtype && o->misc.at("stockpile_level") == 1; }))
+        if (room *rr = find_room("stockpile", [r](room *o) -> bool { return o->subtype == r->subtype && o->level == 1; }))
         {
             wantdig(out, rr);
         }
     }
 
-    // setup stockpile links with adjacent stockpile_level
+    // setup stockpile links with adjacent level
     find_room("stockpile", [r, bld](room *o) -> bool
             {
-                int32_t diff = o->misc.at("stockpile_level").id - r->misc.at("stockpile_level").id;
+                int32_t diff = o->level - r->level;
                 if (o->subtype == r->subtype && (diff == -1 || diff == 1))
                 {
                     if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
                     {
                         df::building_stockpilest *b_from, *b_to;
-                        if (o->misc.at("stockpile_level").id > r->misc.at("stockpile_level").id)
+                        if (diff > 0)
                         {
                             b_from = obld;
                             b_to = bld;
@@ -1834,7 +1831,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
     Buildings::setSize(bld, r->size());
     Buildings::constructAbstract(bld);
-    r->misc["bld_id"] = bld->id;
+    r->bld_id = bld->id;
     bld->is_room = true;
 
     bld->zone_flags.bits.active = 1;
@@ -1874,16 +1871,14 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
         settings.flags.bits.stone = 1;
         auto & t = settings.stone.mats;
         t.resize(world->raws.inorganics.size());
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Masons")
+        if (r && r->workshop && r->workshop->subtype == "Masons")
         {
             for (size_t i = 0; i < world->raws.inorganics.size(); i++)
             {
                 t[i] = !ui->economic_stone[i];
             }
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Smelter")
+        else if (r && r->workshop && r->workshop->subtype == "Smelter")
         {
             for (size_t i = 0; i < world->raws.inorganics.size(); i++)
             {
@@ -2028,7 +2023,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
     {
         settings.flags.bits.animals = 1;
         auto & s = settings.animals;
-        s.empty_cages = s.empty_traps = !r || r->misc.at("stockpile_level").id > 1;
+        s.empty_cages = s.empty_traps = !r || r->level > 1;
         s.enabled.clear();
         s.enabled.resize(world->raws.creatures.all.size(), true);
     }
@@ -2039,8 +2034,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
         size_t creatures = world->raws.creatures.all.size();
         t.fresh_raw_hide = false;
         t.rotten_raw_hide = true;
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Craftsdwarfs")
+        if (r && r->workshop && r->workshop->subtype == "Craftsdwarfs")
         {
             t.corpses.clear();
             t.corpses.resize(creatures, false);
@@ -2115,14 +2109,12 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
         }
         auto & t = settings.food;
         auto & mt = world->raws.mat_table;
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->type == "farmplot")
+        if (r && r->workshop && r->workshop->type == "farmplot")
         {
             t.seeds.clear();
             t.seeds.resize(mt.organic_types[organic_mat_category::Seed].size(), true);
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Farmers")
+        else if (r && r->workshop && r->workshop->subtype == "Farmers")
         {
             t.plants.clear();
             t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
@@ -2133,8 +2125,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
                 t.plants[i] = plant.plant->flags.is_set(plant_raw_flags::THREAD) || plant.plant->flags.is_set(plant_raw_flags::MILL);
             }
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Still")
+        else if (r && r->workshop && r->workshop->subtype == "Still")
         {
             t.plants.clear();
             t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
@@ -2151,8 +2142,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
                 t.leaves[i] = plant.plant->flags.is_set(plant_raw_flags::DRINK);
             }
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Kitchen")
+        else if (r && r->workshop && r->workshop->subtype == "Kitchen")
         {
             t.meat.clear();
             t.meat.resize(mt.organic_types[organic_mat_category::Meat].size(), true);
@@ -2163,8 +2153,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
             t.leaves.clear();
             t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size(), true);
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Fishery")
+        else if (r && r->workshop && r->workshop->subtype == "Fishery")
         {
             t.unprepared_fish.clear();
             t.unprepared_fish.resize(mt.organic_types[organic_mat_category::UnpreparedFish].size(), true);
@@ -2241,13 +2230,11 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
             t.cloth_metal.clear();
             t.cloth_metal.resize(mt.organic_types[organic_mat_category::MetalThread].size(), cloth);
         };
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Loom")
+        if (r && r->workshop && r->workshop->subtype == "Loom")
         {
             cloth(true, false);
         }
-        else if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Clothiers")
+        else if (r && r->workshop && r->workshop->subtype == "Clothiers")
         {
             cloth(false, true);
         }
@@ -2277,8 +2264,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
             bld->max_bins = size.x * size.y;
         }
         auto & t = settings.gems;
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "Jewelers")
+        if (r && r->workshop && r->workshop->subtype == "Jewelers")
         {
             t.rough_other_mats.clear();
             t.rough_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), false);
@@ -2310,8 +2296,7 @@ void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df
             bld->max_bins = size.x * size.y;
         }
         auto & s = settings.bars_blocks;
-        if (r && r->misc.count("workshop") &&
-                r->misc.at("workshop").r->subtype == "MetalsmithsForge")
+        if (r && r->workshop && r->workshop->subtype == "MetalsmithsForge")
         {
             s.bars_mats.clear();
             s.bars_mats.resize(world->raws.inorganics.size());
@@ -2394,9 +2379,9 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
     df::building *bld = Buildings::allocInstance(r->min, building_type::FarmPlot);
     Buildings::setSize(bld, r->size());
     Buildings::constructWithItems(bld, {});
-    r->misc["bld_id"] = bld->id;
+    r->bld_id = bld->id;
     furnish_room(out, r);
-    if (room *st = find_room("stockpile", [r](room *o) -> bool { return o->misc.count("workshop") && o->misc.at("workshop") == r; }))
+    if (room *st = find_room("stockpile", [r](room *o) -> bool { return o->workshop == r; }))
     {
         digroom(out, st);
     }
@@ -2724,7 +2709,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
     df::coord size = r->size();
     if (cnt == size.x * size.y * (size.z - 1))
     {
-        r->misc["channeled"] = horrible_t();
+        r->channeled = true;
         return true;
     }
     return false;
@@ -2923,9 +2908,9 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         {
             bld = df::building::find(f->at("bld_id"));
         }
-        if (r->misc.count("squad_id") && bld)
+        if (r->squad_id != -1 && bld)
         {
-            assign_barrack_squad(out, bld, r->misc.at("squad_id").id);
+            assign_barrack_squad(out, bld, r->squad_id);
         }
     }
 
@@ -3060,7 +3045,7 @@ void Plan::monitor_cistern(color_ostream & out)
         }
         m_c_cistern = find_room("cistern", [](room *r) -> bool { return r->subtype == "well"; });
         m_c_reserve = find_room("cistern", [](room *r) -> bool { return r->subtype == "reserve"; });
-        if (m_c_reserve->misc.count("channel_enable"))
+        if (m_c_reserve->channel_enable.isValid())
         {
             m_c_testgate_delay = 2;
         }
@@ -3122,7 +3107,7 @@ void Plan::monitor_cistern(color_ostream & out)
         // re-dump garbage + smooth reserve accesspath
         construct_cistern(out, m_c_reserve);
 
-        df::coord gate = m_c_reserve->misc.at("channel_enable").c;
+        df::coord gate = m_c_reserve->channel_enable;
         if (ENUM_ATTR(tiletype_shape, basic_shape,
                     ENUM_ATTR(tiletype, shape,
                         *Maps::getTileType(gate))) ==
@@ -3247,7 +3232,7 @@ void Plan::monitor_cistern(color_ostream & out)
         return;
     }
 
-    if (!m_c_cistern->misc.count("channeled"))
+    if (!m_c_cistern->channeled)
         return;
 
     // cistlvl = water level for the top floor
@@ -4169,25 +4154,25 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                 df::coord c(cx - 2, f.y + 1, f.z);
                 room *r = new room("workshop", "Quern", c, c);
                 r->accesspath.push_back(cor_x);
-                r->misc["workshop_level"] = 0;
+                r->level = 0;
                 rooms.push_back(r);
 
                 c.x = cx - 6;
                 r = new room("workshop", "Quern", c, c);
                 r->accesspath.push_back(cor_x);
-                r->misc["workshop_level"] = 1;
+                r->level = 1;
                 rooms.push_back(r);
 
                 c.x = cx + 2;
                 r = new room("workshop", "Quern", c, c);
                 r->accesspath.push_back(cor_x);
-                r->misc["workshop_level"] = 2;
+                r->level = 2;
                 rooms.push_back(r);
 
                 c.x = cx - 2;
                 r = new room("workshop", "ScrewPress", c, c);
                 r->accesspath.push_back(cor_x);
-                r->misc["workshop_level"] = 0;
+                r->level = 0;
                 rooms.push_back(r);
             }
 
@@ -4200,7 +4185,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                         {"x", horrible_t(1)},
                         {"y", horrible_t(3)},
                     });
-            r->misc["workshop_level"] = 0;
+            r->level = 0;
             if (dirx == -1 && dx == 1)
             {
                 r->layout.push_back(new furniture{
@@ -4213,12 +4198,12 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
 
             r = new room("workshop", t, df::coord(cx - 1, f.y - 8, f.z), df::coord(cx + 1, f.y - 6, f.z));
             r->accesspath.push_back(rooms.back());
-            r->misc["workshop_level"] = 1;
+            r->level = 1;
             rooms.push_back(r);
 
             r = new room("workshop", t, df::coord(cx - 1, f.y - 11, f.z), df::coord(cx + 1, f.y - 9, f.z));
             r->accesspath.push_back(rooms.back());
-            r->misc["workshop_level"] = 2;
+            r->level = 2;
             rooms.push_back(r);
 
             t = *type_it++;
@@ -4229,7 +4214,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                         {"x", horrible_t(1)},
                         {"y", horrible_t(-1)},
                     });
-            r->misc["workshop_level"] = 0;
+            r->level = 0;
             if (dirx == -1 && dx == 1)
             {
                 r->layout.push_back(new furniture{
@@ -4242,12 +4227,12 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
 
             r = new room("workshop", t, df::coord(cx - 1, f.y + 6, f.z), df::coord(cx + 1, f.y + 8, f.z));
             r->accesspath.push_back(rooms.back());
-            r->misc["workshop_level"] = 1;
+            r->level = 1;
             rooms.push_back(r);
 
             r = new room("workshop", t, df::coord(cx - 1, f.y + 9, f.z), df::coord(cx + 1, f.y + 11, f.z));
             r->accesspath.push_back(rooms.back());
-            r->misc["workshop_level"] = 2;
+            r->level = 2;
             rooms.push_back(r);
         }
     }
@@ -4284,7 +4269,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
     if (depot_center.isValid())
     {
         room *r = new room("workshop", "TradeDepot", depot_center - df::coord(2,2, 0), depot_center + df::coord(2, 2, 0));
-        r->misc["workshop_level"] = 0;
+        r->level = 0;
         r->layout.push_back(new furniture{
                     {"dig", horrible_t("Ramp")},
                     {"x", horrible_t(-1)},
@@ -4305,7 +4290,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
     else
     {
         room *r = new room("workshop", "TradeDepot", df::coord(f.x - 7, f.y - 2, fort_entrance->max.z), df::coord(f.x - 3, f.y + 2, fort_entrance->max.z));
-        r->misc["workshop_level"] = 0;
+        r->level = 0;
         for (int16_t x = 0; x < 5; x++)
         {
             for (int16_t y = 0; y < 5; y++)
@@ -4375,8 +4360,8 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
             std::string t1 = *type_it++;
             room *r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 4, f.z), df::coord(cx + 3, f.y - 3, f.z));
             room *r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 3, f.z), df::coord(cx + 3, f.y + 4, f.z));
-            r0->misc["stockpile_level"] = 1;
-            r1->misc["stockpile_level"] = 1;
+            r0->level = 1;
+            r1->level = 1;
             r0->accesspath.push_back(cor_x);
             r1->accesspath.push_back(cor_x);
             r0->layout.push_back(new furniture{
@@ -4404,15 +4389,15 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
 
             r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
             r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
-            r0->misc["stockpile_level"] = 2;
-            r1->misc["stockpile_level"] = 2;
+            r0->level = 2;
+            r1->level = 2;
             rooms.push_back(r0);
             rooms.push_back(r1);
 
             r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
             r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
-            r0->misc["stockpile_level"] = 3;
-            r1->misc["stockpile_level"] = 3;
+            r0->level = 3;
+            r1->level = 3;
             rooms.push_back(r0);
             rooms.push_back(r1);
         }
@@ -4420,10 +4405,10 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
     for (room *r : rooms)
     {
         if (r->type == "stockpile" && r->subtype == "coins" &&
-                r->misc.at("stockpile_level").id > 1)
+                r->level > 1)
         {
             r->subtype = "furniture";
-            r->misc["stockpile_level"].id += 2;
+            r->level += 2;
         }
     }
 
@@ -4612,7 +4597,7 @@ command_result Plan::setup_blueprint_pitcage(color_ostream & out)
     rooms.push_back(r);
 
     room *stockpile = new room("stockpile", "animals", r->min, r->max);
-    stockpile->misc["stockpile_level"] = 0;
+    stockpile->level = 0;
     layout(stockpile);
     rooms.push_back(stockpile);
 
@@ -4655,7 +4640,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     // temporary dininghall, for fort start
     room *tmp = new room("dininghall", "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0));
-    tmp->misc["temporary"] = horrible_t();
+    tmp->temporary = true;
     for (int16_t dy = 0; dy <= 2; dy++)
     {
         tmp->layout.push_back(new furniture{
@@ -4815,7 +4800,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t ddy = 0; ddy < 3; ddy++)
             {
                 room *r = new room("farmplot", st, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
-                r->misc["users"] = std::set<int32_t>();
+                r->has_users = true;
                 if (dx == 0 && ddy == 0)
                 {
                     r->layout.push_back(new furniture{
@@ -4838,8 +4823,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     // seeds stockpile
     room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz));
-    r->misc["stockpile_level"] = 0;
-    r->misc["workshop"] = rooms.at(rooms.size() - 2 * nrfarms);
+    r->level = 0;
+    r->workshop = rooms.at(rooms.size() - 2 * nrfarms);
     r->accesspath.push_back(cor);
     rooms.push_back(r);
 
@@ -5306,10 +5291,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     up = find_corridor_tosurface(out, df::coord(output, dst.z));
     r->accesspath.push_back(up.at(0));
 
-    if (channel.isValid())
-    {
-        reserve->misc["channel_enable"] = channel;
-    }
+    reserve->channel_enable = channel;
     return CR_OK;
 }
 
@@ -5364,7 +5346,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
                 if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
                 {
                     room *r = new room("pasture", "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
-                    r->misc["users"] = std::set<int32_t>();
+                    r->has_users = true;
                     rooms.push_back(r);
                     want--;
                 }
@@ -5418,8 +5400,8 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
                     }
                 }
                 room *r = new room("farmplot", want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
-                r->misc["users"] = std::set<int32_t>();
-                r->misc["outdoor"] = horrible_t();
+                r->has_users = true;
+                r->outdoor = true;
                 want--;
                 return want == 0;
             });
@@ -5531,7 +5513,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             noblesuite++;
 
             room *r = new room("nobleroom", "office", df::coord(cx - 1, f.y + diry * 3, f.z), df::coord(cx + 1, f.y + diry * 5, f.z));
-            r->misc["noblesuite"] = noblesuite;
+            r->noblesuite = noblesuite;
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new furniture{
                         {"item", horrible_t("chair")},
@@ -5564,7 +5546,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             rooms.push_back(r);
 
             r = new room("nobleroom", "bedroom", df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
-            r->misc["noblesuite"] = noblesuite;
+            r->noblesuite = noblesuite;
             r->layout.push_back(new furniture{
                         {"item", horrible_t("bed")},
                         {"x", horrible_t(1)},
@@ -5593,7 +5575,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             rooms.push_back(r);
 
             r = new room("nobleroom", "diningroom", df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
-            r->misc["noblesuite"] = noblesuite;
+            r->noblesuite = noblesuite;
             r->layout.push_back(new furniture{
                         {"item", horrible_t("table")},
                         {"x", horrible_t(1)},
@@ -5627,7 +5609,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             rooms.push_back(r);
 
             r = new room("nobleroom", "tomb", df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
-            r->misc["noblesuite"] = noblesuite;
+            r->noblesuite = noblesuite;
             r->layout.push_back(new furniture{
                         {"item", horrible_t("coffin")},
                         {"x", horrible_t(1)},
@@ -6069,11 +6051,9 @@ void Plan::categorize_all()
         auto & stockpiles = room_category.at("stockpile");
         std::sort(stockpiles.begin(), stockpiles.end(), [this](room *a, room *b) -> bool
                 {
-                    int32_t alevel = a->misc.at("stockpile_level").id;
-                    int32_t blevel = b->misc.at("stockpile_level").id;
-                    if (alevel < blevel)
+                    if (a->level < b->level)
                         return true;
-                    if (alevel > blevel)
+                    if (a->level > b->level)
                         return false;
 
                     int16_t ax = a->min.x < fort_entrance->min.x ? -a->min.x : a->min.x;
@@ -6107,32 +6087,29 @@ std::string Plan::describe_room(room *r)
         s << " (owned by " << AI::describe_unit(u) << ")";
     }
 
-    if (r->misc.count("squad_id"))
+    if (r->noblesuite != -1)
     {
-        if (df::squad *squad = df::squad::find(r->misc.at("squad_id").id))
-        {
-            s << " (used by " << Translation::capitalize(Translation::TranslateName(&squad->name, true)) << ")";
-        }
+        s << " (noble suite " << r->noblesuite << ")";
     }
 
-    if (r->misc.count("stockpile_level"))
+    if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (" << r->misc.at("stockpile_level").id << ")";
+        s << " (used by " << Translation::capitalize(Translation::TranslateName(&squad->name, true)) << ")";
     }
 
-    if (r->misc.count("workshop_level"))
+    if (r->level != -1)
     {
-        s << " (" << r->misc.at("workshop_level").id << ")";
+        s << " (level " << r->level << ")";
     }
 
-    if (r->misc.count("workshop"))
+    if (r->workshop)
     {
-        s << " (" << describe_room(r->misc.at("workshop").r) << ")";
+        s << " (" << describe_room(r->workshop) << ")";
     }
 
-    if (r->misc.count("users"))
+    if (r->has_users)
     {
-        s << " (" << r->misc.at("users").ids.size() << " users)";
+        s << " (" << r->users.size() << " users)";
     }
 
     s << " (" << r->status << ")";

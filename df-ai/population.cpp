@@ -425,7 +425,7 @@ void Population::update_military(color_ostream & out)
                     continue;
                 }
                 so->min_count = soldier_count > 3 ? soldier_count - 1 : soldier_count;
-                room *r = ai->plan->find_room("barracks", [sqid](room *r) -> bool { return r->misc.count("squad_id") && r->misc.at("squad_id") == sqid; });
+                room *r = ai->plan->find_room("barracks", [sqid](room *r) -> bool { return r->squad_id == sqid; });
                 if (r && r->status != "finished")
                 {
                     so->min_count = 0;
@@ -1129,7 +1129,7 @@ void Population::autolabors(color_ostream & out, size_t step)
                                 {unit_labor::MINE, ai->plan->is_digging()},
                                 {unit_labor::MASON, ai->plan->find_room("workshop", [](room *r) -> bool { df::building_workshopst *bld = virtual_cast<df::building_workshopst>(r->dfbuilding()); return r->subtype == "Masons" && bld && !bld->jobs.empty(); })},
                                 {unit_labor::CUTWOOD, ai->stocks->is_cutting_trees()},
-                                {unit_labor::DETAIL, ai->plan->find_room("cistern", [](room *r) -> bool { return r->subtype == "well" && !r->misc.count("channeled"); })},
+                                {unit_labor::DETAIL, ai->plan->find_room("cistern", [](room *r) -> bool { return r->subtype == "well" && !r->channeled; })},
                             })
                     {
                         if (workers.size() > exclusive.size() + 2 && labor_needmore.count(lbtest.first) && lbtest.second)
