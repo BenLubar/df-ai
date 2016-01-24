@@ -88,6 +88,9 @@ std::string AI::describe_item(df::item *i)
 
 std::string AI::describe_unit(df::unit *u)
 {
+    if (!u)
+        return "(unknown unit)";
+
     std::string s = Translation::TranslateName(&u->name);
     s = Translation::capitalize(s);
     if (!s.empty())
