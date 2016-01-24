@@ -4053,7 +4053,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
             r->level = 0;
             if (dirx == -1 && dx == 1)
             {
-                r->layout.push_back(new_furniture("nextbox", -1, 4));
+                r->layout.push_back(new_furniture("nestbox", -1, 4));
             }
             rooms.push_back(r);
 
