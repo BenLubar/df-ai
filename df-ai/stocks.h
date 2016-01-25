@@ -82,6 +82,7 @@ public:
     void count_plants(color_ostream & out);
     void update_corpses(color_ostream & out);
 
+    int32_t num_needed(const std::string & key);
     void act(color_ostream & out, std::string key);
     int32_t count_stocks(color_ostream & out, std::string k);
     int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE);

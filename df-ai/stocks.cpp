@@ -7,6 +7,7 @@
 #include "modules/Buildings.h"
 #include "modules/Maps.h"
 #include "modules/Materials.h"
+#include "modules/Units.h"
 
 #include "df/building_coffinst.h"
 #include "df/building_farmplotst.h"
@@ -129,6 +130,7 @@ const static std::map<std::string, int32_t> WatchStock
 const static std::set<std::string> AlsoCount
 {
     "dye_plant", "cloth", "leather", "crossbow", "bonebolts", "stone",
+    "dead_dwarf",
 };
 
 const static std::map<std::string, df::job_type> ManagerRealOrder
@@ -299,9 +301,7 @@ std::string Stocks::status()
         else
             s << ", ";
 
-        int32_t want = n.second;
-        if (NeededPerDwarf.count(n.first))
-            want += ai->pop->citizen.size() * NeededPerDwarf.at(n.first) / 100;
+        int32_t want = num_needed(n.first);
         int32_t have = count[n.first];
         s << n.first << ": " << have << "/" << want;
         if (have < want)
@@ -754,15 +754,29 @@ void Stocks::update_corpses(color_ostream & out)
     updating_corpses = false;
 }
 
+int32_t Stocks::num_needed(const std::string & key)
+{
+    int32_t amount = Needed.at(key);
+    if (NeededPerDwarf.count(key))
+    {
+        amount += ai->pop->citizen.size() * NeededPerDwarf.at(key) / 100;
+    }
+    if (key == "coffin" && count.count("dead_dwarf") && count.count("coffin_bld"))
+    {
+        amount = std::max(amount, count.at("dead_dwarf") - count.at("coffin_bld"));
+    }
+    else if (key == "coffin_bld" && count.count("dead_dwarf"))
+    {
+        amount = std::max(amount, count.at("dead_dwarf"));
+    }
+    return amount;
+}
+
 void Stocks::act(color_ostream & out, std::string key)
 {
     if (Needed.count(key))
     {
-        int32_t amount = Needed.at(key);
-        if (NeededPerDwarf.count(key))
-        {
-            amount += ai->pop->citizen.size() * NeededPerDwarf.at(key) / 100;
-        }
+        int32_t amount = num_needed(key);
         if (count.at(key) < amount)
         {
             queue_need(out, key, amount * 3 / 2 - count.at(key));
@@ -1266,6 +1280,27 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     else if (k == "slab")
     {
         add_all(items_other_id::SLAB, [](df::item *i) -> bool { return i->getSlabEngravingType() == slab_engraving_type::Slab; });
+    }
+    else if (k == "dead_dwarf")
+    {
+        std::set<df::unit *> units;
+        for (df::item *i : world->items.other[items_other_id::ANY_CORPSE])
+        {
+            if (!is_item_free(i))
+            {
+                continue;
+            }
+            int16_t race = -1;
+            int16_t caste = -1;
+            df::historical_figure *hf = nullptr;
+            df::unit *u = nullptr;
+            i->getCorpseInfo(&race, &caste, &hf, &u);
+            if (u && Units::isCitizen(u) && Units::isDead(u))
+            {
+                units.insert(u);
+            }
+        }
+        return units.size();
     }
     else
     {
@@ -3473,9 +3508,9 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
 
 bool Stocks::need_more(std::string type)
 {
-    int32_t want = Needed.count(type) ? Needed.at(type) : WatchStock.count(type) ? WatchStock.at(type) : 10;
+    int32_t want = Needed.count(type) ? num_needed(type) : WatchStock.count(type) ? WatchStock.at(type) : 10;
     if (NeededPerDwarf.count(type))
-        want += NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 10;
+        want += NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 9;
 
     return (count.count(type) ? count.at(type) : 0) < want;
 }
