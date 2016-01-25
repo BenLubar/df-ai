@@ -594,7 +594,7 @@ void Plan::checkroom(color_ostream & out, room *r)
 
                 tasks.push_back(new task("furnish", r, f));
             }
-            if (f->construction == df::construction_type(-1))
+            if (f->construction != df::construction_type(-1))
             {
                 try_furnish_construction(out, r, f, t);
             }
