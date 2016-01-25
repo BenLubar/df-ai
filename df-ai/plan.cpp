@@ -2752,20 +2752,6 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     set_owner(out, r, r->owner);
     furnish_room(out, r);
 
-    std::ostringstream ss;
-    for (int16_t y = 0; y < bld->room.height; y++)
-    {
-        if (y != 0)
-        {
-            ss << "\n";
-        }
-        for (int16_t x = 0; x < bld->room.width; x++)
-        {
-            ss << int(bld->room.extents[x + y * bld->room.width]);
-        }
-    }
-    ai->debug(out, ss.str());
-
     if (r->type == "dininghall")
     {
         virtual_cast<df::building_tablest>(bld)->table_flags.bits.meeting_hall = 1;
