@@ -289,12 +289,54 @@ command_result Stocks::onupdate_unregister(color_ostream & out)
 std::string Stocks::status()
 {
     std::ostringstream s;
-    for (auto c : count)
+
+    bool first = true;
+    s << "need: ";
+    for (auto n : Needed)
     {
-        if (!s.str().empty())
+        if (first)
+            first = false;
+        else
             s << ", ";
-        s << c.first << ": " << c.second;
+
+        int32_t want = n.second;
+        if (NeededPerDwarf.count(n.first))
+            want += ai->pop->citizen.size() * NeededPerDwarf.at(n.first) / 100;
+        int32_t have = count[n.first];
+        s << n.first << ": " << have << "/" << want;
+        if (have < want)
+            s << "!!!";
     }
+
+    first = true;
+    s << "\nwatch: ";
+    for (auto w : WatchStock)
+    {
+        if (first)
+            first = false;
+        else
+            s << ", ";
+
+        int32_t want = w.second;
+        int32_t have = count[w.first];
+        s << w.first << ": " << have << "/" << want;
+        if (have > want)
+            s << "!!!";
+    }
+
+    first = true;
+    s << "\nextra: ";
+    for (auto c : AlsoCount)
+    {
+        if (first)
+            first = false;
+        else
+            s << ", ";
+
+        int32_t have = count[c];
+        s << c << ": " << have;
+    }
+
     return s.str();
 }
 
