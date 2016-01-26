@@ -133,10 +133,9 @@ bool Embark::update(color_ostream & out)
                             });
                     if (save != view->start_savegames.end())
                     {
-                        ai->debug(out, stl_sprintf("selecting save #%d (%s, %s)",
+                        ai->debug(out, stl_sprintf("selecting save #%d (%s)",
                                     save - view->start_savegames.begin(),
-                                    (*save)->world_name_str.c_str(),
-                                    Translation::TranslateName(&(*save)->world_name, true).c_str()));
+                                    (*save)->world_name_str.c_str()));
                         view->sel_submenu_line = save - view->start_savegames.begin();
                         keys.insert(interface_key::SELECT);
                     }

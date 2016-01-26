@@ -3274,7 +3274,10 @@ command_result Plan::make_map_walkable(color_ostream & out)
                         {
                             // TODO rooms outline
                             int16_t y = fort_entrance->pos().y;
-                            return (t.y < y + MinY || t.y > y + MaxY) && Maps::getTileDesignation(t)->bits.feature_local;
+                            if (t.y >= y + MinY && t.y <= y + MaxY)
+                                return false;
+                            df::tile_designation *td = Maps::getTileDesignation(t);
+                            return td && td->bits.feature_local;
                         });
                 if (!river.isValid())
                     return true;
@@ -3373,7 +3376,11 @@ command_result Plan::list_map_veins(color_ostream & out)
         {
             for (int16_t yb = 0; yb < world->map.y_count_block; yb++)
             {
-                auto & block = world->map.block_index[xb][yb][z];
+                df::map_block *block = world->map.block_index[xb][yb][z];
+                if (!block)
+                {
+                    continue;
+                }
                 for (auto event : block->block_events)
                 {
                     df::block_square_event_mineralst *vein = virtual_cast<df::block_square_event_mineralst>(event);
