@@ -46,12 +46,13 @@ bool OnupdateCallback::check_run(color_ostream & out, int32_t year, int32_t year
 
     if (callback(out))
     {
-        events.onupdate_unregister(this);
+        OnupdateCallback *tmp = this;
+        events.onupdate_unregister(tmp);
     }
     return true;
 }
 
-OnstatechangeCallback::OnstatechangeCallback(std::function<void(color_ostream &, state_change_event)> cb) :
+OnstatechangeCallback::OnstatechangeCallback(std::function<bool(color_ostream &, state_change_event)> cb) :
     cb(cb)
 {
 }
@@ -115,29 +116,23 @@ OnupdateCallback *EventManager::onupdate_register_once(std::string descr, int32_
     return h;
 }
 
-void EventManager::onupdate_unregister(OnupdateCallback *b)
+void EventManager::onupdate_unregister(OnupdateCallback *&b)
 {
     onupdate_list.erase(std::remove(onupdate_list.begin(), onupdate_list.end(), b), onupdate_list.end());
     delete b;
+    b = nullptr;
 }
 
 OnstatechangeCallback *EventManager::onstatechange_register(std::function<void(color_ostream &, state_change_event)> b)
 {
-    OnstatechangeCallback *h = new OnstatechangeCallback(b);
+    OnstatechangeCallback *h = new OnstatechangeCallback([b](color_ostream & out, state_change_event event) -> bool { b(out, event); return false; });
     onstatechange_list.push_back(h);
     return h;
 }
 
 OnstatechangeCallback *EventManager::onstatechange_register_once(std::function<bool(color_ostream &, state_change_event)> b)
 {
-    OnstatechangeCallback *h;
-    h = new OnstatechangeCallback([this, &h, b](color_ostream & out, state_change_event event)
-    {
-        if (b(out, event))
-        {
-            onstatechange_unregister(h);
-        }
-    });
+    OnstatechangeCallback *h = new OnstatechangeCallback(b);
     onstatechange_list.push_back(h);
     return h;
 }
@@ -157,7 +152,9 @@ void EventManager::onupdate(color_ostream & out)
     for (auto cb : list)
     {
         if (!cb->check_run(out, *cur_year, *cur_year_tick))
+        {
             break;
+        }
     }
 
     std::sort(onupdate_list.begin(), onupdate_list.end(), update_cmp);
@@ -169,7 +166,10 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
 
     for (auto cb : list)
     {
-        cb->cb(out, event);
+        if (cb->cb(out, event))
+        {
+            onstatechange_unregister(cb);
+        }
     }
 }
 

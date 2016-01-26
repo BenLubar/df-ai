@@ -21,8 +21,8 @@ struct OnupdateCallback
 
 struct OnstatechangeCallback
 {
-    std::function<void(color_ostream &, state_change_event)> cb;
-    OnstatechangeCallback(std::function<void(color_ostream &, state_change_event)> cb);
+    std::function<bool(color_ostream &, state_change_event)> cb;
+    OnstatechangeCallback(std::function<bool(color_ostream &, state_change_event)> cb);
 };
 
 struct EventManager
@@ -35,7 +35,7 @@ public:
     OnupdateCallback *onupdate_register_once(std::string descr, int32_t ticklimit, int32_t initialtickdelay, std::function<bool(color_ostream &)> b);
     OnupdateCallback *onupdate_register_once(std::string descr, int32_t ticklimit, std::function<bool(color_ostream &)> b);
     OnupdateCallback *onupdate_register_once(std::string descr, std::function<bool(color_ostream &)> b);
-    void onupdate_unregister(OnupdateCallback *b);
+    void onupdate_unregister(OnupdateCallback *&b);
 
     OnstatechangeCallback *onstatechange_register(std::function<void(color_ostream &, state_change_event)> b);
     OnstatechangeCallback *onstatechange_register_once(std::function<bool(color_ostream &, state_change_event)> b);
