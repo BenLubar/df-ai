@@ -983,10 +983,7 @@ void Population::autolabors(color_ostream & out, size_t step)
                 if (workers.size() > 15)
                 {
                     // if one has too many labors, free him up (one per round)
-                    int32_t lim = 4 * labors.list.size() / workers.size();
-                    if (lim < 4)
-                        lim = 4;
-                    lim += labors.hauling.size();
+                    const int32_t lim = 20;
                     for (auto & wl : worker_labor)
                     {
                         if (wl.second.size() > lim)
