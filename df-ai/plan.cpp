@@ -5420,14 +5420,24 @@ df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
 std::string Plan::status()
 {
     std::map<std::string, size_t> task_count;
+    std::map<std::string, size_t> furnishing;
     for (task *t : tasks)
     {
         task_count[t->type]++;
+        if (t->type == "furnish" && !t->f->item.empty())
+        {
+            furnishing[t->f->item]++;
+        }
     }
     std::ostringstream s;
+    bool first = true;
     for (auto tc : task_count)
     {
-        if (!s.str().empty())
+        if (first)
+        {
+            first = false;
+        }
+        else
         {
             s << ", ";
         }
@@ -5436,6 +5446,20 @@ std::string Plan::status()
     if (task *t = is_digging())
     {
         s << ", digging: " << describe_room(t->r);
+    }
+    first = true;
+    for (auto f : furnishing)
+    {
+        if (first)
+        {
+            first = false;
+            s << "\nfurnishing: ";
+        }
+        else
+        {
+            s << ", ";
+        }
+        s << f.first << ": " << f.second;
     }
     return s.str();
 }
