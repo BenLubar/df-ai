@@ -73,7 +73,7 @@ const static struct LaborInfo
                 min[ul] = 2;
                 max[ul] = 8;
                 min_pct[ul] = 0;
-                max_pct[ul] = 0;
+                max_pct[ul] = 40;
                 if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
                 {
                     hauling.insert(ul);
@@ -128,8 +128,8 @@ const static struct LaborInfo
         min_pct[unit_labor::FISH] = 1;
         min_pct[unit_labor::HERBALIST] = 10;
 
-        max_pct[unit_labor::DETAIL] = 20;
-        max_pct[unit_labor::PLANT] = 60;
+        max_pct[unit_labor::DETAIL] = 60;
+        max_pct[unit_labor::PLANT] = 80;
         max_pct[unit_labor::FISH] = 10;
         max_pct[unit_labor::HERBALIST] = 30;
 
@@ -983,7 +983,7 @@ void Population::autolabors(color_ostream & out, size_t step)
                 if (workers.size() > 15)
                 {
                     // if one has too many labors, free him up (one per round)
-                    const int32_t lim = 20;
+                    const int32_t lim = labors.list.size() / 2;
                     for (auto & wl : worker_labor)
                     {
                         if (wl.second.size() > lim)
