@@ -4557,7 +4557,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     {
         cor = new room(df::coord(oldcx, f.y - 1, f.z), df::coord(f.x + 5 + 10 * rx, f.y + 1, f.z));
         cor->accesspath.push_back(old_cor);
-        corridors.push_back(old_cor);
+        corridors.push_back(cor);
         old_cor = cor;
         oldcx = cor->max.x + 1;
 
