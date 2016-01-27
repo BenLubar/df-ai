@@ -1529,7 +1529,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, {buckt, bould});
             r->bld_id = bld->id;
-            tasks.push_back(new task("checkcaonstruct", r));
+            tasks.push_back(new task("checkconstruct", r));
             return true;
         }
     }
