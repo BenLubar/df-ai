@@ -596,7 +596,7 @@ void Plan::checkroom(color_ostream & out, room *r)
             }
             if (f->construction != df::construction_type(-1))
             {
-                try_furnish_construction(out, r, f, t);
+                try_furnish_construction(out, f->construction, t);
             }
         }
         // tantrumed building
@@ -1206,7 +1206,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     df::tiletype tt = *Maps::getTileType(tgtile);
     if (f->construction != df::construction_type(-1))
     {
-        if (try_furnish_construction(out, r, f, tgtile))
+        if (try_furnish_construction(out, f->construction, tgtile))
         {
             if (f->item.empty())
                 return true;
@@ -1325,7 +1325,7 @@ bool Plan::try_furnish_archerytarget(color_ostream & out, room *r, furniture *f,
     return true;
 }
 
-bool Plan::try_furnish_construction(color_ostream & out, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t)
 {
     df::tiletype tt = *Maps::getTileType(t);
     if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
@@ -1335,7 +1335,6 @@ bool Plan::try_furnish_construction(color_ostream & out, room *r, furniture *f, 
     }
 
     df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
-    df::construction_type ctype = f->construction;
     if (ctype == construction_type::Wall)
     {
         if (sb == tiletype_shape_basic::Wall)
@@ -3424,16 +3423,17 @@ size_t Plan::dig_vein(color_ostream & out, int32_t mat, size_t want_boulders)
                         df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
                         if (sb == tiletype_shape_basic::Open)
                         {
-                            furniture f;
+                            df::construction_type ctype;
                             if (d.second == "Default")
                             {
-                                f.construction = construction_type::Floor;
+                                ctype = construction_type::Floor;
                             }
-                            else if (!find_enum_item(&f.construction, d.second))
+                            else if (!find_enum_item(&ctype, d.second))
                             {
                                 ai->debug(out, "[ERROR] could not find construction_type::" + d.second);
+                                return false;
                             }
-                            return try_furnish_construction(out, nullptr, &f, d.first);
+                            return try_furnish_construction(out, ctype, d.first);
                         }
                         if (sb != tiletype_shape_basic::Wall)
                         {

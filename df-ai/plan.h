@@ -119,7 +119,7 @@ public:
     bool try_furnish(color_ostream & out, room *r, furniture *f);
     bool try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_construction(color_ostream & out, room *r, furniture *f, df::coord t);
+    bool try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t);
     bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_trap(color_ostream & out, room *r, furniture *f);
