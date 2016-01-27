@@ -1699,8 +1699,17 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
+    df::coord size = r->size();
+
     df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
-    Buildings::setSize(bld, r->size());
+    Buildings::setSize(bld, size);
+    delete[] bld->room.extents;
+    bld->room.extents = new uint8_t[size.x * size.y]();
+    bld->room.x = r->min.x;
+    bld->room.y = r->min.y;
+    bld->room.width = size.x;
+    bld->room.height = size.y;
+    memset(bld->room.extents, 1, size.x * size.y);
     Buildings::constructAbstract(bld);
     r->bld_id = bld->id;
     bld->is_room = true;
@@ -5043,8 +5052,8 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
     events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this](color_ostream & out) -> bool
             {
                 int16_t & x = setup_outdoor_gathering_zones_counters[0];
-                int16_t & y = setup_outdoor_gathering_zones_counters[0];
-                int16_t & i = setup_outdoor_gathering_zones_counters[0];
+                int16_t & y = setup_outdoor_gathering_zones_counters[1];
+                int16_t & i = setup_outdoor_gathering_zones_counters[2];
                 std::map<int16_t, std::set<df::coord2d>> & ground = setup_outdoor_gathering_zones_ground;
                 if (i == 31 || x + i == world->map.x_count)
                 {
@@ -5058,6 +5067,12 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
                         if (y + 31 > world->map.y_count)
                             h = world->map.y_count % 31;
                         Buildings::setSize(bld, df::coord(w, h, 1));
+                        delete[] bld->room.extents;
+                        bld->room.extents = new uint8_t[w * h]();
+                        bld->room.x = x;
+                        bld->room.y = y;
+                        bld->room.width = w;
+                        bld->room.height = h;
                         for (int16_t dx = 0; dx < w; dx++)
                         {
                             for (int16_t dy = 0; dy < h; dy++)
