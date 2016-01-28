@@ -305,6 +305,13 @@ void Plan::update(color_ostream & out)
             });
 }
 
+uint16_t Plan::getTileWalkable(df::coord t)
+{
+    if (df::map_block *b = Maps::getTileBlock(t))
+        return b->walkable[t.x & 0xf][t.y & 0xf];
+    return 0;
+}
+
 task *Plan::is_digging()
 {
     for (auto t : tasks)
@@ -3303,30 +3310,24 @@ command_result Plan::make_map_walkable(color_ostream & out)
                 t1 = surface_tile_at(t1.x, t1.y);
 
                 // if the game hasn't done any pathfinding yet, wait until the next frame and try again
-                uint16_t t1w = Maps::getTileBlock(t1)->walkable[t1.x & 0xf][t1.y & 0xf];
+                uint16_t t1w = getTileWalkable(t1);
                 if (t1w == 0)
                     return false;
 
                 // find the second tile
-                df::coord t2 = spiral_search(t1, [this, t1w](df::coord t) -> bool
+                df::coord t2 = spiral_search(t1, [t1w](df::coord t) -> bool
                         {
-                            df::map_block *block = Maps::getTileBlock(t);
-                            if (!block)
-                            {
-                                return false;
-                            }
-                            int16_t tw = block->walkable[t.x & 0xf][t.y & 0xf];
+                            uint16_t tw = getTileWalkable(t);
                             return tw != 0 and tw != t1w;
                         });
                 if (!t2.isValid())
                     return true;
-                int16_t t2w = Maps::getTileBlock(t2)->walkable[t2.x & 0xf][t2.y & 0xf];
+                uint16_t t2w = getTileWalkable(t2);
 
                 // make sure the second tile is in a safe place
                 t2 = spiral_search(t2, [this, t2w](df::coord t) -> bool
                         {
-                            df::map_block *block = Maps::getTileBlock(t);
-                            return block && block->walkable[t.x & 0xf][t.y & 0xf] == t2w && map_tile_in_rock(t - df::coord(0, 0, 1));
+                            return getTileWalkable(t) == t2w && map_tile_in_rock(t - df::coord(0, 0, 1));
                         });
                 if (!t2.isValid())
                     return true;

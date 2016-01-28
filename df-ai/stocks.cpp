@@ -2723,7 +2723,20 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         }
     }
 
-    df::tile_designation *td = Maps::getTileDesignation(Items::getPosition(i));
+    df::coord pos = Items::getPosition(i);
+
+    extern AI *dwarfAI; // XXX
+
+    // If no dwarf can walk to it from the fort entrance, it's probably up in
+    // a tree or down in the caverns.
+    if (dwarfAI->plan->fort_entrance &&
+            Plan::getTileWalkable(dwarfAI->plan->fort_entrance->max) !=
+            Plan::getTileWalkable(pos))
+    {
+        return false;
+    }
+
+    df::tile_designation *td = Maps::getTileDesignation(pos);
     return td && !td->bits.hidden && td->bits.flow_size < 4;
 }
 

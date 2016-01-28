@@ -80,6 +80,8 @@ public:
 
     void update(color_ostream & out);
 
+    static uint16_t getTileWalkable(df::coord t);
+
     task *is_digging();
     bool is_idle();
 
