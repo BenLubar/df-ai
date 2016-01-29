@@ -385,6 +385,13 @@ bool Plan::checkidle(color_ostream & out)
     if (r == nullptr && (cond)) \
         r = find_room(type, lambda)
 
+    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+            {
+                return r->subtype == "food" &&
+                        r->level == 0 &&
+                        !r->workshop &&
+                        r->status == "plan";
+            });
     FIND_ROOM(!important_workshops.empty(), "workshop", [this](room *r) -> bool
             {
                 if (r->subtype == important_workshops.back() &&
@@ -478,7 +485,6 @@ bool Plan::checkidle(color_ostream & out)
                 return !r->subtype.empty() &&
                         r->status == "plan";
             });
-    FIND_ROOM(true, "cartway", ifplan);
     FIND_ROOM(true, "stockpile", ifplan);
 #undef FIND_ROOM
 
@@ -2412,7 +2418,7 @@ void Plan::room_items(color_ostream & out, room *r, std::function<void(df::item 
                     if (i->flags.bits.on_ground &&
                             r->min.x <= i->pos.x && i->pos.x <= r->max.x &&
                             r->min.y <= i->pos.y && i->pos.y <= r->max.y &&
-                            z == i->pos.x)
+                            z == i->pos.z)
                     {
                         f(i);
                     }
