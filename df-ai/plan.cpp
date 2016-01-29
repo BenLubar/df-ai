@@ -1273,6 +1273,19 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return false;
     }
 
+    if (f->item == "floodgate")
+    {
+        // require the floor to be smooth before we build a floodgate on it
+        // because we can't smooth a floor under an open floodgate.
+        if (!is_smooth(tgtile))
+        {
+            std::set<df::coord> tiles;
+            tiles.insert(tgtile);
+            smooth(tiles);
+            return false;
+        }
+    }
+
     if (itm == nullptr)
     {
         itm = ai->stocks->find_furniture_item(f->item);
@@ -1290,6 +1303,11 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         const static std::map<std::string, int> subtypes = {{"cage", trap_type::CageTrap}, {"lever", trap_type::Lever}, {"trackstop", trap_type::TrackStop}};
         int subtype = f->subtype.empty() ? -1 : subtypes.at(f->subtype);
         df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
+
+        // TODO: when https://github.com/DFHack/dfhack/pull/808 lands, remove:
+        if (df::building_floodgatest *flood = virtual_cast<df::building_floodgatest>(flood))
+            flood->gate_flags.bits.closed = 1;
+
         Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {itm});
         if (f->makeroom)
