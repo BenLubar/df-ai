@@ -208,11 +208,6 @@ void Population::update(color_ostream & out)
             update_caged(out);
             break;
     }
-
-    if (update_counter % 3 == 0)
-    {
-        autolabors(out, update_counter / 3 % 10);
-    }
 }
 
 void Population::new_citizen(color_ostream & out, int32_t id)
