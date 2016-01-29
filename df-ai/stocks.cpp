@@ -729,6 +729,7 @@ void Stocks::update_corpses(color_ostream & out)
         df::unit *u = nullptr;
         i->getCorpseInfo(&race, &caste, &hf, &u);
         if (is_item_free(i) &&
+                i->flags.bits.on_ground && // ignore corpses that are not on the ground
                 !i->flags.bits.in_inventory && // ignore corpses in inventories even if they're being hauled
                 !i->flags.bits.in_building && // ignore corpses in buildings even if they're not construction materials
                 i->pos != t &&
