@@ -3688,7 +3688,7 @@ df::coord Plan::spiral_search(df::coord t, int16_t max, int16_t min, int16_t ste
         min += step;
     }
     const static std::vector<df::coord> sides{df::coord(0, 1, 0), df::coord(1, 0, 0), df::coord(0, -1, 0), df::coord(-1, 0, 0)};
-    for (int16_t r = min; r < max; r += step)
+    for (int16_t r = min; r <= max; r += step)
     {
         for (df::coord d : sides)
         {
@@ -4747,29 +4747,39 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
         move_river(p3);
     }
 
-    // find safe tile near the river
-    df::coord output = spiral_search(src, [this](df::coord t) -> bool { return map_tile_in_rock(t); });
-
-    // find tile to channel to start water flow
-    df::coord channel = spiral_search(output, 1, 1, [this](df::coord t) -> bool
+    // find safe tile near the river and a tile to channel
+    df::coord channel;
+    channel.clear();
+    df::coord output = spiral_search(src, [this, &channel](df::coord t) -> bool
             {
-                return spiral_search(t, 1, 1, [this](df::coord tt) -> bool
-                        {
-                            return Maps::getTileDesignation(tt)->bits.feature_local;
-                        }).isValid();
-            });
-    if (!channel.isValid())
-        channel = spiral_search(output, 1, 1, [this](df::coord t) -> bool
+                if (!map_tile_in_rock(t))
                 {
-                    return spiral_search(t, 1, 1, [this](df::coord tt) -> bool
+                    return false;
+                }
+                channel = spiral_search(t, 1, 1, [this](df::coord t) -> bool
+                        {
+                            return spiral_search(t, 1, 1, [this](df::coord t) -> bool
+                                    {
+                                        return Maps::getTileDesignation(t)->bits.feature_local;
+                                    }).isValid();
+                        });
+                if (!channel.isValid())
+                {
+                    channel = spiral_search(t, 1, 1, [this](df::coord t) -> bool
                             {
-                                return Maps::getTileDesignation(tt)->bits.flow_size != 0 ||
-                                        ENUM_ATTR(tiletype, material, *Maps::getTileType(tt)) == tiletype_material::FROZEN_LIQUID;
-                            }).isValid();
-                });
+                                return spiral_search(t, 1, 1, [this](df::coord t) -> bool
+                                        {
+                                            return Maps::getTileDesignation(t)->bits.flow_size != 0 ||
+                                                    ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID;
+                                        }).isValid();
+                            });
+                }
+                return channel.isValid();
+            });
+
     if (channel.isValid())
     {
-        ai->debug(out, stl_sprintf("cistern: channel_enable (%d, %d, %d)", channel.x, channel.y, channel.z));
+        ai->debug(out, stl_sprintf("cistern: out(%d, %d, %d), channel_enable (%d, %d, %d)", output.x, output.y, output.z, channel.x, channel.y, channel.z));
     }
 
     // TODO check that 'channel' is easily channelable (eg river in a hole)
@@ -5226,7 +5236,7 @@ bool Plan::map_tile_in_rock(df::coord tile)
             }
 
             df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
-            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID))
+            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (allow_ice || tm != tiletype_material::FROZEN_LIQUID))
             {
                 return false;
             }
