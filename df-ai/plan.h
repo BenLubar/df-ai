@@ -139,6 +139,7 @@ public:
     void smooth_room(color_ostream & out, room *r);
     void smooth_room_access(color_ostream & out, room *r);
     void smooth_cistern(color_ostream & out, room *r);
+    void smooth_cistern_access(color_ostream & out, room *r);
     bool construct_cistern(color_ostream & out, room *r);
     bool dump_items_access(color_ostream & out, room *r);
     void room_items(color_ostream & out, room *r, std::function<void(df::item *)> f);

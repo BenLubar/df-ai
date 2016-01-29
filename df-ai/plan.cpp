@@ -2362,7 +2362,7 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
 {
     for (room *a : r->accesspath)
     {
-        smooth_room_access(out, a);
+        smooth_cistern_access(out, a);
     }
 
     std::set<df::coord> tiles;
@@ -2382,6 +2382,34 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
         }
     }
     smooth(tiles);
+}
+
+// smooth only the inside of the room and any walls, but not adjacent floors
+void Plan::smooth_cistern_access(color_ostream & out, room *r)
+{
+    std::set<df::coord> tiles;
+    for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
+    {
+        for (int16_t y = r->min.y - 1; y <= r->max.y + 1; y++)
+        {
+            for (int16_t z = r->min.z; z <= r->max.z; z++)
+            {
+                if (x < r->min.x || r->max.x < x || y < r->min.y || r->max.y < y)
+                {
+                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(x, y, z))) != tiletype_shape_basic::Wall)
+                    {
+                        continue;
+                    }
+                }
+                tiles.insert(df::coord(x, y, z));
+            }
+        }
+    }
+    smooth(tiles);
+    for (room *a : r->accesspath)
+    {
+        smooth_cistern_access(out, a);
+    }
 }
 
 bool Plan::construct_cistern(color_ostream & out, room *r)
@@ -2449,7 +2477,7 @@ void Plan::room_items(color_ostream & out, room *r, std::function<void(df::item 
 void Plan::smooth_xyz(df::coord min, df::coord max)
 {
     std::set<df::coord> tiles;
-    for (int16_t x = min.x; x <= max.y; x++)
+    for (int16_t x = min.x; x <= max.x; x++)
     {
         for (int16_t y = min.y; y <= max.y; y++)
         {

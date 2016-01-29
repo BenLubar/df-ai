@@ -69,7 +69,8 @@ room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs
         std::swap(min.x, max.x);
     if (min.y > max.y)
         std::swap(min.y, max.y);
-    assert(min.z == max.z);
+    if (min.z > max.z)
+        std::swap(min.z, max.z);
 }
 
 room::~room()
