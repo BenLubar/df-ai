@@ -1305,7 +1305,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
 
         // TODO: when https://github.com/DFHack/dfhack/pull/808 lands, remove:
-        if (df::building_floodgatest *flood = virtual_cast<df::building_floodgatest>(flood))
+        if (df::building_floodgatest *flood = virtual_cast<df::building_floodgatest>(bld))
             flood->gate_flags.bits.closed = 1;
 
         Buildings::setSize(bld, df::coord(1, 1, 1));
