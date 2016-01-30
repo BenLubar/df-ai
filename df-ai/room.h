@@ -45,7 +45,11 @@ struct room
     ~room();
 
     inline df::coord size() const { return max - min + df::coord(1, 1, 1); }
-    inline df::coord pos() const { return min + size() / 2; }
+    inline df::coord pos() const
+    {
+        df::coord s = size();
+        return min + df::coord(s.x / 2, s.y / 2, s.z / 2);
+    }
 
     void dig(std::string mode = "");
     void fixup_open();
