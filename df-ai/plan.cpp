@@ -3051,9 +3051,9 @@ void Plan::monitor_cistern(color_ostream & out)
                         for (int16_t z = r->min.z; z <= r->max.z; z++)
                         {
                             df::coord t(x, y, z);
-                            if (!is_smooth(t))
+                            if (!is_smooth(t) && (r->type != "corridor" || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
                             {
-                                ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d)", x - r->min.x, y - r->min.y, z - r->min.z));
+                                ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d) %s", x, y, z, describe_room(r).c_str()));
                                 empty = false;
                                 break;
                             }
@@ -3064,7 +3064,7 @@ void Plan::monitor_cistern(color_ostream & out)
                                 {
                                     if (Units::getPosition(u) == t)
                                     {
-                                        ai->debug(out, stl_sprintf("cistern: unit (%d, %d, %d) %s", x - r->min.x, y - r->min.y, z - r->min.z, AI::describe_unit(u).c_str()));
+                                        ai->debug(out, stl_sprintf("cistern: unit (%d, %d, %d) (%s) %s", x, y, z, AI::describe_unit(u).c_str(), describe_room(r).c_str()));
                                         break;
                                     }
                                 }
@@ -3078,7 +3078,7 @@ void Plan::monitor_cistern(color_ostream & out)
                                     df::item *i = df::item::find(id);
                                     if (Items::getPosition(i) == t)
                                     {
-                                        ai->debug(out, stl_sprintf("cistern: item (%d, %d, %d) %s", x - r->min.x, y - r->min.y, z - r->min.z, AI::describe_item(i).c_str()));
+                                        ai->debug(out, stl_sprintf("cistern: item (%d, %d, %d) (%s) %s", x, y, z, AI::describe_item(i).c_str(), describe_room(r).c_str()));
                                     }
                                 }
                                 empty = false;
