@@ -90,7 +90,7 @@ const static std::map<std::string, int32_t> Needed
     {"cabinet", 4}, {"chest", 4}, {"mechanism", 4},
     {"bag", 3}, {"table", 3}, {"chair", 3}, {"cage", 3},
     {"coffin", 2}, {"coffin_bld", 3}, {"coffin_bld_pet", 1},
-    {"food", 20}, {"drink", 20}, {"wood", 16}, {"bucket", 2},
+    {"food", 20}, {"drink", 20}, {"goblet", 10}, {"wood", 16}, {"bucket", 2},
     {"thread_seeds", 10}, {"dye_seeds", 10}, {"dye", 10},
     {"weapon", 2}, {"armor_torso", 2}, {"clothes_torso", 2}, {"block", 6},
     {"quiver", 2}, {"flask", 2}, {"backpack", 2}, {"wheelbarrow", 1},
@@ -780,6 +780,10 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     else if (k == "drink")
     {
         add_all(items_other_id::DRINK);
+    }
+    else if (k == "goblet")
+    {
+        add_all(items_other_id::GOBLET);
     }
     else if (k == "soap" || k == "coal" || k == "ash")
     {
@@ -3127,6 +3131,7 @@ std::string Stocks::furniture_order(std::string k)
         {"pipe_section", "MakePipeSection"},
         {"coal", "MakeCharcoal"},
         {"stepladder", "MakeWoodenStepladder"},
+        {"goblet", "MakeGoblet"},
     };
     if (diff.count(k))
         return diff.at(k);
