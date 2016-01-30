@@ -194,6 +194,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
             break;
         case announcement_type::DIG_CANCEL_DAMP:
         case announcement_type::DIG_CANCEL_WARM:
+            camera->ignore_pause();
             debug(out, "pause: lazy miners");
             break;
         case announcement_type::BIRTH_CITIZEN:

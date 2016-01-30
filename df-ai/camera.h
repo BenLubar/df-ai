@@ -23,6 +23,7 @@ public:
 
     void check_record_status();
     void update(color_ostream & out);
+    void ignore_pause();
     std::string status();
 };
 

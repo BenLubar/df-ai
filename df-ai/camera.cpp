@@ -240,6 +240,15 @@ void Camera::update(color_ostream & out)
     world->status.flags.bits.sparring = 0;
 }
 
+void Camera::ignore_pause()
+{
+    if (df::unit *u = df::unit::find(following))
+    {
+        Gui::revealInDwarfmodeMap(Units::getPosition(u), true);
+        ui->follow_unit = following;
+    }
+}
+
 std::string Camera::status()
 {
     std::string fp;
