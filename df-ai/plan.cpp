@@ -379,7 +379,7 @@ bool Plan::checkidle(color_ostream & out)
     {
         return r->status == "plan";
     };
-    size_t freebed = spare_bedroom;
+    int32_t freebed = spare_bedroom;
     room *r = nullptr;
 #define FIND_ROOM(cond, type, lambda) \
     if (r == nullptr && (cond)) \
@@ -453,12 +453,17 @@ bool Plan::checkidle(color_ostream & out)
                 }
                 return false;
             });
+    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+            {
+                return r->status == "plan" &&
+                        r->level <= 2;
+            });
     auto finished_nofurnished = [](room *r) -> bool
     {
         return r->status == "finished" && !r->furnished;
     };
     FIND_ROOM(true, "nobleroom", finished_nofurnished);
-    FIND_ROOM(true, "bederoom", finished_nofurnished);
+    FIND_ROOM(true, "bedroom", finished_nofurnished);
     auto nousers_noplan = [](room *r) -> bool
     {
         return r->status != "plan" && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
