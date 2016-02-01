@@ -2222,11 +2222,18 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "bone")
     {
-        if (!ai->pop->labor_worker.count(unit_labor::HUNT))
+        int32_t nhunters = 0;
+        for (df::unit *u : world->units.active)
+        {
+            if (Units::isCitizen(u) && !Units::isDead(u) && u->status.labors[unit_labor::HUNT])
+            {
+                nhunters++;
+            }
+        }
+        if (!nhunters)
         {
             return;
         }
-        int32_t nhunters = ai->pop->labor_worker.at(unit_labor::HUNT).size();
         int32_t need_crossbow = nhunters + 1 - count.at("crossbow");
         if (need_crossbow > 0)
         {
@@ -2515,8 +2522,6 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
             continue;
         if (Maps::getTileDesignation(tree)->bits.dig == tile_dig_designation::Default)
             continue;
-        if (list.size() > 4 * amount && std::uniform_int_distribution<int32_t>(0, 3)(ai->rng) != 0)
-            continue;
         ai->plan->dig_tile(tree, "Default");
         if (!br.isValid() || (br.x & -16) < (tree.x & -16) || ((br.x & -16) == (tree.x & -16) && (br.y & -16) < (tree.y & -16)))
         {
@@ -2802,7 +2807,12 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
             }
             int32_t has = 0;
             df::items_other_id oidx;
-            find_enum_item(&oidx, ENUM_KEY_STR(item_type, rri->item_type));
+            if (!find_enum_item(&oidx, ENUM_KEY_STR(item_type, rri->item_type)))
+            {
+                ai->debug(out, "[ERROR] missing items_other_id::" + ENUM_KEY_STR(item_type, rri->item_type));
+                all = false;
+                break;
+            }
             for (df::item *i : world->items.other[oidx])
             {
                 if (rri->mat_type != -1 && i->getMaterial() != rri->mat_type)
@@ -2986,8 +2996,9 @@ std::vector<df::manager_order *> Stocks::find_manager_orders(std::string order)
     df::job_type _order;
     if (ManagerRealOrder.count(order))
         _order = ManagerRealOrder.at(order);
-    else
-        find_enum_item(&_order, order);
+    else if (!find_enum_item(&_order, order))
+        return std::vector<df::manager_order *>();
+
     df::job_material_category matcat;
     if (ManagerMatCategory.count(order))
         parseJobMaterialCategory(&matcat, ManagerMatCategory.at(order));
@@ -3034,9 +3045,15 @@ void Stocks::add_manager_order(color_ostream & out, std::string order, int32_t a
     ai->debug(out, stl_sprintf("add_manager %s %d", order.c_str(), amount));
     df::job_type _order;
     if (ManagerRealOrder.count(order))
+    {
         _order = ManagerRealOrder.at(order);
-    else
-        find_enum_item(&_order, order);
+    }
+    else if (!find_enum_item(&_order, order))
+    {
+        ai->debug(out, "[ERROR] no such manager order: " + order);
+        return;
+    }
+
     df::job_material_category matcat;
     if (ManagerMatCategory.count(order))
         parseJobMaterialCategory(&matcat, ManagerMatCategory.at(order));

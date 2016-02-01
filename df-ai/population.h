@@ -41,11 +41,6 @@ private:
     std::map<int32_t, pet_flags> pet;
     size_t update_counter;
     OnupdateCallback *onupdate_handle;
-public:
-    std::map<df::unit_labor, std::set<int32_t>> labor_worker;
-private:
-    std::map<int32_t, std::set<df::unit_labor>> worker_labor;
-    std::map<df::unit_labor, int32_t> labor_needmore;
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
@@ -76,11 +71,6 @@ public:
 
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
-
-    void autolabors(color_ostream & out, size_t step);
-
-    void autolabor_setlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason = "no reason given");
-    void autolabor_unsetlabor(color_ostream & out, int32_t c, df::unit_labor lb, std::string reason = "no reason given");
 
     void set_up_trading(bool should_be_trading);
 

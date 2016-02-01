@@ -50,13 +50,13 @@
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-const static size_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
-const static size_t manager_maxbacklog = 10; // add new masonly if more that this much mason manager orders
-const static size_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
-const static size_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot tile
-const static size_t dwarves_per_farmtile_den = 2;
-const static size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
-const static size_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
+const static int32_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
+const static int32_t manager_maxbacklog = 10; // add new masonly if more that this much mason manager orders
+const static int32_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
+const static int32_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot tile
+const static int32_t dwarves_per_farmtile_den = 2;
+const static int32_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
+const static int32_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
 
 const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -5;
 const int16_t Plan::MaxX = 35, Plan::MaxY = 22, Plan::MaxZ = 1;
@@ -655,7 +655,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                     df::coord size = r->size();
                     return r->subtype == "food" &&
                         !r->outdoor &&
-                        r->users.size() < size.x * size.y *
+                        int32_t(r->users.size()) < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
@@ -668,7 +668,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                     df::coord size = r->size();
                     return r->subtype == "cloth" &&
                         !r->outdoor &&
-                        r->users.size() < size.x * size.y *
+                        int32_t(r->users.size()) < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
@@ -681,7 +681,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                     df::coord size = r->size();
                     return r->subtype == "food" &&
                         r->outdoor &&
-                        r->users.size() < size.x * size.y *
+                        int32_t(r->users.size()) < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
@@ -694,7 +694,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                     df::coord size = r->size();
                     return r->subtype == "cloth" &&
                         r->outdoor &&
-                        r->users.size() < size.x * size.y *
+                        int32_t(r->users.size()) < size.x * size.y *
                         dwarves_per_farmtile_num / dwarves_per_farmtile_den;
                 }))
     {
@@ -1035,6 +1035,16 @@ void Plan::dig_tile(df::coord t, std::string mode)
     df::tile_dig_designation dig;
     if (!find_enum_item(&dig, mode))
         return;
+
+    dig_tile(t, dig);
+}
+
+void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
+{
+    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::TREE && dig != tile_dig_designation::No)
+    {
+        dig = tile_dig_designation::Default;
+    }
 
     df::tile_designation *des = Maps::getTileDesignation(t);
     if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No && !des->bits.hidden)
@@ -2585,7 +2595,7 @@ bool Plan::is_smooth(df::coord t)
 bool Plan::try_digcistern(color_ostream & out, room *r)
 {
     // XXX hardcoded layout..
-    size_t cnt = 0;
+    int32_t cnt = 0;
     int16_t acc_y = r->accesspath[0]->min.y;
     for (int16_t z = r->min.z + 1; z <= r->max.z; z++)
     {
@@ -3478,10 +3488,10 @@ static int32_t mat_index_vein(df::coord t)
 }
 
 // mark a vein of a mat for digging, return expected boulder count
-size_t Plan::dig_vein(color_ostream & out, int32_t mat, size_t want_boulders)
+int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
 {
     // mat => [x, y, z, dig_mode] marked for to dig
-    size_t count = 0;
+    int32_t count = 0;
     // check previously queued veins
     if (map_vein_queue.count(mat))
     {
@@ -3553,7 +3563,7 @@ size_t Plan::dig_vein(color_ostream & out, int32_t mat, size_t want_boulders)
             it--;
         df::coord v = *it;
         map_veins.at(mat).erase(it);
-        size_t cnt = do_dig_vein(out, mat, v);
+        int32_t cnt = do_dig_vein(out, mat, v);
         if (cnt > 0)
         {
             dug_veins.insert(v);
@@ -3569,10 +3579,10 @@ size_t Plan::dig_vein(color_ostream & out, int32_t mat, size_t want_boulders)
     return count / 4;
 }
 
-size_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
+int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
 {
     ai->debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
-    size_t count = 0;
+    int32_t count = 0;
     int16_t fort_minz = 0x7fff;
     for (room *c : corridors)
     {
@@ -4436,8 +4446,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // farm plots
     const int16_t farm_w = 3;
     const int16_t farm_h = 3;
-    size_t dpf = farm_w * farm_h * dwarves_per_farmtile_num / dwarves_per_farmtile_den;
-    size_t nrfarms = (220 + dpf - 1) / dpf;
+    const int32_t dpf = farm_w * farm_h * dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+    const int32_t nrfarms = (220 + dpf - 1) / dpf;
 
     int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
     int16_t cy = f.y;;
@@ -4449,11 +4459,11 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     corridors.push_back(farm_stairs);
     cx += 3;
     int16_t cz2 = cz;
-    size_t soilcnt = 0;
+    int32_t soilcnt = 0;
     for (int16_t z = cz; z < world->map.z_count; z++)
     {
         bool ok = true;
-        size_t scnt = 0;
+        int32_t scnt = 0;
         for (int16_t dx = -1; dx <= nrfarms * farm_w / 3; dx++)
         {
             for (int16_t dy = -3 * farm_h - farm_h + 1; dy <= 3 * farm_h + farm_h - 1; dy++)

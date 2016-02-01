@@ -9,6 +9,7 @@
 #include <set>
 
 #include "df/coord.h"
+#include "df/tile_dig_designation.h"
 #include "df/tiletype_shape_basic.h"
 
 namespace df
@@ -113,7 +114,8 @@ public:
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
-    static void dig_tile(df::coord t, std::string mode = "Default");
+    static void dig_tile(df::coord t, std::string mode);
+    static void dig_tile(df::coord t, df::tile_dig_designation dig = tile_dig_designation::Default);
     void wantdig(color_ostream & out, room *r);
     void digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
@@ -167,8 +169,8 @@ public:
     command_result make_map_walkable(color_ostream & out);
     command_result list_map_veins(color_ostream & out);
 
-    size_t dig_vein(color_ostream & out, int32_t mat, size_t want_boulders = 1);
-    size_t do_dig_vein(color_ostream & out, int32_t mat, df::coord b);
+    int32_t dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders = 1);
+    int32_t do_dig_vein(color_ostream & out, int32_t mat, df::coord b);
 
     static df::coord spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b);
     static inline df::coord spiral_search(df::coord t, int16_t max, int16_t min, std::function<bool(df::coord)> b)
