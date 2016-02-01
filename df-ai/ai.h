@@ -54,6 +54,8 @@ public:
     static std::string describe_item(df::item *i);
     static std::string describe_unit(df::unit *u);
 
+    static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);
+
     void debug(color_ostream & out, std::string str, df::coord announce);
     void debug(color_ostream & out, std::string str);
 

@@ -120,19 +120,8 @@ command_result status_command(color_ostream & out, std::vector<std::string> & ar
         return CR_OK;
     }
 
-    std::string status = dwarfAI->status();
-    size_t pos = 0;
-    while (true)
-    {
-        size_t end = status.find('\n', pos);
-        if (end == std::string::npos)
-        {
-            out << DF2CONSOLE(status.substr(pos)) << "\n";
-            return CR_OK;
-        }
-        out << DF2CONSOLE(status.substr(pos, end - pos)) << "\n";
-        pos = end + 1;
-    }
+    AI::write_df(out, dwarfAI->status(), "\n", "\n", DF2CONSOLE);
+    return CR_OK;
 }
 
 DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_change_event event)

@@ -99,6 +99,23 @@ std::string AI::describe_unit(df::unit *u)
     return s;
 }
 
+void AI::write_df(std::ostream & out, const std::string & str, const std::string & newline, const std::string & suffix, std::function<std::string(const std::string &)> translate)
+{
+    size_t pos = 0;
+    while (true)
+    {
+        size_t end = str.find('\n', pos);
+        if (end == std::string::npos)
+        {
+            out << translate(str.substr(pos)) << suffix;
+            break;
+        }
+        out << translate(str.substr(pos, end - pos)) << newline;
+        pos = end + 1;
+    }
+    out.flush();
+}
+
 void AI::debug(color_ostream & out, std::string str, df::coord announce)
 {
     Gui::showZoomAnnouncement(df::announcement_type(0), announce, "AI: " + str, 7, false);
@@ -111,22 +128,9 @@ void AI::debug(color_ostream & out, std::string str)
 
     if (DEBUG)
     {
-        out << "AI: " << ts << " " << DF2CONSOLE(str) << "\n";
+        write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
     }
-    logger << ts << " ";
-    size_t pos = 0;
-    while (true)
-    {
-        size_t end = str.find('\n', pos);
-        if (end == std::string::npos)
-        {
-            logger << DF2UTF(str.substr(pos)) << "\n";
-            break;
-        }
-        logger << DF2UTF(str.substr(pos, end - pos)) << "\n                 ";
-        pos = end + 1;
-    }
-    logger.flush();
+    write_df(logger, ts + " " + str, "\n                 ");
 }
 
 command_result AI::startup(color_ostream & out)
