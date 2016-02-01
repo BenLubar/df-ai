@@ -9,6 +9,7 @@
 #include <random>
 
 #include "df/coord.h"
+#include "df/interface_key.h"
 
 namespace df
 {
@@ -53,6 +54,9 @@ public:
 
     static std::string describe_item(df::item *i);
     static std::string describe_unit(df::unit *u);
+
+    static bool feed_key(df::viewscreen *view, df::interface_key key);
+    static bool feed_key(df::interface_key key);
 
     static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);
 

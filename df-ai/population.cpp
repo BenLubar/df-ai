@@ -572,25 +572,11 @@ int32_t Population::military_find_free_squad()
     }
 
     // create a new squad using the UI
-    std::set<df::interface_key> keys;
-    keys.insert(interface_key::D_MILITARY);
-    Gui::getCurViewscreen()->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::D_MILITARY_CREATE_SQUAD);
-    Gui::getCurViewscreen()->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::STANDARDSCROLL_UP);
-    Gui::getCurViewscreen()->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::SELECT);
-    Gui::getCurViewscreen()->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::LEAVESCREEN);
-    Gui::getCurViewscreen()->feed(&keys);
+    AI::feed_key(interface_key::D_MILITARY);
+    AI::feed_key(interface_key::D_MILITARY_CREATE_SQUAD);
+    AI::feed_key(interface_key::STANDARDSCROLL_UP);
+    AI::feed_key(interface_key::SELECT);
+    AI::feed_key(interface_key::LEAVESCREEN);
 
     // get the squad and its id
     int32_t squad_id = ui->main.fortress_entity->squads.back();
@@ -1356,31 +1342,19 @@ void Population::set_up_trading(bool should_be_trading)
     {
         return;
     }
-    df::viewscreen *view = Gui::getCurViewscreen();
-    if (!view || !strict_virtual_cast<df::viewscreen_dwarfmodest>(view))
+
+    if (auto view = strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
     {
-        return;
+        AI::feed_key(view, interface_key::D_BUILDJOB);
+
+        df::coord pos = r->pos();
+        Gui::revealInDwarfmodeMap(pos, true);
+        Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+        AI::feed_key(view, interface_key::CURSOR_LEFT);
+        AI::feed_key(view, interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+        AI::feed_key(view, interface_key::LEAVESCREEN);
     }
-
-    std::set<df::interface_key> keys;
-    keys.insert(interface_key::D_BUILDJOB);
-    view->feed(&keys);
-
-    df::coord pos = r->pos();
-    Gui::revealInDwarfmodeMap(pos, true);
-    Gui::setCursorCoords(pos.x, pos.y, pos.z);
-
-    keys.clear();
-    keys.insert(interface_key::CURSOR_LEFT);
-    view->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
-    view->feed(&keys);
-
-    keys.clear();
-    keys.insert(interface_key::LEAVESCREEN);
-    view->feed(&keys);
 }
 
 bool Population::unit_hasmilitaryduty(df::unit *u)

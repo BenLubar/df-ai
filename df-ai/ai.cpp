@@ -99,6 +99,20 @@ std::string AI::describe_unit(df::unit *u)
     return s;
 }
 
+bool AI::feed_key(df::viewscreen *view, df::interface_key key)
+{
+    static interface_key_set keys; // protected by CoreSuspender
+    keys.clear();
+    keys.insert(key);
+    view->feed(&keys);
+    return !keys.count(key);
+}
+
+bool AI::feed_key(df::interface_key key)
+{
+    return feed_key(Gui::getCurViewscreen(), key);
+}
+
 void AI::write_df(std::ostream & out, const std::string & str, const std::string & newline, const std::string & suffix, std::function<std::string(const std::string &)> translate)
 {
     size_t pos = 0;
@@ -155,15 +169,11 @@ void AI::unpause()
 {
     while (!world->status.popups.empty())
     {
-        interface_key_set keys;
-        keys.insert(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
-        Gui::getCurViewscreen()->feed(&keys);
+        feed_key(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
     }
     if (*pause_state)
     {
-        interface_key_set keys;
-        keys.insert(interface_key::D_PAUSE);
-        Gui::getCurViewscreen()->feed(&keys);
+        feed_key(interface_key::D_PAUSE);
     }
 }
 
@@ -314,9 +324,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
-                            interface_key_set keys;
-                            keys.insert(interface_key::LEAVESCREEN);
-                            Gui::getCurViewscreen()->feed(&keys);
+                            feed_key(interface_key::LEAVESCREEN);
                         });
             }
             else if (stripped.find("A" "vile" "force" "of" "darkness" "has" "arrived!") != std::string::npos ||
@@ -327,9 +335,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit siege textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
-                            interface_key_set keys;
-                            keys.insert(interface_key::LEAVESCREEN);
-                            Gui::getCurViewscreen()->feed(&keys);
+                            feed_key(interface_key::LEAVESCREEN);
                             unpause();
                         });
             }
@@ -363,9 +369,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream & out)
                     {
-                        interface_key_set keys;
-                        keys.insert(interface_key::OPTION1);
-                        Gui::getCurViewscreen()->feed(&keys);
+                        feed_key(interface_key::OPTION1);
                     });
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
@@ -373,9 +377,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeeting_takerequestsst");
             timeout_sameview([](color_ostream & out)
                     {
-                        interface_key_set keys;
-                        keys.insert(interface_key::LEAVESCREEN);
-                        Gui::getCurViewscreen()->feed(&keys);
+                        feed_key(interface_key::LEAVESCREEN);
                     });
         }
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
@@ -383,9 +385,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat requestagreementst");
             timeout_sameview([](color_ostream & out)
                     {
-                        interface_key_set keys;
-                        keys.insert(interface_key::LEAVESCREEN);
-                        Gui::getCurViewscreen()->feed(&keys);
+                        feed_key(interface_key::LEAVESCREEN);
                     });
         }
         else if (virtual_identity *ident = virtual_identity::get(curview))
@@ -406,16 +406,10 @@ void AI::abandon(color_ostream & out)
     df::viewscreen_optionst *view = df::allocate<df::viewscreen_optionst>();
     view->options.push_back(df::viewscreen_optionst::Abandon);
     Screen::show(view);
-    interface_key_set keys;
-    keys.insert(interface_key::SELECT);
-    view->feed(&keys);
-    keys.clear();
-    keys.insert(interface_key::MENU_CONFIRM);
-    view->feed(&keys);
+    feed_key(view, interface_key::SELECT);
+    feed_key(view, interface_key::MENU_CONFIRM);
     // current view switches to a textviewer at this point
-    keys.clear();
-    keys.insert(interface_key::SELECT);
-    Gui::getCurViewscreen()->feed(&keys);
+    feed_key(interface_key::SELECT);
 }
 
 void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb)

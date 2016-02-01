@@ -33,15 +33,11 @@ bool check_enabled(color_ostream & out)
         }
         if (!dwarfAI)
         {
-            df::viewscreen_titlest *view = virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen());
+            df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen());
             if (view && !AI_RANDOM_EMBARK)
             {
-                interface_key_set keys;
-                keys.insert(interface_key::SELECT);
-                view->feed(&keys);
-                keys.clear();
-                keys.insert(interface_key::SELECT);
-                view->feed(&keys);
+                AI::feed_key(view, interface_key::SELECT);
+                AI::feed_key(view, interface_key::SELECT);
             }
 
             dwarfAI = new AI();
@@ -55,9 +51,7 @@ bool check_enabled(color_ostream & out)
                             dwarfAI->startup(out);
                             if (*pause_state)
                             {
-                                interface_key_set keys;
-                                keys.insert(interface_key::D_PAUSE);
-                                view->feed(&keys);
+                                AI::feed_key(view, interface_key::D_PAUSE);
                             }
                             return true;
                         }
