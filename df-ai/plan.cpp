@@ -1,8 +1,10 @@
 #include "ai.h"
+#include "camera.h"
 #include "plan.h"
 #include "stocks.h"
 
 #include "modules/Buildings.h"
+#include "modules/Gui.h"
 #include "modules/Items.h"
 #include "modules/Job.h"
 #include "modules/Maps.h"
@@ -1318,11 +1320,6 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         const static std::map<std::string, int> subtypes = {{"cage", trap_type::CageTrap}, {"lever", trap_type::Lever}, {"trackstop", trap_type::TrackStop}};
         int subtype = f->subtype.empty() ? -1 : subtypes.at(f->subtype);
         df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
-
-        // TODO: when https://github.com/DFHack/dfhack/pull/808 lands, remove:
-        if (df::building_floodgatest *flood = virtual_cast<df::building_floodgatest>(bld))
-            flood->gate_flags.bits.closed = 1;
-
         Buildings::setSize(bld, df::coord(1, 1, 1));
         Buildings::constructWithItems(bld, {itm});
         if (f->makeroom)
@@ -2777,6 +2774,26 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     else if (f->item == "archerytarget")
     {
         f->makeroom = true;
+    }
+
+    if (r->type == "infirmary")
+    {
+        // Toggle hospital off and on because it's easier than figuring out
+        // what Dwarf Fortress does. Shouldn't cancel any jobs, but might
+        // create jobs if we just built a box.
+
+        AI::feed_key(interface_key::D_CIVZONE);
+
+        df::coord pos = r->pos();
+        Gui::revealInDwarfmodeMap(pos, true);
+        Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+        AI::feed_key(interface_key::CURSOR_LEFT);
+        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
+        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        ai->camera->ignore_pause();
     }
 
     if (!f->makeroom)
