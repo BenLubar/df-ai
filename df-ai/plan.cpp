@@ -3177,7 +3177,7 @@ void Plan::monitor_cistern(color_ostream & out)
                     df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
                     if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT)
                         continue;
-                    if (spiral_search(gate + df::coord(x, y, 0), 1, [](df::coord ttt) -> bool { return Maps::getTileDesignation(ttt)->bits.feature_local; }).isValid())
+                    if (spiral_search(gate + df::coord(x, y, 0), 1, 1, [](df::coord ttt) -> bool { df::tile_designation *td = Maps::getTileDesignation(ttt); return td && td->bits.feature_local; }).isValid())
                     {
                         dig_tile(gate + df::coord(x, y, 1), "Channel");
                     }
