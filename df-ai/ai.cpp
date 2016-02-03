@@ -388,6 +388,11 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                         feed_key(interface_key::LEAVESCREEN);
                     });
         }
+        else if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+        {
+            Screen::dismiss(curview);
+            camera->check_record_status();
+        }
         else if (virtual_identity *ident = virtual_identity::get(curview))
         {
             std::string cvname = ident->getName();
