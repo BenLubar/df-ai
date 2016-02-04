@@ -47,12 +47,20 @@ bool check_enabled(color_ostream & out)
                         df::viewscreen_dwarfmodest *view = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen());
                         if (view)
                         {
-                            dwarfAI->onupdate_register(out);
-                            dwarfAI->startup(out);
-                            if (*pause_state)
+                            command_result res = dwarfAI->onupdate_register(out);
+                            if (res == CR_OK)
+                                res = dwarfAI->startup(out);
+                            if (res == CR_OK)
                             {
-                                AI::feed_key(view, interface_key::D_PAUSE);
+                                if (*pause_state)
+                                {
+                                    AI::feed_key(view, interface_key::D_PAUSE);
+                                }
+                                return true;
                             }
+                            dwarfAI->onupdate_unregister(out);
+                            dwarfAI->abandon(out);
+                            full_reset_requested = true;
                             return true;
                         }
                         return false;

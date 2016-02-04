@@ -14,6 +14,7 @@
 #include "df/item.h"
 #include "df/report.h"
 #include "df/viewscreen.h"
+#include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_optionst.h"
 #include "df/viewscreen_requestagreementst.h"
 #include "df/viewscreen_textviewerst.h"
