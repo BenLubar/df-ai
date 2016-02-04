@@ -51,14 +51,14 @@ struct room
         return min + df::coord(s.x / 2, s.y / 2, s.z / 2);
     }
 
-    void dig(std::string mode = "");
+    void dig(bool plan = false, bool channel = false);
     void fixup_open();
-    void fixup_open_tile(df::coord t, std::string d, furniture *f = nullptr);
-    void fixup_open_helper(df::coord t, std::string c, furniture *f = nullptr);
+    void fixup_open_tile(df::coord t, df::tile_dig_designation d, furniture *f = nullptr);
+    void fixup_open_helper(df::coord t, df::construction_type c, furniture *f = nullptr);
 
     bool include(df::coord t) const;
     bool safe_include(df::coord t) const;
-    std::string dig_mode(df::coord t) const;
+    df::tile_dig_designation dig_mode(df::coord t) const;
     bool is_dug(df::tiletype_shape_basic want = tiletype_shape_basic::None) const;
     bool constructions_done() const;
     df::building *dfbuilding() const;

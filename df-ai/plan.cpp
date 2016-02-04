@@ -1033,20 +1033,12 @@ void Plan::set_owner(color_ostream & out, room *r, int32_t uid)
     }
 }
 
-void Plan::dig_tile(df::coord t, std::string mode)
-{
-    df::tile_dig_designation dig;
-    if (!find_enum_item(&dig, mode))
-        return;
-
-    dig_tile(t, dig);
-}
-
 void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
 {
     if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::TREE && dig != tile_dig_designation::No)
     {
         dig = tile_dig_designation::Default;
+        t = find_tree_base(t);
     }
 
     df::tile_designation *des = Maps::getTileDesignation(t);
@@ -1075,7 +1067,7 @@ void Plan::wantdig(color_ostream & out, room *r)
         return;
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
-    r->dig("plan");
+    r->dig(true);
     tasks.push_back(new task("wantdig", r));
 }
 
@@ -1287,7 +1279,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
             ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE ||
             ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
     {
-        dig_tile(tgtile, ENUM_KEY_STR(tile_dig_designation, f->dig));
+        dig_tile(tgtile, f->dig);
         return false;
     }
 
@@ -1492,7 +1484,7 @@ bool Plan::try_furnish_trap(color_ostream & out, room *r, furniture *f)
             ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
     {
         // XXX dont remove last access ramp ?
-        dig_tile(t, "Default");
+        dig_tile(t, tile_dig_designation::Default);
         return false;
     }
 
@@ -2619,7 +2611,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                                     *Maps::getTileType(x - 1, y, z))) ==
                                 tiletype_shape_basic::Floor)
                         {
-                            dig_tile(df::coord(x, y, z), "Channel");
+                            dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
                         }
                         else
                         {
@@ -2632,7 +2624,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                                     is_smooth(nt12) && is_smooth(nt02) :
                                     is_smooth(nt10) && is_smooth(nt00))
                             {
-                                dig_tile(df::coord(x, y, z), "Channel");
+                                dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
                             }
                         }
                         break;
@@ -2674,7 +2666,7 @@ void Plan::dig_garbagedump(color_ostream & out)
                 if (r->status == "plan")
                 {
                     r->status = "dig";
-                    r->dig("Channel");
+                    r->dig(false, true);
                     tasks.push_back(new task("dig_garbage", r));
                 }
                 return false;
@@ -2691,7 +2683,7 @@ bool Plan::try_diggarbage(color_ostream & out, room *r)
         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape,
                         *Maps::getTileType(t))) == tiletype_shape_basic::Ramp)
         {
-            dig_tile(t, "Default");
+            dig_tile(t, tile_dig_designation::Default);
         }
         find_room("garbagedump", [this, &out](room *r) -> bool
                 {
@@ -2704,7 +2696,7 @@ bool Plan::try_diggarbage(color_ostream & out, room *r)
         return true;
     }
     // tree ?
-    r->dig("Channel");
+    r->dig(false, true);
     return false;
 }
 
@@ -3138,7 +3130,7 @@ void Plan::monitor_cistern(color_ostream & out)
                     }
                     ai->debug(out, "cistern: do channel");
                     cistern_channel_requested = true;
-                    dig_tile(gate + df::coord(0, 0, 1), "Channel");
+                    dig_tile(gate + df::coord(0, 0, 1), tile_dig_designation::Channel);
                     m_c_testgate_delay = 16;
                 }
             }
@@ -3180,7 +3172,7 @@ void Plan::monitor_cistern(color_ostream & out)
                         continue;
                     if (spiral_search(gate + df::coord(x, y, 0), 1, 1, [](df::coord ttt) -> bool { df::tile_designation *td = Maps::getTileDesignation(ttt); return td && td->bits.feature_local; }).isValid())
                     {
-                        dig_tile(gate + df::coord(x, y, 1), "Channel");
+                        dig_tile(gate + df::coord(x, y, 1), tile_dig_designation::Channel);
                     }
                 }
             }
@@ -3514,20 +3506,20 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
     if (map_vein_queue.count(mat))
     {
         auto & q = map_vein_queue.at(mat);
-        q.erase(std::remove_if(q.begin(), q.end(), [this, mat, &count, &out](std::pair<df::coord, std::string> d) -> bool
+        q.erase(std::remove_if(q.begin(), q.end(), [this, mat, &count, &out](std::pair<df::coord, df::tile_dig_designation> d) -> bool
                     {
                         df::tiletype tt = *Maps::getTileType(d.first);
                         df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
                         if (sb == tiletype_shape_basic::Open)
                         {
                             df::construction_type ctype;
-                            if (d.second == "Default")
+                            if (d.second == tile_dig_designation::Default)
                             {
                                 ctype = construction_type::Floor;
                             }
-                            else if (!find_enum_item(&ctype, d.second))
+                            else if (!find_enum_item(&ctype, ENUM_KEY_STR(tile_dig_designation, d.second)))
                             {
-                                ai->debug(out, "[ERROR] could not find construction_type::" + d.second);
+                                ai->debug(out, "[ERROR] could not find construction_type::" + ENUM_KEY_STR(tile_dig_designation, d.second));
                                 return false;
                             }
                             return try_furnish_construction(out, ctype, d.first);
@@ -3648,7 +3640,7 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         return count;
 
     bool need_shaft = true;
-    std::vector<std::pair<df::coord, std::string>> todo;
+    std::vector<std::pair<df::coord, df::tile_dig_designation>> todo;
     for (int16_t dx = minx; dx <= maxx; dx++)
     {
         for (int16_t dy = miny; dy <= maxy; dy++)
@@ -3678,7 +3670,7 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
                 }
                 if (ok)
                 {
-                    todo.push_back(std::make_pair(t, "Default"));
+                    todo.push_back(std::make_pair(t, tile_dig_designation::Default));
                     if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(t) == mat)
                         count++;
                     need_shaft = ns;
@@ -3713,8 +3705,8 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         df::coord t0 = b + df::coord((minx + maxx) / 2, (miny + maxy) / 2, 0);
         while (t0.y != vert.y)
         {
-            dig_tile(t0, "Default");
-            q.push_back(std::make_pair(t0, "Default"));
+            dig_tile(t0, tile_dig_designation::Default);
+            q.push_back(std::make_pair(t0, tile_dig_designation::Default));
             if (t0.y > vert.y)
                 t0.y--;
             else
@@ -3722,8 +3714,8 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         }
         while (t0.x != vert.x)
         {
-            dig_tile(t0, "Default");
-            q.push_back(std::make_pair(t0, "Default"));
+            dig_tile(t0, tile_dig_designation::Default);
+            q.push_back(std::make_pair(t0, tile_dig_designation::Default));
             if (t0.x > vert.x)
                 t0.x--;
             else
@@ -3733,26 +3725,26 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         {
             if (t0.z % 16 == 0)
             {
-                dig_tile(t0, "DownStair");
-                q.push_back(std::make_pair(t0, "DownStair"));
+                dig_tile(t0, tile_dig_designation::DownStair);
+                q.push_back(std::make_pair(t0, tile_dig_designation::DownStair));
                 if (t0.z % 32 >= 16)
                     t0.x++;
                 else
                     t0.x--;
-                dig_tile(t0, "UpStair");
-                q.push_back(std::make_pair(t0, "UpStair"));
+                dig_tile(t0, tile_dig_designation::UpStair);
+                q.push_back(std::make_pair(t0, tile_dig_designation::UpStair));
             }
             else
             {
-                dig_tile(t0, "UpDownStair");
-                q.push_back(std::make_pair(t0, "UpDownStair"));
+                dig_tile(t0, tile_dig_designation::UpDownStair);
+                q.push_back(std::make_pair(t0, tile_dig_designation::UpDownStair));
             }
             t0.z++;
         }
         if (!ENUM_ATTR(tiletype_shape, passable_low, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t0))) && Maps::getTileDesignation(t0)->bits.dig == tile_dig_designation::No)
         {
-            dig_tile(t0, "DownStair");
-            q.push_back(std::make_pair(t0, "DownStair"));
+            dig_tile(t0, tile_dig_designation::DownStair);
+            q.push_back(std::make_pair(t0, tile_dig_designation::DownStair));
         }
     }
 

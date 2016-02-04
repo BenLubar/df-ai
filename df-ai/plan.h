@@ -61,7 +61,7 @@ private:
     int32_t m_c_testgate_delay;
     size_t checkroom_idx;
     size_t trycistern_count;
-    std::map<int32_t, std::vector<std::pair<df::coord, std::string>>> map_vein_queue;
+    std::map<int32_t, std::vector<std::pair<df::coord, df::tile_dig_designation>>> map_vein_queue;
     std::set<df::coord> dug_veins;
     int32_t noblesuite;
     int16_t cavern_max_level;
@@ -114,7 +114,6 @@ public:
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
-    static void dig_tile(df::coord t, std::string mode);
     static void dig_tile(df::coord t, df::tile_dig_designation dig = tile_dig_designation::Default);
     void wantdig(color_ostream & out, room *r);
     void digroom(color_ostream & out, room *r);

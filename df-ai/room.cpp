@@ -81,15 +81,8 @@ room::~room()
     }
 }
 
-void room::dig(std::string mode)
+void room::dig(bool plan, bool channel)
 {
-    bool plandig = false;
-    if (mode == "plan")
-    {
-        plandig = true;
-        mode = "";
-    }
-
     for (int16_t x = min.x; x <= max.x; x++)
     {
         for (int16_t y = min.y; y <= max.y; y++)
@@ -104,14 +97,8 @@ void room::dig(std::string mode)
                     {
                         continue;
                     }
-                    std::string dm = mode.empty() ? dig_mode(t) : mode;
-                    if (dm != "No" && ENUM_ATTR(tiletype, material, *tt) == tiletype_material::TREE)
-                    {
-                        dm = "Default";
-                        t = Plan::find_tree_base(t);
-                        tt = Maps::getTileType(t);
-                    }
-                    if (((dm == "DownStair" || dm == "Channel") && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Open) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
+                    df::tile_dig_designation dm = channel ? tile_dig_designation::Channel : dig_mode(t);
+                    if (((dm == tile_dig_designation::DownStair || dm == tile_dig_designation::Channel) && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Open) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
                     {
                         Plan::dig_tile(t, dm);
                     }
@@ -120,7 +107,7 @@ void room::dig(std::string mode)
         }
     }
 
-    if (plandig)
+    if (plan)
         return;
 
     for (furniture *f : layout)
@@ -136,13 +123,13 @@ void room::dig(std::string mode)
             {
                 if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) == tiletype_shape_basic::Wall || (f->dig == tile_dig_designation::Channel && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Open))
                 {
-                    Plan::dig_tile(t, ENUM_KEY_STR(tile_dig_designation, f->dig));
+                    Plan::dig_tile(t, f->dig);
                 }
             }
             else
             {
-                std::string dm = dig_mode(t);
-                if ((dm == "DownStair" && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
+                df::tile_dig_designation dm = dig_mode(t);
+                if ((dm == tile_dig_designation::DownStair && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
                 {
                     Plan::dig_tile(t, dm);
                 }
@@ -167,7 +154,7 @@ void room::fixup_open()
                     {
                         if (f->construction == df::construction_type(-1))
                         {
-                            fixup_open_tile(ft, ENUM_KEY_STR(tile_dig_designation, f->dig), f);
+                            fixup_open_tile(ft, f->dig, f);
                         }
                         t.clear();
                         break;
@@ -182,7 +169,7 @@ void room::fixup_open()
     }
 }
 
-void room::fixup_open_tile(df::coord t, std::string d, furniture *f)
+void room::fixup_open_tile(df::coord t, df::tile_dig_designation d, furniture *f)
 {
     df::tiletype *tt = Maps::getTileType(t);
     if (!tt)
@@ -191,34 +178,51 @@ void room::fixup_open_tile(df::coord t, std::string d, furniture *f)
     df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape,
             ENUM_ATTR(tiletype, shape, *tt));
 
-    if (d == "Channel" || d == "No")
+    switch (d)
     {
-        // do nothing
-    }
-    else if (d == "Default")
-    {
-        if (sb == tiletype_shape_basic::Open)
-        {
-            fixup_open_helper(t, "Floor", f);
-        }
-    }
-    else if (d == "UpDownStair" || d == "UpStair" || d == "Ramp")
-    {
-        if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
-        {
-            fixup_open_helper(t, d, f);
-        }
-    }
-    else if (d == "DownStair")
-    {
-        if (sb == tiletype_shape_basic::Open)
-        {
-            fixup_open_helper(t, d, f);
-        }
+        case tile_dig_designation::Channel:
+            // do nothing
+            break;
+        case tile_dig_designation::No:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(t, construction_type::Wall, f);
+            }
+            break;
+        case tile_dig_designation::Default:
+            if (sb == tiletype_shape_basic::Open)
+            {
+                fixup_open_helper(t, construction_type::Floor, f);
+            }
+            break;
+        case tile_dig_designation::UpDownStair:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(t, construction_type::UpDownStair, f);
+            }
+            break;
+        case tile_dig_designation::UpStair:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(t, construction_type::UpStair, f);
+            }
+            break;
+        case tile_dig_designation::Ramp:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(t, construction_type::Ramp, f);
+            }
+            break;
+        case tile_dig_designation::DownStair:
+            if (sb == tiletype_shape_basic::Open)
+            {
+                fixup_open_helper(t, construction_type::DownStair, f);
+            }
+            break;
     }
 }
 
-void room::fixup_open_helper(df::coord t, std::string c, furniture *f)
+void room::fixup_open_helper(df::coord t, df::construction_type c, furniture *f)
 {
     if (!f)
     {
@@ -228,7 +232,7 @@ void room::fixup_open_helper(df::coord t, std::string c, furniture *f)
         f->z = t.z - min.z;
         layout.push_back(f);
     }
-    find_enum_item(&f->construction, c);
+    f->construction = c;
 }
 
 bool room::include(df::coord t) const
@@ -251,11 +255,11 @@ bool room::safe_include(df::coord t) const
     return false;
 }
 
-std::string room::dig_mode(df::coord t) const
+df::tile_dig_designation room::dig_mode(df::coord t) const
 {
     if (type != "corridor")
     {
-        return "Default";
+        return tile_dig_designation::Default;
     }
     bool wantup = include(t + df::coord(0, 0, 1));
     bool wantdown = include(t - df::coord(0, 0, 1));
@@ -266,9 +270,9 @@ std::string room::dig_mode(df::coord t) const
     wantdown = wantdown || dwarfAI->plan->corridor_include_hack(this, t - df::coord(0, 0, 1));
 
     if (wantup)
-        return wantdown ? "UpDownStair" : "UpStair";
+        return wantdown ? tile_dig_designation::UpDownStair : tile_dig_designation::UpStair;
     else
-        return wantdown ? "DownStair" : "Default";
+        return wantdown ? tile_dig_designation::DownStair : tile_dig_designation::Default;
 }
 
 bool room::is_dug(df::tiletype_shape_basic want) const

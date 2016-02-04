@@ -2522,7 +2522,7 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
             continue;
         if (Maps::getTileDesignation(tree)->bits.dig == tile_dig_designation::Default)
             continue;
-        ai->plan->dig_tile(tree, "Default");
+        Plan::dig_tile(tree, tile_dig_designation::Default);
         if (!br.isValid() || (br.x & -16) < (tree.x & -16) || ((br.x & -16) == (tree.x & -16) && (br.y & -16) < (tree.y & -16)))
         {
             br = tree;
