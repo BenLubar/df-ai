@@ -172,6 +172,7 @@ command_result Plan::startup(color_ostream & out)
     find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 0; })->subtype = "Masons";
     find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 1; })->subtype = "Masons";
     find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 2; })->subtype = "Masons";
+    wantdig(out, find_room("stockpile", [](room *r) -> bool { return r->subtype == "food" && r->level == 0 && r->workshop && r->workshop->type == "farmplot"; }));
 
     dig_garbagedump(out);
 
@@ -4510,7 +4511,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     room *cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2));
     cor->accesspath.push_back(farm_stairs);
     corridors.push_back(cor);
-    auto make_farms = [this, cor, nrfarms, cx, cy, cz2](int16_t dy, std::string st)
+    room *first_farm = nullptr;
+    auto make_farms = [this, cor, nrfarms, cx, cy, cz2, &first_farm](int16_t dy, std::string st)
     {
         for (int16_t dx = 0; dx < nrfarms / 3; dx++)
         {
@@ -4528,6 +4530,10 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                     r->accesspath.push_back(rooms.back());
                 }
                 rooms.push_back(r);
+                if (first_farm == nullptr)
+                {
+                    first_farm = r;
+                }
             }
         }
     };
@@ -4535,9 +4541,9 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     make_farms(1, "cloth");
 
     // seeds stockpile
-    room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz));
+    room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2));
     r->level = 0;
-    r->workshop = rooms.at(rooms.size() - 2 * nrfarms);
+    r->workshop = first_farm;
     r->accesspath.push_back(cor);
     rooms.push_back(r);
 
