@@ -6,8 +6,8 @@
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 
-#include "df/viewscreen_titlest.h"
 #include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_titlest.h"
 
 DFHACK_PLUGIN("df-ai");
 DFHACK_PLUGIN_IS_ENABLED(enabled);
@@ -25,7 +25,7 @@ bool check_enabled(color_ostream & out)
 {
     if (enabled)
     {
-        if (full_reset_requested)
+        if (full_reset_requested && strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
         {
             delete dwarfAI;
             dwarfAI = nullptr;
