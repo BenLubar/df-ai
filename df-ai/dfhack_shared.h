@@ -10,4 +10,4 @@
 using namespace DFHack;
 using namespace df::enums;
 
-extern std::vector<std::string> *plugin_globals;
+DFhackDataExport extern std::vector<std::string> *plugin_globals;

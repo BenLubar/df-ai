@@ -75,9 +75,9 @@ room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs
 
 room::~room()
 {
-    for (furniture *f : layout)
+    for (auto it = layout.begin(); it != layout.end(); it++)
     {
-        delete f;
+        delete *it;
     }
 }
 
@@ -110,8 +110,9 @@ void room::dig(bool plan, bool channel)
     if (plan)
         return;
 
-    for (furniture *f : layout)
+    for (auto it = layout.begin(); it != layout.end(); it++)
     {
+        furniture *f = *it;
         df::coord t = min + df::coord(f->x, f->y, f->z);
         df::tiletype *tt = Maps::getTileType(t);
         if (tt)
@@ -147,8 +148,9 @@ void room::fixup_open()
             for (int16_t z = min.z; z <= max.z; z++)
             {
                 df::coord t(x, y, z);
-                for (furniture *f : layout)
+                for (auto it = layout.begin(); it != layout.end(); it++)
                 {
+                    furniture *f = *it;
                     df::coord ft = min + df::coord(f->x, f->y, f->z);
                     if (t == ft)
                     {
@@ -245,8 +247,9 @@ bool room::safe_include(df::coord t) const
     if (min.x - 1 <= t.x && max.x + 1 >= t.x && min.y - 1 <= t.y && max.y + 1 >= t.y && min.z <= t.z && max.z >= t.z)
         return true;
 
-    for (furniture *f : layout)
+    for (auto it = layout.begin(); it != layout.end(); it++)
     {
+        furniture *f = *it;
         df::coord ft = min + df::coord(f->x, f->y, f->z);
         if (ft.x - 1 <= t.x && ft.x + 1 >= t.x && ft.y - 1 <= t.y && ft.y + 1 >= t.y && ft.z == t.z)
             return true;
@@ -278,8 +281,9 @@ df::tile_dig_designation room::dig_mode(df::coord t) const
 bool room::is_dug(df::tiletype_shape_basic want) const
 {
     std::set<df::coord> holes;
-    for (furniture *f : layout)
+    for (auto it = layout.begin(); it != layout.end(); it++)
     {
+        furniture *f = *it;
         if (f->ignore)
             continue;
 
@@ -334,8 +338,9 @@ bool room::is_dug(df::tiletype_shape_basic want) const
 
 bool room::constructions_done() const
 {
-    for (furniture *f : layout)
+    for (auto it = layout.begin(); it != layout.end(); it++)
     {
+        furniture *f = *it;
         if (f->construction == df::construction_type(-1))
             continue;
         df::coord ft = min + df::coord(f->x, f->y, f->z);

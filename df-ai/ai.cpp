@@ -53,12 +53,7 @@ AI::~AI()
     delete plan;
     delete pop;
     logger.close();
-    for (auto u : events.onstatechange_list)
-        delete u;
-    events.onstatechange_list.clear();
-    for (auto u : events.onupdate_list)
-        delete u;
-    events.onupdate_list.clear();
+    events.clear();
 }
 
 std::string AI::timestamp(int32_t y, int32_t t)
@@ -304,11 +299,11 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         if (view)
         {
             std::ostringstream text;
-            for (auto t : view->formatted_text)
+            for (auto it = view->formatted_text.begin(); it != view->formatted_text.end(); it++)
             {
-                if (t->text)
+                if ((*it)->text)
                 {
-                    text << " " << t->text;
+                    text << " " << (*it)->text;
                 }
             }
 
@@ -325,7 +320,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
-                            feed_key(interface_key::LEAVESCREEN);
+                            AI::feed_key(interface_key::LEAVESCREEN);
                         });
             }
             else if (stripped.find("A" "vile" "force" "of" "darkness" "has" "arrived!") != std::string::npos ||
@@ -336,7 +331,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit siege textviewerst:" + text.str());
                 timeout_sameview([](color_ostream & out)
                         {
-                            feed_key(interface_key::LEAVESCREEN);
+                            AI::feed_key(interface_key::LEAVESCREEN);
                             unpause();
                         });
             }
@@ -349,12 +344,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 onupdate_unregister(out);
 
                 // get rid of all the remaining event handlers
-                for (auto u : events.onstatechange_list)
-                    delete u;
-                events.onstatechange_list.clear();
-                for (auto u : events.onupdate_list)
-                    delete u;
-                events.onupdate_list.clear();
+                events.clear();
 
                 embark->register_restart_timer(out);
 
@@ -370,7 +360,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream & out)
                     {
-                        feed_key(interface_key::OPTION1);
+                        AI::feed_key(interface_key::OPTION1);
                     });
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
@@ -378,7 +368,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeeting_takerequestsst");
             timeout_sameview([](color_ostream & out)
                     {
-                        feed_key(interface_key::LEAVESCREEN);
+                        AI::feed_key(interface_key::LEAVESCREEN);
                     });
         }
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
@@ -386,7 +376,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat requestagreementst");
             timeout_sameview([](color_ostream & out)
                     {
-                        feed_key(interface_key::LEAVESCREEN);
+                        AI::feed_key(interface_key::LEAVESCREEN);
                     });
         }
         else if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
@@ -462,7 +452,7 @@ command_result AI::onupdate_register(color_ostream & out)
                         return false;
                     if (*pause_state)
                     {
-                        timeout_sameview(10, [](color_ostream & out) { unpause(); });
+                        timeout_sameview(10, [](color_ostream & out) { AI::unpause(); });
                         last_unpause = std::time(nullptr);
                     }
                     return false;

@@ -61,28 +61,29 @@ void Embark::register_restart_timer(color_ostream & out)
     if (AI_RANDOM_EMBARK)
     {
         ai->debug(out, "game over. restarting in 1 minute.");
-        ai->timeout_sameview(60, [this](color_ostream & out)
+        auto restart_wait = [this](color_ostream & out) -> bool
+        {
+            if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
+            {
+                return false;
+            }
+
+            if (!NO_QUIT)
+            {
+                Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
+                return true;
+            }
+
+            extern bool full_reset_requested;
+            full_reset_requested = true;
+            return true;
+        };
+        ai->timeout_sameview(60, [this, restart_wait](color_ostream & out)
                 {
                     ai->debug(out, "restarting.");
                     AI::feed_key(interface_key::LEAVESCREEN);
 
-                    events.onupdate_register_once("df-ai restart wait", [this](color_ostream & out) -> bool
-                            {
-                                if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
-                                {
-                                    return false;
-                                }
-
-                                if (!NO_QUIT)
-                                {
-                                    Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
-                                    return true;
-                                }
-
-                                extern bool full_reset_requested;
-                                full_reset_requested = true;
-                                return true;
-                            });
+                    events.onupdate_register_once("df-ai restart wait", restart_wait);
                 });
     }
 }

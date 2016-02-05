@@ -68,21 +68,40 @@ struct furniture
 {
     std::string item;
     std::string subtype;
-    df::construction_type construction = df::construction_type(-1);
-    df::tile_dig_designation dig = tile_dig_designation::Default;
+    df::construction_type construction;
+    df::tile_dig_designation dig;
     std::string direction;
     std::string way;
-    int32_t bld_id = -1;
-    int32_t route_id = -1;
-    int16_t x = 0;
-    int16_t y = 0;
-    int16_t z = 0;
-    furniture *target = nullptr;
+    int32_t bld_id;
+    int16_t x;
+    int16_t y;
+    int16_t z;
+    furniture *target;
     std::set<int32_t> users;
-    bool has_users = false;
-    bool ignore = false;
-    bool makeroom = false;
-    bool internal = false;
+    bool has_users;
+    bool ignore;
+    bool makeroom;
+    bool internal;
+
+    furniture() :
+        item(),
+        subtype(),
+        construction(df::construction_type(-1)),
+        dig(tile_dig_designation::Default),
+        direction(),
+        way(),
+        bld_id(-1),
+        x(0),
+        y(0),
+        z(0),
+        target(nullptr),
+        users(),
+        has_users(false),
+        ignore(false),
+        makeroom(false),
+        internal(false)
+    {
+    }
 };
 
 // vim: et:sw=4:ts=4

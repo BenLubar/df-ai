@@ -102,8 +102,9 @@ void Camera::update(color_ostream & out)
     }
 
     std::vector<df::unit *> targets1;
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (u->flags1.bits.dead || Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
             continue;
         if (u->flags1.bits.marauder ||
@@ -122,16 +123,18 @@ void Camera::update(color_ostream & out)
             targets1.push_back(u);
         }
     }
-    std::shuffle(targets1.begin(), targets1.end(), ai->rng);
+    auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(n)(ai->rng); };
+    std::random_shuffle(targets1.begin(), targets1.end(), rnd_shuffle);
     std::vector<df::unit *> targets2;
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (!u->flags1.bits.dead && Units::isCitizen(u))
         {
             targets2.push_back(u);
         }
     }
-    std::shuffle(targets2.begin(), targets2.end(), ai->rng);
+    std::random_shuffle(targets2.begin(), targets2.end(), rnd_shuffle);
     auto score = [](df::unit *u) -> int
     {
         if (!u->job.current_job)
@@ -189,8 +192,9 @@ void Camera::update(color_ostream & out)
         targets1_count = 3;
     if (!targets2.empty())
     {
-        for (df::unit *u : targets1)
+        for (auto it = targets1.begin(); it != targets1.end(); it++)
         {
+            df::unit *u = *it;
             if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end())
             {
                 targets1_count--;
@@ -207,8 +211,9 @@ void Camera::update(color_ostream & out)
     following = -1;
     if (!targets1.empty())
     {
-        for (df::unit *u : targets1)
+        for (auto it = targets1.begin(); it != targets1.end(); it++)
         {
+            df::unit *u = *it;
             if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end() && !u->flags1.bits.caged)
             {
                 following_unit = u;
@@ -246,13 +251,13 @@ void Camera::ignore_pause()
 std::string Camera::status()
 {
     std::string fp;
-    for (int32_t id : following_prev)
+    for (auto it = following_prev.begin(); it != following_prev.end(); it++)
     {
         if (!fp.empty())
         {
             fp += "; ";
         }
-        fp += AI::describe_unit(df::unit::find(id));
+        fp += AI::describe_unit(df::unit::find(*it));
     }
     if (!fp.empty())
     {

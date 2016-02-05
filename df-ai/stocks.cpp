@@ -84,117 +84,222 @@ REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-const static std::map<std::string, int32_t> Needed
+const static struct Watch
 {
-    {"door", 4}, {"bed", 4}, {"bin", 4}, {"barrel", 4},
-    {"cabinet", 4}, {"chest", 4}, {"mechanism", 4},
-    {"bag", 3}, {"table", 3}, {"chair", 3}, {"cage", 3},
-    {"coffin", 2}, {"coffin_bld", 3}, {"coffin_bld_pet", 1},
-    {"food", 20}, {"drink", 20}, {"goblet", 10}, {"wood", 16}, {"bucket", 2},
-    {"thread_seeds", 10}, {"dye_seeds", 10}, {"dye", 10},
-    {"weapon", 2}, {"armor_torso", 2}, {"clothes_torso", 2}, {"block", 6},
-    {"quiver", 2}, {"flask", 2}, {"backpack", 2}, {"wheelbarrow", 1},
-    {"splint", 1}, {"crutch", 1}, {"rope", 1}, {"weaponrack", 1},
-    {"armorstand", 1}, {"floodgate", 1}, {"traction_bench", 1},
-    {"soap", 1}, {"lye", 1}, {"ash", 1}, {"plasterpowder", 1},
-    {"coal", 3}, {"raw_coke", 1}, {"gypsum", 1}, {"slab", 1},
-    {"giant_corkscrew", 1}, {"pipe_section", 1}, {"anvil", 1},
-    {"quern", 3}, {"minecart", 1}, {"nestbox", 1}, {"hive", 1},
-    {"jug", 1}, {"stepladder", 2}, {"pick", 2}, {"axe", 2},
-    {"armor_head", 2}, {"clothes_head", 2}, {"armor_legs", 2},
-    {"clothes_legs", 2}, {"armor_hands", 2}, {"clothes_hands", 2},
-    {"armor_feet", 2}, {"clothes_feet", 2}, {"armor_shield", 2},
-};
+    std::map<std::string, int32_t> Needed;
+    std::map<std::string, int32_t> NeededPerDwarf; // per 100 dwarves, actually
+    std::map<std::string, int32_t> WatchStock;
+    std::set<std::string> AlsoCount;
 
-const static std::map<std::string, int32_t> NeededPerDwarf
-{
-    // per 100 dwarves, actually
-    {"food", 100}, {"drink", 200}, {"slab", 10}, {"soap", 20}, {"weapon", 5},
-    {"cloth", 20}, {"clothes_torso", 20}, {"clothes_legs", 20},
-    {"clothes_feet", 20}, {"clothes_hands", 20}, {"clothes_head", 20},
-    {"armor_shield", 3}, {"armor_torso", 3}, {"armor_legs", 3},
-    {"armor_feet", 3}, {"armor_hands", 3}, {"armor_head", 3},
-};
+    Watch()
+    {
+        Needed["door"] = 4;
+        Needed["bed"] = 4;
+        Needed["bin"] = 4;
+        Needed["barrel"] = 4;
+        Needed["cabinet"] = 4;
+        Needed["chest"] = 4;
+        Needed["mechanism"] = 4;
+        Needed["bag"] = 3;
+        Needed["table"] = 3;
+        Needed["chair"] = 3;
+        Needed["cage"] = 3;
+        Needed["coffin"] = 2;
+        Needed["coffin_bld"] = 3;
+        Needed["coffin_bld_pet"] = 1;
+        Needed["food"] = 20;
+        Needed["drink"] = 20;
+        Needed["goblet"] = 10;
+        Needed["wood"] = 16;
+        Needed["bucket"] = 2;
+        Needed["thread_seeds"] = 10;
+        Needed["dye_seeds"] = 10;
+        Needed["dye"] = 10;
+        Needed["weapon"] = 2;
+        Needed["armor_torso"] = 2;
+        Needed["clothes_torso"] = 2;
+        Needed["block"] = 6;
+        Needed["quiver"] = 2;
+        Needed["flask"] = 2;
+        Needed["backpack"] = 2;
+        Needed["wheelbarrow"] = 1;
+        Needed["splint"] = 1;
+        Needed["crutch"] = 1;
+        Needed["rope"] = 1;
+        Needed["weaponrack"] = 1;
+        Needed["armorstand"] = 1;
+        Needed["floodgate"] = 1;
+        Needed["traction_bench"] = 1;
+        Needed["soap"] = 1;
+        Needed["lye"] = 1;
+        Needed["ash"] = 1;
+        Needed["plasterpowder"] = 1;
+        Needed["coal"] = 3;
+        Needed["raw_coke"] = 1;
+        Needed["gypsum"] = 1;
+        Needed["slab"] = 1;
+        Needed["giant_corkscrew"] = 1;
+        Needed["pipe_section"] = 1;
+        Needed["anvil"] = 1;
+        Needed["quern"] = 3;
+        Needed["minecart"] = 1;
+        Needed["nestbox"] = 1;
+        Needed["hive"] = 1;
+        Needed["jug"] = 1;
+        Needed["stepladder"] = 2;
+        Needed["pick"] = 2;
+        Needed["axe"] = 2;
+        Needed["armor_head"] = 2;
+        Needed["clothes_head"] = 2;
+        Needed["armor_legs"] = 2;
+        Needed["clothes_legs"] = 2;
+        Needed["armor_hands"] = 2;
+        Needed["clothes_hands"] = 2;
+        Needed["armor_feet"] = 2;
+        Needed["clothes_feet"] = 2;
+        Needed["armor_shield"] = 2;
 
-const static std::map<std::string, int32_t> WatchStock
-{
-    {"roughgem", 6}, {"thread_plant", 10}, {"cloth_nodye", 10},
-    {"mill_plant", 4}, {"bag_plant", 4}, {"milk", 1},
-    {"metal_ore", 6}, {"raw_coke", 2}, {"raw_adamantine", 2},
-    {"skull", 2}, {"bone", 8}, {"food_ingredients", 2},
-    {"drink_plant", 5}, {"drink_fruit", 5}, {"honey", 1},
-    {"honeycomb", 1}, {"wool", 1}, {"tallow", 1}, {"shell", 1},
-    {"raw_fish", 1}, {"clay", 1},
-};
+        NeededPerDwarf["food"] = 100;
+        NeededPerDwarf["drink"] = 200;
+        NeededPerDwarf["slab"] = 10;
+        NeededPerDwarf["soap"] = 20;
+        NeededPerDwarf["weapon"] = 5;
+        NeededPerDwarf["cloth"] = 20;
+        NeededPerDwarf["clothes_torso"] = 20;
+        NeededPerDwarf["clothes_legs"] = 20;
+        NeededPerDwarf["clothes_feet"] = 20;
+        NeededPerDwarf["clothes_hands"] = 20;
+        NeededPerDwarf["clothes_head"] = 20;
+        NeededPerDwarf["armor_shield"] = 3;
+        NeededPerDwarf["armor_torso"] = 3;
+        NeededPerDwarf["armor_legs"] = 3;
+        NeededPerDwarf["armor_feet"] = 3;
+        NeededPerDwarf["armor_hands"] = 3;
+        NeededPerDwarf["armor_head"] = 3;
 
-const static std::set<std::string> AlsoCount
-{
-    "dye_plant", "cloth", "leather", "crossbow", "bonebolts", "stone",
-    "dead_dwarf",
-};
+        WatchStock["roughgem"] = 6;
+        WatchStock["thread_plant"] = 10;
+        WatchStock["cloth_nodye"] = 10;
+        WatchStock["mill_plant"] = 4;
+        WatchStock["bag_plant"] = 4;
+        WatchStock["milk"] = 1;
+        WatchStock["metal_ore"] = 6;
+        WatchStock["raw_coke"] = 2;
+        WatchStock["raw_adamantine"] = 2;
+        WatchStock["skull"] = 2;
+        WatchStock["bone"] = 8;
+        WatchStock["food_ingredients"] = 2;
+        WatchStock["drink_plant"] = 5;
+        WatchStock["drink_fruit"] = 5;
+        WatchStock["honey"] = 1;
+        WatchStock["honeycomb"] = 1;
+        WatchStock["wool"] = 1;
+        WatchStock["tallow"] = 1;
+        WatchStock["shell"] = 1;
+        WatchStock["raw_fish"] = 1;
+        WatchStock["clay"] = 1;
 
-const static std::map<std::string, df::job_type> ManagerRealOrder
-{
-    {"BrewDrinkPlant", job_type::CustomReaction},
-    {"BrewDrinkFruit", job_type::CustomReaction},
-    {"BrewMead", job_type::CustomReaction},
-    {"ProcessPlantsBag", job_type::CustomReaction},
-    {"MakeSoap", job_type::CustomReaction},
-    {"MakePlasterPowder", job_type::CustomReaction},
-    {"PressHoneycomb", job_type::CustomReaction},
-    {"MakeBag", job_type::ConstructChest},
-    {"MakeRope", job_type::MakeChain},
-    {"MakeWoodenWheelbarrow", job_type::MakeTool},
-    {"MakeWoodenMinecart", job_type::MakeTool},
-    {"MakeRockNestbox", job_type::MakeTool},
-    {"MakeRockHive", job_type::MakeTool},
-    {"MakeRockJug", job_type::MakeTool},
-    {"MakeBoneBolt", job_type::MakeAmmo},
-    {"MakeBoneCrossbow", job_type::MakeWeapon},
-    {"MakeTrainingAxe", job_type::MakeWeapon},
-    {"MakeTrainingShortSword", job_type::MakeWeapon},
-    {"MakeTrainingSpear", job_type::MakeWeapon},
-    {"MakeGiantCorkscrew", job_type::MakeTrapComponent},
-    {"ConstructWoodenBlocks", job_type::ConstructBlocks},
-    {"MakeWoodenStepladder", job_type::MakeTool},
-    {"DecorateWithShell", job_type::DecorateWith},
-    {"MakeClayStatue", job_type::CustomReaction},
-};
+        AlsoCount.insert("dye_plant");
+        AlsoCount.insert("cloth");
+        AlsoCount.insert("leather");
+        AlsoCount.insert("crossbow");
+        AlsoCount.insert("bonebolts");
+        AlsoCount.insert("stone");
+        AlsoCount.insert("dead_dwarf");
+    }
+} Watch;
 
-const static std::map<std::string, std::string> ManagerMatCategory
+const static struct Manager
 {
-    {"MakeRope", "cloth"}, {"MakeBag", "cloth"},
-    {"ConstructBed", "wood"}, {"MakeBarrel", "wood"}, {"MakeBucket", "wood"}, {"ConstructBin", "wood"},
-    {"MakeWoodenWheelbarrow", "wood"}, {"MakeWoodenMinecart", "wood"}, {"MakeTrainingAxe", "wood"},
-    {"MakeTrainingShortSword", "wood"}, {"MakeTrainingSpear", "wood"},
-    {"ConstructCrutch", "wood"}, {"ConstructSplint", "wood"}, {"MakeCage", "wood"},
-    {"MakeGiantCorkscrew", "wood"}, {"MakePipeSection", "wood"}, {"ConstructWoodenBlocks", "wood"},
-    {"MakeBoneBolt", "bone"}, {"MakeBoneCrossbow", "bone"},
-    {"MakeQuiver", "leather"}, {"MakeFlask", "leather"}, {"MakeBackpack", "leather"},
-    {"MakeWoodenStepladder", "wood"}, {"DecorateWithShell", "shell"},
-};
+    std::map<std::string, df::job_type> RealOrder;
+    std::map<std::string, std::string> MatCategory;
+    // no MatCategory => mat_type = 0 (ie generic rock), unless specified here
+    std::map<std::string, int32_t> Type;
+    std::map<std::string, std::string> Custom;
 
-// no MatCategory => mat_type = 0 (ie generic rock), unless specified here
-const static std::map<std::string, int32_t> ManagerType
-{
-    {"ProcessPlants", -1}, {"ProcessPlantsBag", -1}, {"MillPlants", -1}, {"BrewDrinkPlant", -1},
-    {"ConstructTractionBench", -1}, {"MakeSoap", -1}, {"MakeLye", -1}, {"MakeAsh", -1},
-    {"MakeTotem", -1}, {"MakeCharcoal", -1}, {"MakePlasterPowder", -1}, {"PrepareMeal", 4},
-    {"DyeCloth", -1}, {"MilkCreature", -1}, {"PressHoneycomb", -1}, {"BrewDrinkFruit", -1},
-    {"BrewMead", -1}, {"MakeCheese", -1}, {"PrepareRawFish", -1}, {"MakeClayStatue", -1},
-};
+    Manager()
+    {
+        RealOrder["BrewDrinkPlant"] = job_type::CustomReaction;
+        RealOrder["BrewDrinkFruit"] = job_type::CustomReaction;
+        RealOrder["BrewMead"] = job_type::CustomReaction;
+        RealOrder["ProcessPlantsBag"] = job_type::CustomReaction;
+        RealOrder["MakeSoap"] = job_type::CustomReaction;
+        RealOrder["MakePlasterPowder"] = job_type::CustomReaction;
+        RealOrder["PressHoneycomb"] = job_type::CustomReaction;
+        RealOrder["MakeBag"] = job_type::ConstructChest;
+        RealOrder["MakeRope"] = job_type::MakeChain;
+        RealOrder["MakeWoodenWheelbarrow"] = job_type::MakeTool;
+        RealOrder["MakeWoodenMinecart"] = job_type::MakeTool;
+        RealOrder["MakeRockNestbox"] = job_type::MakeTool;
+        RealOrder["MakeRockHive"] = job_type::MakeTool;
+        RealOrder["MakeRockJug"] = job_type::MakeTool;
+        RealOrder["MakeBoneBolt"] = job_type::MakeAmmo;
+        RealOrder["MakeBoneCrossbow"] = job_type::MakeWeapon;
+        RealOrder["MakeTrainingAxe"] = job_type::MakeWeapon;
+        RealOrder["MakeTrainingShortSword"] = job_type::MakeWeapon;
+        RealOrder["MakeTrainingSpear"] = job_type::MakeWeapon;
+        RealOrder["MakeGiantCorkscrew"] = job_type::MakeTrapComponent;
+        RealOrder["ConstructWoodenBlocks"] = job_type::ConstructBlocks;
+        RealOrder["MakeWoodenStepladder"] = job_type::MakeTool;
+        RealOrder["DecorateWithShell"] = job_type::DecorateWith;
+        RealOrder["MakeClayStatue"] = job_type::CustomReaction;
 
-const static std::map<std::string, std::string> ManagerCustom
-{
-    {"ProcessPlantsBag", "PROCESS_PLANT_TO_BAG"},
-    {"BrewDrinkPlant", "BREW_DRINK_FROM_PLANT"},
-    {"BrewDrinkFruit", "BREW_DRINK_FROM_PLANT_GROWTH"},
-    {"BrewMead", "MAKE_MEAD"},
-    {"MakeSoap", "MAKE_SOAP_FROM_TALLOW"},
-    {"MakePlasterPowder", "MAKE_PLASTER_POWDER"},
-    {"PressHoneycomb", "PRESS_HONEYCOMB"},
-    {"MakeClayStatue", "MAKE_CLAY_STATUE"},
-};
+        MatCategory["MakeRope"] = "cloth";
+        MatCategory["MakeBag"] = "cloth";
+        MatCategory["ConstructBed"] = "wood";
+        MatCategory["MakeBarrel"] = "wood";
+        MatCategory["MakeBucket"] = "wood";
+        MatCategory["ConstructBin"] = "wood";
+        MatCategory["MakeWoodenWheelbarrow"] = "wood";
+        MatCategory["MakeWoodenMinecart"] = "wood";
+        MatCategory["MakeTrainingAxe"] = "wood";
+        MatCategory["MakeTrainingShortSword"] = "wood";
+        MatCategory["MakeTrainingSpear"] = "wood";
+        MatCategory["ConstructCrutch"] = "wood";
+        MatCategory["ConstructSplint"] = "wood";
+        MatCategory["MakeCage"] = "wood";
+        MatCategory["MakeGiantCorkscrew"] = "wood";
+        MatCategory["MakePipeSection"] = "wood";
+        MatCategory["ConstructWoodenBlocks"] = "wood";
+        MatCategory["MakeBoneBolt"] = "bone";
+        MatCategory["MakeBoneCrossbow"] = "bone";
+        MatCategory["MakeQuiver"] = "leather";
+        MatCategory["MakeFlask"] = "leather";
+        MatCategory["MakeBackpack"] = "leather";
+        MatCategory["MakeWoodenStepladder"] = "wood";
+        MatCategory["DecorateWithShell"] = "shell";
+
+        Type["ProcessPlants"] = -1;
+        Type["ProcessPlantsBag"] = -1;
+        Type["MillPlants"] = -1;
+        Type["BrewDrinkPlant"] = -1;
+        Type["ConstructTractionBench"] = -1;
+        Type["MakeSoap"] = -1;
+        Type["MakeLye"] = -1;
+        Type["MakeAsh"] = -1;
+        Type["MakeTotem"] = -1;
+        Type["MakeCharcoal"] = -1;
+        Type["MakePlasterPowder"] = -1;
+        Type["PrepareMeal"] = 4;
+        Type["DyeCloth"] = -1;
+        Type["MilkCreature"] = -1;
+        Type["PressHoneycomb"] = -1;
+        Type["BrewDrinkFruit"] = -1;
+        Type["BrewMead"] = -1;
+        Type["MakeCheese"] = -1;
+        Type["PrepareRawFish"] = -1;
+        Type["MakeClayStatue"] = -1;
+
+        Custom["ProcessPlantsBag"] = "PROCESS_PLANT_TO_BAG";
+        Custom["BrewDrinkPlant"] = "BREW_DRINK_FROM_PLANT";
+        Custom["BrewDrinkFruit"] = "BREW_DRINK_FROM_PLANT_GROWTH";
+        Custom["BrewMead"] = "MAKE_MEAD";
+        Custom["MakeSoap"] = "MAKE_SOAP_FROM_TALLOW";
+        Custom["MakePlasterPowder"] = "MAKE_PLASTER_POWDER";
+        Custom["PressHoneycomb"] = "PRESS_HONEYCOMB";
+        Custom["MakeClayStatue"] = "MAKE_CLAY_STATUE";
+    }
+} Manager;
 
 Stocks::Stocks(AI *ai) :
     ai(ai),
@@ -294,47 +399,47 @@ std::string Stocks::status()
 
     bool first = true;
     s << "need: ";
-    for (auto n : Needed)
+    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
     {
         if (first)
             first = false;
         else
             s << ", ";
 
-        int32_t want = num_needed(n.first);
-        int32_t have = count[n.first];
-        s << n.first << ": " << have << "/" << want;
+        int32_t want = num_needed(it->first);
+        int32_t have = count[it->first];
+        s << it->first << ": " << have << "/" << want;
         if (have < want)
             s << "!!!";
     }
 
     first = true;
     s << "\nwatch: ";
-    for (auto w : WatchStock)
+    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
     {
         if (first)
             first = false;
         else
             s << ", ";
 
-        int32_t want = w.second;
-        int32_t have = count[w.first];
-        s << w.first << ": " << have << "/" << want;
+        int32_t want = it->second;
+        int32_t have = count[it->first];
+        s << it->first << ": " << have << "/" << want;
         if (have > want)
             s << "!!!";
     }
 
     first = true;
     s << "\nextra: ";
-    for (auto c : AlsoCount)
+    for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
     {
         if (first)
             first = false;
         else
             s << ", ";
 
-        int32_t have = count[c];
-        s << c << ": " << have;
+        int32_t have = count[*it];
+        s << *it << ": " << have;
     }
 
     return s.str();
@@ -353,9 +458,9 @@ void Stocks::update(color_ostream & out)
     if (last_unforbidall_year != *cur_year)
     {
         last_unforbidall_year = *cur_year;
-        for (df::item *i : world->items.all)
+        for (auto it = world->items.all.begin(); it != world->items.all.end(); it++)
         {
-            i->flags.bits.forbid = 0;
+            (*it)->flags.bits.forbid = 0;
         }
     }
 
@@ -389,16 +494,16 @@ void Stocks::update(color_ostream & out)
     }
 
     updating.clear();
-    for (auto n : Needed)
+    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
     {
-        updating.push_back(n.first);
+        updating.push_back(it->first);
     }
-    for (auto w : WatchStock)
+    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
     {
-        updating.push_back(w.first);
+        updating.push_back(it->first);
     }
     updating_count = updating;
-    updating_count.insert(updating_count.end(), AlsoCount.begin(), AlsoCount.end());
+    updating_count.insert(updating_count.end(), Watch.AlsoCount.begin(), Watch.AlsoCount.end());
     updating_seeds = true;
     updating_plants = true;
     updating_corpses = true;
@@ -461,9 +566,9 @@ void Stocks::update(color_ostream & out)
 
 static bool has_reaction_product(df::material *m, const std::string & product)
 {
-    for (std::string *p : m->reaction_product.id)
+    for (auto it = m->reaction_product.id.begin(); it != m->reaction_product.id.end(); it++)
     {
-        if (*p == product)
+        if (**it == product)
         {
             return true;
         }
@@ -570,9 +675,9 @@ void Stocks::count_seeds(color_ostream & out)
                 return false; // search all farm plots
             });
     seeds.clear();
-    for (df::item *i : world->items.other[items_other_id::SEEDS])
+    for (auto it = world->items.other[items_other_id::SEEDS].begin(); it != world->items.other[items_other_id::SEEDS].end(); it++)
     {
-        df::item_seedsst *s = virtual_cast<df::item_seedsst>(i);
+        df::item_seedsst *s = virtual_cast<df::item_seedsst>(*it);
         if (s && is_item_free(s))
         {
             seeds[s->mat_index] += s->stack_size;
@@ -584,19 +689,17 @@ void Stocks::count_seeds(color_ostream & out)
 void Stocks::count_plants(color_ostream & out)
 {
     plants.clear();
-    for (df::item *i : world->items.other[items_other_id::PLANT])
+    for (auto it = world->items.other[items_other_id::PLANT].begin(); it != world->items.other[items_other_id::PLANT].end(); it++)
     {
-        df::item_plantst *p = virtual_cast<df::item_plantst>(i);
-        assert(p);
+        df::item_plantst *p = virtual_cast<df::item_plantst>(*it);
         if (p && is_item_free(p))
         {
             plants[p->mat_index] += p->stack_size;
         }
     }
-    for (df::item *i : world->items.other[items_other_id::PLANT_GROWTH])
+    for (auto it = world->items.other[items_other_id::PLANT_GROWTH].begin(); it != world->items.other[items_other_id::PLANT_GROWTH].end(); it++)
     {
-        df::item_plant_growthst *p = virtual_cast<df::item_plant_growthst>(i);
-        assert(p);
+        df::item_plant_growthst *p = virtual_cast<df::item_plant_growthst>(*it);
         if (p && is_item_free(p))
         {
             plants[p->mat_index] += p->stack_size;
@@ -612,8 +715,9 @@ void Stocks::update_corpses(color_ostream & out)
         return;
     df::coord t = r->min - df::coord(0, 0, 1);
 
-    for (df::item *i : world->items.other[items_other_id::ANY_CORPSE])
+    for (auto it = world->items.other[items_other_id::ANY_CORPSE].begin(); it != world->items.other[items_other_id::ANY_CORPSE].end(); it++)
     {
+        df::item *i = *it;
         int16_t race = -1;
         int16_t caste = -1;
         df::historical_figure *hf = nullptr;
@@ -648,10 +752,10 @@ void Stocks::update_corpses(color_ostream & out)
 
 int32_t Stocks::num_needed(const std::string & key)
 {
-    int32_t amount = Needed.at(key);
-    if (NeededPerDwarf.count(key))
+    int32_t amount = Watch.Needed.at(key);
+    if (Watch.NeededPerDwarf.count(key))
     {
-        amount += ai->pop->citizen.size() * NeededPerDwarf.at(key) / 100;
+        amount += ai->pop->citizen.size() * Watch.NeededPerDwarf.at(key) / 100;
     }
     if (key == "coffin" && count.count("dead_dwarf") && count.count("coffin_bld"))
     {
@@ -666,7 +770,7 @@ int32_t Stocks::num_needed(const std::string & key)
 
 void Stocks::act(color_ostream & out, std::string key)
 {
-    if (Needed.count(key))
+    if (Watch.Needed.count(key))
     {
         int32_t amount = num_needed(key);
         if (count.at(key) < amount)
@@ -675,9 +779,9 @@ void Stocks::act(color_ostream & out, std::string key)
         }
     }
 
-    if (WatchStock.count(key))
+    if (Watch.WatchStock.count(key))
     {
-        int32_t amount = WatchStock.at(key);
+        int32_t amount = Watch.WatchStock.at(key);
         if (count.at(key) > amount)
         {
             queue_use(out, key, count.at(key) - amount);
@@ -696,13 +800,14 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             n += virtual_cast<df::item_actual>(i)->stack_size;
         }
     };
-    auto add_all = [add](df::items_other_id id, std::function<bool(df::item *)> pred = [](df::item *) -> bool { return true; })
+    auto yes_i_mean_all = [](df::item *) -> bool { return true; };
+    auto add_all = [add](df::items_other_id id, std::function<bool(df::item *)> pred)
     {
-        for (df::item *i : world->items.other[id])
+        for (auto it = world->items.other[id].begin(); it != world->items.other[id].end(); it++)
         {
-            if (pred(i))
+            if (pred(*it))
             {
-                add(i);
+                add(*it);
             }
         }
     };
@@ -738,7 +843,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "bucket")
     {
-        add_all(items_other_id::BUCKET);
+        add_all(items_other_id::BUCKET, yes_i_mean_all);
     }
     else if (k == "food")
     {
@@ -779,11 +884,11 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "drink")
     {
-        add_all(items_other_id::DRINK);
+        add_all(items_other_id::DRINK, yes_i_mean_all);
     }
     else if (k == "goblet")
     {
-        add_all(items_other_id::GOBLET);
+        add_all(items_other_id::GOBLET, yes_i_mean_all);
     }
     else if (k == "soap" || k == "coal" || k == "ash")
     {
@@ -796,7 +901,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "wood")
     {
-        add_all(items_other_id::WOOD);
+        add_all(items_other_id::WOOD, yes_i_mean_all);
     }
     else if (k == "roughgem")
     {
@@ -844,15 +949,15 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "raw_fish")
     {
-        add_all(items_other_id::FISH_RAW);
+        add_all(items_other_id::FISH_RAW, yes_i_mean_all);
     }
     else if (k == "splint")
     {
-        add_all(items_other_id::SPLINT);
+        add_all(items_other_id::SPLINT, yes_i_mean_all);
     }
     else if (k == "crutch")
     {
-        add_all(items_other_id::CRUTCH);
+        add_all(items_other_id::CRUTCH, yes_i_mean_all);
     }
     else if (k == "crossbow")
     {
@@ -924,7 +1029,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "block")
     {
-        add_all(items_other_id::BLOCKS);
+        add_all(items_other_id::BLOCKS, yes_i_mean_all);
     }
     else if (k == "skull")
     {
@@ -937,9 +1042,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "bone")
     {
-        for (df::item *item : world->items.other[items_other_id::CORPSEPIECE])
+        for (auto it = world->items.other[items_other_id::CORPSEPIECE].begin(); it != world->items.other[items_other_id::CORPSEPIECE].end(); it++)
         {
-            df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
+            df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(*it);
             if (i->corpse_flags.bits.bone && !i->corpse_flags.bits.unbutchered)
             {
                 n += i->material_amount[corpse_material_type::Bone];
@@ -948,9 +1053,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "shell")
     {
-        for (df::item *item : world->items.other[items_other_id::CORPSEPIECE])
+        for (auto it = world->items.other[items_other_id::CORPSEPIECE].begin(); it != world->items.other[items_other_id::CORPSEPIECE].end(); it++)
         {
-            df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
+            df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(*it);
             if (i->corpse_flags.bits.shell && !i->corpse_flags.bits.unbutchered)
             {
                 n += i->material_amount[corpse_material_type::Shell];
@@ -976,15 +1081,16 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "cloth")
     {
-        add_all(items_other_id::CLOTH);
+        add_all(items_other_id::CLOTH, yes_i_mean_all);
     }
     else if (k == "cloth_nodye")
     {
         add_all(items_other_id::CLOTH, [this](df::item *i) -> bool
                 {
-                    for (df::itemimprovement *imp : virtual_cast<df::item_clothst>(i)->improvements)
+                    df::item_clothst *c = virtual_cast<df::item_clothst>(i);
+                    for (auto imp = c->improvements.begin(); imp != c->improvements.end(); imp++)
                     {
-                        if (dye_plants.count(imp->mat_index) && dye_plants.at(imp->mat_index) == imp->mat_type)
+                        if (dye_plants.count((*imp)->mat_index) && dye_plants.at((*imp)->mat_index) == (*imp)->mat_type)
                         {
                             return false;
                         }
@@ -994,19 +1100,19 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "mechanism")
     {
-        add_all(items_other_id::TRAPPARTS);
+        add_all(items_other_id::TRAPPARTS, yes_i_mean_all);
     }
     else if (k == "cage")
     {
         add_all(items_other_id::CAGE, [](df::item *i) -> bool
                 {
-                    for (auto ref : i->general_refs)
+                    for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
                     {
-                        if (virtual_cast<df::general_ref_contains_unitst>(ref))
+                        if (virtual_cast<df::general_ref_contains_unitst>(*ref))
                             return false;
-                        if (virtual_cast<df::general_ref_contains_itemst>(ref))
+                        if (virtual_cast<df::general_ref_contains_itemst>(*ref))
                             return false;
-                        df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(ref);
+                        df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(*ref);
                         if (bh && virtual_cast<df::building_trapst>(bh->getBuilding()))
                             return false;
                     }
@@ -1016,9 +1122,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     else if (k == "coffin_bld")
     {
         // count free constructed coffin buildings, not items
-        for (df::building *bld : world->buildings.other[buildings_other_id::COFFIN])
+        for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
         {
-            if (!bld->owner)
+            if (!(*bld)->owner)
             {
                 n++;
             }
@@ -1026,9 +1132,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "coffin_bld_pet")
     {
-        for (df::building *bld : world->buildings.other[buildings_other_id::COFFIN])
+        for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
         {
-            df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
+            df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(*bld);
             if (coffin && !coffin->owner && !coffin->burial_mode.bits.no_pets)
             {
                 n++;
@@ -1129,19 +1235,19 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "quiver")
     {
-        add_all(items_other_id::QUIVER);
+        add_all(items_other_id::QUIVER, yes_i_mean_all);
     }
     else if (k == "flask")
     {
-        add_all(items_other_id::FLASK);
+        add_all(items_other_id::FLASK, yes_i_mean_all);
     }
     else if (k == "backpack")
     {
-        add_all(items_other_id::BACKPACK);
+        add_all(items_other_id::BACKPACK, yes_i_mean_all);
     }
     else if (k == "leather")
     {
-        add_all(items_other_id::SKIN_TANNED);
+        add_all(items_other_id::SKIN_TANNED, yes_i_mean_all);
     }
     else if (k == "tallow")
     {
@@ -1162,7 +1268,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "pipe_section")
     {
-        add_all(items_other_id::PIPE_SECTION);
+        add_all(items_other_id::PIPE_SECTION, yes_i_mean_all);
     }
     else if (k == "quern")
     {
@@ -1171,7 +1277,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     }
     else if (k == "anvil")
     {
-        add_all(items_other_id::ANVIL);
+        add_all(items_other_id::ANVIL, yes_i_mean_all);
     }
     else if (k == "slab")
     {
@@ -1180,8 +1286,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     else if (k == "dead_dwarf")
     {
         std::set<df::unit *> units;
-        for (df::item *i : world->items.other[items_other_id::ANY_CORPSE])
+        for (auto it = world->items.other[items_other_id::ANY_CORPSE].begin(); it != world->items.other[items_other_id::ANY_CORPSE].end(); it++)
         {
+            df::item *i = *it;
             if (!is_item_free(i))
             {
                 continue;
@@ -1211,11 +1318,11 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
 int32_t Stocks::count_stocks_weapon(color_ostream & out, df::job_skill skill)
 {
     int32_t min = -1;
-    auto search = [this, &min, skill](std::vector<int16_t> & idefs)
+    auto search = [this, &min, skill](const std::vector<int16_t> & idefs)
     {
-        for (int16_t id : idefs)
+        for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
-            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
+            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
             if (skill != df::job_skill(-1) && idef->skill_melee != skill)
             {
                 continue;
@@ -1225,9 +1332,9 @@ int32_t Stocks::count_stocks_weapon(color_ostream & out, df::job_skill skill)
                 continue;
             }
             int32_t count = 0;
-            for (df::item *item : world->items.other[items_other_id::WEAPON])
+            for (auto item = world->items.other[items_other_id::WEAPON].begin(); item != world->items.other[items_other_id::WEAPON].end(); item++)
             {
-                df::item_weaponst *i = virtual_cast<df::item_weaponst>(item);
+                df::item_weaponst *i = virtual_cast<df::item_weaponst>(*item);
                 if (i->subtype->subtype == idef->subtype &&
                         i->mat_type == 0 &&
                         is_item_free(i))
@@ -1247,21 +1354,24 @@ int32_t Stocks::count_stocks_weapon(color_ostream & out, df::job_skill skill)
     return min;
 }
 
+template<typename D>
+static bool is_armor_metal(D *d) { return d->props.flags.is_set(armor_general_flags::METAL); }
+
 template<typename D, typename I>
-static int32_t count_stocks_armor_helper(df::items_other_id oidx, std::vector<int16_t> & idefs, std::function<bool(D *)> pred = [](D *d) -> bool { return d->props.flags.is_set(armor_general_flags::METAL); })
+static int32_t count_stocks_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & idefs, std::function<bool(D *)> pred = is_armor_metal<D>)
 {
     int32_t min = -1;
-    for (int16_t id : idefs)
+    for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
         int32_t count = 0;
-        D *idef = D::find(id);
+        D *idef = D::find(*id);
         if (!pred(idef))
         {
             continue;
         }
-        for (df::item *item : world->items.other[oidx])
+        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
         {
-            I *i = virtual_cast<I>(item);
+            I *i = virtual_cast<I>(*item);
             if (i->subtype->subtype == idef->subtype &&
                     i->mat_type == 0 &&
                     Stocks::is_item_free(i))
@@ -1301,20 +1411,20 @@ int32_t Stocks::count_stocks_armor(color_ostream & out, df::items_other_id oidx)
 }
 
 template<typename D, typename I>
-static int32_t count_stocks_clothes_helper(df::items_other_id oidx, std::vector<int16_t> & idefs)
+static int32_t count_stocks_clothes_helper(df::items_other_id oidx, const std::vector<int16_t> & idefs)
 {
     int32_t min = -1;
-    for (int16_t id : idefs)
+    for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
         int32_t count = 0;
-        D *idef = D::find(id);
+        D *idef = D::find(*id);
         if (!idef->props.flags.is_set(armor_general_flags::SOFT)) // XXX
         {
             continue;
         }
-        for (df::item *item : world->items.other[oidx])
+        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
         {
-            I *i = virtual_cast<I>(item);
+            I *i = virtual_cast<I>(*item);
             if (i->subtype->subtype == idef->subtype &&
                     i->mat_type != 0 && // XXX
                     i->wear == 0 &&
@@ -1362,17 +1472,17 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 
     if (what == "weapon")
     {
-        queue_need_weapon(out, Needed.at("weapon"));
+        queue_need_weapon(out, Watch.Needed.at("weapon"));
         return;
     }
     else if (what == "pick")
     {
-        queue_need_weapon(out, Needed.at("pick"), job_skill::MINING);
+        queue_need_weapon(out, Watch.Needed.at("pick"), job_skill::MINING);
         return;
     }
     else if (what == "axe")
     {
-        queue_need_weapon(out, Needed.at("axe"), job_skill::AXE);
+        queue_need_weapon(out, Watch.Needed.at("axe"), job_skill::AXE);
         return;
     }
     else if (what == "armor_torso")
@@ -1442,11 +1552,11 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "coffin_bld_pet")
     {
-        if (count.at("coffin_bld") >= Needed.at("coffin_bld"))
+        if (count.at("coffin_bld") >= Watch.Needed.at("coffin_bld"))
         {
-            for (df::building *bld : world->buildings.other[buildings_other_id::COFFIN])
+            for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
             {
-                df::building_coffinst *cof = virtual_cast<df::building_coffinst>(bld);
+                df::building_coffinst *cof = virtual_cast<df::building_coffinst>(*bld);
                 if (!cof->owner && cof->burial_mode.bits.no_pets)
                 {
                     cof->burial_mode.bits.no_pets = 0;
@@ -1460,11 +1570,11 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         if (ai->plan->past_initial_phase)
         {
-            for (auto vein : ai->plan->map_veins)
+            for (auto vein = ai->plan->map_veins.begin(); vein != ai->plan->map_veins.end(); vein++)
             {
-                if (!is_raw_coke(vein.first).empty())
+                if (!is_raw_coke(vein->first).empty())
                 {
-                    ai->plan->dig_vein(out, vein.first, amount);
+                    ai->plan->dig_vein(out, vein->first, amount);
                     break;
                 }
             }
@@ -1475,11 +1585,11 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         if (ai->plan->past_initial_phase)
         {
-            for (auto vein : ai->plan->map_veins)
+            for (auto vein = ai->plan->map_veins.begin(); vein != ai->plan->map_veins.end(); vein++)
             {
-                if (is_gypsum(vein.first))
+                if (is_gypsum(vein->first))
                 {
-                    ai->plan->dig_vein(out, vein.first, amount);
+                    ai->plan->dig_vein(out, vein->first, amount);
                     break;
                 }
             }
@@ -1518,9 +1628,9 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         if (amount > 30)
             amount = 30;
         std::set<df::coord, std::function<bool(df::coord, df::coord)>> tl = tree_list();
-        for (df::coord t : tl)
+        for (auto t = tl.begin(); t != tl.end(); t++)
         {
-            if (Maps::getTileDesignation(t)->bits.dig == tile_dig_designation::Default)
+            if (Maps::getTileDesignation(*t)->bits.dig == tile_dig_designation::Default)
             {
                 if (amount <= 6)
                 {
@@ -1540,18 +1650,17 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "drink")
     {
-        std::map<std::string, std::string> orders
-        {
-            {"drink_plant", "BrewDrinkPlant"},
-            {"drink_fruit", "BrewDrinkFruit"},
-            {"honey", "BrewMead"},
-        };
+        std::map<std::string, std::string> orders;
+        orders["drink_plant"] = "BrewDrinkPlant";
+        orders["drink_fruit"] = "BrewDrinkFruit";
+        orders["honey"] = "BrewMead";
         auto score = [this](std::pair<const std::string, std::string> i) -> int32_t
         {
             int32_t c = count.at(i.first);
-            for (df::manager_order *o : find_manager_orders(i.second))
+            auto os = find_manager_orders(i.second);
+            for (auto o = os.begin(); o != os.end(); o++)
             {
-                c -= o->amount_left;
+                c -= (*o)->amount_left;
             }
             return c;
         };
@@ -1566,9 +1675,9 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         amount = (amount + 3) / 4;
         // no stone => make wooden blocks (needed for pumps for aquifer handling)
         bool found = false;
-        for (df::item *i : world->items.other[items_other_id::BOULDER])
+        for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
         {
-            if (is_item_free(i) && !ui->economic_stone[i->getMaterialIndex()])
+            if (is_item_free(*i) && !ui->economic_stone[(*i)->getMaterialIndex()])
             {
                 // TODO check the boulders we find there are reachable..
                 found = true;
@@ -1586,7 +1695,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         // dont use wood -> charcoal if we have bituminous coal
         // (except for bootstraping)
-        if (amount > 2 - count.at("coal") && count.at("raw_coke") > WatchStock.at("raw_coke"))
+        if (amount > 2 - count.at("coal") && count.at("raw_coke") > Watch.WatchStock.at("raw_coke"))
         {
             amount = 2 - count.at("coal");
         }
@@ -1620,29 +1729,29 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     if (!input.empty())
     {
         int32_t i_amount = amount;
-        for (std::string i : input)
+        for (auto i = input.begin(); i != input.end(); i++)
         {
-            int32_t c = count.at(i);
+            int32_t c = count.at(*i);
             if (c < i_amount)
             {
                 i_amount = c;
             }
-            if (c < amount && Needed.count(i))
+            if (c < amount && Watch.Needed.count(*i))
             {
-                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i.c_str(), i_amount, amount, order.c_str()));
-                queue_need(out, i, amount - c);
+                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i->c_str(), i_amount, amount, order.c_str()));
+                queue_need(out, *i, amount - c);
             }
         }
         amount = i_amount;
     }
 
-    if (ManagerMatCategory.count(order))
+    if (Manager.MatCategory.count(order))
     {
-        std::string matcat = ManagerMatCategory.at(order);
+        std::string matcat = Manager.MatCategory.at(order);
         df::job_type job = df::job_type(-1);
         find_enum_item(&job, order);
         int32_t i_amount = count.at(matcat) - count_manager_orders_matcat(matcat, job);
-        if (i_amount < amount && Needed.count(matcat))
+        if (i_amount < amount && Watch.Needed.count(matcat))
         {
             ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - i_amount, matcat.c_str(), i_amount, amount, order.c_str()));
             queue_need(out, matcat, amount - i_amount);
@@ -1656,9 +1765,10 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     if (amount > 30)
         amount = 30;
 
-    for (df::manager_order *o : find_manager_orders(order))
+    auto os = find_manager_orders(order);
+    for (auto o = os.begin(); o != os.end(); o++)
     {
-        amount -= o->amount_total;
+        amount -= (*o)->amount_total;
     }
 
     if (amount <= 0)
@@ -1678,9 +1788,9 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
-    for (df::item *item : world->items.other[items_other_id::BAR])
+    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
     {
-        df::item_actual *i = virtual_cast<df::item_actual>(item);
+        df::item_actual *i = virtual_cast<df::item_actual>(*item);
         if (i->getMaterial() == 0)
         {
             bars[i->getMaterialIndex()] += i->stack_size;
@@ -1688,12 +1798,12 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
     }
 
     // rough account of already queued jobs consumption
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->mat_type == 0)
+        if ((*mo)->mat_type == 0)
         {
-            bars[mo->mat_index] -= 4 * mo->amount_total;
-            coal_bars -= mo->amount_total;
+            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
+            coal_bars -= (*mo)->amount_total;
         }
     }
 
@@ -1730,30 +1840,30 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
 
     cache_hash<int32_t, int32_t> may_forge_cache([this, &out](int32_t mi) -> int32_t { return may_forge_bars(out, mi); });
 
-    auto search = [this, &out, needed, skill, &bars, &coal_bars, &may_forge_cache](std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
+    auto search = [this, &out, needed, skill, &bars, &coal_bars, &may_forge_cache](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
     {
-        for (int16_t id : idefs)
+        for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
-            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
+            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
             if (skill != df::job_skill(-1) && idef->skill_melee != skill)
                 continue;
             if (idef->flags.is_set(weapon_flags::TRAINING))
                 continue;
 
             int32_t cnt = needed;
-            for (df::item *item : world->items.other[items_other_id::WEAPON])
+            for (auto item = world->items.other[items_other_id::WEAPON].begin(); item != world->items.other[items_other_id::WEAPON].end(); item++)
             {
-                df::item_weaponst *i = virtual_cast<df::item_weaponst>(item);
+                df::item_weaponst *i = virtual_cast<df::item_weaponst>(*item);
                 if (i->subtype->subtype == idef->subtype && is_item_free(i))
                 {
                     cnt--;
                 }
             }
-            for (df::manager_order *mo : world->manager_orders)
+            for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
             {
-                if (mo->job_type == job_type::MakeWeapon && mo->item_subtype == idef->subtype)
+                if ((*mo)->job_type == job_type::MakeWeapon && (*mo)->item_subtype == idef->subtype)
                 {
-                    cnt -= mo->amount_total;
+                    cnt -= (*mo)->amount_total;
                 }
             }
             if (cnt <= 0)
@@ -1763,11 +1873,11 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
             if (need_bars < 1)
                 need_bars = 1;
 
-            for (int32_t mi : pref)
+            for (auto mi = pref.begin(); mi != pref.end(); mi++)
             {
-                if (bars[mi] < need_bars && may_forge_cache[mi] != -1)
+                if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
                     break;
-                int32_t nw = bars[mi] / need_bars;
+                int32_t nw = bars[*mi] / need_bars;
                 if (nw > coal_bars)
                     nw = coal_bars;
                 if (nw > cnt)
@@ -1775,20 +1885,20 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
                 if (nw <= 0)
                     continue;
 
-                ai->debug(out, stl_sprintf("stocks: queue %d MakeWeapon %s %s", nw, world->raws.inorganics[mi]->id.c_str(), idef->id.c_str()));
+                ai->debug(out, stl_sprintf("stocks: queue %d MakeWeapon %s %s", nw, world->raws.inorganics[*mi]->id.c_str(), idef->id.c_str()));
                 df::manager_order *mo = df::allocate<df::manager_order>();
                 mo->job_type = job_type::MakeWeapon;
                 mo->item_type = item_type::NONE;
                 mo->item_subtype = idef->subtype;
                 mo->mat_type = 0;
-                mo->mat_index = mi;
+                mo->mat_index = *mi;
                 mo->amount_left = nw;
                 mo->amount_total = nw;
                 world->manager_orders.push_back(mo);
-                bars[mi] -= nw * need_bars;
+                bars[*mi] -= nw * need_bars;
                 coal_bars -= nw;
                 cnt -= nw;
-                if (may_forge_cache[mi] != -1) // dont use lesser metal
+                if (may_forge_cache[*mi] != -1) // dont use lesser metal
                     break;
             }
         }
@@ -1799,31 +1909,36 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
 }
 
 template<typename D, typename I>
-static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_pref, color_ostream & out, df::items_other_id oidx, std::vector<int16_t> & idefs, df::job_type job, std::map<int32_t, int32_t> & bars, int32_t & coal_bars, cache_hash<int32_t, int32_t> & may_forge_cache, int32_t div = 1, std::function<bool(D *)> pred = [](D *d) -> bool { return d->props.flags.is_set(armor_general_flags::METAL); })
+static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_pref, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, std::map<int32_t, int32_t> & bars, int32_t & coal_bars, cache_hash<int32_t, int32_t> & may_forge_cache, int32_t div = 1, std::function<bool(D *)> pred = is_armor_metal<D>)
 {
-    for (int16_t id : idefs)
+    for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
-        D *idef = D::find(id);
+        D *idef = D::find(*id);
 
         if (!pred(idef))
         {
             continue;
         }
 
-        const static std::map<df::items_other_id, std::string> needed
+        const static struct armor_needed
         {
-            {items_other_id::ARMOR, "armor_torso"},
-            {items_other_id::SHIELD, "armor_shield"},
-            {items_other_id::HELM, "armor_head"},
-            {items_other_id::PANTS, "armor_legs"},
-            {items_other_id::GLOVES, "armor_hands"},
-            {items_other_id::SHOES, "armor_feet"},
-        };
-        int32_t cnt = Needed.at(needed.at(oidx));
+            std::map<df::items_other_id, std::string> map;
+
+            armor_needed()
+            {
+                map[items_other_id::ARMOR] = "armor_torso";
+                map[items_other_id::SHIELD] = "armor_shield";
+                map[items_other_id::HELM] = "armor_head";
+                map[items_other_id::PANTS] = "armor_legs";
+                map[items_other_id::GLOVES] = "armor_hands";
+                map[items_other_id::SHOES] = "armor_feet";
+            }
+        } needed;
+        int32_t cnt = Watch.Needed.at(needed.map.at(oidx));
         int32_t have = 0;
-        for (df::item *item : world->items.other[oidx])
+        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
         {
-            I *i = virtual_cast<I>(item);
+            I *i = virtual_cast<I>(*item);
             if (i->subtype->subtype == idef->subtype && i->mat_type == 0 && ai->stocks->is_item_free(i))
             {
                 have++;
@@ -1831,11 +1946,11 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
         }
         cnt -= have / div;
 
-        for (df::manager_order *mo : world->manager_orders)
+        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
         {
-            if (mo->job_type == job && mo->item_subtype == idef->subtype)
+            if ((*mo)->job_type == job && (*mo)->item_subtype == idef->subtype)
             {
-                cnt -= mo->amount_total;
+                cnt -= (*mo)->amount_total;
             }
         }
         if (cnt <= 0)
@@ -1847,11 +1962,11 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
         if (need_bars < 1)
             need_bars = 1;
 
-        for (int32_t mi : metal_armor_pref)
+        for (auto mi = metal_armor_pref.begin(); mi != metal_armor_pref.end(); mi++)
         {
-            if (bars[mi] < need_bars && may_forge_cache[mi] != -1)
+            if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
                 break;
-            int32_t nw = bars[mi] / need_bars;
+            int32_t nw = bars[*mi] / need_bars;
             if (nw > coal_bars)
                 nw = coal_bars;
             if (nw > cnt)
@@ -1859,20 +1974,20 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
             if (nw <= 0)
                 continue;
 
-            ai->debug(out, stl_sprintf("stocks: queue %d %s %s %s", nw, ENUM_KEY_STR(job_type, job).c_str(), world->raws.inorganics[mi]->id.c_str(), idef->id.c_str()));
+            ai->debug(out, stl_sprintf("stocks: queue %d %s %s %s", nw, ENUM_KEY_STR(job_type, job).c_str(), world->raws.inorganics[*mi]->id.c_str(), idef->id.c_str()));
             df::manager_order *mo = df::allocate<df::manager_order>();
             mo->job_type = job;
             mo->item_type = item_type::NONE;
             mo->item_subtype = idef->subtype;
             mo->mat_type = 0;
-            mo->mat_index = mi;
+            mo->mat_index = *mi;
             mo->amount_left = nw;
             mo->amount_total = nw;
             world->manager_orders.push_back(mo);
-            bars[mi] -= nw * need_bars;
+            bars[*mi] -= nw * need_bars;
             coal_bars -= nw;
             cnt -= nw;
-            if (may_forge_cache[mi] != -1)
+            if (may_forge_cache[*mi] != -1)
                 break;
         }
     }
@@ -1886,9 +2001,9 @@ void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
-    for (df::item *item : world->items.other[items_other_id::BAR])
+    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
     {
-        df::item_actual *i = virtual_cast<df::item_actual>(item);
+        df::item_actual *i = virtual_cast<df::item_actual>(*item);
         if (i->getMaterial() == 0)
         {
             bars[i->getMaterialIndex()] += i->stack_size;
@@ -1896,12 +2011,12 @@ void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
     }
 
     // rough account of already queued jobs consumption
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->mat_type == 0)
+        if ((*mo)->mat_type == 0)
         {
-            bars[mo->mat_index] -= 4 * mo->amount_total;
-            coal_bars -= mo->amount_total;
+            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
+            coal_bars -= (*mo)->amount_total;
         }
     }
 
@@ -1956,9 +2071,9 @@ void Stocks::queue_need_anvil(color_ostream & out)
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
-    for (df::item *item : world->items.other[items_other_id::BAR])
+    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
     {
-        df::item_actual *i = virtual_cast<df::item_actual>(item);
+        df::item_actual *i = virtual_cast<df::item_actual>(*item);
         if (i->getMaterial() == 0)
         {
             bars[i->getMaterialIndex()] += i->stack_size;
@@ -1966,12 +2081,12 @@ void Stocks::queue_need_anvil(color_ostream & out)
     }
 
     // rough account of already queued jobs consumption
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->mat_type == 0)
+        if ((*mo)->mat_type == 0)
         {
-            bars[mo->mat_index] -= 4 * mo->amount_total;
-            coal_bars -= mo->amount_total;
+            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
+            coal_bars -= (*mo)->amount_total;
         }
     }
 
@@ -1988,14 +2103,14 @@ void Stocks::queue_need_anvil(color_ostream & out)
 
     cache_hash<int32_t, int32_t> may_forge_cache([this, &out](int32_t mi) -> int32_t { return may_forge_bars(out, mi); });
 
-    int32_t cnt = Needed.at("anvil");
+    int32_t cnt = Watch.Needed.at("anvil");
     cnt -= count.at("anvil");
 
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::ForgeAnvil)
+        if ((*mo)->job_type == job_type::ForgeAnvil)
         {
-            cnt -= mo->amount_total;
+            cnt -= (*mo)->amount_total;
         }
     }
     if (cnt <= 0)
@@ -2003,11 +2118,11 @@ void Stocks::queue_need_anvil(color_ostream & out)
 
     int32_t need_bars = 1;
 
-    for (int32_t mi : metal_anvil_pref)
+    for (auto mi = metal_anvil_pref.begin(); mi != metal_anvil_pref.end(); mi++)
     {
-        if (bars[mi] < need_bars && may_forge_cache[mi] != -1)
+        if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
             break;
-        int32_t nw = bars[mi] / need_bars;
+        int32_t nw = bars[*mi] / need_bars;
         if (nw > coal_bars)
             nw = coal_bars;
         if (nw > cnt)
@@ -2015,38 +2130,38 @@ void Stocks::queue_need_anvil(color_ostream & out)
         if (nw <= 0)
             continue;
 
-        ai->debug(out, stl_sprintf("stocks: queue %d ForgeAnvil %s", nw, world->raws.inorganics[mi]->id.c_str()));
+        ai->debug(out, stl_sprintf("stocks: queue %d ForgeAnvil %s", nw, world->raws.inorganics[*mi]->id.c_str()));
         df::manager_order *mo = df::allocate<df::manager_order>();
         mo->job_type = job_type::ForgeAnvil;
         mo->item_type = item_type::NONE;
         mo->item_subtype = -1;
         mo->mat_type = 0;
-        mo->mat_index = mi;
+        mo->mat_index = *mi;
         mo->amount_left = nw;
         mo->amount_total = nw;
         world->manager_orders.push_back(mo);
-        bars[mi] -= nw * need_bars;
+        bars[*mi] -= nw * need_bars;
         coal_bars -= nw;
         cnt -= nw;
-        if (may_forge_cache[mi] != -1)
+        if (may_forge_cache[*mi] != -1)
             break;
     }
 }
 
 template<typename D, typename I>
-static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_other_id oidx, std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, int32_t needed, int32_t div = 1)
+static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, int32_t needed, int32_t div = 1)
 {
-    for (int16_t id : idefs)
+    for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
-        D *idef = D::find(id);
+        D *idef = D::find(*id);
         if (!idef->props.flags.is_set(armor_general_flags::SOFT)) // XXX
             continue;
 
         int32_t cnt = needed;
         int32_t have = 0;
-        for (df::item *item : world->items.other[oidx])
+        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
         {
-            I *i = virtual_cast<I>(item);
+            I *i = virtual_cast<I>(*item);
             if (i->subtype->subtype == idef->subtype &&
                     i->mat_type != 0 &&
                     i->wear == 0 &&
@@ -2057,11 +2172,11 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         }
         cnt -= have / div;
 
-        for (df::manager_order *mo : world->manager_orders)
+        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
         {
-            if (mo->job_type == job && mo->item_subtype == idef->subtype)
+            if ((*mo)->job_type == job && (*mo)->item_subtype == idef->subtype)
             {
-                cnt -= mo->amount_total;
+                cnt -= (*mo)->amount_total;
             }
             // TODO subtract available_cloth too
         }
@@ -2096,19 +2211,19 @@ void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
     switch (oidx)
     {
         case items_other_id::ARMOR:
-            queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, Needed.at("clothes_torso"));
+            queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, num_needed("clothes_torso"));
             return;
         case items_other_id::HELM:
-            queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, Needed.at("clothes_head"));
+            queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, num_needed("clothes_head"));
             return;
         case items_other_id::PANTS:
-            queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, Needed.at("clothes_legs"));
+            queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, num_needed("clothes_legs"));
             return;
         case items_other_id::GLOVES:
-            queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, Needed.at("clothes_hands"), 2);
+            queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, num_needed("clothes_hands"), 2);
             return;
         case items_other_id::SHOES:
-            queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, Needed.at("clothes_feet"), 2);
+            queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, num_needed("clothes_feet"), 2);
             return;
         default:
             return;
@@ -2124,9 +2239,9 @@ void Stocks::queue_need_coffin_bld(color_ostream & out, int32_t amount)
     // count actually allocated (plan wise) coffin buildings
     if (ai->plan->find_room("cemetary", [&amount](room *r) -> bool
                 {
-                    for (furniture *f : r->layout)
+                    for (auto f = r->layout.begin(); f != r->layout.end(); f++)
                     {
-                        if (f->item == "coffin" && f->bld_id == -1 && !f->ignore)
+                        if ((*f)->item == "coffin" && (*f)->bld_id == -1 && !(*f)->ignore)
                             amount--;
                     }
                     return amount <= 0;
@@ -2223,9 +2338,9 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
     else if (what == "bone")
     {
         int32_t nhunters = 0;
-        for (df::unit *u : world->units.active)
+        for (auto u = world->units.active.begin(); u != world->units.active.end(); u++)
         {
-            if (Units::isCitizen(u) && !Units::isDead(u) && u->status.labors[unit_labor::HUNT])
+            if (Units::isCitizen(*u) && !Units::isDead(*u) && (*u)->status.labors[unit_labor::HUNT])
             {
                 nhunters++;
             }
@@ -2303,15 +2418,15 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
     if (!input.empty())
     {
         int32_t i_amount = amount;
-        for (std::string i : input)
+        for (auto i = input.begin(); i != input.end(); i++)
         {
-            int32_t c = count.at(i);
+            int32_t c = count.at(*i);
             if (i_amount > c)
                 i_amount = c;
-            if (c < amount && Needed.count(i))
+            if (c < amount && Watch.Needed.count(*i))
             {
-                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i.c_str(), i_amount, amount, order.c_str()));
-                queue_need(out, i, amount - c);
+                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i->c_str(), i_amount, amount, order.c_str()));
+                queue_need(out, *i, amount - c);
             }
         }
         amount = i_amount;
@@ -2320,9 +2435,10 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
     if (amount > 30)
         amount = 30;
 
-    for (df::manager_order *mo : find_manager_orders(order))
+    auto mo = find_manager_orders(order);
+    for (auto o = mo.begin(); o != mo.end(); o++)
     {
-        amount -= mo->amount_total;
+        amount -= (*o)->amount_total;
     }
 
     if (amount <= 0)
@@ -2334,19 +2450,19 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
 // cut gems
 void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
 {
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::CutGems)
+        if ((*mo)->job_type == job_type::CutGems)
         {
             return;
         }
     }
     df::item *base = nullptr;
-    for (df::item *i : world->items.other[items_other_id::ROUGH])
+    for (auto i = world->items.other[items_other_id::ROUGH].begin(); i != world->items.other[items_other_id::ROUGH].end(); i++)
     {
-        if (i->getMaterial() == 0 && is_item_free(i))
+        if ((*i)->getMaterial() == 0 && is_item_free(*i))
         {
-            base = i;
+            base = *i;
             break;
         }
     }
@@ -2355,9 +2471,9 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
         return;
     }
     int32_t this_amount = 0;
-    for (df::item *i : world->items.other[items_other_id::ROUGH])
+    for (auto i = world->items.other[items_other_id::ROUGH].begin(); i != world->items.other[items_other_id::ROUGH].end(); i++)
     {
-        if (i->getMaterial() == base->getMaterial() && i->getMaterialIndex() == base->getMaterialIndex() && is_item_free(i))
+        if ((*i)->getMaterial() == base->getMaterial() && (*i)->getMaterialIndex() == base->getMaterialIndex() && is_item_free(*i))
         {
             this_amount++;
         }
@@ -2385,24 +2501,24 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
 void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 {
     // make coke from bituminous coal has priority
-    if (count.at("raw_coke") > WatchStock.at("raw_coke") && count.at("coal") < 100)
+    if (count.at("raw_coke") > Watch.WatchStock.at("raw_coke") && count.at("coal") < 100)
     {
         return;
     }
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::SmeltOre)
+        if ((*mo)->job_type == job_type::SmeltOre)
         {
             return;
         }
     }
 
     df::item *base = nullptr;
-    for (df::item *i : world->items.other[items_other_id::BOULDER])
+    for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        if (is_metal_ore(i) && is_item_free(i))
+        if (is_metal_ore(*i) && is_item_free(*i))
         {
-            base = i;
+            base = *i;
             break;
         }
     }
@@ -2411,9 +2527,9 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
         return;
     }
     int32_t this_amount = 0;
-    for (df::item *i : world->items.other[items_other_id::BOULDER])
+    for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        if (i->getMaterial() == base->getMaterial() && i->getMaterialIndex() == base->getMaterialIndex() && is_item_free(i))
+        if ((*i)->getMaterial() == base->getMaterial() && (*i)->getMaterialIndex() == base->getMaterialIndex() && is_item_free(*i))
         {
             this_amount++;
         }
@@ -2449,9 +2565,9 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
 {
     is_raw_coke(0); // populate raw_coke_inv
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::CustomReaction && raw_coke_inv.count(mo->reaction_name))
+        if ((*mo)->job_type == job_type::CustomReaction && raw_coke_inv.count((*mo)->reaction_name))
         {
             return;
         }
@@ -2459,12 +2575,12 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
 
     std::string reaction;
     df::item *base = nullptr;
-    for (df::item *i : world->items.other[items_other_id::BOULDER])
+    for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        reaction = is_raw_coke(i);
-        if (!reaction.empty() && is_item_free(i))
+        reaction = is_raw_coke(*i);
+        if (!reaction.empty() && is_item_free(*i))
         {
-            base = i;
+            base = *i;
             break;
         }
     }
@@ -2474,9 +2590,9 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
     }
 
     int32_t this_amount = 0;
-    for (df::item *i : world->items.other[items_other_id::BOULDER])
+    for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        if (i->getMaterial() == base->getMaterial() && i->getMaterialIndex() == base->getMaterialIndex() && is_item_free(i))
+        if ((*i)->getMaterial() == base->getMaterial() && (*i)->getMaterialIndex() == base->getMaterialIndex() && is_item_free(*i))
         {
             this_amount++;
         }
@@ -2516,16 +2632,16 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
     // return the bottom-rightest designated tree
     df::coord br;
     br.clear();
-    for (df::coord tree : list)
+    for (auto tree = list.begin(); tree != list.end(); tree++)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(tree)) != tiletype_material::TREE)
+        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(*tree)) != tiletype_material::TREE)
             continue;
-        if (Maps::getTileDesignation(tree)->bits.dig == tile_dig_designation::Default)
+        if (Maps::getTileDesignation(*tree)->bits.dig == tile_dig_designation::Default)
             continue;
-        Plan::dig_tile(tree, tile_dig_designation::Default);
-        if (!br.isValid() || (br.x & -16) < (tree.x & -16) || ((br.x & -16) == (tree.x & -16) && (br.y & -16) < (tree.y & -16)))
+        Plan::dig_tile(*tree, tile_dig_designation::Default);
+        if (!br.isValid() || (br.x & -16) < (tree->x & -16) || ((br.x & -16) == (tree->x & -16) && (br.y & -16) < (tree->y & -16)))
         {
-            br = tree;
+            br = *tree;
         }
         amount--;
         if (amount <= 0)
@@ -2540,18 +2656,18 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
 std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list()
 {
     last_treelist.clear();
-    for (df::plant *p : world->plants.tree_dry)
+    for (auto p = world->plants.tree_dry.begin(); p != world->plants.tree_dry.end(); p++)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(p->pos)) == tiletype_material::TREE && !Maps::getTileDesignation(p->pos)->bits.hidden)
+        if (ENUM_ATTR(tiletype, material, *Maps::getTileType((*p)->pos)) == tiletype_material::TREE && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
         {
-            last_treelist.insert(p->pos);
+            last_treelist.insert((*p)->pos);
         }
     }
-    for (df::plant *p : world->plants.tree_wet)
+    for (auto p = world->plants.tree_wet.begin(); p != world->plants.tree_wet.end(); p++)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(p->pos)) == tiletype_material::TREE && !Maps::getTileDesignation(p->pos)->bits.hidden)
+        if (ENUM_ATTR(tiletype, material, *Maps::getTileType((*p)->pos)) == tiletype_material::TREE && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
         {
-            last_treelist.insert(p->pos);
+            last_treelist.insert((*p)->pos);
         }
     }
     return last_treelist;
@@ -2575,9 +2691,9 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
     if (i->flags.bits.container && !allow_nonempty)
     {
         // is empty
-        for (auto ir : i->general_refs)
+        for (auto ir = i->general_refs.begin(); ir != i->general_refs.end(); ir++)
         {
-            if (virtual_cast<df::general_ref_contains_itemst>(ir))
+            if (virtual_cast<df::general_ref_contains_itemst>(*ir))
             {
                 return false;
             }
@@ -2587,19 +2703,20 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
     if (i->flags.bits.in_inventory)
     {
         // is not in a unit's inventory (ignore if it is simply hauled)
-        for (auto ir : i->general_refs)
+        for (auto ir = i->general_refs.begin(); ir != i->general_refs.end(); ir++)
         {
-            if (virtual_cast<df::general_ref_unit_holderst>(ir))
+            if (virtual_cast<df::general_ref_unit_holderst>(*ir))
             {
-                for (auto ii : ir->getUnit()->inventory)
+                auto & inv = (*ir)->getUnit()->inventory;
+                for (auto ii = inv.begin(); ii != inv.end(); ii++)
                 {
-                   if (ii->item == i && ii->mode != df::unit_inventory_item::Hauled)
+                   if ((*ii)->item == i && (*ii)->mode != df::unit_inventory_item::Hauled)
                    {
                        return false;
                    }
                 }
             }
-            if (virtual_cast<df::general_ref_contained_in_itemst>(ir) && !is_item_free(ir->getItem(), true))
+            if (virtual_cast<df::general_ref_contained_in_itemst>(*ir) && !is_item_free((*ir)->getItem(), true))
             {
                 return false;
             }
@@ -2609,13 +2726,14 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
     if (i->flags.bits.in_building)
     {
         // is not part of a building construction materials
-        for (auto ir : i->general_refs)
+        for (auto ir = i->general_refs.begin(); ir != i->general_refs.end(); ir++)
         {
-            if (virtual_cast<df::general_ref_building_holderst>(ir))
+            if (virtual_cast<df::general_ref_building_holderst>(*ir))
             {
-                for (auto bi : virtual_cast<df::building_actual>(ir->getBuilding())->contained_items)
+                auto & inv = virtual_cast<df::building_actual>((*ir)->getBuilding())->contained_items;
+                for (auto bi = inv.begin(); bi != inv.end(); bi++)
                 {
-                    if (bi->use_mode == 2 && bi->item == i)
+                    if ((*bi)->use_mode == 2 && (*bi)->item == i)
                     {
                         return false;
                     }
@@ -2660,17 +2778,17 @@ std::string Stocks::is_raw_coke(int32_t mi)
     // mat_index => custom reaction name
     if (raw_coke.empty())
     {
-        for (df::reaction *r : world->raws.reactions)
+        for (auto r = world->raws.reactions.begin(); r != world->raws.reactions.end(); r++)
         {
-            if (r->reagents.size() != 1)
+            if ((*r)->reagents.size() != 1)
                 continue;
 
             int32_t mat;
 
             bool found = false;
-            for (df::reaction_reagent *rr : r->reagents)
+            for (auto rr = (*r)->reagents.begin(); rr != (*r)->reagents.end(); rr++)
             {
-                df::reaction_reagent_itemst *rri = virtual_cast<df::reaction_reagent_itemst>(rr);
+                df::reaction_reagent_itemst *rri = virtual_cast<df::reaction_reagent_itemst>(*rr);
                 if (rri && rri->item_type == item_type::BOULDER && rri->mat_type == 0)
                 {
                     mat = rri->mat_index;
@@ -2682,9 +2800,9 @@ std::string Stocks::is_raw_coke(int32_t mi)
                 continue;
 
             found = false;
-            for (df::reaction_product *rp : r->products)
+            for (auto rp = (*r)->products.begin(); rp != (*r)->products.end(); rp++)
             {
-                df::reaction_product_itemst *rpi = virtual_cast<df::reaction_product_itemst>(rp);
+                df::reaction_product_itemst *rpi = virtual_cast<df::reaction_product_itemst>(*rp);
                 if (rpi && rpi->item_type == item_type::BAR && MaterialInfo(rpi).material->id == "COAL")
                 {
                     found = true;
@@ -2695,8 +2813,8 @@ std::string Stocks::is_raw_coke(int32_t mi)
                 continue;
 
             // XXX check input size vs output size ?
-            raw_coke[mat] = r->code;
-            raw_coke_inv[r->code] = mat;
+            raw_coke[mat] = (*r)->code;
+            raw_coke_inv[(*r)->code] = mat;
         }
     }
     return raw_coke.count(mi) ? raw_coke.at(mi) : "";
@@ -2713,9 +2831,9 @@ std::string Stocks::is_raw_coke(df::item *i)
 
 bool Stocks::is_gypsum(int32_t mi)
 {
-    for (std::string *c : world->raws.inorganics[mi]->material.reaction_class)
+    for (auto c = world->raws.inorganics[mi]->material.reaction_class.begin(); c != world->raws.inorganics[mi]->material.reaction_class.end(); c++)
     {
-        if (*c == "GYPSUM")
+        if (**c == "GYPSUM")
         {
             return true;
         }
@@ -2741,9 +2859,9 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
     // simple metal ore
     cache_hash<int32_t, bool> moc([mat_index](int32_t mi) -> bool
             {
-                for (int32_t i : world->raws.inorganics[mi]->metal_ore.mat_index)
+                for (auto i = world->raws.inorganics[mi]->metal_ore.mat_index.begin(); i != world->raws.inorganics[mi]->metal_ore.mat_index.end(); i++)
                 {
-                    if (i == mat_index)
+                    if (*i == mat_index)
                     {
                         return true;
                     }
@@ -2752,38 +2870,38 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
             });
 
     int32_t can_melt = 0;
-    for (df::item *i : world->items.other[items_other_id::BOULDER])
+    for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        if (is_metal_ore(i) && moc[i->getMaterialIndex()] && is_item_free(i))
+        if (is_metal_ore(*i) && moc[(*i)->getMaterialIndex()] && is_item_free(*i))
         {
             can_melt++;
         }
     }
 
-    if (can_melt < WatchStock.at("metal_ore") && ai->plan->past_initial_phase)
+    if (can_melt < Watch.WatchStock.at("metal_ore") && ai->plan->past_initial_phase)
     {
-        for (auto k : ai->plan->map_veins)
+        for (auto k = ai->plan->map_veins.begin(); k != ai->plan->map_veins.end(); k++)
         {
-            if (moc[k.first])
+            if (moc[k->first])
             {
-                can_melt += ai->plan->dig_vein(out, k.first);
+                can_melt += ai->plan->dig_vein(out, k->first);
             }
         }
     }
 
-    if (can_melt > WatchStock.at("metal_ore"))
+    if (can_melt > Watch.WatchStock.at("metal_ore"))
     {
-        return 4 * 150 * (can_melt - WatchStock.at("metal_ore"));
+        return 4 * 150 * (can_melt - Watch.WatchStock.at("metal_ore"));
     }
 
     // "make <mi> bars" customreaction
-    for (df::reaction *r : world->raws.reactions)
+    for (auto r = world->raws.reactions.begin(); r != world->raws.reactions.end(); r++)
     {
         // XXX choose best reaction from all reactions
         int32_t prod_mult = -1;
-        for (df::reaction_product *rp : r->products)
+        for (auto rp = (*r)->products.begin(); rp != (*r)->products.end(); rp++)
         {
-            df::reaction_product_itemst *rpi = virtual_cast<df::reaction_product_itemst>(rp);
+            df::reaction_product_itemst *rpi = virtual_cast<df::reaction_product_itemst>(*rp);
             if (rpi && rpi->item_type == item_type::BAR && rpi->mat_type == 0 && rpi->mat_index == mat_index)
             {
                 prod_mult = rpi->product_dimension;
@@ -2796,10 +2914,10 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
         bool all = true;
         int32_t can_reaction = 30;
         bool future = false;
-        for (df::reaction_reagent *rr : r->reagents)
+        for (auto rr = (*r)->reagents.begin(); rr != (*r)->reagents.end(); rr++)
         {
             // XXX may queue forge reagents[1] even if we dont handle reagents[2]
-            df::reaction_reagent_itemst *rri = virtual_cast<df::reaction_reagent_itemst>(rr);
+            df::reaction_reagent_itemst *rri = virtual_cast<df::reaction_reagent_itemst>(*rr);
             if (!rri || (rri->item_type != item_type::BAR && rri->item_type != item_type::BOULDER))
             {
                 all = false;
@@ -2813,21 +2931,21 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 all = false;
                 break;
             }
-            for (df::item *i : world->items.other[oidx])
+            for (auto i = world->items.other[oidx].begin(); i != world->items.other[oidx].end(); i++)
             {
-                if (rri->mat_type != -1 && i->getMaterial() != rri->mat_type)
+                if (rri->mat_type != -1 && (*i)->getMaterial() != rri->mat_type)
                     continue;
-                if (rri->mat_index != -1 && i->getMaterialIndex() != rri->mat_index)
+                if (rri->mat_index != -1 && (*i)->getMaterialIndex() != rri->mat_index)
                     continue;
-                if (!is_item_free(i))
+                if (!is_item_free(*i))
                     continue;
                 if (!rri->reaction_class.empty())
                 {
-                    MaterialInfo mi(i);
+                    MaterialInfo mi(*i);
                     bool found = false;
-                    for (std::string *c : mi.material->reaction_class)
+                    for (auto c = mi.material->reaction_class.begin(); c != mi.material->reaction_class.end(); c++)
                     {
-                        if (*c == rri->reaction_class)
+                        if (**c == rri->reaction_class)
                         {
                             found = true;
                             break;
@@ -2836,12 +2954,13 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     if (!found)
                         continue;
                 }
-                if (rri->metal_ore != -1 && i->getMaterial() == 0)
+                if (rri->metal_ore != -1 && (*i)->getMaterial() == 0)
                 {
                     bool found = false;
-                    for (int32_t mi : world->raws.inorganics[i->getMaterialIndex()]->metal_ore.mat_index)
+                    auto & mis = world->raws.inorganics[(*i)->getMaterialIndex()]->metal_ore.mat_index;
+                    for (auto mi = mis.begin(); mi != mis.end(); mi++)
                     {
-                        if (mi == rri->metal_ore)
+                        if (*mi == rri->metal_ore)
                         {
                             found = true;
                             break;
@@ -2852,7 +2971,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 }
                 if (rri->item_type == item_type::BAR)
                 {
-                    has += virtual_cast<df::item_barst>(i)->dimension;
+                    has += virtual_cast<df::item_barst>(*i)->dimension;
                 }
                 else
                 {
@@ -2895,9 +3014,9 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
             if (!future)
             {
                 bool found = false;
-                for (df::manager_order *mo : world->manager_orders)
+                for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
                 {
-                    if (mo->job_type == job_type::CustomReaction && mo->reaction_name == r->code)
+                    if ((*mo)->job_type == job_type::CustomReaction && (*mo)->reaction_name == (*r)->code)
                     {
                         found = true;
                         break;
@@ -2905,12 +3024,12 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 }
                 if (!found)
                 {
-                    ai->debug(out, stl_sprintf("stocks: queue %d %s", can_reaction, r->code.c_str()));
+                    ai->debug(out, stl_sprintf("stocks: queue %d %s", can_reaction, (*r)->code.c_str()));
                     df::manager_order *mo = df::allocate<df::manager_order>();
                     mo->job_type = job_type::CustomReaction;
                     mo->item_type = item_type::NONE;
                     mo->item_subtype = -1;
-                    mo->reaction_name = r->code;
+                    mo->reaction_name = (*r)->code;
                     mo->mat_type = -1;
                     mo->mat_index = -1;
                     mo->amount_left = can_reaction;
@@ -2927,66 +3046,51 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
 void Stocks::init_manager_subtype()
 {
     manager_subtype.clear();
-    for (df::itemdef_toolst *def : world->raws.itemdefs.tools)
+
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::HEAVY_OBJECT_HAULING].empty())
+        manager_subtype["MakeWoodenWheelbarrow"] = world->raws.itemdefs.tools_by_type[tool_uses::HEAVY_OBJECT_HAULING][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::TRACK_CART].empty())
+        manager_subtype["MakeWoodenMinecart"] = world->raws.itemdefs.tools_by_type[tool_uses::TRACK_CART][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::NEST_BOX].empty())
+        manager_subtype["MakeRockNestbox"] = world->raws.itemdefs.tools_by_type[tool_uses::NEST_BOX][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::HIVE].empty())
+        manager_subtype["MakeRockHive"] = world->raws.itemdefs.tools_by_type[tool_uses::HIVE][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::LIQUID_CONTAINER].empty())
+        manager_subtype["MakeRockJug"] = world->raws.itemdefs.tools_by_type[tool_uses::LIQUID_CONTAINER][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::STAND_AND_WORK_ABOVE].empty())
+        manager_subtype["MakeWoodenStepladder"] = world->raws.itemdefs.tools_by_type[tool_uses::STAND_AND_WORK_ABOVE][0]->subtype;
+
+    for (auto def = world->raws.itemdefs.weapons.begin(); def != world->raws.itemdefs.weapons.end(); def++)
     {
-        for (df::tool_uses u : def->tool_use)
+        if ((*def)->id == "ITEM_WEAPON_AXE_TRAINING")
         {
-            switch (u)
-            {
-                case tool_uses::HEAVY_OBJECT_HAULING:
-                    manager_subtype["MakeWoodenWheelbarrow"] = def->subtype;
-                    break;
-                case tool_uses::TRACK_CART:
-                    manager_subtype["MakeWoodenMinecart"] = def->subtype;
-                    break;
-                case tool_uses::NEST_BOX:
-                    manager_subtype["MakeRockNestbox"] = def->subtype;
-                    break;
-                case tool_uses::HIVE:
-                    manager_subtype["MakeRockHive"] = def->subtype;
-                    break;
-                case tool_uses::LIQUID_CONTAINER:
-                    manager_subtype["MakeRockJug"] = def->subtype;
-                    break;
-                case tool_uses::STAND_AND_WORK_ABOVE:
-                    manager_subtype["MakeWoodenStepladder"] = def->subtype;
-                    break;
-                default:
-                    break;
-            }
+            manager_subtype["MakeTrainingAxe"] = (*def)->subtype;
+        }
+        else if ((*def)->id == "ITEM_WEAPON_SWORD_SHORT_TRAINING")
+        {
+            manager_subtype["MakeTrainingShortSword"] = (*def)->subtype;
+        }
+        else if ((*def)->id == "ITEM_WEAPON_SPEAR_TRAINING")
+        {
+            manager_subtype["MakeTrainingSpear"] = (*def)->subtype;
+        }
+        else if ((*def)->id == "ITEM_WEAPON_CROSSBOW")
+        {
+            manager_subtype["MakeBoneCrossbow"] = (*def)->subtype;
         }
     }
-    for (df::itemdef_weaponst *def : world->raws.itemdefs.weapons)
+    for (auto def = world->raws.itemdefs.ammo.begin(); def != world->raws.itemdefs.ammo.end(); def++)
     {
-        if (def->id == "ITEM_WEAPON_AXE_TRAINING")
+        if ((*def)->id == "ITEM_AMMO_BOLTS")
         {
-            manager_subtype["MakeTrainingAxe"] = def->subtype;
-        }
-        else if (def->id == "ITEM_WEAPON_SWORD_SHORT_TRAINING")
-        {
-            manager_subtype["MakeTrainingShortSword"] = def->subtype;
-        }
-        else if (def->id == "ITEM_WEAPON_SPEAR_TRAINING")
-        {
-            manager_subtype["MakeTrainingSpear"] = def->subtype;
-        }
-        else if (def->id == "ITEM_WEAPON_CROSSBOW")
-        {
-            manager_subtype["MakeBoneCrossbow"] = def->subtype;
+            manager_subtype["MakeBoneBolt"] = (*def)->subtype;
         }
     }
-    for (df::itemdef_ammost *def : world->raws.itemdefs.ammo)
+    for (auto def = world->raws.itemdefs.trapcomps.begin(); def != world->raws.itemdefs.trapcomps.end(); def++)
     {
-        if (def->id == "ITEM_AMMO_BOLTS")
+        if ((*def)->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW")
         {
-            manager_subtype["MakeBoneBolt"] = def->subtype;
-        }
-    }
-    for (df::itemdef_trapcompst *def : world->raws.itemdefs.trapcomps)
-    {
-        if (def->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW")
-        {
-            manager_subtype["MakeGiantCorkscrew"] = def->subtype;
+            manager_subtype["MakeGiantCorkscrew"] = (*def)->subtype;
         }
     }
 }
@@ -2994,28 +3098,28 @@ void Stocks::init_manager_subtype()
 std::vector<df::manager_order *> Stocks::find_manager_orders(std::string order)
 {
     df::job_type _order;
-    if (ManagerRealOrder.count(order))
-        _order = ManagerRealOrder.at(order);
+    if (Manager.RealOrder.count(order))
+        _order = Manager.RealOrder.at(order);
     else if (!find_enum_item(&_order, order))
         return std::vector<df::manager_order *>();
 
     df::job_material_category matcat;
-    if (ManagerMatCategory.count(order))
-        parseJobMaterialCategory(&matcat, ManagerMatCategory.at(order));
-    int32_t type = ManagerType.count(order) ? ManagerType.at(order) : ManagerMatCategory.count(order) ? -1 : 0;
+    if (Manager.MatCategory.count(order))
+        parseJobMaterialCategory(&matcat, Manager.MatCategory.at(order));
+    int32_t type = Manager.Type.count(order) ? Manager.Type.at(order) : Manager.MatCategory.count(order) ? -1 : 0;
     int32_t subtype = manager_subtype.count(order) ? manager_subtype.at(order) : -1;
-    std::string custom = ManagerCustom.count(order) ? ManagerCustom.at(order) : "";
+    std::string custom = Manager.Custom.count(order) ? Manager.Custom.at(order) : "";
 
     std::vector<df::manager_order *> orders;
-    for (df::manager_order *_o : world->manager_orders)
+    for (auto _o = world->manager_orders.begin(); _o != world->manager_orders.end(); _o++)
     {
-        if (_o->job_type == _order &&
-                _o->mat_type == type &&
-                _o->material_category.whole == matcat.whole &&
-                _o->item_subtype == subtype &&
-                _o->reaction_name == custom)
+        if ((*_o)->job_type == _order &&
+                (*_o)->mat_type == type &&
+                (*_o)->material_category.whole == matcat.whole &&
+                (*_o)->item_subtype == subtype &&
+                (*_o)->reaction_name == custom)
         {
-            orders.push_back(_o);
+            orders.push_back(*_o);
         }
     }
     return orders;
@@ -3030,11 +3134,11 @@ int32_t Stocks::count_manager_orders_matcat(std::string matcat, df::job_type ord
         return 0;
 
     int32_t cnt = 0;
-    for (df::manager_order *_o : world->manager_orders)
+    for (auto _o = world->manager_orders.begin(); _o != world->manager_orders.end(); _o++)
     {
-        if (_o->material_category.whole == cat.whole && _o->job_type != order)
+        if ((*_o)->material_category.whole == cat.whole && (*_o)->job_type != order)
         {
-            cnt += _o->amount_total;
+            cnt += (*_o)->amount_total;
         }
     }
     return cnt;
@@ -3044,9 +3148,9 @@ void Stocks::add_manager_order(color_ostream & out, std::string order, int32_t a
 {
     ai->debug(out, stl_sprintf("add_manager %s %d", order.c_str(), amount));
     df::job_type _order;
-    if (ManagerRealOrder.count(order))
+    if (Manager.RealOrder.count(order))
     {
-        _order = ManagerRealOrder.at(order);
+        _order = Manager.RealOrder.at(order);
     }
     else if (!find_enum_item(&_order, order))
     {
@@ -3055,18 +3159,19 @@ void Stocks::add_manager_order(color_ostream & out, std::string order, int32_t a
     }
 
     df::job_material_category matcat;
-    if (ManagerMatCategory.count(order))
-        parseJobMaterialCategory(&matcat, ManagerMatCategory.at(order));
-    int32_t type = ManagerType.count(order) ? ManagerType.at(order) : ManagerMatCategory.count(order) ? -1 : 0;
+    if (Manager.MatCategory.count(order))
+        parseJobMaterialCategory(&matcat, Manager.MatCategory.at(order));
+    int32_t type = Manager.Type.count(order) ? Manager.Type.at(order) : Manager.MatCategory.count(order) ? -1 : 0;
     int32_t subtype = manager_subtype.count(order) ? manager_subtype.at(order) : -1;
-    std::string custom = ManagerCustom.count(order) ? ManagerCustom.at(order) : "";
+    std::string custom = Manager.Custom.count(order) ? Manager.Custom.at(order) : "";
 
     df::manager_order *o = nullptr;
-    for (df::manager_order *_o : find_manager_orders(order))
+    auto _os = find_manager_orders(order);
+    for (auto _o = _os.begin(); _o != _os.end(); _o++)
     {
-        if (_o->amount_total + amount <= maxmerge)
+        if ((*_o)->amount_total + amount <= maxmerge)
         {
-            o = _o;
+            o = *_o;
             break;
         }
     }
@@ -3115,43 +3220,48 @@ void Stocks::add_manager_order(color_ostream & out, std::string order, int32_t a
 
 std::string Stocks::furniture_order(std::string k)
 {
-    const static std::map<std::string, std::string> diff
+    const static struct different_furniture_order
     {
-        {"chair", "ConstructThrone"},
-        {"traction_bench", "ConstructTractionBench"},
-        {"weaponrack", "ConstructWeaponRack"},
-        {"armorstand", "ConstructArmorStand"},
-        {"bucket", "MakeBucket"},
-        {"barrel", "MakeBarrel"},
-        {"bin", "ConstructBin"},
-        {"crutch", "ConstructCrutch"},
-        {"splint", "ConstructSplint"},
-        {"bag", "MakeBag"},
-        {"block", "ConstructBlocks"},
-        {"mechanism", "ConstructMechanisms"},
-        {"trap", "ConstructMechanisms"},
-        {"cage", "MakeCage"},
-        {"soap", "MakeSoap"},
-        {"rope", "MakeRope"},
-        {"lye", "MakeLye"},
-        {"ash", "MakeAsh"},
-        {"plasterpowder", "MakePlasterPowder"},
-        {"wheelbarrow", "MakeWoodenWheelbarrow"},
-        {"minecart", "MakeWoodenMinecart"},
-        {"nestbox", "MakeRockNestbox"},
-        {"hive", "MakeRockHive"},
-        {"jug", "MakeRockJug"},
-        {"quiver", "MakeQuiver"},
-        {"flask", "MakeFlask"},
-        {"backpack", "MakeBackpack"},
-        {"giant_corkscrew", "MakeGiantCorkscrew"},
-        {"pipe_section", "MakePipeSection"},
-        {"coal", "MakeCharcoal"},
-        {"stepladder", "MakeWoodenStepladder"},
-        {"goblet", "MakeGoblet"},
-    };
-    if (diff.count(k))
-        return diff.at(k);
+        std::map<std::string, std::string> map;
+
+        different_furniture_order()
+        {
+            map["chair"] = "ConstructThrone";
+            map["traction_bench"] = "ConstructTractionBench";
+            map["weaponrack"] = "ConstructWeaponRack";
+            map["armorstand"] = "ConstructArmorStand";
+            map["bucket"] = "MakeBucket";
+            map["barrel"] = "MakeBarrel";
+            map["bin"] = "ConstructBin";
+            map["crutch"] = "ConstructCrutch";
+            map["splint"] = "ConstructSplint";
+            map["bag"] = "MakeBag";
+            map["block"] = "ConstructBlocks";
+            map["mechanism"] = "ConstructMechanisms";
+            map["trap"] = "ConstructMechanisms";
+            map["cage"] = "MakeCage";
+            map["soap"] = "MakeSoap";
+            map["rope"] = "MakeRope";
+            map["lye"] = "MakeLye";
+            map["ash"] = "MakeAsh";
+            map["plasterpowder"] = "MakePlasterPowder";
+            map["wheelbarrow"] = "MakeWoodenWheelbarrow";
+            map["minecart"] = "MakeWoodenMinecart";
+            map["nestbox"] = "MakeRockNestbox";
+            map["hive"] = "MakeRockHive";
+            map["jug"] = "MakeRockJug";
+            map["quiver"] = "MakeQuiver";
+            map["flask"] = "MakeFlask";
+            map["backpack"] = "MakeBackpack";
+            map["giant_corkscrew"] = "MakeGiantCorkscrew";
+            map["pipe_section"] = "MakePipeSection";
+            map["coal"] = "MakeCharcoal";
+            map["stepladder"] = "MakeWoodenStepladder";
+            map["goblet"] = "MakeGoblet";
+        }
+    } diff;
+    if (diff.map.count(k))
+        return diff.map.at(k);
 
     k[0] += 'A' - 'a';
     return "Construct" + k;
@@ -3200,19 +3310,19 @@ df::item *Stocks::find_furniture_item(std::string itm)
     std::string order = furniture_order(itm);
     df::items_other_id oidx = items_other_id::IN_PLAY;
     df::job_type job;
-    if ((!find_enum_item(&job, order) || !find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)))) && ManagerRealOrder.count(order))
+    if ((!find_enum_item(&job, order) || !find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)))) && Manager.RealOrder.count(order))
     {
-        order = ManagerRealOrder.at(order);
+        order = Manager.RealOrder.at(order);
         if (find_enum_item(&job, order))
         {
             find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)));
         }
     }
-    for (df::item *i : world->items.other[oidx])
+    for (auto it = world->items.other[oidx].begin(); it != world->items.other[oidx].end(); it++)
     {
-        if (find(i) && is_item_free(i))
+        if (find(*it) && is_item_free(*it))
         {
-            return i;
+            return *it;
         }
     }
     return nullptr;
@@ -3225,18 +3335,18 @@ int32_t Stocks::find_furniture_itemcount(std::string itm)
     std::string order = furniture_order(itm);
     df::items_other_id oidx = items_other_id::IN_PLAY;
     df::job_type job;
-    if ((!find_enum_item(&job, order) || !find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)))) && ManagerRealOrder.count(order))
+    if ((!find_enum_item(&job, order) || !find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)))) && Manager.RealOrder.count(order))
     {
-        order = ManagerRealOrder.at(order);
+        order = Manager.RealOrder.at(order);
         if (find_enum_item(&job, order))
         {
             find_enum_item(&oidx, ENUM_KEY_STR(item_type, ENUM_ATTR(job_type, item, job)));
         }
     }
     int32_t n = 0;
-    for (df::item *i : world->items.other[oidx])
+    for (auto it = world->items.other[oidx].begin(); it != world->items.other[oidx].end(); it++)
     {
-        if (find(i) && is_item_free(i))
+        if (find(*it) && is_item_free(*it))
         {
             n++;
         }
@@ -3255,11 +3365,12 @@ bool Stocks::is_cutting_trees()
         return true;
     }
 
-    for (df::coord t : tree_list())
+    auto tl = tree_list();
+    for (auto t = tl.begin(); t != tl.end(); t++)
     {
-        if (Maps::getTileDesignation(t)->bits.dig == tile_dig_designation::Default)
+        if (Maps::getTileDesignation(*t)->bits.dig == tile_dig_designation::Default)
         {
-            last_cutpos = t;
+            last_cutpos = *t;
             return true;
         }
     }
@@ -3293,9 +3404,9 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         std::vector<int32_t> pids;
         if (r->subtype == "food")
         {
-            for (int32_t i : may)
+            for (auto i = may.begin(); i != may.end(); i++)
             {
-                df::plant_raw *p = world->raws.plants.all[i];
+                df::plant_raw *p = world->raws.plants.all[*i];
 
                 // season numbers are also the 1st 4 flags
                 if (!p->flags.is_set(df::plant_raw_flags(season)))
@@ -3308,13 +3419,13 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                 {
                     if (pm.material->flags.is_set(material_flags::EDIBLE_RAW) && p->flags.is_set(plant_raw_flags::DRINK))
                     {
-                        pids.push_back(i);
+                        pids.push_back(*i);
                     }
                     continue;
                 }
                 if (pm.material->flags.is_set(material_flags::EDIBLE_RAW) || pm.material->flags.is_set(material_flags::EDIBLE_COOKED) || p->flags.is_set(plant_raw_flags::DRINK))
                 {
-                    pids.push_back(i);
+                    pids.push_back(*i);
                     continue;
                 }
                 if (p->flags.is_set(plant_raw_flags::MILL))
@@ -3322,7 +3433,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                     MaterialInfo mm(p->material_defs.type_mill, p->material_defs.idx_mill);
                     if (mm.material->flags.is_set(material_flags::EDIBLE_RAW) || mm.material->flags.is_set(material_flags::EDIBLE_COOKED))
                     {
-                        pids.push_back(i);
+                        pids.push_back(*i);
                         continue;
                     }
                 }
@@ -3333,7 +3444,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                         MaterialInfo bm(pm.material->reaction_product.material.mat_type[bi], pm.material->reaction_product.material.mat_index[bi]);
                         if (bm.material->flags.is_set(material_flags::EDIBLE_RAW) || bm.material->flags.is_set(material_flags::EDIBLE_COOKED))
                         {
-                            pids.push_back(i);
+                            pids.push_back(*i);
                             break;
                         }
                     }
@@ -3344,24 +3455,24 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         {
             if (isfirst)
             {
-                for (int32_t i : may)
+                for (auto i = may.begin(); i != may.end(); i++)
                 {
-                    df::plant_raw *p = world->raws.plants.all[i];
-                    if (p->flags.is_set(df::plant_raw_flags(season)) && thread_plants.count(i))
+                    df::plant_raw *p = world->raws.plants.all[*i];
+                    if (p->flags.is_set(df::plant_raw_flags(season)) && thread_plants.count(*i))
                     {
-                        pids.push_back(i);
+                        pids.push_back(*i);
                     }
                 }
             }
             // only grow dyes the first field if there is no cloth crop available
             if (pids.empty())
             {
-                for (int32_t i : may)
+                for (auto i = may.begin(); i != may.end(); i++)
                 {
-                    df::plant_raw *p = world->raws.plants.all[i];
-                    if (p->flags.is_set(df::plant_raw_flags(season)) && (thread_plants.count(i) || dye_plants.count(i)))
+                    df::plant_raw *p = world->raws.plants.all[*i];
+                    if (p->flags.is_set(df::plant_raw_flags(season)) && (thread_plants.count(*i) || dye_plants.count(*i)))
                     {
-                        pids.push_back(i);
+                        pids.push_back(*i);
                     }
                 }
             }
@@ -3405,16 +3516,16 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
 
 void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
 {
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::EngraveSlab && mo->hist_figure_id == histfig_id)
+        if ((*mo)->job_type == job_type::EngraveSlab && (*mo)->hist_figure_id == histfig_id)
         {
             return;
         }
     }
-    for (df::item *item : world->items.other[items_other_id::SLAB])
+    for (auto item = world->items.other[items_other_id::SLAB].begin(); item != world->items.other[items_other_id::SLAB].end(); item++)
     {
-        df::item_slabst *sl = virtual_cast<df::item_slabst>(item);
+        df::item_slabst *sl = virtual_cast<df::item_slabst>(*item);
         if (sl->engraving_type == slab_engraving_type::Memorial && sl->topic == histfig_id)
         {
             return;
@@ -3435,9 +3546,9 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
 
 bool Stocks::need_more(std::string type)
 {
-    int32_t want = Needed.count(type) ? num_needed(type) : WatchStock.count(type) ? WatchStock.at(type) : 10;
-    if (NeededPerDwarf.count(type))
-        want += NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 9;
+    int32_t want = Watch.Needed.count(type) ? num_needed(type) : Watch.WatchStock.count(type) ? Watch.WatchStock.at(type) : 10;
+    if (Watch.NeededPerDwarf.count(type))
+        want += Watch.NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 9;
 
     return (count.count(type) ? count.at(type) : 0) < want;
 }

@@ -45,6 +45,8 @@ public:
     void onupdate(color_ostream & out);
 protected:
     friend class AI;
+    void clear();
+private:
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
 };

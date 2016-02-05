@@ -65,14 +65,20 @@ EventManager::EventManager() :
 
 EventManager::~EventManager()
 {
-    for (auto u : onupdate_list)
+}
+
+void EventManager::clear()
+{
+    for (auto it = onupdate_list.begin(); it != onupdate_list.end(); it++)
     {
-        delete u;
+        delete *it;
     }
-    for (auto u : onstatechange_list)
+    onupdate_list.clear();
+    for (auto it = onstatechange_list.begin(); it != onstatechange_list.end(); it++)
     {
-        delete u;
+        delete *it;
     }
+    onstatechange_list.clear();
 }
 
 static bool update_cmp(OnupdateCallback *a, OnupdateCallback *b)
@@ -149,9 +155,9 @@ void EventManager::onupdate(color_ostream & out)
     // make a copy
     std::vector<OnupdateCallback *> list = onupdate_list;
 
-    for (auto cb : list)
+    for (auto it = list.begin(); it != list.end(); it++)
     {
-        if (!cb->check_run(out, *cur_year, *cur_year_tick))
+        if (!(*it)->check_run(out, *cur_year, *cur_year_tick))
         {
             break;
         }
@@ -164,11 +170,11 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
     // make a copy
     std::vector<OnstatechangeCallback *> list = onstatechange_list;
 
-    for (auto cb : list)
+    for (auto it = list.begin(); it != list.end(); it++)
     {
-        if (cb->cb(out, event))
+        if ((*it)->cb(out, event))
         {
-            onstatechange_unregister(cb);
+            onstatechange_unregister(*it);
         }
     }
 }

@@ -4,6 +4,7 @@
 
 #include <map>
 #include <set>
+#include <tuple>
 
 #include "df/items_other_id.h"
 #include "df/job_skill.h"

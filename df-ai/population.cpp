@@ -106,9 +106,13 @@ const static struct LaborInfo
         medical.insert(unit_labor::DRESSING_WOUNDS);
         medical.insert(unit_labor::FEED_WATER_CIVILIANS);
 
-        stocks[unit_labor::PLANT] = {"food", "drink", "cloth"};
-        stocks[unit_labor::HERBALIST] = {"food", "drink", "cloth"};
-        stocks[unit_labor::FISH] = {"food"};
+        stocks[unit_labor::PLANT].insert("food");
+        stocks[unit_labor::PLANT].insert("drink");
+        stocks[unit_labor::PLANT].insert("cloth");
+        stocks[unit_labor::HERBALIST].insert("food");
+        stocks[unit_labor::HERBALIST].insert("drink");
+        stocks[unit_labor::HERBALIST].insert("cloth");
+        stocks[unit_labor::FISH].insert("food");
 
         hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
         hauling.insert(unit_labor::RECOVER_WOUNDED);
@@ -133,10 +137,10 @@ const static struct LaborInfo
         max_pct[unit_labor::FISH] = 10;
         max_pct[unit_labor::HERBALIST] = 30;
 
-        for (df::unit_labor ul : hauling)
+        for (auto it = hauling.begin(); it != hauling.end(); it++)
         {
-            min_pct[ul] = 30;
-            max_pct[ul] = 100;
+            min_pct[*it] = 30;
+            max_pct[*it] = 100;
         }
     }
 } labors;
@@ -225,8 +229,9 @@ void Population::update_citizenlist(color_ostream & out)
     std::set<int32_t> old = citizen;
 
     // add new fort citizen to our list
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (Units::isCitizen(u) && !Units::isBaby(u))
         {
             if (old.count(u->id))
@@ -241,10 +246,10 @@ void Population::update_citizenlist(color_ostream & out)
     }
 
     // del those who are no longer here
-    for (int32_t id : old)
+    for (auto it = old.begin(); it != old.end(); it++)
     {
         // u.counters.death_tg.flags.discovered dead/missing
-        del_citizen(out, id);
+        del_citizen(out, *it);
     }
 }
 
@@ -261,8 +266,9 @@ void Population::update_jobs(color_ostream & out)
 
 void Population::update_deads(color_ostream & out)
 {
-    for (df::unit *u : world->units.all)
+    for (auto it = world->units.all.begin(); it != world->units.all.end(); it++)
     {
+        df::unit *u = *it;
         if (u->flags3.bits.ghostly)
         {
             ai->stocks->queue_slab(out, u->hist_figure_id);
@@ -273,17 +279,18 @@ void Population::update_deads(color_ostream & out)
 void Population::update_caged(color_ostream & out)
 {
     int32_t count = 0;
-    for (df::item *cage : world->items.other[items_other_id::CAGE])
+    for (auto it = world->items.other[items_other_id::CAGE].begin(); it != world->items.other[items_other_id::CAGE].end(); it++)
     {
+        df::item *cage = *it;
         if (!cage->flags.bits.on_ground)
         {
             continue;
         }
-        for (auto ref : cage->general_refs)
+        for (auto ref = cage->general_refs.begin(); ref != cage->general_refs.end(); ref++)
         {
-            if (virtual_cast<df::general_ref_contains_itemst>(ref))
+            if (virtual_cast<df::general_ref_contains_itemst>(*ref))
             {
-                df::item *i = ref->getItem();
+                df::item *i = (*ref)->getItem();
                 if (i->flags.bits.dump)
                 {
                     continue;
@@ -291,23 +298,23 @@ void Population::update_caged(color_ostream & out)
                 count++;
                 i->flags.bits.dump = 1;
             }
-            else if (virtual_cast<df::general_ref_contains_unitst>(ref))
+            else if (virtual_cast<df::general_ref_contains_unitst>(*ref))
             {
-                df::unit *u = ref->getUnit();
+                df::unit *u = (*ref)->getUnit();
                 if (Units::isOwnCiv(u))
                 {
                     // TODO rescue caged dwarves
                 }
                 else
                 {
-                    for (auto it : u->inventory)
+                    for (auto ii = u->inventory.begin(); ii != u->inventory.end(); ii++)
                     {
-                        if (it->item->flags.bits.dump)
+                        if ((*ii)->item->flags.bits.dump)
                         {
                             continue;
                         }
                         count++;
-                        it->item->flags.bits.dump = 1;
+                        (*ii)->item->flags.bits.dump = 1;
                     }
 
                     if (u->inventory.empty())
@@ -335,8 +342,9 @@ void Population::update_military(color_ostream & out)
     // check for new soldiers, allocate barracks
     std::vector<int32_t> newsoldiers;
 
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (Units::isCitizen(u))
         {
             if (u->military.squad_id == -1)
@@ -359,14 +367,15 @@ void Population::update_military(color_ostream & out)
 
     // enlist new soldiers if needed
     std::vector<df::unit *> maydraft;
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None)
         {
             bool hasTool = false;
-            for (df::unit_labor lb : labors.tool)
+            for (auto it = labors.tool.begin(); it != labors.tool.end(); it++)
             {
-                if (u->status.labors[lb])
+                if (u->status.labors[*it])
                 {
                     hasTool = true;
                     break;
@@ -390,9 +399,9 @@ void Population::update_military(color_ostream & out)
         newsoldiers.push_back(ns->id);
     }
 
-    for (int32_t uid : newsoldiers)
+    for (auto it = newsoldiers.begin(); it != newsoldiers.end(); it++)
     {
-        ai->plan->getsoldierbarrack(out, uid);
+        ai->plan->getsoldierbarrack(out, *it);
     }
 
     /*
@@ -432,14 +441,14 @@ void Population::military_random_squad_attack_unit(df::unit *u)
 {
     df::squad *squad = nullptr;
     int32_t best = std::numeric_limits<int32_t>::min();
-    for (int32_t sqid : ui->main.fortress_entity->squads)
+    for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
     {
-        df::squad *sq = df::squad::find(sqid);
+        df::squad *sq = df::squad::find(*sqid);
 
         int32_t score = 0;
-        for (auto sp : sq->positions)
+        for (auto sp = sq->positions.begin(); sp != sq->positions.end(); sp++)
         {
-            if (sp->occupant != -1)
+            if ((*sp)->occupant != -1)
             {
                 score++;
             }
@@ -465,11 +474,11 @@ void Population::military_random_squad_attack_unit(df::unit *u)
 
 std::string Population::military_find_commander_pos()
 {
-    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
     {
-        if (a->responsibilities[entity_position_responsibility::MILITARY_STRATEGY] && a->flags.is_set(entity_position_raw_flags::SITE))
+        if ((*it)->responsibilities[entity_position_responsibility::MILITARY_STRATEGY] && (*it)->flags.is_set(entity_position_raw_flags::SITE))
         {
-            return a->code;
+            return (*it)->code;
         }
     }
     return "";
@@ -477,11 +486,11 @@ std::string Population::military_find_commander_pos()
 
 std::string Population::military_find_captain_pos()
 {
-    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
     {
-        if (a->flags.is_set(entity_position_raw_flags::MILITARY_SCREEN_ONLY) && a->flags.is_set(entity_position_raw_flags::SITE))
+        if ((*it)->flags.is_set(entity_position_raw_flags::MILITARY_SCREEN_ONLY) && (*it)->flags.is_set(entity_position_raw_flags::SITE))
         {
-            return a->code;
+            return (*it)->code;
         }
     }
     return "";
@@ -492,8 +501,9 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
 {
     df::unit *ns = nullptr;
     int32_t best = std::numeric_limits<int32_t>::max();
-    for (df::unit *u : unitlist)
+    for (auto it = unitlist.begin(); it != unitlist.end(); it++)
     {
+        df::unit *u = *it;
         if (u->military.squad_id == -1)
         {
             std::vector<Units::NoblePosition> positions;
@@ -523,9 +533,9 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
     ns->military.squad_id = squad_id;
     ns->military.squad_position = pos - squad->positions.begin();
 
-    for (df::entity_position_assignment *a : ui->main.fortress_entity->positions.assignments)
+    for (auto it = ui->main.fortress_entity->positions.assignments.begin(); it != ui->main.fortress_entity->positions.assignments.end(); it++)
     {
-        if (a->squad_id == squad_id)
+        if ((*it)->squad_id == squad_id)
         {
             return ns;
         }
@@ -552,19 +562,19 @@ int32_t Population::military_find_free_squad()
     if (military.size() < 3 * 4)
         squad_sz = 4;
 
-    for (int32_t sqid : ui->main.fortress_entity->squads)
+    for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
     {
         int32_t count = 0;
-        for (auto u : military)
+        for (auto it = military.begin(); it != military.end(); it++)
         {
-            if (u.second == sqid)
+            if (it->second == *sqid)
             {
                 count++;
             }
         }
         if (count < squad_sz)
         {
-            return sqid;
+            return *sqid;
         }
     }
 
@@ -584,41 +594,45 @@ int32_t Population::military_find_free_squad()
     squad->carry_food = 2;
     squad->carry_water = 2;
 
-    const static std::vector<std::pair<df::uniform_category, df::item_type>> item_type
+    const static struct uniform_category_item_type
     {
-        {uniform_category::body, item_type::ARMOR},
-        {uniform_category::head, item_type::HELM},
-        {uniform_category::pants, item_type::PANTS},
-        {uniform_category::gloves, item_type::GLOVES},
-        {uniform_category::shoes, item_type::SHOES},
-        {uniform_category::shield, item_type::SHIELD},
-        {uniform_category::weapon, item_type::WEAPON},
-    };
-    // uniform
-    for (df::squad_position *pos : squad->positions)
-    {
-        for (auto it : item_type)
+        std::vector<std::pair<df::uniform_category, df::item_type>> vec;
+        uniform_category_item_type()
         {
-            if (pos->uniform[it.first].empty())
+            vec.push_back(std::make_pair(uniform_category::body, item_type::ARMOR));
+            vec.push_back(std::make_pair(uniform_category::head, item_type::HELM));
+            vec.push_back(std::make_pair(uniform_category::pants, item_type::PANTS));
+            vec.push_back(std::make_pair(uniform_category::gloves, item_type::GLOVES));
+            vec.push_back(std::make_pair(uniform_category::shoes, item_type::SHOES));
+            vec.push_back(std::make_pair(uniform_category::shield, item_type::SHIELD));
+            vec.push_back(std::make_pair(uniform_category::weapon, item_type::WEAPON));
+        }
+    } item_type;
+    // uniform
+    for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
+    {
+        for (auto it = item_type.vec.begin(); it != item_type.vec.end(); it++)
+        {
+            if ((*pos)->uniform[it->first].empty())
             {
                 df::squad_uniform_spec *sus = df::allocate<df::squad_uniform_spec>();
                 sus->color = -1;
-                sus->item_filter.item_type = it.second;
-                sus->item_filter.material_class = it.first == uniform_category::weapon ? entity_material_category::None : entity_material_category::Armor;
+                sus->item_filter.item_type = it->second;
+                sus->item_filter.material_class = it->first == uniform_category::weapon ? entity_material_category::None : entity_material_category::Armor;
                 sus->item_filter.mattype = -1;
                 sus->item_filter.matindex = -1;
-                pos->uniform[it.first].push_back(sus);
+                (*pos)->uniform[it->first].push_back(sus);
             }
         }
-        pos->flags.bits.exact_matches = 1;
+        (*pos)->flags.bits.exact_matches = 1;
     }
 
     if (ui->main.fortress_entity->squads.size() % 3 == 0)
     {
         // ranged squad
-        for (df::squad_position *pos : squad->positions)
+        for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
         {
-            pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.ranged = 1;
+            (*pos)->uniform[uniform_category::weapon][0]->indiv_choice.bits.ranged = 1;
         }
         df::squad_ammo_spec *sas = df::allocate<df::squad_ammo_spec>();
         sas->item_filter.item_type = item_type::AMMO;
@@ -633,19 +647,19 @@ int32_t Population::military_find_free_squad()
     {
         // we don't want all the axes being used up by the military.
         std::vector<int32_t> weapons;
-        for (int32_t id : ui->main.fortress_entity->entity_raw->equipment.weapon_id)
+        for (auto it = ui->main.fortress_entity->entity_raw->equipment.weapon_id.begin(); it != ui->main.fortress_entity->entity_raw->equipment.weapon_id.end(); it++)
         {
-            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
+            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*it);
             if (idef->skill_melee != job_skill::MINING && idef->skill_melee != job_skill::AXE && idef->skill_ranged == job_skill::NONE && !idef->flags.is_set(weapon_flags::TRAINING))
             {
-                weapons.push_back(id);
+                weapons.push_back(*it);
             }
         }
         if (weapons.empty())
         {
-            for (df::squad_position *pos : squad->positions)
+            for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
             {
-                pos->uniform[uniform_category::weapon][0]->indiv_choice.bits.melee = 1;
+                (*pos)->uniform[uniform_category::weapon][0]->indiv_choice.bits.melee = 1;
             }
         }
         else
@@ -653,9 +667,9 @@ int32_t Population::military_find_free_squad()
             int32_t n = ui->main.fortress_entity->squads.size();
             n -= n / 3 + 1;
             n *= 10;
-            for (df::squad_position *pos : squad->positions)
+            for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
             {
-                pos->uniform[uniform_category::weapon][0]->item_filter.item_subtype = weapons[n % weapons.size()];
+                (*pos)->uniform[uniform_category::weapon][0]->item_filter.item_subtype = weapons[n % weapons.size()];
                 n++;
             }
         }
@@ -709,21 +723,21 @@ bool Population::unit_hasmilitaryduty(df::unit *u)
 int32_t Population::unit_totalxp(df::unit *u)
 {
     int32_t t = 0;
-    for (auto sk : u->status.current_soul->skills)
+    for (auto sk = u->status.current_soul->skills.begin(); sk != u->status.current_soul->skills.end(); sk++)
     {
-        int32_t rat = sk->rating;
-        t += 400 * rat + 100 * rat * (rat + 1) / 2 + sk->experience;
+        int32_t rat = (*sk)->rating;
+        t += 400 * rat + 100 * rat * (rat + 1) / 2 + (*sk)->experience;
     }
     return t;
 }
 
 std::string Population::positionCode(df::entity_position_responsibility responsibility)
 {
-    for (df::entity_position_raw *a : ui->main.fortress_entity->entity_raw->positions)
+    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
     {
-        if (a->responsibilities[responsibility])
+        if ((*it)->responsibilities[responsibility])
         {
-            return a->code;
+            return (*it)->code;
         }
     }
     return "";
@@ -732,8 +746,9 @@ std::string Population::positionCode(df::entity_position_responsibility responsi
 void Population::update_nobles(color_ostream & out)
 {
     std::vector<df::unit *> cz;
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         std::vector<Units::NoblePosition> positions;
         if (Units::isCitizen(u) && !Units::isBaby(u) && !Units::isChild(u) && u->military.squad_id == -1 && !Units::getNoblePositions(&positions, u))
         {
@@ -782,9 +797,9 @@ void Population::update_nobles(color_ostream & out)
         df::historical_figure *hf = df::historical_figure::find(asn->histfig);
         df::unit *doctor = df::unit::find(hf->unit_id);
         // doc => healthcare
-        for (df::unit_labor lb : labors.medical)
+        for (auto it = labors.medical.begin(); it != labors.medical.end(); it++)
         {
-            doctor->status.labors[lb] = true;
+            doctor->status.labors[*it] = true;
         }
     }
 
@@ -802,12 +817,12 @@ void Population::check_noble_appartments(color_ostream & out)
 {
     std::set<int32_t> noble_ids;
 
-    for (df::entity_position_assignment *asn : ui->main.fortress_entity->positions.assignments)
+    for (auto asn = ui->main.fortress_entity->positions.assignments.begin(); asn != ui->main.fortress_entity->positions.assignments.end(); asn++)
     {
-        df::entity_position *pos = binsearch_in_vector(ui->main.fortress_entity->positions.own, asn->position_id);
+        df::entity_position *pos = binsearch_in_vector(ui->main.fortress_entity->positions.own, (*asn)->position_id);
         if (pos->required_office > 0 || pos->required_dining > 0 || pos->required_tomb > 0)
         {
-            if (df::historical_figure *hf = df::historical_figure::find(asn->histfig))
+            if (df::historical_figure *hf = df::historical_figure::find((*asn)->histfig))
             {
                 noble_ids.insert(hf->unit_id);
             }
@@ -822,22 +837,21 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
     df::historical_entity *ent = ui->main.fortress_entity;
 
     df::entity_position *pos = nullptr;
-    for (df::entity_position *p : ent->positions.own)
+    for (auto p = ent->positions.own.begin(); p != ent->positions.own.end(); p++)
     {
-        if (p->code == pos_code)
+        if ((*p)->code == pos_code)
         {
-            pos = p;
+            pos = *p;
             break;
         }
     }
-    assert(pos);
 
     df::entity_position_assignment *assign = nullptr;
-    for (df::entity_position_assignment *a : ent->positions.assignments)
+    for (auto a = ent->positions.assignments.begin(); a != ent->positions.assignments.end(); a++)
     {
-        if (a->position_id == pos->id && a->histfig == -1)
+        if ((*a)->position_id == pos->id && (*a)->histfig == -1)
         {
-            assign = a;
+            assign = *a;
             break;
         }
     }
@@ -877,23 +891,24 @@ void Population::update_pets(color_ostream & out)
 {
     int32_t needmilk = 0;
     int32_t needshear = 0;
-    for (df::manager_order *mo : world->manager_orders)
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
-        if (mo->job_type == job_type::MilkCreature)
+        if ((*mo)->job_type == job_type::MilkCreature)
         {
-            needmilk -= mo->amount_left;
+            needmilk -= (*mo)->amount_left;
         }
-        else if (mo->job_type == job_type::ShearCreature)
+        else if ((*mo)->job_type == job_type::ShearCreature)
         {
-            needshear -= mo->amount_left;
+            needshear -= (*mo)->amount_left;
         }
     }
 
     std::map<df::caste_raw *, std::set<std::pair<int32_t, df::unit *>>> forSlaughter;
 
     std::map<int32_t, pet_flags> np = pet;
-    for (df::unit *u : world->units.active)
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
+        df::unit *u = *it;
         if (!Units::isOwnCiv(u) || Units::isOwnRace(u))
         {
             continue;
@@ -929,9 +944,9 @@ void Population::update_pets(color_ostream & out)
             if (pet.at(u->id).bits.milkable && !Units::isBaby(u) && !Units::isChild(u))
             {
                 bool have = false;
-                for (auto mt : u->status.misc_traits)
+                for (auto mt = u->status.misc_traits.begin(); mt != u->status.misc_traits.end(); mt++)
                 {
-                    if (mt->id == misc_trait_type::MilkCounter)
+                    if ((*mt)->id == misc_trait_type::MilkCounter)
                     {
                         have = true;
                         break;
@@ -946,11 +961,11 @@ void Population::update_pets(color_ostream & out)
             if (pet.at(u->id).bits.shearable && !Units::isBaby(u) && !Units::isChild(u))
             {
                 bool found = false;
-                for (auto stl : cst->shearable_tissue_layer)
+                for (auto stl = cst->shearable_tissue_layer.begin(); stl != cst->shearable_tissue_layer.end(); stl++)
                 {
-                    for (auto bpi : stl->bp_modifiers_idx)
+                    for (auto bpi = (*stl)->bp_modifiers_idx.begin(); bpi != (*stl)->bp_modifiers_idx.end(); bpi++)
                     {
-                        if (u->appearance.bp_modifiers[bpi] >= stl->length)
+                        if (u->appearance.bp_modifiers[*bpi] >= (*stl)->length)
                         {
                             needshear++;
                             found = true;
@@ -1005,31 +1020,31 @@ void Population::update_pets(color_ostream & out)
         pet[u->id] = flags;
     }
 
-    for (auto p : np)
+    for (auto p = np.begin(); p != np.end(); p++)
     {
-        ai->plan->freepasture(out, p.first);
-        pet.erase(p.first);
+        ai->plan->freepasture(out, p->first);
+        pet.erase(p->first);
     }
 
-    for (auto cst : forSlaughter)
+    for (auto cst = forSlaughter.begin(); cst != forSlaughter.end(); cst++)
     {
         // we have reproductively viable animals, but there are more than 5 of
         // this sex (full-grown). kill the oldest ones for meat/leather/bones.
 
-        if (cst.second.size() > 5)
+        if (cst->second.size() > 5)
         {
             // remove the youngest 5
-            auto it = cst.second.begin();
+            auto it = cst->second.begin();
             std::advance(it, 5);
-            cst.second.erase(cst.second.begin(), it);
+            cst->second.erase(cst->second.begin(), it);
 
-            for (auto candidate : cst.second)
+            for (auto it = cst->second.begin(); it != cst->second.end(); it++)
             {
-                int32_t age = candidate.first;
-                df::unit *u = candidate.second;
+                int32_t age = it->first;
+                df::unit *u = it->second;
                 df::creature_raw *race = df::creature_raw::find(u->race);
                 u->flags2.bits.slaughter = 1;
-                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst.first->caste_id.c_str()));
+                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->first->caste_id.c_str()));
             }
         }
     }
