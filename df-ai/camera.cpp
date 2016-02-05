@@ -123,7 +123,7 @@ void Camera::update(color_ostream & out)
             targets1.push_back(u);
         }
     }
-    auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(n)(ai->rng); };
+    auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(0, n - 1)(ai->rng); };
     std::random_shuffle(targets1.begin(), targets1.end(), rnd_shuffle);
     std::vector<df::unit *> targets2;
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
