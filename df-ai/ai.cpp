@@ -126,13 +126,13 @@ void AI::write_df(std::ostream & out, const std::string & str, const std::string
     out.flush();
 }
 
-void AI::debug(color_ostream & out, std::string str, df::coord announce)
+void AI::debug(color_ostream & out, const std::string & str, df::coord announce)
 {
     Gui::showZoomAnnouncement(df::announcement_type(0), announce, "AI: " + str, 7, false);
     debug(out, str);
 }
 
-void AI::debug(color_ostream & out, std::string str)
+void AI::debug(color_ostream & out, const std::string & str)
 {
     std::string ts = timestamp();
 

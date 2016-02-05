@@ -1739,7 +1739,6 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             // XXX else quarry?
         }
     }
-    ai->debug(out, "couldn't build " + describe_room(r));
     return false;
 }
 
@@ -3273,8 +3272,6 @@ void Plan::monitor_cistern(color_ostream & out)
     // buildingdestroyers from messing with the floodgates
     uint32_t cistlvl = Maps::getTileDesignation(m_c_cistern->pos() + df::coord(0, 0, 1))->bits.flow_size;
     uint32_t resvlvl = Maps::getTileDesignation(m_c_reserve->pos())->bits.flow_size;
-
-    ai->debug(out, stl_sprintf("cistern: well(%d/7), reserve(%d/7), in(%s), out(%s)", cistlvl, resvlvl, f_in_closed ? "closed" : "open", f_out_closed ? "closed" : "open"));
 
     if (resvlvl <= 1)
     {
