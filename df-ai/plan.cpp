@@ -5859,7 +5859,7 @@ bool Plan::map_tile_intersects_room(df::coord t)
         if ((*r)->safe_include(t))
             return true;
     }
-    for (auto r = corridors.begin(); r != rooms.end(); r++)
+    for (auto r = corridors.begin(); r != corridors.end(); r++)
     {
         if ((*r)->safe_include(t))
             return true;
