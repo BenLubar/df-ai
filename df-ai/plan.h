@@ -131,8 +131,6 @@ public:
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activityzone(color_ostream & out, room *r);
 
-    void setup_stockpile_settings(color_ostream & out, std::string subtype, df::stockpile_settings & settings, df::building_stockpilest *bld = nullptr, room *r = nullptr);
-
     bool construct_farmplot(color_ostream & out, room *r);
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);

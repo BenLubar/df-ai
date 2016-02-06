@@ -47,8 +47,10 @@
 #include "df/ui.h"
 #include "df/unit.h"
 #include "df/vehicle.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/world.h"
 
+REQUIRE_GLOBAL(cursor);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
@@ -1747,13 +1749,54 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(Buildings::allocInstance(r->min, building_type::Stockpile));
-    Buildings::setSize(bld, r->size());
-    Buildings::constructAbstract(bld);
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+        return false;
+
+    AI::feed_key(interface_key::D_STOCKPILES);
+    cursor->x = r->min.x + 1;
+    cursor->y = r->min.y;
+    cursor->z = r->min.z;
+    AI::feed_key(interface_key::CURSOR_LEFT);
+    const static struct stockpile_keys
+    {
+        std::map<std::string, df::interface_key> map;
+
+        stockpile_keys()
+        {
+            map["animals"] = interface_key::STOCKPILE_ANIMAL;
+            map["food"] = interface_key::STOCKPILE_FOOD;
+            map["weapons"] = interface_key::STOCKPILE_WEAPON;
+            map["armor"] = interface_key::STOCKPILE_ARMOR;
+            map["furniture"] = interface_key::STOCKPILE_FURNITURE;
+            map["corpses"] = interface_key::STOCKPILE_GRAVEYARD;
+            map["refuse"] = interface_key::STOCKPILE_REFUSE;
+            map["wood"] = interface_key::STOCKPILE_WOOD;
+            map["stone"] = interface_key::STOCKPILE_STONE;
+            map["gems"] = interface_key::STOCKPILE_GEM;
+            map["bars_blocks"] = interface_key::STOCKPILE_BARBLOCK;
+            map["cloth"] = interface_key::STOCKPILE_CLOTH;
+            map["leather"] = interface_key::STOCKPILE_LEATHER;
+            map["ammo"] = interface_key::STOCKPILE_AMMO;
+            map["coins"] = interface_key::STOCKPILE_COINS;
+            map["finished_goods"] = interface_key::STOCKPILE_FINISHED;
+            map["sheets"] = interface_key::STOCKPILE_SHEET;
+        }
+    } stockpile_keys;
+    AI::feed_key(stockpile_keys.map.at(r->subtype));
+    AI::feed_key(interface_key::SELECT);
+    for (int16_t x = r->min.x; x < r->max.x; x++)
+    {
+        AI::feed_key(interface_key::CURSOR_RIGHT);
+    }
+    for (int16_t y = r->min.y; y < r->max.y; y++)
+    {
+        AI::feed_key(interface_key::CURSOR_DOWN);
+    }
+    AI::feed_key(interface_key::SELECT);
+    AI::feed_key(interface_key::LEAVESCREEN);
+    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
     r->bld_id = bld->id;
     furnish_room(out, r);
-
-    setup_stockpile_settings(out, r->subtype, bld->settings, bld, r);
 
     if (r->workshop && r->subtype == "stone")
     {
@@ -1852,474 +1895,6 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     }
 
     return true;
-}
-
-void Plan::setup_stockpile_settings(color_ostream & out, std::string subtype, df::stockpile_settings & settings, df::building_stockpilest *bld, room *r)
-{
-#define NUM_ENUM_VALUES(t) (df::enum_traits<df::t>::last_item_value - df::enum_traits<df::t>::first_item_value + 1)
-    if (subtype == "stone")
-    {
-        settings.flags.bits.stone = 1;
-        auto & t = settings.stone.mats;
-        t.resize(world->raws.inorganics.size());
-        if (r && r->workshop && r->workshop->subtype == "Masons")
-        {
-            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
-            {
-                t[i] = !ui->economic_stone[i];
-            }
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Smelter")
-        {
-            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
-            {
-                t[i] = world->raws.inorganics[i]->flags.is_set(inorganic_flags::METAL_ORE);
-            }
-        }
-        else
-        {
-            t.clear();
-            t.resize(world->raws.inorganics.size(), true);
-        }
-        if (r)
-        {
-            bld->max_wheelbarrows = 1;
-        }
-    }
-    else if (subtype == "wood")
-    {
-        settings.flags.bits.wood = 1;
-        auto & t = settings.wood.mats;
-        t.clear();
-        t.resize(world->raws.plants.all.size(), true);
-    }
-    else if (subtype == "furniture")
-    {
-        settings.flags.bits.furniture = 1;
-        settings.furniture.sand_bags = true;
-        auto & s = settings.furniture;
-        s.type.clear();
-        s.type.resize(NUM_ENUM_VALUES(furniture_type), true);
-        s.other_mats.clear();
-        s.other_mats.resize(16, true);
-        s.mats.clear();
-        s.mats.resize(world->raws.inorganics.size(), true);
-        FOR_ENUM_ITEMS(item_quality, i)
-        {
-            s.quality_core[i] = true;
-            s.quality_total[i] = true;
-        }
-    }
-    else if (subtype == "finished_goods")
-    {
-        settings.flags.bits.finished_goods = 1;
-        auto & s = settings.finished_goods;
-        s.type.clear();
-        s.type.resize(NUM_ENUM_VALUES(item_type), true);
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        s.other_mats.clear();
-        s.other_mats.resize(17, true);
-        s.mats.clear();
-        s.mats.resize(world->raws.inorganics.size(), true);
-        FOR_ENUM_ITEMS(item_quality, i)
-        {
-            s.quality_core[i] = true;
-            s.quality_total[i] = true;
-        }
-    }
-    else if (subtype == "ammo")
-    {
-        settings.flags.bits.ammo = 1;
-        auto & s = settings.ammo;
-        s.type.clear();
-        s.type.resize(world->raws.itemdefs.ammo.size(), true);
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        s.other_mats.clear();
-        s.other_mats.resize(2, true);
-        s.mats.clear();
-        s.mats.resize(world->raws.inorganics.size(), true);
-        FOR_ENUM_ITEMS(item_quality, i)
-        {
-            s.quality_core[i] = true;
-            s.quality_total[i] = true;
-        }
-    }
-    else if (subtype == "weapons")
-    {
-        settings.flags.bits.weapons = 1;
-        auto & s = settings.weapons;
-        s.weapon_type.clear();
-        s.weapon_type.resize(world->raws.itemdefs.weapons.size(), true);
-        s.trapcomp_type.clear();
-        s.trapcomp_type.resize(world->raws.itemdefs.trapcomps.size(), true);
-        s.usable = true;
-        s.unusable = true;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        s.other_mats.clear();
-        s.other_mats.resize(11, true);
-        s.mats.clear();
-        s.mats.resize(world->raws.inorganics.size(), true);
-        FOR_ENUM_ITEMS(item_quality, i)
-        {
-            s.quality_core[i] = true;
-            s.quality_total[i] = true;
-        }
-    }
-    else if (subtype == "armor")
-    {
-        settings.flags.bits.armor = 1;
-        auto & s = settings.armor;
-        s.body.clear();
-        s.body.resize(world->raws.itemdefs.armor.size(), true);
-        s.head.clear();
-        s.head.resize(world->raws.itemdefs.helms.size(), true);
-        s.feet.clear();
-        s.feet.resize(world->raws.itemdefs.shoes.size(), true);
-        s.legs.clear();
-        s.legs.resize(world->raws.itemdefs.pants.size(), true);
-        s.hands.clear();
-        s.hands.resize(world->raws.itemdefs.gloves.size(), true);
-        s.shield.clear();
-        s.shield.resize(world->raws.itemdefs.shields.size(), true);
-        s.usable = true;
-        s.unusable = true;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        s.other_mats.clear();
-        s.other_mats.resize(11, true);
-        s.mats.clear();
-        s.mats.resize(world->raws.inorganics.size(), true);
-        FOR_ENUM_ITEMS(item_quality, i)
-        {
-            s.quality_core[i] = true;
-            s.quality_total[i] = true;
-        }
-    }
-    else if (subtype == "animals")
-    {
-        settings.flags.bits.animals = 1;
-        auto & s = settings.animals;
-        s.empty_cages = s.empty_traps = !r || r->level > 1;
-        s.enabled.clear();
-        s.enabled.resize(world->raws.creatures.all.size(), true);
-    }
-    else if (subtype == "refuse" || subtype == "corpses")
-    {
-        settings.flags.bits.refuse = 1;
-        auto & t = settings.refuse;
-        size_t creatures = world->raws.creatures.all.size();
-        t.fresh_raw_hide = false;
-        t.rotten_raw_hide = true;
-        if (r && r->workshop && r->workshop->subtype == "Craftsdwarfs")
-        {
-            t.corpses.clear();
-            t.corpses.resize(creatures, false);
-            t.body_parts.clear();
-            t.body_parts.resize(creatures, false);
-            t.hair.clear();
-            t.hair.resize(creatures, false);
-            t.skulls.clear();
-            t.skulls.resize(creatures, true);
-            t.bones.clear();
-            t.bones.resize(creatures, true);
-            t.shells.clear();
-            t.shells.resize(creatures, true);
-            t.teeth.clear();
-            t.teeth.resize(creatures, true);
-            t.horns.clear();
-            t.horns.resize(creatures, true);
-        }
-        else if (subtype == "corpses")
-        {
-            t.type.clear();
-            t.type.resize(NUM_ENUM_VALUES(item_type), true);
-            t.type[item_type::REMAINS] = false;
-            t.type[item_type::PLANT] = false;
-            t.type[item_type::PLANT_GROWTH] = false;
-            t.corpses.clear();
-            t.corpses.resize(creatures, true);
-            t.body_parts.clear();
-            t.body_parts.resize(creatures, true);
-            t.hair.clear();
-            t.hair.resize(creatures, false);
-            t.skulls.clear();
-            t.skulls.resize(creatures, false);
-            t.bones.clear();
-            t.bones.resize(creatures, false);
-            t.shells.clear();
-            t.shells.resize(creatures, false);
-            t.teeth.clear();
-            t.teeth.resize(creatures, false);
-            t.horns.clear();
-            t.horns.resize(creatures, false);
-        }
-        else
-        {
-            t.fresh_raw_hide = true;
-            t.rotten_raw_hide = false;
-            t.corpses.clear();
-            t.corpses.resize(creatures, false);
-            t.body_parts.clear();
-            t.body_parts.resize(creatures, false);
-            t.hair.clear();
-            t.hair.resize(creatures, true);
-            t.skulls.clear();
-            t.skulls.resize(creatures, true);
-            t.bones.clear();
-            t.bones.resize(creatures, true);
-            t.shells.clear();
-            t.shells.resize(creatures, true);
-            t.teeth.clear();
-            t.teeth.resize(creatures, true);
-            t.horns.clear();
-            t.horns.resize(creatures, true);
-        }
-    }
-    else if (subtype == "food")
-    {
-        settings.flags.bits.food = true;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_barrels = size.x * size.y;
-        }
-        auto & t = settings.food;
-        auto & mt = world->raws.mat_table;
-        if (r && r->workshop && r->workshop->type == "farmplot")
-        {
-            t.seeds.clear();
-            t.seeds.resize(mt.organic_types[organic_mat_category::Seed].size(), true);
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Farmers")
-        {
-            t.plants.clear();
-            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
-            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Plants].size(); i++)
-            {
-                // include MILL because the quern is near
-                MaterialInfo plant(mt.organic_types[organic_mat_category::Plants][i], mt.organic_indexes[organic_mat_category::Plants][i]);
-                t.plants[i] = plant.plant->flags.is_set(plant_raw_flags::THREAD) || plant.plant->flags.is_set(plant_raw_flags::MILL);
-            }
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Still")
-        {
-            t.plants.clear();
-            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size());
-            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Plants].size(); i++)
-            {
-                MaterialInfo plant(mt.organic_types[organic_mat_category::Plants][i], mt.organic_indexes[organic_mat_category::Plants][i]);
-                t.plants[i] = plant.plant->flags.is_set(plant_raw_flags::DRINK);
-            }
-            t.leaves.clear();
-            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size());
-            for (size_t i = 0; i < mt.organic_types[organic_mat_category::Leaf].size(); i++)
-            {
-                MaterialInfo plant(mt.organic_types[organic_mat_category::Leaf][i], mt.organic_indexes[organic_mat_category::Leaf][i]);
-                t.leaves[i] = plant.plant->flags.is_set(plant_raw_flags::DRINK);
-            }
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Kitchen")
-        {
-            t.meat.clear();
-            t.meat.resize(mt.organic_types[organic_mat_category::Meat].size(), true);
-            t.fish.clear();
-            t.fish.resize(mt.organic_types[organic_mat_category::Fish].size(), true);
-            t.egg.clear();
-            t.egg.resize(mt.organic_types[organic_mat_category::Eggs].size(), true);
-            t.leaves.clear();
-            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size(), true);
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Fishery")
-        {
-            t.unprepared_fish.clear();
-            t.unprepared_fish.resize(mt.organic_types[organic_mat_category::UnpreparedFish].size(), true);
-        }
-        else
-        {
-            t.prepared_meals = true;
-            t.meat.clear();
-            t.meat.resize(mt.organic_types[organic_mat_category::Meat].size(), true);
-            t.fish.clear();
-            t.fish.resize(mt.organic_types[organic_mat_category::Fish].size(), true);
-            t.unprepared_fish.clear();
-            t.unprepared_fish.resize(mt.organic_types[organic_mat_category::UnpreparedFish].size(), true);
-            t.egg.clear();
-            t.egg.resize(mt.organic_types[organic_mat_category::Eggs].size(), true);
-            t.plants.clear();
-            t.plants.resize(mt.organic_types[organic_mat_category::Plants].size(), true);
-            t.drink_plant.clear();
-            t.drink_plant.resize(mt.organic_types[organic_mat_category::PlantDrink].size(), true);
-            t.drink_animal.clear();
-            t.drink_animal.resize(mt.organic_types[organic_mat_category::CreatureDrink].size(), true);
-            t.cheese_plant.clear();
-            t.cheese_plant.resize(mt.organic_types[organic_mat_category::PlantCheese].size(), true);
-            t.cheese_animal.clear();
-            t.cheese_animal.resize(mt.organic_types[organic_mat_category::CreatureCheese].size(), true);
-            t.seeds.clear();
-            t.seeds.resize(mt.organic_types[organic_mat_category::Seed].size(), true);
-            t.leaves.clear();
-            t.leaves.resize(mt.organic_types[organic_mat_category::Leaf].size(), true);
-            t.powder_plant.clear();
-            t.powder_plant.resize(mt.organic_types[organic_mat_category::PlantPowder].size(), true);
-            t.powder_creature.clear();
-            t.powder_creature.resize(mt.organic_types[organic_mat_category::CreaturePowder].size(), true);
-            t.glob.clear();
-            t.glob.resize(mt.organic_types[organic_mat_category::Glob].size(), true);
-            t.glob_paste.clear();
-            t.glob_paste.resize(mt.organic_types[organic_mat_category::Paste].size(), true);
-            t.glob_pressed.clear();
-            t.glob_pressed.resize(mt.organic_types[organic_mat_category::Pressed].size(), true);
-            t.liquid_plant.clear();
-            t.liquid_plant.resize(mt.organic_types[organic_mat_category::PlantLiquid].size(), true);
-            t.liquid_animal.clear();
-            t.liquid_animal.resize(mt.organic_types[organic_mat_category::CreatureLiquid].size(), true);
-            t.liquid_misc.clear();
-            t.liquid_misc.resize(mt.organic_types[organic_mat_category::MiscLiquid].size(), true);
-        }
-    }
-    else if (subtype == "cloth")
-    {
-        settings.flags.bits.cloth = 1;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        auto & t = settings.cloth;
-        auto cloth = [&t](bool thread, bool cloth)
-        {
-            auto & mt = world->raws.mat_table;
-            t.thread_silk.clear();
-            t.thread_silk.resize(mt.organic_types[organic_mat_category::Silk].size(), thread);
-            t.cloth_silk.clear();
-            t.cloth_silk.resize(mt.organic_types[organic_mat_category::Silk].size(), cloth);
-            t.thread_plant.clear();
-            t.thread_plant.resize(mt.organic_types[organic_mat_category::PlantFiber].size(), thread);
-            t.cloth_plant.clear();
-            t.cloth_plant.resize(mt.organic_types[organic_mat_category::PlantFiber].size(), cloth);
-            t.thread_yarn.clear();
-            t.thread_yarn.resize(mt.organic_types[organic_mat_category::Yarn].size(), thread);
-            t.cloth_yarn.clear();
-            t.cloth_yarn.resize(mt.organic_types[organic_mat_category::Yarn].size(), cloth);
-            t.thread_metal.clear();
-            t.thread_metal.resize(mt.organic_types[organic_mat_category::MetalThread].size(), thread);
-            t.cloth_metal.clear();
-            t.cloth_metal.resize(mt.organic_types[organic_mat_category::MetalThread].size(), cloth);
-        };
-        if (r && r->workshop && r->workshop->subtype == "Loom")
-        {
-            cloth(true, false);
-        }
-        else if (r && r->workshop && r->workshop->subtype == "Clothiers")
-        {
-            cloth(false, true);
-        }
-        else
-        {
-            cloth(true, true);
-        }
-    }
-    else if (subtype == "leather")
-    {
-        settings.flags.bits.leather = 1;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        auto & t = settings.leather;
-        t.mats.clear();
-        t.mats.resize(world->raws.mat_table.organic_types[organic_mat_category::Leather].size(), true);
-    }
-    else if (subtype == "gems")
-    {
-        settings.flags.bits.gems = 1;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        auto & t = settings.gems;
-        if (r && r->workshop && r->workshop->subtype == "Jewelers")
-        {
-            t.rough_other_mats.clear();
-            t.rough_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), false);
-            t.cut_other_mats.clear();
-            t.cut_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), false);
-            t.rough_mats.clear();
-            t.rough_mats.resize(world->raws.inorganics.size(), true);
-            t.cut_mats.clear();
-            t.cut_mats.resize(world->raws.inorganics.size(), false);
-        }
-        else
-        {
-            t.rough_other_mats.clear();
-            t.rough_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), true);
-            t.cut_other_mats.clear();
-            t.cut_other_mats.resize(NUM_ENUM_VALUES(builtin_mats), true);
-            t.rough_mats.clear();
-            t.rough_mats.resize(world->raws.inorganics.size(), true);
-            t.cut_mats.clear();
-            t.cut_mats.resize(world->raws.inorganics.size(), true);
-        }
-    }
-    else if (subtype == "bars_blocks")
-    {
-        settings.flags.bits.bars_blocks = 1;
-        if (r)
-        {
-            df::coord size = r->size();
-            bld->max_bins = size.x * size.y;
-        }
-        auto & s = settings.bars_blocks;
-        if (r && r->workshop && r->workshop->subtype == "MetalsmithsForge")
-        {
-            s.bars_mats.clear();
-            s.bars_mats.resize(world->raws.inorganics.size());
-            for (size_t i = 0; i < world->raws.inorganics.size(); i++)
-            {
-                s.bars_mats[i] = world->raws.inorganics[i]->material.flags.is_set(material_flags::IS_METAL);
-            }
-            s.bars_other_mats.clear();
-            s.bars_other_mats.resize(5, false);
-            s.bars_other_mats[0] = true; // coal
-            settings.allow_organic = false;
-        }
-        else
-        {
-            s.bars_mats.clear();
-            s.bars_mats.resize(world->raws.inorganics.size(), true);
-            // coal / potash / ash / pearlash / soap
-            s.bars_other_mats.clear();
-            s.bars_other_mats.resize(5, true);
-            // green/clear/crystal glass / wood
-            s.blocks_other_mats.clear();
-            s.blocks_other_mats.resize(4, true);
-        }
-    }
-    else if (subtype == "coins")
-    {
-        settings.flags.bits.coins = 1;
-        auto & t = settings.coins;
-        t.mats.clear();
-        t.mats.resize(world->raws.inorganics.size(), true);
-    }
-#undef NUM_ENUM_VALUES
 }
 
 const static struct farm_allowed_materials
