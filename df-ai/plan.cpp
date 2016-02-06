@@ -3985,14 +3985,14 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
             rooms.push_back(r1);
 
             r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
-            r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
+            r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
             r0->level = 2;
             r1->level = 2;
             rooms.push_back(r0);
             rooms.push_back(r1);
 
             r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
-            r1 = new room("stockpile", t0, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
+            r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
             r0->level = 3;
             r1->level = 3;
             rooms.push_back(r0);
