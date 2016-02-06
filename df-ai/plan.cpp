@@ -1794,6 +1794,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     }
     AI::feed_key(interface_key::SELECT);
     AI::feed_key(interface_key::LEAVESCREEN);
+    ai->camera->ignore_pause();
     df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
     r->bld_id = bld->id;
     furnish_room(out, r);
