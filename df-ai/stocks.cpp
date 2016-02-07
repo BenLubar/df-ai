@@ -401,45 +401,35 @@ std::string Stocks::status()
     s << "need: ";
     for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
     {
-        if (first)
-            first = false;
-        else
-            s << ", ";
-
         int32_t want = num_needed(it->first);
         int32_t have = count[it->first];
-        s << it->first << ": " << have << "/" << want;
-        if (have < want)
-            s << "!!!";
+
+        if (have >= want)
+            continue;
+
+        if (first)
+            first = false;
+        else
+            s << ", ";
+
+        s << it->first;
     }
 
     first = true;
-    s << "\nwatch: ";
+    s << "; use: ";
     for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
     {
-        if (first)
-            first = false;
-        else
-            s << ", ";
-
         int32_t want = it->second;
         int32_t have = count[it->first];
-        s << it->first << ": " << have << "/" << want;
-        if (have > want)
-            s << "!!!";
-    }
+        if (have <= want)
+            continue;
 
-    first = true;
-    s << "\nextra: ";
-    for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
-    {
         if (first)
             first = false;
         else
             s << ", ";
 
-        int32_t have = count[*it];
-        s << *it << ": " << have;
+        s << it->first;
     }
 
     return s.str();
@@ -1726,6 +1716,9 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     ai->debug(out, stl_sprintf("stocks: need %d %s for %s", amount, order.c_str(), what.c_str()));
 
+    if (amount > 30)
+        amount = 30;
+
     if (!input.empty())
     {
         int32_t i_amount = amount;
@@ -1761,9 +1754,6 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
             amount = i_amount;
         }
     }
-
-    if (amount > 30)
-        amount = 30;
 
     auto os = find_manager_orders(order);
     for (auto o = os.begin(); o != os.end(); o++)
@@ -2415,6 +2405,9 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
 
     ai->debug(out, stl_sprintf("stocks: use %d %s for %s", amount, order.c_str(), what.c_str()));
 
+    if (amount > 30)
+        amount = 30;
+
     if (!input.empty())
     {
         int32_t i_amount = amount;
@@ -2431,9 +2424,6 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
         }
         amount = i_amount;
     }
-
-    if (amount > 30)
-        amount = 30;
 
     auto mo = find_manager_orders(order);
     for (auto o = mo.begin(); o != mo.end(); o++)
