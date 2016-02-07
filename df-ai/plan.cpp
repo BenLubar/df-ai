@@ -4124,7 +4124,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
         std::vector<int16_t> dxs;
         dxs.push_back(5);
-        dxs.push_back(3);
+        dxs.push_back(4);
         dxs.push_back(6);
         dxs.push_back(3);
         dxs.push_back(7);
