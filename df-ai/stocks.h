@@ -37,6 +37,7 @@ private:
     bool updating_seeds;
     bool updating_plants;
     bool updating_corpses;
+    bool updating_slabs;
     std::vector<room *> updating_farmplots;
 public:
     // depends on raws.itemdefs, wait until a world is loaded
@@ -82,6 +83,7 @@ public:
     void count_seeds(color_ostream & out);
     void count_plants(color_ostream & out);
     void update_corpses(color_ostream & out);
+    void update_slabs(color_ostream & out);
 
     int32_t num_needed(const std::string & key);
     void act(color_ostream & out, std::string key);

@@ -11,6 +11,7 @@
 
 #include "df/building_coffinst.h"
 #include "df/building_farmplotst.h"
+#include "df/building_slabst.h"
 #include "df/building_trapst.h"
 #include "df/buildings_other_id.h"
 #include "df/corpse_material_type.h"
@@ -22,6 +23,7 @@
 #include "df/general_ref_contains_unitst.h"
 #include "df/general_ref_unit_holderst.h"
 #include "df/historical_entity.h"
+#include "df/historical_figure.h"
 #include "df/inorganic_raw.h"
 #include "df/item.h"
 #include "df/item_ammost.h"
@@ -317,6 +319,7 @@ Stocks::Stocks(AI *ai) :
     updating_seeds(false),
     updating_plants(false),
     updating_corpses(false),
+    updating_slabs(false),
     updating_farmplots(),
     manager_subtype(),
     last_treelist([ai](df::coord a, df::coord b) -> bool
@@ -497,6 +500,7 @@ void Stocks::update(color_ostream & out)
     updating_seeds = true;
     updating_plants = true;
     updating_corpses = true;
+    updating_slabs = true;
     updating_farmplots.clear();
 
     ai->plan->find_room("farmplot", [this](room *r) -> bool
@@ -526,6 +530,11 @@ void Stocks::update(color_ostream & out)
                 if (updating_corpses)
                 {
                     update_corpses(out);
+                    return false;
+                }
+                if (updating_slabs)
+                {
+                    update_slabs(out);
                     return false;
                 }
                 if (!updating_count.empty())
@@ -738,6 +747,60 @@ void Stocks::update_corpses(color_ostream & out)
         }
     }
     updating_corpses = false;
+}
+
+void Stocks::update_slabs(color_ostream & out)
+{
+    for (auto it = world->items.other[items_other_id::SLAB].begin(); it != world->items.other[items_other_id::SLAB].end(); it++)
+    {
+        df::item_slabst *i = virtual_cast<df::item_slabst>(*it);
+        if (is_item_free(i) && i->engraving_type == slab_engraving_type::Memorial)
+        {
+            df::coord pos;
+            pos.clear();
+
+            ai->plan->find_room("cemetary", [&pos](room *r) -> bool
+                    {
+                        if (r->status == "plan")
+                            return false;
+                        for (int16_t x = r->min.x; x <= r->max.x; x++)
+                        {
+                            for (int16_t y = r->min.y; y <= r->max.y; y++)
+                            {
+                                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(x, y, r->min.z))) == tiletype_shape_basic::Floor && Maps::getTileOccupancy(x, y, r->min.z)->bits.building == tile_building_occ::None)
+                                {
+                                    bool any = false;
+                                    for (auto f = r->layout.begin(); f != r->layout.end(); f++)
+                                    {
+                                        if ((*f)->x == x - r->min.x && (*f)->y == y - r->min.y)
+                                        {
+                                            any = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!any)
+                                    {
+                                        pos = df::coord(x, y, r->min.z);
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                        return false;
+                    });
+
+            if (pos.isValid())
+            {
+                df::building_slabst *bld = virtual_cast<df::building_slabst>(Buildings::allocInstance(pos, building_type::Slab));
+                Buildings::setSize(bld, df::coord(1, 1, 1));
+                std::vector<df::item *> item;
+                item.push_back(i);
+                Buildings::constructWithItems(bld, item);
+                ai->debug(out, "slabbing " + AI::describe_unit(df::unit::find(df::historical_figure::find(i->topic)->unit_id)) + ": " + i->description);
+            }
+        }
+    }
+    updating_slabs = false;
 }
 
 int32_t Stocks::num_needed(const std::string & key)
@@ -3531,7 +3594,6 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
     o->amount_total = 1;
     o->hist_figure_id = histfig_id;
     world->manager_orders.push_back(o);
-    // XXX we need to build the slab somewhere to kill the ghost
 }
 
 bool Stocks::need_more(std::string type)
