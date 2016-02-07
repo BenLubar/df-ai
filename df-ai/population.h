@@ -43,7 +43,6 @@ private:
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
-    int32_t last_idle_year;
 
 public:
     Population(AI *ai);

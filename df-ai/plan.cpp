@@ -50,6 +50,7 @@
 #include "df/viewscreen_dwarfmodest.h"
 #include "df/world.h"
 
+REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cursor);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
@@ -95,6 +96,7 @@ Plan::Plan(AI *ai) :
     dug_veins(),
     noblesuite(-1),
     cavern_max_level(-1),
+    last_idle_year(-1),
     allow_ice(false),
     past_initial_phase(false),
     cistern_channel_requested(false)
@@ -535,6 +537,12 @@ bool Plan::checkidle(color_ostream & out)
         }
         idleidle(out);
         return true;
+    }
+
+    if (last_idle_year != *cur_year)
+    {
+        last_idle_year = *cur_year;
+        idleidle(out);
     }
     return false;
 }

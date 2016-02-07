@@ -154,8 +154,7 @@ Population::Population(AI *ai) :
     onupdate_handle(nullptr),
     medic(),
     workers(),
-    seen_badwork(),
-    last_idle_year(-1)
+    seen_badwork()
 {
 }
 

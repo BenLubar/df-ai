@@ -65,6 +65,7 @@ private:
     std::set<df::coord> dug_veins;
     int32_t noblesuite;
     int16_t cavern_max_level;
+    int32_t last_idle_year;
     bool allow_ice;
 public:
     bool past_initial_phase;
