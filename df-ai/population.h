@@ -37,7 +37,6 @@ public:
     std::set<int32_t> citizen;
 private:
     std::map<int32_t, int32_t> military;
-    std::vector<int32_t> idlers;
     std::map<int32_t, pet_flags> pet;
     size_t update_counter;
     OnupdateCallback *onupdate_handle;

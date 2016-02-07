@@ -149,7 +149,6 @@ Population::Population(AI *ai) :
     ai(ai),
     citizen(),
     military(),
-    idlers(),
     pet(),
     update_counter(0),
     onupdate_handle(nullptr),
@@ -1084,7 +1083,7 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 
 std::string Population::status()
 {
-    return stl_sprintf("%d citizen, %d military, %d idle, %d pets", citizen.size(), military.size(), idlers.size(), pet.size());
+    return stl_sprintf("%d citizen, %d military, %d pets", citizen.size(), military.size(), pet.size());
 }
 
 // vim: et:sw=4:ts=4
