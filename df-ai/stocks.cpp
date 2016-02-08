@@ -731,7 +731,7 @@ void Stocks::count_plants(color_ostream & out)
 
 void Stocks::update_corpses(color_ostream & out)
 {
-    room *r = ai->plan->find_room("garbagedump");
+    room *r = ai->plan->find_room("garbagepit");
     if (!r)
         return;
     df::coord t = r->min - df::coord(0, 0, 1);
