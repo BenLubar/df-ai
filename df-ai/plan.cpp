@@ -578,7 +578,8 @@ void Plan::idleidle(color_ostream & out)
                  r->type == "dininghall" ||
                  r->type == "cemetary" ||
                  r->type == "infirmary" ||
-                 r->type == "barracks"))
+                 r->type == "barracks" ||
+                 r->type == "location"))
             idleidle_tab.push_back(r);
     }
     for (auto it = corridors.begin(); it != corridors.end(); it++)
