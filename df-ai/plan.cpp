@@ -349,6 +349,20 @@ bool Plan::is_idle()
     return true;
 }
 
+int32_t Plan::count_furnish_tasks(const std::string & item)
+{
+    int32_t n = 0;
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    {
+        task *t = *it;
+        if (t->type == "furnish" && t->f->item == item)
+        {
+            n++;
+        }
+    }
+    return n;
+}
+
 void Plan::new_citizen(color_ostream & out, int32_t uid)
 {
     if (std::find_if(tasks.begin(), tasks.end(), [](task *t) -> bool { return t->type == "checkidle"; }) == tasks.end())

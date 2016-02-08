@@ -840,6 +840,10 @@ int32_t Stocks::num_needed(const std::string & key)
     {
         amount = std::max(amount, count.at("dead_dwarf"));
     }
+    else
+    {
+        amount = std::max(amount, ai->plan->count_furnish_tasks(key));
+    }
     return amount;
 }
 
