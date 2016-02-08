@@ -753,7 +753,7 @@ void Stocks::update_corpses(color_ostream & out)
         {
             if (!i->flags.bits.dump && u)
             {
-                ai->debug(out, "stocks: dump corpse of " + AI::describe_unit(u));
+                ai->debug(out, "stocks: dump corpse of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
             }
             // dump corpses that aren't in a stockpile, a grave, or the dump.
             i->flags.bits.dump = true;
@@ -762,7 +762,7 @@ void Stocks::update_corpses(color_ostream & out)
         {
             if (i->flags.bits.forbid && u)
             {
-                ai->debug(out, "stocks: unforbid corpse of " + AI::describe_unit(u));
+                ai->debug(out, "stocks: unforbid corpse of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
             }
             // unforbid corpses in the dump so dwarves get buried before the next year.
             i->flags.bits.forbid = false;
