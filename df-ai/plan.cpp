@@ -3906,6 +3906,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                 rooms.push_back(r);
 
                 c.x = cx - 2;
+                c.y = f.y - 1;
                 r = new room("workshop", "ScrewPress", c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 0;
