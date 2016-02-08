@@ -40,6 +40,7 @@
 #include "df/item_corpsepiecest.h"
 #include "df/item_flaskst.h"
 #include "df/item_foodst.h"
+#include "df/item_globst.h"
 #include "df/item_glovesst.h"
 #include "df/item_helmst.h"
 #include "df/item_pantsst.h"
@@ -160,6 +161,10 @@ const static struct Watch
         Needed["armor_feet"] = 2;
         Needed["clothes_feet"] = 2;
         Needed["armor_shield"] = 2;
+        Needed["bookcase"] = 1;
+        Needed["slurry"] = 5;
+        Needed["paper"] = 5;
+        Needed["quire"] = 5;
 
         NeededPerDwarf["food"] = 100;
         NeededPerDwarf["drink"] = 200;
@@ -208,6 +213,7 @@ const static struct Watch
         AlsoCount.insert("bonebolts");
         AlsoCount.insert("stone");
         AlsoCount.insert("dead_dwarf");
+        AlsoCount.insert("slurry_plant");
     }
 } Watch;
 
@@ -245,6 +251,10 @@ const static struct Manager
         RealOrder["MakeWoodenStepladder"] = job_type::MakeTool;
         RealOrder["DecorateWithShell"] = job_type::DecorateWith;
         RealOrder["MakeClayStatue"] = job_type::CustomReaction;
+        RealOrder["MakeRockBookcase"] = job_type::MakeTool;
+        RealOrder["MakeSlurryFromPlant"] = job_type::CustomReaction;
+        RealOrder["PressPlantPaper"] = job_type::CustomReaction;
+        RealOrder["MakeQuire"] = job_type::CustomReaction;
 
         MatCategory["MakeRope"] = "cloth";
         MatCategory["MakeBag"] = "cloth";
@@ -291,6 +301,9 @@ const static struct Manager
         Type["MakeCheese"] = -1;
         Type["PrepareRawFish"] = -1;
         Type["MakeClayStatue"] = -1;
+        Type["MakeSlurryFromPlant"] = -1;
+        Type["PressPlantPaper"] = -1;
+        Type["MakeQuire"] = -1;
 
         Custom["ProcessPlantsBag"] = "PROCESS_PLANT_TO_BAG";
         Custom["BrewDrinkPlant"] = "BREW_DRINK_FROM_PLANT";
@@ -300,6 +313,9 @@ const static struct Manager
         Custom["MakePlasterPowder"] = "MAKE_PLASTER_POWDER";
         Custom["PressHoneycomb"] = "PRESS_HONEYCOMB";
         Custom["MakeClayStatue"] = "MAKE_CLAY_STATUE";
+        Custom["MakeSlurryFromPlant"] = "MAKE_SLURRY_FROM_PLANT";
+        Custom["PressPlantPaper"] = "PRESS_PLANT_PAPER";
+        Custom["MakeQuire"] = "MAKE_QUIRE";
     }
 } Manager;
 
@@ -341,6 +357,7 @@ Stocks::Stocks(AI *ai) :
     mill_plants(),
     bag_plants(),
     dye_plants(),
+    slurry_plants(),
     grow_plants(),
     milk_creatures(),
     clay_stones(),
@@ -588,6 +605,7 @@ void Stocks::update_plants(color_ostream & out)
     mill_plants.clear();
     bag_plants.clear();
     dye_plants.clear();
+    slurry_plants.clear();
     grow_plants.clear();
     milk_creatures.clear();
     clay_stones.clear();
@@ -629,6 +647,10 @@ void Stocks::update_plants(color_ostream & out)
         if (has_reaction_product(basic.material, "BAG_ITEM"))
         {
             bag_plants[i] = basic.type;
+        }
+        if (has_reaction_product(basic.material, "PRESS_PAPER_MAT"))
+        {
+            slurry_plants[i] = basic.type;
         }
         if (p->flags.is_set(plant_raw_flags::SEED) && p->flags.is_set(plant_raw_flags::BIOME_SUBTERRANEAN_WATER))
         {
@@ -1027,9 +1049,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                     return clay_stones.count(i->getMaterialIndex());
                 });
     }
-    else if (k == "drink_plant" || k == "thread_plant" || k == "mill_plant" || k == "bag_plant")
+    else if (k == "drink_plant" || k == "thread_plant" || k == "mill_plant" || k == "bag_plant" || k == "slurry_plant")
     {
-        std::map<int32_t, int16_t> & plant = k == "drink_plant" ? drink_plants : k == "thread_plant" ? thread_plants : k == "mill_plant" ? mill_plants : bag_plants;
+        std::map<int32_t, int16_t> & plant = k == "drink_plant" ? drink_plants : k == "thread_plant" ? thread_plants : k == "mill_plant" ? mill_plants : k == "bag_plant" ? bag_plants : slurry_plants;
         add_all(items_other_id::PLANT, [plant](df::item *i) -> bool
                 {
                     return plant.count(i->getMaterialIndex()) && plant.at(i->getMaterialIndex()) == i->getMaterial();
@@ -1267,7 +1289,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                     return mat.material && mat.material->id == "PLASTER";
                 });
     }
-    else if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder")
+    else if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire")
     {
         std::string ord = furniture_order(k);
         if (manager_subtype.count(ord))
@@ -1357,6 +1379,29 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
         }
         return units.size();
+    }
+    else if (k == "slurry")
+    {
+        add_all(items_other_id::GLOB, [](df::item *i) -> bool
+                {
+                    if (!virtual_cast<df::item_globst>(i)->mat_state.bits.paste)
+                    {
+                        return false;
+                    }
+                    MaterialInfo mat(i);
+                    for (auto it = mat.material->reaction_class.begin(); it != mat.material->reaction_class.end(); it++)
+                    {
+                        if (**it == "PAPER_SLURRY")
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
+    }
+    else if (k == "paper")
+    {
+        add_all(items_other_id::SHEET, yes_i_mean_all);
     }
     else
     {
@@ -1771,6 +1816,21 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         input.push_back("gypsum");
         input.push_back("bag");
+    }
+    else if (what == "slurry")
+    {
+        order = "MakeSlurryFromPlant";
+        input.push_back("slurry_plant");
+    }
+    else if (what == "paper")
+    {
+        order = "PressPlantPaper";
+        input.push_back("slurry");
+    }
+    else if (what == "quire")
+    {
+        order = "MakeQuire";
+        input.push_back("paper");
     }
 
     if (order.empty())
@@ -3112,6 +3172,16 @@ void Stocks::init_manager_subtype()
         manager_subtype["MakeRockJug"] = world->raws.itemdefs.tools_by_type[tool_uses::LIQUID_CONTAINER][0]->subtype;
     if (!world->raws.itemdefs.tools_by_type[tool_uses::STAND_AND_WORK_ABOVE].empty())
         manager_subtype["MakeWoodenStepladder"] = world->raws.itemdefs.tools_by_type[tool_uses::STAND_AND_WORK_ABOVE][0]->subtype;
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::BOOKCASE].empty())
+        manager_subtype["MakeRockBookcase"] = world->raws.itemdefs.tools_by_type[tool_uses::BOOKCASE][0]->subtype;
+    for (auto it = world->raws.itemdefs.tools_by_type[tool_uses::CONTAIN_WRITING].begin(); it != world->raws.itemdefs.tools_by_type[tool_uses::CONTAIN_WRITING].end(); it++)
+    {
+        if ((*it)->flags.is_set(tool_flags::INCOMPLETE_ITEM))
+        {
+            manager_subtype["MakeQuire"] = (*it)->subtype;
+            break;
+        }
+    }
 
     for (auto def = world->raws.itemdefs.weapons.begin(); def != world->raws.itemdefs.weapons.end(); def++)
     {
@@ -3311,6 +3381,8 @@ std::string Stocks::furniture_order(std::string k)
             map["coal"] = "MakeCharcoal";
             map["stepladder"] = "MakeWoodenStepladder";
             map["goblet"] = "MakeGoblet";
+            map["bookcase"] = "MakeRockBookcase";
+            map["quire"] = "MakeQuire";
         }
     } diff;
     if (diff.map.count(k))
@@ -3330,7 +3402,7 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && i->mat_type == 0;
         };
     }
-    if (k == "hive" || k == "nestbox" || k == "stepladder")
+    if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire")
     {
         if (!manager_subtype.count(furniture_order(k)))
             return [](df::item *i) -> bool { return false; };

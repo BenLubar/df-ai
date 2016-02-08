@@ -53,6 +53,7 @@ private:
     std::map<int32_t, int16_t> mill_plants;
     std::map<int32_t, int16_t> bag_plants;
     std::map<int32_t, int16_t> dye_plants;
+    std::map<int32_t, int16_t> slurry_plants;
     std::map<int32_t, int16_t> grow_plants;
     std::map<int32_t, int16_t> milk_creatures;
     std::set<int32_t> clay_stones;

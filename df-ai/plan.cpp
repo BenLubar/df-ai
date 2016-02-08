@@ -449,6 +449,7 @@ bool Plan::checkidle(color_ostream & out)
             });
     if (r == nullptr && !fort_entrance->furnished)
         r = fort_entrance;
+    FIND_ROOM(true, "location", ifplan);
     if (r == nullptr)
         past_initial_phase = true;
     FIND_ROOM(true, "outpost", [](room *r) -> bool
@@ -1211,7 +1212,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return furnish_room(out, r);
     }
 
-    if (r->type == "infirmary" || r->type == "pasture" || r->type == "pitcage")
+    if (r->type == "infirmary" || r->type == "pasture" || r->type == "pitcage" || r->type == "location")
     {
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
@@ -1862,6 +1863,9 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+        return false;
+
     df::coord size = r->size();
 
     df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
@@ -1901,6 +1905,36 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     else if (r->type == "pitcage")
     {
         bld->zone_flags.bits.pit_pond = 1;
+    }
+    else if (r->type == "location")
+    {
+        AI::feed_key(interface_key::D_CIVZONE);
+
+        df::coord pos = r->pos();
+        Gui::revealInDwarfmodeMap(pos, true);
+        Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+        AI::feed_key(interface_key::CURSOR_LEFT);
+        AI::feed_key(interface_key::CIVZONE_MEETING);
+        AI::feed_key(interface_key::ASSIGN_LOCATION);
+        AI::feed_key(interface_key::LOCATION_NEW);
+        if (r->subtype == "library")
+        {
+            AI::feed_key(interface_key::LOCATION_LIBRARY);
+        }
+        else if (r->subtype == "temple")
+        {
+            AI::feed_key(interface_key::LOCATION_TEMPLE);
+            AI::feed_key(interface_key::SELECT); // no specific deity
+        }
+        else
+        {
+            AI::feed_key(interface_key::LEAVESCREEN);
+            ai->debug(out, "[ERROR] unknown location type: " + r->subtype);
+        }
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        ai->camera->ignore_pause();
     }
 
     return true;
@@ -2381,6 +2415,12 @@ bool Plan::try_setup_farmplot(color_ostream & out, room *r)
 
 bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
 {
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+    {
+        // some of these things need to use the UI.
+        return false;
+    }
+
     df::building *bld = df::building::find(f->bld_id);
     if (!bld)
     {
@@ -2433,6 +2473,31 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     else if (f->item == "archerytarget")
     {
         f->makeroom = true;
+    }
+    else if (f->item == "well")
+    {
+        // Set up a tavern.
+        AI::feed_key(interface_key::D_CIVZONE);
+        Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
+        Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
+        AI::feed_key(interface_key::CURSOR_LEFT);
+        AI::feed_key(interface_key::SELECT);
+        for (int16_t x = r->min.x; x < r->max.x; x++)
+        {
+            AI::feed_key(interface_key::CURSOR_RIGHT);
+        }
+        for (int16_t y = r->min.y; y < r->max.y; y++)
+        {
+            AI::feed_key(interface_key::CURSOR_DOWN);
+        }
+        AI::feed_key(interface_key::SELECT);
+        AI::feed_key(interface_key::CIVZONE_MEETING);
+        AI::feed_key(interface_key::ASSIGN_LOCATION);
+        AI::feed_key(interface_key::LOCATION_NEW);
+        AI::feed_key(interface_key::LOCATION_INN_TAVERN);
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        ai->camera->ignore_pause();
     }
 
     if (r->type == "infirmary")
@@ -3831,6 +3896,29 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                 r->level = 0;
                 rooms.push_back(r);
             }
+            else if (dirx == -1 && dx == 6)
+            {
+                room *r = new room("location", "library", df::coord(cx - 12, f.y - 5, f.z), df::coord(cx - 3, f.y - 1, f.z));
+                r->layout.push_back(new_door(10, 4));
+                r->layout.push_back(new_furniture("chest", 9, 3));
+                r->layout.push_back(new_furniture("chest", 9, 2));
+                r->layout.push_back(new_furniture("table", 9, 1));
+                r->layout.push_back(new_furniture("chair", 8, 1));
+                r->layout.push_back(new_furniture("table", 9, 0));
+                r->layout.push_back(new_furniture("chair", 8, 0));
+                for (int16_t i = 0; i < 6; i++)
+                {
+                    r->layout.push_back(new_furniture("bookcase", i + 1, 1));
+                    r->layout.push_back(new_furniture("bookcase", i + 1, 3));
+                }
+                r->accesspath.push_back(cor_x);
+                rooms.push_back(r);
+
+                r = new room("location", "temple", df::coord(cx - 12, f.y + 1, f.z), df::coord(cx - 3, f.y + 5, f.z));
+                r->layout.push_back(new_door(10, 0));
+                r->accesspath.push_back(cor_x);
+                rooms.push_back(r);
+            }
 
             std::string t = *type_it++;
 
@@ -4462,7 +4550,14 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     well->layout.push_back(new_door(9, 5));
     well->layout.push_back(new_cistern_lever(1, 0, "out"));
     well->layout.push_back(new_cistern_lever(0, 0, "in"));
+    well->layout.push_back(new_furniture("chest", 8, 0));
     well->accesspath.push_back(cor);
+    rooms.push_back(well);
+
+    room *booze = new room("stockpile", "food", c + df::coord(-2, -4, 0), c + df::coord(3, -4, 0));
+    booze->workshop = well;
+    booze->level = 0;
+    well->accesspath.push_back(booze);
     rooms.push_back(well);
 
     // water cistern under the well (in the hole of bedroom blueprint)
