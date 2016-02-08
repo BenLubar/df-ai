@@ -302,10 +302,7 @@ bool Embark::update(color_ostream & out)
                     ai->debug(out, "disabling minimap.");
                     AI::feed_key(interface_key::LEAVESCREEN);
                     Gui::setMenuWidth(3, 3);
-                    if (!DEBUG)
-                    {
-                        *standing_orders_job_cancel_announce = 0;
-                    }
+                    *standing_orders_job_cancel_announce = 0;
                 });
         return true;
     }
