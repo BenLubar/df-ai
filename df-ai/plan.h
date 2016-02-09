@@ -86,7 +86,6 @@ public:
 
     task *is_digging();
     bool is_idle();
-    int32_t count_furnish_tasks(const std::string & item);
 
     void new_citizen(color_ostream & out, int32_t uid);
     void del_citizen(color_ostream & out, int32_t uid);
