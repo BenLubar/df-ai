@@ -191,8 +191,24 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     switch (announce->type)
     {
         case announcement_type::MEGABEAST_ARRIVAL:
-            debug(out, "pause: uh oh, megabeast...");
-            break;
+            {
+                debug(out, "pause: uh oh, megabeast...");
+                bool found = false;
+                for (auto it = world->units.active.rbegin(); it != world->units.active.rend(); it++)
+                {
+                    if ((*it)->flags2.bits.visitor_uninvited)
+                    {
+                        pop->military_all_squads_attack_unit(out, *it);
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    debug(out, "[ERROR] could not find megabeast");
+                }
+                break;
+            }
         case announcement_type::BERSERK_CITIZEN:
             debug(out, "pause: berserk");
             break;

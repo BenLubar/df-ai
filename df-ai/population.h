@@ -13,6 +13,7 @@ namespace df
 {
     struct building_civzonest;
     struct entity_position_assignment;
+    struct squad;
     struct unit;
 }
 
@@ -63,7 +64,9 @@ public:
     void update_caged(color_ostream & out);
     void update_military(color_ostream & out);
 
-    void military_random_squad_attack_unit(df::unit *u);
+    void military_random_squad_attack_unit(color_ostream & out, df::unit *u);
+    void military_all_squads_attack_unit(color_ostream & out, df::unit *u);
+    void military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
     std::string military_find_commander_pos();
     std::string military_find_captain_pos();
 

@@ -4,6 +4,7 @@
 #include "stocks.h"
 
 #include "modules/Gui.h"
+#include "modules/Translation.h"
 #include "modules/Units.h"
 
 #include "df/building_civzonest.h"
@@ -321,8 +322,8 @@ void Population::update_caged(color_ostream & out)
                         if (r && ai->plan->spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
                         {
                             assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
-                            military_random_squad_attack_unit(u);
                             ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
+                            military_random_squad_attack_unit(out, u);
                         }
                     }
                 }
@@ -403,7 +404,7 @@ void Population::update_military(color_ostream & out)
     }
 }
 
-void Population::military_random_squad_attack_unit(df::unit *u)
+void Population::military_random_squad_attack_unit(color_ostream & out, df::unit *u)
 {
     df::squad *squad = nullptr;
     int32_t best = std::numeric_limits<int32_t>::min();
@@ -432,10 +433,24 @@ void Population::military_random_squad_attack_unit(df::unit *u)
         return;
     }
 
+    military_squad_attack_unit(out, squad, u);
+}
+
+void Population::military_all_squads_attack_unit(color_ostream & out, df::unit *u)
+{
+    for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
+    {
+        military_squad_attack_unit(out, df::squad::find(*sqid), u);
+    }
+}
+
+void Population::military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u)
+{
     df::squad_order_kill_listst *so = df::allocate<df::squad_order_kill_listst>();
     so->units.push_back(u->id);
     so->title = AI::describe_unit(u);
     squad->orders.push_back(so);
+    ai->debug(out, "sending " + Translation::capitalize(Translation::TranslateName(&squad->name, true)) + " to attack " + AI::describe_unit(u));
 }
 
 std::string Population::military_find_commander_pos()
