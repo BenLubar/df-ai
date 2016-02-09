@@ -8,7 +8,7 @@
 #include "df/building.h"
 
 room::room(df::coord mins, df::coord maxs, std::string comment) :
-    status(room_status::plan),
+    status("plan"),
     type("corridor"),
     subtype(""),
     comment(comment),
@@ -44,7 +44,7 @@ room::room(df::coord mins, df::coord maxs, std::string comment) :
 }
 
 room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs, std::string comment) :
-    status(room_status::plan),
+    status("plan"),
     type(type),
     subtype(subtype),
     comment(comment),

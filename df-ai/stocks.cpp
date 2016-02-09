@@ -784,7 +784,7 @@ void Stocks::update_slabs(color_ostream & out)
 
             ai->plan->find_room("cemetary", [&pos](room *r) -> bool
                     {
-                        if (r->status == room_status::plan)
+                        if (r->status == "plan")
                             return false;
                         for (int16_t x = r->min.x; x <= r->max.x; x++)
                         {
@@ -2347,7 +2347,7 @@ void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
 void Stocks::queue_need_coffin_bld(color_ostream & out, int32_t amount)
 {
     // dont dig too early
-    if (!ai->plan->find_room("cemetary", [](room *r) -> bool { return r->status != room_status::plan; }))
+    if (!ai->plan->find_room("cemetary", [](room *r) -> bool { return r->status != "plan"; }))
         return;
 
     // count actually allocated (plan wise) coffin buildings
