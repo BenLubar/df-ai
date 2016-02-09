@@ -17,9 +17,17 @@ namespace df
 
 struct furniture;
 
+enum class room_status
+{
+    plan,
+    dig,
+    dug,
+    finished,
+};
+
 struct room
 {
-    std::string status;
+    room_status status;
     std::string type;
     std::string subtype;
     std::string comment;

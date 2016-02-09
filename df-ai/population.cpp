@@ -401,38 +401,6 @@ void Population::update_military(color_ostream & out)
     {
         ai->plan->getsoldierbarrack(out, *it);
     }
-
-    /*
-    for (int32_t sqid : ui->main.fortress_entity->squads)
-    {
-        df::squad *sq = df::squad::find(sqid);
-        int32_t soldier_count = 0;
-        for (auto sp : sq->positions)
-        {
-            if (sp->occupant != -1)
-            {
-                soldier_count++;
-            }
-        }
-        for (int32_t month = 0; month < 12; month++)
-        {
-            for (df::squad_schedule_order *so : sq->schedule[1][month]->orders)
-            {
-                df::squad_order_trainst *sot = virtual_cast<df::squad_order_trainst>(so->order);
-                if (!sot)
-                {
-                    continue;
-                }
-                so->min_count = soldier_count > 3 ? soldier_count - 1 : soldier_count;
-                room *r = ai->plan->find_room("barracks", [sqid](room *r) -> bool { return r->squad_id == sqid; });
-                if (r && r->status != "finished")
-                {
-                    so->min_count = 0;
-                }
-            }
-        }
-    }
-    */
 }
 
 void Population::military_random_squad_attack_unit(df::unit *u)
@@ -782,7 +750,7 @@ void Population::update_nobles(color_ostream & out)
         }
     }
 
-    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != "plan"; }) && !cz.empty())
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
         ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());

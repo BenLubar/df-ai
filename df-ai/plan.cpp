@@ -256,7 +256,7 @@ void Plan::update(color_ostream & out)
                 {
                     if (t.r->is_dug())
                     {
-                        t.r->status = "dug";
+                        t.r->status = room_status::dug;
                         construct_room(out, t.r);
                         want_reupdate = true; // wantdig asap
                         del = true;
@@ -398,7 +398,7 @@ bool Plan::checkidle(color_ostream & out)
     // stockpiles, workshops, and a few bedrooms
     auto ifplan = [](room *r) -> bool
     {
-        return r->status == "plan";
+        return r->status == room_status::plan;
     };
     int32_t freebed = spare_bedroom;
     room *r = nullptr;
@@ -411,12 +411,12 @@ bool Plan::checkidle(color_ostream & out)
                 return r->subtype == "food" &&
                         r->level == 0 &&
                         !r->workshop &&
-                        r->status == "plan";
+                        r->status == room_status::plan;
             });
     FIND_ROOM(!important_workshops.empty(), "workshop", [this](room *r) -> bool
             {
                 if (r->subtype == important_workshops.back() &&
-                        r->status == "plan" &&
+                        r->status == room_status::plan &&
                         r->level == 0)
                 {
                     important_workshops.pop_back();
@@ -427,11 +427,11 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, "cistern", ifplan);
     FIND_ROOM(true, "well", ifplan);
     FIND_ROOM(true, "infirmary", ifplan);
-    FIND_ROOM(!find_room("cemetary", [](room *r) -> bool { return r->status != "plan"; }), "cemetary", ifplan);
+    FIND_ROOM(!find_room("cemetary", [](room *r) -> bool { return r->status != room_status::plan; }), "cemetary", ifplan);
     FIND_ROOM(!important_workshops2.empty(), "workshop", [this](room *r) -> bool
             {
                 if (r->subtype == important_workshops2.back() &&
-                        r->status == "plan" &&
+                        r->status == room_status::plan &&
                         r->level == 0)
                 {
                     important_workshops2.pop_back();
@@ -442,13 +442,13 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, "pitcage", ifplan);
     FIND_ROOM(true, "stockpile", [](room *r) -> bool
             {
-                return r->status == "plan" &&
+                return r->status == room_status::plan &&
                         r->level <= 1;
             });
     FIND_ROOM(true, "workshop", [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
-                        r->status == "plan" &&
+                        r->status == room_status::plan &&
                         r->level == 0;
             });
     if (r == nullptr && !fort_entrance->furnished)
@@ -458,12 +458,12 @@ bool Plan::checkidle(color_ostream & out)
         past_initial_phase = true;
     FIND_ROOM(true, "outpost", [](room *r) -> bool
             {
-                return r->status == "plan" && r->subtype == "cavern";
+                return r->status == room_status::plan && r->subtype == "cavern";
             });
     FIND_ROOM(true, "workshop", [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
-                        r->status == "plan" &&
+                        r->status == room_status::plan &&
                         r->level == 1;
             });
     FIND_ROOM(true, "bedroom", [&freebed](room *r) -> bool
@@ -471,31 +471,31 @@ bool Plan::checkidle(color_ostream & out)
                 if (r->owner == -1)
                 {
                     freebed--;
-                    return freebed >= 0 && r->status == "plan";
+                    return freebed >= 0 && r->status == room_status::plan;
                 }
                 return false;
             });
     FIND_ROOM(true, "stockpile", [](room *r) -> bool
             {
-                return r->status == "plan" &&
+                return r->status == room_status::plan &&
                         r->level <= 2;
             });
     auto finished_nofurnished = [](room *r) -> bool
     {
-        return r->status == "finished" && !r->furnished;
+        return r->status == room_status::finished && !r->furnished;
     };
     FIND_ROOM(true, "nobleroom", finished_nofurnished);
     FIND_ROOM(true, "bedroom", finished_nofurnished);
     auto nousers_noplan = [](room *r) -> bool
     {
-        return r->status != "plan" && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
+        return r->status != room_status::plan && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
                 {
                     return f->has_users && f->users.empty();
                 }) != r->layout.end();
     };
     auto nousers_plan = [](room *r) -> bool
     {
-        return r->status == "plan" && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
+        return r->status == room_status::plan && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
                 {
                     return f->has_users && f->users.empty();
                 }) != r->layout.end();
@@ -504,13 +504,13 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(!find_room("barracks", nousers_noplan), "barracks", nousers_plan);
     FIND_ROOM(true, "stockpile", [](room *r) -> bool
             {
-                return r->status == "plan" &&
+                return r->status == room_status::plan &&
                         r->level <= 3;
             });
     FIND_ROOM(true, "workshop", [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
-                        r->status == "plan";
+                        r->status == room_status::plan;
             });
     FIND_ROOM(true, "stockpile", ifplan);
 #undef FIND_ROOM
@@ -519,7 +519,7 @@ bool Plan::checkidle(color_ostream & out)
     {
         ai->debug(out, "checkidle " + describe_room(r));
         wantdig(out, r);
-        if (r->status == "finished")
+        if (r->status == room_status::finished)
         {
             r->furnished = true;
             for (auto it = r->layout.begin(); it != r->layout.end(); it++)
@@ -543,12 +543,6 @@ bool Plan::checkidle(color_ostream & out)
         idleidle(out);
         return true;
     }
-
-    if (last_idle_year != *cur_year)
-    {
-        last_idle_year = *cur_year;
-        idleidle(out);
-    }
     return false;
 }
 
@@ -561,7 +555,7 @@ void Plan::idleidle(color_ostream & out)
     for (auto it = rooms.begin(); it != rooms.end(); it++)
     {
         room *r = *it;
-        if (r->status != "plan" && r->status != "dig" &&
+        if (r->status != room_status::plan && r->status != room_status::dig &&
                 (r->type == "nobleroom" ||
                  r->type == "bedroom" ||
                  r->type == "well" ||
@@ -575,7 +569,7 @@ void Plan::idleidle(color_ostream & out)
     for (auto it = corridors.begin(); it != corridors.end(); it++)
     {
         room *r = *it;
-        if (r->status != "plan" && r->status != "dig")
+        if (r->status != room_status::plan && r->status != room_status::dig)
             idleidle_tab.push_back(r);
     }
 
@@ -596,12 +590,12 @@ void Plan::checkrooms(color_ostream & out)
     size_t ncheck = 4;
     for (size_t i = ncheck * 4; i > 0; i--)
     {
-        if (checkroom_idx < corridors.size() && corridors[checkroom_idx]->status != "plan")
+        if (checkroom_idx < corridors.size() && corridors[checkroom_idx]->status != room_status::plan)
         {
             checkroom(out, corridors[checkroom_idx]);
         }
 
-        if (checkroom_idx < rooms.size() && rooms[checkroom_idx]->status != "plan")
+        if (checkroom_idx < rooms.size() && rooms[checkroom_idx]->status != room_status::plan)
         {
             checkroom(out, rooms[checkroom_idx]);
             ncheck--;
@@ -617,16 +611,16 @@ void Plan::checkrooms(color_ostream & out)
 // ensure room was not tantrumed etc
 void Plan::checkroom(color_ostream & out, room *r)
 {
-    if (r->status == "plan")
+    if (r->status == room_status::plan)
     {
         // moot
     }
-    else if (r->status == "dig")
+    else if (r->status == room_status::dig)
     {
         // designation cancelled: damp stone etc
         r->dig();
     }
-    else if (r->status == "dug" || r->status == "finished")
+    else if (r->status == room_status::dug || r->status == room_status::finished)
     {
         // cavein / tree
         r->dig();
@@ -663,15 +657,15 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
 {
     room *r = find_room("bedroom", [id](room *r) -> bool { return r->owner == id; });
     if (!r)
-        r = find_room("bedroom", [](room *r) -> bool { return r->status != "plan" && r->owner == -1; });
+        r = find_room("bedroom", [](room *r) -> bool { return r->status != room_status::plan && r->owner == -1; });
     if (!r)
-        r = find_room("bedroom", [](room *r) -> bool { return r->status == "plan" && !r->queue_dig; });
+        r = find_room("bedroom", [](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig; });
     if (r)
     {
         wantdig(out, r);
         set_owner(out, r, id);
         ai->debug(out, "assign " + describe_room(r), r->pos());
-        if (r->status == "finished")
+        if (r->status == room_status::finished)
             furnish_room(out, r);
     }
     else
@@ -766,7 +760,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
                 break;
             }
         }
-        if (r->status == "finished")
+        if (r->status == room_status::finished)
         {
             furnish_room(out, r);
         }
@@ -862,7 +856,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
     find_furniture("chest");
     find_furniture("archerytarget");
 
-    if (r->status == "finished")
+    if (r->status == room_status::finished)
     {
         furnish_room(out, r);
     }
@@ -915,7 +909,7 @@ void Plan::getcoffin(color_ostream & out)
                 break;
             }
         }
-        if (r->status == "finished")
+        if (r->status == room_status::finished)
         {
             furnish_room(out, r);
         }
@@ -1100,7 +1094,7 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
 // queue a room for digging when other dig jobs are finished
 void Plan::wantdig(color_ostream & out, room *r)
 {
-    if (r->queue_dig || r->status != "plan")
+    if (r->queue_dig || r->status != room_status::plan)
         return;
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
@@ -1110,11 +1104,11 @@ void Plan::wantdig(color_ostream & out, room *r)
 
 void Plan::digroom(color_ostream & out, room *r)
 {
-    if (r->status != "plan")
+    if (r->status != room_status::plan)
         return;
     ai->debug(out, "digroom " + describe_room(r));
     r->queue_dig = false;
-    r->status = "dig";
+    r->status = room_status::dig;
     r->fixup_open();
     r->dig();
 
@@ -1340,7 +1334,7 @@ bool Plan::furnish_room(color_ostream & out, room *r)
         furniture *f = *it;
         tasks.push_back(new task("furnish", r, f));
     }
-    r->status = "finished";
+    r->status = room_status::finished;
     return true;
 }
 
@@ -2495,9 +2489,9 @@ void Plan::dig_garbagedump(color_ostream & out)
 {
     find_room("garbagepit", [this](room *r) -> bool
             {
-                if (r->status == "plan")
+                if (r->status == room_status::plan)
                 {
-                    r->status = "dig";
+                    r->status = room_status::dig;
                     r->dig(false, true);
                     tasks.push_back(new task("dig_garbage", r));
                 }
@@ -2509,7 +2503,7 @@ bool Plan::try_diggarbage(color_ostream & out, room *r)
 {
     if (r->is_dug(tiletype_shape_basic::Open))
     {
-        r->status = "dug";
+        r->status = room_status::dug;
         // XXX ugly as usual
         df::coord t(r->min.x, r->min.y, r->min.z - 1);
         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape,
@@ -2519,7 +2513,7 @@ bool Plan::try_diggarbage(color_ostream & out, room *r)
         }
         find_room("garbagedump", [this, &out](room *r) -> bool
                 {
-                    if (r->status == "plan")
+                    if (r->status == room_status::plan)
                     {
                         try_construct_activityzone(out, r);
                     }
@@ -2588,7 +2582,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         {
             for (auto rr = rooms.begin(); rr != rooms.end(); rr++)
             {
-                if ((*rr)->status == "plan")
+                if ((*rr)->status == room_status::plan)
                     continue;
                 for (auto ff = (*rr)->layout.begin(); ff != (*rr)->layout.end(); ff++)
                 {
@@ -5643,7 +5637,21 @@ std::string Plan::describe_room(room *r)
         s << " (" << r->users.size() << " users)";
     }
 
-    s << " (" << r->status << ")";
+    switch (r->status)
+    {
+        case room_status::plan:
+            s << " (plan)";
+            break;
+        case room_status::dig:
+            s << " (dig)";
+            break;
+        case room_status::dug:
+            s << " (dug)";
+            break;
+        case room_status::finished:
+            s << " (finished)";
+            break;
+    }
 
     return s.str();
 }
