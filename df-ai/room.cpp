@@ -81,6 +81,9 @@ room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs
 
 room::~room()
 {
+    volatile std::string type_for_debugging = type;
+    volatile std::string subtype_for_debugging = subtype;
+
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         delete *it;
