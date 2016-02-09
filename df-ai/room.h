@@ -6,6 +6,7 @@
 
 #include "df/construction_type.h"
 #include "df/coord.h"
+#include "df/stockpile_list.h"
 #include "df/tile_dig_designation.h"
 #include "df/tiletype_shape_basic.h"
 
@@ -33,6 +34,9 @@ struct room
     room *workshop;
     std::set<int32_t> users;
     df::coord channel_enable;
+    std::set<df::stockpile_list> stock_disable;
+    bool stock_specific1;
+    bool stock_specific2;
     bool has_users;
     bool furnished;
     bool queue_dig;

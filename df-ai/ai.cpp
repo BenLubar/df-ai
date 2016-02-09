@@ -106,7 +106,7 @@ bool AI::feed_key(df::viewscreen *view, df::interface_key key)
 
 bool AI::feed_key(df::interface_key key)
 {
-    return feed_key(Gui::getCurViewscreen(), key);
+    return feed_key(Gui::getCurViewscreen(true), key);
 }
 
 void AI::write_df(std::ostream & out, const std::string & str, const std::string & newline, const std::string & suffix, std::function<std::string(const std::string &)> translate)

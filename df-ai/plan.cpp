@@ -3,12 +3,15 @@
 #include "plan.h"
 #include "stocks.h"
 
+#include <tuple>
+
 #include "modules/Buildings.h"
 #include "modules/Gui.h"
 #include "modules/Items.h"
 #include "modules/Job.h"
 #include "modules/Maps.h"
 #include "modules/Materials.h"
+#include "modules/Screen.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
 
@@ -48,6 +51,7 @@
 #include "df/unit.h"
 #include "df/vehicle.h"
 #include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -1136,29 +1140,121 @@ void Plan::digroom(color_ostream & out, room *r)
         // add minimal stockpile in front of workshop
         const static struct sptypes
         {
-            std::map<std::string, std::string> map;
+            std::map<std::string, std::tuple<std::string, std::set<df::stockpile_list>, bool, bool>> map;
             sptypes()
             {
-                map["Masons"] = "stone";
-                map["Carpenters"] = "wood";
-                map["Craftsdwarfs"] = "refuse";
-                map["Farmers"] = "food";
-                map["Fishery"] = "food";
-                map["Jewelers"] = "gems";
-                map["Loom"] = "cloth";
-                map["Clothiers"] = "cloth";
-                map["Still"] = "food";
-                map["Kitchen"] = "food";
-                map["WoodFurnace"] = "wood";
-                map["Smelter"] = "stone";
-                map["MetalsmithsForge"] = "bars_blocks";
+                std::set<df::stockpile_list> disable;
+                disable.insert(stockpile_list::StoneOres);
+                disable.insert(stockpile_list::StoneClay);
+                map["Masons"] = std::make_tuple("stone", disable, false, false);
+                disable.clear();
+                map["Carpenters"] = std::make_tuple("wood", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::RefuseItems);
+                disable.insert(stockpile_list::RefuseCorpses);
+                disable.insert(stockpile_list::RefuseParts);
+                map["Craftsdwarfs"] = std::make_tuple("refuse", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::FoodMeat);
+                disable.insert(stockpile_list::FoodFish);
+                disable.insert(stockpile_list::FoodUnpreparedFish);
+                disable.insert(stockpile_list::FoodEgg);
+                disable.insert(stockpile_list::FoodDrinkPlant);
+                disable.insert(stockpile_list::FoodDrinkAnimal);
+                disable.insert(stockpile_list::FoodCheesePlant);
+                disable.insert(stockpile_list::FoodCheeseAnimal);
+                disable.insert(stockpile_list::FoodSeeds);
+                disable.insert(stockpile_list::FoodLeaves);
+                disable.insert(stockpile_list::FoodMilledPlant);
+                disable.insert(stockpile_list::FoodBoneMeal);
+                disable.insert(stockpile_list::FoodFat);
+                disable.insert(stockpile_list::FoodPaste);
+                disable.insert(stockpile_list::FoodPressedMaterial);
+                disable.insert(stockpile_list::FoodExtractPlant);
+                disable.insert(stockpile_list::FoodMiscLiquid);
+                map["Farmers"] = std::make_tuple("food", disable, true, false);
+                disable.clear();
+                disable.insert(stockpile_list::FoodMeat);
+                disable.insert(stockpile_list::FoodFish);
+                disable.insert(stockpile_list::FoodEgg);
+                disable.insert(stockpile_list::FoodPlants);
+                disable.insert(stockpile_list::FoodDrinkPlant);
+                disable.insert(stockpile_list::FoodDrinkAnimal);
+                disable.insert(stockpile_list::FoodCheesePlant);
+                disable.insert(stockpile_list::FoodCheeseAnimal);
+                disable.insert(stockpile_list::FoodSeeds);
+                disable.insert(stockpile_list::FoodLeaves);
+                disable.insert(stockpile_list::FoodMilledPlant);
+                disable.insert(stockpile_list::FoodBoneMeal);
+                disable.insert(stockpile_list::FoodFat);
+                disable.insert(stockpile_list::FoodPaste);
+                disable.insert(stockpile_list::FoodPressedMaterial);
+                disable.insert(stockpile_list::FoodExtractPlant);
+                disable.insert(stockpile_list::FoodExtractAnimal);
+                disable.insert(stockpile_list::FoodMiscLiquid);
+                map["Fishery"] = std::make_tuple("food", disable, true, false);
+                disable.clear();
+                map["Jewelers"] = std::make_tuple("gems", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::ClothSilk);
+                disable.insert(stockpile_list::ClothPlant);
+                disable.insert(stockpile_list::ClothYarn);
+                disable.insert(stockpile_list::ClothMetal);
+                map["Loom"] = std::make_tuple("cloth", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::ThreadSilk);
+                disable.insert(stockpile_list::ThreadPlant);
+                disable.insert(stockpile_list::ThreadYarn);
+                disable.insert(stockpile_list::ThreadMetal);
+                map["Clothiers"] = std::make_tuple("cloth", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::FoodMeat);
+                disable.insert(stockpile_list::FoodFish);
+                disable.insert(stockpile_list::FoodUnpreparedFish);
+                disable.insert(stockpile_list::FoodEgg);
+                disable.insert(stockpile_list::FoodDrinkPlant);
+                disable.insert(stockpile_list::FoodDrinkAnimal);
+                disable.insert(stockpile_list::FoodCheesePlant);
+                disable.insert(stockpile_list::FoodCheeseAnimal);
+                disable.insert(stockpile_list::FoodSeeds);
+                disable.insert(stockpile_list::FoodMilledPlant);
+                disable.insert(stockpile_list::FoodBoneMeal);
+                disable.insert(stockpile_list::FoodFat);
+                disable.insert(stockpile_list::FoodPaste);
+                disable.insert(stockpile_list::FoodPressedMaterial);
+                disable.insert(stockpile_list::FoodExtractPlant);
+                disable.insert(stockpile_list::FoodExtractAnimal);
+                disable.insert(stockpile_list::FoodMiscLiquid);
+                map["Still"] = std::make_tuple("food", disable, true, false);
+                disable.clear();
+                disable.insert(stockpile_list::FoodDrinkPlant);
+                disable.insert(stockpile_list::FoodDrinkAnimal);
+                disable.insert(stockpile_list::FoodSeeds);
+                disable.insert(stockpile_list::FoodBoneMeal);
+                disable.insert(stockpile_list::FoodMiscLiquid);
+                map["Kitchen"] = std::make_tuple("food", disable, true, false);
+                disable.clear();
+                map["WoodFurnace"] = std::make_tuple("wood", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::StoneOther);
+                disable.insert(stockpile_list::StoneClay);
+                map["Smelter"] = std::make_tuple("stone", disable, false, false);
+                disable.clear();
+                disable.insert(stockpile_list::BlocksStone);
+                disable.insert(stockpile_list::BlocksMetal);
+                disable.insert(stockpile_list::BlocksOther);
+                map["MetalsmithsForge"] = std::make_tuple("bars_blocks", disable, false, false);
             }
         } sptypes;
         if (sptypes.map.count(r->subtype))
         {
             // XXX hardcoded fort layout
             int16_t y = r->layout[0]->y > 0 ? r->max.y + 2 : r->min.y - 2; // check door position
-            room *sp = new room("stockpile", sptypes.map.at(r->subtype), df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
+            auto stock = sptypes.map.at(r->subtype);
+            room *sp = new room("stockpile", std::get<0>(stock), df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
+            sp->stock_disable = std::get<1>(stock);
+            sp->stock_specific1 = std::get<2>(stock);
+            sp->stock_specific2 = std::get<3>(stock);
             sp->workshop = r;
             sp->level = 0;
             rooms.push_back(sp);
@@ -1767,32 +1863,67 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     cursor->y = r->min.y;
     cursor->z = r->min.z;
     AI::feed_key(interface_key::CURSOR_LEFT);
+    AI::feed_key(interface_key::STOCKPILE_CUSTOM);
+    AI::feed_key(interface_key::STOCKPILE_CUSTOM_SETTINGS);
     const static struct stockpile_keys
     {
-        std::map<std::string, df::interface_key> map;
+        std::map<std::string, df::stockpile_list> map;
 
         stockpile_keys()
         {
-            map["animals"] = interface_key::STOCKPILE_ANIMAL;
-            map["food"] = interface_key::STOCKPILE_FOOD;
-            map["weapons"] = interface_key::STOCKPILE_WEAPON;
-            map["armor"] = interface_key::STOCKPILE_ARMOR;
-            map["furniture"] = interface_key::STOCKPILE_FURNITURE;
-            map["corpses"] = interface_key::STOCKPILE_GRAVEYARD;
-            map["refuse"] = interface_key::STOCKPILE_REFUSE;
-            map["wood"] = interface_key::STOCKPILE_WOOD;
-            map["stone"] = interface_key::STOCKPILE_STONE;
-            map["gems"] = interface_key::STOCKPILE_GEM;
-            map["bars_blocks"] = interface_key::STOCKPILE_BARBLOCK;
-            map["cloth"] = interface_key::STOCKPILE_CLOTH;
-            map["leather"] = interface_key::STOCKPILE_LEATHER;
-            map["ammo"] = interface_key::STOCKPILE_AMMO;
-            map["coins"] = interface_key::STOCKPILE_COINS;
-            map["finished_goods"] = interface_key::STOCKPILE_FINISHED;
-            map["sheets"] = interface_key::STOCKPILE_SHEET;
+            map["animals"] = stockpile_list::Animals;
+            map["food"] = stockpile_list::Food;
+            map["weapons"] = stockpile_list::Weapons;
+            map["armor"] = stockpile_list::Armor;
+            map["furniture"] = stockpile_list::Furniture;
+            map["corpses"] = stockpile_list::Corpses;
+            map["refuse"] = stockpile_list::Refuse;
+            map["wood"] = stockpile_list::Wood;
+            map["stone"] = stockpile_list::Stone;
+            map["gems"] = stockpile_list::Gems;
+            map["bars_blocks"] = stockpile_list::BarsBlocks;
+            map["cloth"] = stockpile_list::Cloth;
+            map["leather"] = stockpile_list::Leather;
+            map["ammo"] = stockpile_list::Ammo;
+            map["coins"] = stockpile_list::Coins;
+            map["finished_goods"] = stockpile_list::Goods;
+            // currently unimplemented in DFHack 0.42.05-alpha1
+            //map["sheets"] = stockpile_list::Sheet;
         }
     } stockpile_keys;
-    AI::feed_key(stockpile_keys.map.at(r->subtype));
+    df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen());
+    df::stockpile_list cc = stockpile_keys.map.at(r->subtype);
+    FOR_ENUM_ITEMS(stockpile_list, c)
+    {
+        if (ENUM_ATTR(stockpile_list, is_category, c))
+        {
+            view->cur_group = c;
+            if (cc == c)
+            {
+                AI::feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
+                AI::feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
+            }
+            else
+            {
+                AI::feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
+            }
+        }
+    }
+    view->cur_group = cc;
+    for (auto it = r->stock_disable.begin(); it != r->stock_disable.end(); it++)
+    {
+        view->cur_list = *it;
+        AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
+    }
+    if (r->stock_specific1)
+    {
+        AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
+    }
+    if (r->stock_specific2)
+    {
+        AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+    }
+    AI::feed_key(interface_key::LEAVESCREEN);
     AI::feed_key(interface_key::SELECT);
     for (int16_t x = r->min.x; x < r->max.x; x++)
     {
@@ -4156,15 +4287,17 @@ command_result Plan::setup_blueprint_pitcage(color_ostream & out)
                 }
             }
         }
-        r->layout.push_back(new_hive_floor(3, 1));
     };
 
     room *r = new room("pitcage", "", gpit->min + df::coord(-1, -1, 10), gpit->min + df::coord(1, 1, 10));
     layout(r);
+    r->layout.push_back(new_hive_floor(3, 1));
     rooms.push_back(r);
 
     room *stockpile = new room("stockpile", "animals", r->min, r->max);
     stockpile->level = 0;
+    stockpile->stock_specific1 = true; // no empty cages
+    stockpile->stock_specific2 = true; // no empty animal traps
     layout(stockpile);
     rooms.push_back(stockpile);
 
@@ -4354,6 +4487,25 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // seeds stockpile
     room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2));
     r->level = 0;
+    r->stock_disable.insert(stockpile_list::FoodMeat);
+    r->stock_disable.insert(stockpile_list::FoodFish);
+    r->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
+    r->stock_disable.insert(stockpile_list::FoodEgg);
+    r->stock_disable.insert(stockpile_list::FoodPlants);
+    r->stock_disable.insert(stockpile_list::FoodDrinkPlant);
+    r->stock_disable.insert(stockpile_list::FoodDrinkAnimal);
+    r->stock_disable.insert(stockpile_list::FoodCheesePlant);
+    r->stock_disable.insert(stockpile_list::FoodCheeseAnimal);
+    r->stock_disable.insert(stockpile_list::FoodLeaves);
+    r->stock_disable.insert(stockpile_list::FoodMilledPlant);
+    r->stock_disable.insert(stockpile_list::FoodBoneMeal);
+    r->stock_disable.insert(stockpile_list::FoodFat);
+    r->stock_disable.insert(stockpile_list::FoodPaste);
+    r->stock_disable.insert(stockpile_list::FoodPressedMaterial);
+    r->stock_disable.insert(stockpile_list::FoodExtractPlant);
+    r->stock_disable.insert(stockpile_list::FoodExtractAnimal);
+    r->stock_disable.insert(stockpile_list::FoodMiscLiquid);
+    r->stock_specific1 = true; // no prepared meals
     r->workshop = first_farm;
     r->accesspath.push_back(cor);
     rooms.push_back(r);
@@ -4557,6 +4709,23 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     rooms.push_back(well);
 
     room *booze = new room("stockpile", "food", c + df::coord(-2, -4, 0), c + df::coord(3, -4, 0));
+    booze->stock_disable.insert(stockpile_list::FoodMeat);
+    booze->stock_disable.insert(stockpile_list::FoodFish);
+    booze->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
+    booze->stock_disable.insert(stockpile_list::FoodEgg);
+    booze->stock_disable.insert(stockpile_list::FoodPlants);
+    booze->stock_disable.insert(stockpile_list::FoodCheesePlant);
+    booze->stock_disable.insert(stockpile_list::FoodCheeseAnimal);
+    booze->stock_disable.insert(stockpile_list::FoodSeeds);
+    booze->stock_disable.insert(stockpile_list::FoodLeaves);
+    booze->stock_disable.insert(stockpile_list::FoodMilledPlant);
+    booze->stock_disable.insert(stockpile_list::FoodBoneMeal);
+    booze->stock_disable.insert(stockpile_list::FoodFat);
+    booze->stock_disable.insert(stockpile_list::FoodPaste);
+    booze->stock_disable.insert(stockpile_list::FoodPressedMaterial);
+    booze->stock_disable.insert(stockpile_list::FoodExtractPlant);
+    booze->stock_disable.insert(stockpile_list::FoodExtractAnimal);
+    booze->stock_disable.insert(stockpile_list::FoodMiscLiquid);
     booze->workshop = well;
     booze->level = 0;
     well->accesspath.push_back(booze);
