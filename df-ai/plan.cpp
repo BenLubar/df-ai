@@ -1886,8 +1886,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
             map["ammo"] = stockpile_list::Ammo;
             map["coins"] = stockpile_list::Coins;
             map["finished_goods"] = stockpile_list::Goods;
-            // currently unimplemented in DFHack 0.42.05-alpha1
-            //map["sheets"] = stockpile_list::Sheet;
+            map["sheets"] = stockpile_list::Sheet;
         }
     } stockpile_keys;
     df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen(true));
