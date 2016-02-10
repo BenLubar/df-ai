@@ -1892,27 +1892,31 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
         }
     } stockpile_keys;
     df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen());
-    df::stockpile_list cc = stockpile_keys.map.at(r->subtype);
-    FOR_ENUM_ITEMS(stockpile_list, c)
+    df::stockpile_list wanted_group = stockpile_keys.map.at(r->subtype);
+    while (view->cur_group != stockpile_list::AdditionalOptions)
     {
-        if (ENUM_ATTR(stockpile_list, is_category, c))
+        if (view->cur_group == wanted_group)
         {
-            view->cur_group = c;
-            if (cc == c)
-            {
-                AI::feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
-                AI::feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
-            }
-            else
-            {
-                AI::feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
-            }
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
         }
+        else
+        {
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
+        }
+        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
     }
-    view->cur_group = cc;
+    while (view->cur_group != wanted_group)
+    {
+        AI::feed_key(interface_key::STANDARDSCROLL_UP);
+    }
+    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
     for (auto it = r->stock_disable.begin(); it != r->stock_disable.end(); it++)
     {
-        view->cur_list = *it;
+        while (view->cur_list != *it)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        }
         AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
     }
     if (r->stock_specific1)
