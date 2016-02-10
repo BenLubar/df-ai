@@ -2772,14 +2772,16 @@ std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list
     last_treelist.clear();
     for (auto p = world->plants.tree_dry.begin(); p != world->plants.tree_dry.end(); p++)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType((*p)->pos)) == tiletype_material::TREE && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
+        df::tiletype *tt = Maps::getTileType((*p)->pos);
+        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::TREE && ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
         {
             last_treelist.insert((*p)->pos);
         }
     }
     for (auto p = world->plants.tree_wet.begin(); p != world->plants.tree_wet.end(); p++)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType((*p)->pos)) == tiletype_material::TREE && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
+        df::tiletype *tt = Maps::getTileType((*p)->pos);
+        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::TREE && ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
         {
             last_treelist.insert((*p)->pos);
         }
@@ -3504,12 +3506,12 @@ bool Stocks::is_cutting_trees()
     {
         return false;
     }
-    if (Maps::getTileDesignation(last_cutpos)->bits.dig == tile_dig_designation::Default)
+    auto tl = tree_list();
+    if (tl.count(last_cutpos) && Maps::getTileDesignation(last_cutpos)->bits.dig == tile_dig_designation::Default)
     {
         return true;
     }
 
-    auto tl = tree_list();
     for (auto t = tl.begin(); t != tl.end(); t++)
     {
         if (Maps::getTileDesignation(*t)->bits.dig == tile_dig_designation::Default)
