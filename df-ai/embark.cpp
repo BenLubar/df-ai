@@ -200,7 +200,6 @@ bool Embark::update(color_ostream & out)
             view->finder.options[embark_finder_option::DimensionX] = 3;
             view->finder.options[embark_finder_option::DimensionY] = 2;
             view->finder.options[embark_finder_option::Aquifer] = 0;
-            view->finder.options[embark_finder_option::River] = 1;
             view->finder.options[embark_finder_option::Savagery] = 2;
             AI::feed_key(view, interface_key::SELECT);
         }
