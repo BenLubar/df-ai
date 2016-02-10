@@ -58,6 +58,8 @@ public:
     static bool feed_key(df::viewscreen *view, df::interface_key key);
     static bool feed_key(df::interface_key key);
 
+    static bool is_dwarfmode_viewscreen();
+
     static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);
 
     void debug(color_ostream & out, const std::string & str, df::coord announce);

@@ -43,7 +43,6 @@
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
-#include "df/viewscreen_dwarfmodest.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -708,17 +707,17 @@ void Population::set_up_trading(bool should_be_trading)
         return;
     }
 
-    if (auto view = strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+    if (AI::is_dwarfmode_viewscreen())
     {
-        AI::feed_key(view, interface_key::D_BUILDJOB);
+        AI::feed_key(interface_key::D_BUILDJOB);
 
         df::coord pos = r->pos();
         Gui::revealInDwarfmodeMap(pos, true);
         Gui::setCursorCoords(pos.x, pos.y, pos.z);
 
-        AI::feed_key(view, interface_key::CURSOR_LEFT);
-        AI::feed_key(view, interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
-        AI::feed_key(view, interface_key::LEAVESCREEN);
+        AI::feed_key(interface_key::CURSOR_LEFT);
+        AI::feed_key(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+        AI::feed_key(interface_key::LEAVESCREEN);
     }
 }
 

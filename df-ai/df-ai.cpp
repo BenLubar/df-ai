@@ -25,7 +25,7 @@ bool check_enabled(color_ostream & out)
 {
     if (enabled)
     {
-        if (full_reset_requested && strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
+        if (full_reset_requested && strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true)))
         {
             delete dwarfAI;
             dwarfAI = nullptr;
@@ -33,7 +33,7 @@ bool check_enabled(color_ostream & out)
         }
         if (!dwarfAI)
         {
-            df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen());
+            df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true));
             if (view && !AI_RANDOM_EMBARK)
             {
                 AI::feed_key(view, interface_key::SELECT);
@@ -44,7 +44,7 @@ bool check_enabled(color_ostream & out)
 
             events.onupdate_register_once("df-ai start", [](color_ostream & out) -> bool
                     {
-                        df::viewscreen_dwarfmodest *view = virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen());
+                        df::viewscreen_dwarfmodest *view = strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true));
                         if (view)
                         {
                             command_result res = dwarfAI->onupdate_register(out);

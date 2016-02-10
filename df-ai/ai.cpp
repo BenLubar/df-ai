@@ -14,6 +14,7 @@
 #include "df/item.h"
 #include "df/report.h"
 #include "df/viewscreen.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_optionst.h"
 #include "df/viewscreen_requestagreementst.h"
@@ -28,6 +29,7 @@ REQUIRE_GLOBAL(announcements);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(pause_state);
+REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 AI::AI() :
@@ -107,6 +109,17 @@ bool AI::feed_key(df::viewscreen *view, df::interface_key key)
 bool AI::feed_key(df::interface_key key)
 {
     return feed_key(Gui::getCurViewscreen(true), key);
+}
+
+bool AI::is_dwarfmode_viewscreen()
+{
+    if (ui->main.mode != ui_sidebar_mode::Default)
+        return false;
+    if (!world->status.popups.empty())
+        return false;
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true)))
+        return false;
+    return true;
 }
 
 void AI::write_df(std::ostream & out, const std::string & str, const std::string & newline, const std::string & suffix, std::function<std::string(const std::string &)> translate)
@@ -310,7 +323,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
     }
     else if (st == SC_VIEWSCREEN_CHANGED)
     {
-        df::viewscreen *curview = Gui::getCurViewscreen();
+        df::viewscreen *curview = Gui::getCurViewscreen(true);
         df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview);
         if (view)
         {
@@ -426,13 +439,21 @@ void AI::abandon(color_ostream & out)
 
 void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb)
 {
-    virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen());
+    virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen(true));
     std::time_t timeoff = std::time(nullptr) + delay;
 
-    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [curscreen, timeoff, cb](color_ostream & out) -> bool
+    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [this, curscreen, timeoff, cb](color_ostream & out) -> bool
             {
-                if (virtual_identity::get(Gui::getCurViewscreen()) != curscreen)
+                if (virtual_identity::get(Gui::getCurViewscreen(true)) != curscreen)
+                {
+                    if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
+                    {
+                        Screen::dismiss(view);
+                        camera->check_record_status();
+                        return false;
+                    }
                     return true;
+                }
 
                 if (std::time(nullptr) >= timeoff)
                 {

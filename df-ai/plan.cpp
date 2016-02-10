@@ -50,7 +50,6 @@
 #include "df/ui.h"
 #include "df/unit.h"
 #include "df/vehicle.h"
-#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
 
@@ -1855,7 +1854,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+    if (!AI::is_dwarfmode_viewscreen())
         return false;
 
     AI::feed_key(interface_key::D_STOCKPILES);
@@ -1891,7 +1890,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
             //map["sheets"] = stockpile_list::Sheet;
         }
     } stockpile_keys;
-    df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen());
+    df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen(true));
     df::stockpile_list wanted_group = stockpile_keys.map.at(r->subtype);
     while (view->cur_group != stockpile_list::AdditionalOptions)
     {
@@ -1999,7 +1998,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+    if (!AI::is_dwarfmode_viewscreen())
         return false;
 
     df::coord size = r->size();
@@ -2551,7 +2550,7 @@ bool Plan::try_setup_farmplot(color_ostream & out, room *r)
 
 bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
 {
-    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen()))
+    if (!AI::is_dwarfmode_viewscreen())
     {
         // some of these things need to use the UI.
         return false;

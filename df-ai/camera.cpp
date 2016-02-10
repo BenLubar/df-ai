@@ -54,7 +54,7 @@ command_result Camera::onupdate_register(color_ostream & out)
             {
                 if (mode == SC_VIEWSCREEN_CHANGED)
                 {
-                    df::viewscreen *view = Gui::getCurViewscreen();
+                    df::viewscreen *view = Gui::getCurViewscreen(true);
                     gps->display_frames = strict_virtual_cast<df::viewscreen_dwarfmodest>(view) ? 1 : 0;
                 }
             });
@@ -85,7 +85,7 @@ command_result Camera::onupdate_unregister(color_ostream & out)
     {
         ai->timeout_sameview(60, [](color_ostream & out)
                 {
-                    Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
+                    Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
                 });
     }
     events.onupdate_unregister(onupdate_handle);

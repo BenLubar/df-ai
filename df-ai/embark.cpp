@@ -63,14 +63,14 @@ void Embark::register_restart_timer(color_ostream & out)
         ai->debug(out, "game over. restarting in 1 minute.");
         auto restart_wait = [this](color_ostream & out) -> bool
         {
-            if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen()))
+            if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true)))
             {
                 return false;
             }
 
             if (!NO_QUIT)
             {
-                Gui::getCurViewscreen()->breakdown_level = interface_breakdown_types::QUIT;
+                Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
                 return true;
             }
 
@@ -90,7 +90,7 @@ void Embark::register_restart_timer(color_ostream & out)
 
 bool Embark::update(color_ostream & out)
 {
-    df::viewscreen *curview = Gui::getCurViewscreen();
+    df::viewscreen *curview = Gui::getCurViewscreen(true);
     if (!curview || curview->breakdown_level != interface_breakdown_types::NONE)
         return false;
 
@@ -266,7 +266,7 @@ bool Embark::update(color_ostream & out)
 
                 ai->timeout_sameview(15, [](color_ostream & out)
                         {
-                            df::viewscreen *view = Gui::getCurViewscreen();
+                            df::viewscreen *view = Gui::getCurViewscreen(true);
                             AI::feed_key(view, interface_key::SETUP_EMBARK);
                             // dismiss warnings
                             AI::feed_key(view, interface_key::SELECT);
