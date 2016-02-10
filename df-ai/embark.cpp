@@ -17,6 +17,7 @@
 #include "df/world.h"
 #include "df/world_data.h"
 
+REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
 
@@ -228,6 +229,11 @@ bool Embark::update(color_ostream & out)
                 }
                 assert(!sites.empty());
                 ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
+                for (int32_t i = 0; i < *cur_year; i++)
+                {
+                    // Don't embark on the same region every time.
+                    ai->rng();
+                }
                 df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(ai->rng)];
                 df::coord2d diff = site - start;
 
