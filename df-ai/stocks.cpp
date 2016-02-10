@@ -166,6 +166,7 @@ const static struct Watch
         Needed["paper"] = 5;
         Needed["quire"] = 5;
         Needed["training_axe"] = 3;
+        Needed["rock_pot"] = 4;
 
         NeededPerDwarf["food"] = 100;
         NeededPerDwarf["drink"] = 200;
@@ -256,6 +257,7 @@ const static struct Manager
         RealOrder["MakeSlurryFromPlant"] = job_type::CustomReaction;
         RealOrder["PressPlantPaper"] = job_type::CustomReaction;
         RealOrder["MakeQuire"] = job_type::CustomReaction;
+        RealOrder["MakeRockPot"] = job_type::MakeTool;
 
         MatCategory["MakeRope"] = "cloth";
         MatCategory["MakeBag"] = "cloth";
@@ -398,6 +400,7 @@ command_result Stocks::startup(color_ostream & out)
 {
     update_kitchen(out);
     update_plants(out);
+    ui->stockpile.reserved_barrels = 5;
     return CR_OK;
 }
 
@@ -1290,7 +1293,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                     return mat.material && mat.material->id == "PLASTER";
                 });
     }
-    else if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire")
+    else if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire" || k == "rock_pot")
     {
         std::string ord = furniture_order(k);
         if (manager_subtype.count(ord))
@@ -3185,6 +3188,8 @@ void Stocks::init_manager_subtype()
             break;
         }
     }
+    if (!world->raws.itemdefs.tools_by_type[tool_uses::FOOD_STORAGE].empty())
+        manager_subtype["MakeRockPot"] = world->raws.itemdefs.tools_by_type[tool_uses::FOOD_STORAGE][0]->subtype;
 
     for (auto def = world->raws.itemdefs.weapons.begin(); def != world->raws.itemdefs.weapons.end(); def++)
     {
@@ -3387,6 +3392,7 @@ std::string Stocks::furniture_order(std::string k)
             map["bookcase"] = "MakeRockBookcase";
             map["quire"] = "MakeQuire";
             map["training_axe"] = "MakeTrainingAxe";
+            map["rock_pot"] = "MakeRockPot";
         }
     } diff;
     if (diff.map.count(k))
@@ -3406,7 +3412,7 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && i->mat_type == 0;
         };
     }
-    if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire")
+    if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire" || k == "rock_pot")
     {
         if (!manager_subtype.count(furniture_order(k)))
             return [](df::item *i) -> bool { return false; };
