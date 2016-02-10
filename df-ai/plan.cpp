@@ -373,26 +373,6 @@ bool Plan::checkidle(color_ostream & out)
     if (is_digging())
         return false;
 
-    for (auto it = world->buildings.other[buildings_other_id::WAGON].begin(); it != world->buildings.other[buildings_other_id::WAGON].end(); it++)
-    {
-        if (df::building_wagonst *w = strict_virtual_cast<df::building_wagonst>(*it))
-        {
-            bool any = false;
-            for (auto it = w->contained_items.begin(); it != w->contained_items.end(); it++)
-            {
-                if ((*it)->use_mode == 0)
-                {
-                    any = true;
-                    break;
-                }
-            }
-            if (!any)
-            {
-                Buildings::deconstruct(w);
-            }
-        }
-    }
-
     // if nothing better to do, order the miners to dig remaining
     // stockpiles, workshops, and a few bedrooms
     auto ifplan = [](room *r) -> bool
