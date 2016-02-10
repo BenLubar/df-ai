@@ -4733,7 +4733,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     booze->workshop = well;
     booze->level = 0;
     well->accesspath.push_back(booze);
-    rooms.push_back(well);
+    rooms.push_back(booze);
 
     // water cistern under the well (in the hole of bedroom blueprint)
     std::vector<room *> cist_cors = find_corridor_tosurface(out, c - df::coord(8, 0, 0));
