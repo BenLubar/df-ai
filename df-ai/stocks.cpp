@@ -836,6 +836,7 @@ int32_t Stocks::num_needed(const std::string & key)
     {
         amount += ai->pop->citizen.size() * Watch.NeededPerDwarf.at(key) / 100;
     }
+
     if (key == "coffin" && count.count("dead_dwarf") && count.count("coffin_bld"))
     {
         amount = std::max(amount, count.at("dead_dwarf") - count.at("coffin_bld"));
@@ -843,6 +844,10 @@ int32_t Stocks::num_needed(const std::string & key)
     else if (key == "coffin_bld" && count.count("dead_dwarf"))
     {
         amount = std::max(amount, count.at("dead_dwarf"));
+    }
+    else if (key == "barrel" && need_more("bed"))
+    {
+        amount = 0;
     }
     return amount;
 }
@@ -1769,7 +1774,14 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         auto max = std::max_element(orders.begin(), orders.end(), [score](std::pair<const std::string, std::string> a, std::pair<const std::string, std::string> b) -> bool { return score(a) < score(b); });
         order = max->second;
         input.push_back(max->first);
-        input.push_back("barrel");
+        if (count["barrel"] > count["rock_pot"])
+        {
+            input.push_back("barrel");
+        }
+        else
+        {
+            input.push_back("rock_pot");
+        }
         amount = (amount + 4) / 5; // accounts for brewer yield, but not for input stack size
     }
     else if (what == "block")
@@ -2413,7 +2425,14 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
         if (amount > 4)
             amount /= 2;
 
-        input.push_back("barrel");
+        if (count["barrel"] > count["rock_pot"])
+        {
+            input.push_back("barrel");
+        }
+        else
+        {
+            input.push_back("rock_pot");
+        }
 
         if (!need_more("drink"))
         {
@@ -2514,7 +2533,14 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
     else if (what == "honey")
     {
         order = "BrewMead";
-        input.push_back("barrel");
+        if (count["barrel"] > count["rock_pot"])
+        {
+            input.push_back("barrel");
+        }
+        else
+        {
+            input.push_back("rock_pot");
+        }
     }
     else if (what == "milk")
     {
