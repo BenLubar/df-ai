@@ -194,7 +194,7 @@ public:
     command_result setup_blueprint_stockpiles(color_ostream & out, df::coord f, std::vector<room *> entr);
     command_result setup_blueprint_pitcage(color_ostream & out);
     command_result setup_blueprint_utilities(color_ostream & out, df::coord f, std::vector<room *> entr);
-    command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f);
+    command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern);
     command_result setup_blueprint_pastures(color_ostream & out);
     command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
     command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, std::vector<room *> entr);

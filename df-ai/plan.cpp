@@ -404,7 +404,7 @@ bool Plan::checkidle(color_ostream & out)
                 return false;
             });
     FIND_ROOM(true, "cistern", ifplan);
-    FIND_ROOM(true, "well", ifplan);
+    FIND_ROOM(true, "location", [](room *r) -> bool { return r->status == "plan" && r->subtype == "tavern"; });
     FIND_ROOM(true, "infirmary", ifplan);
     FIND_ROOM(!find_room("cemetary", [](room *r) -> bool { return r->status != "plan"; }), "cemetary", ifplan);
     FIND_ROOM(!important_workshops2.empty(), "workshop", [this](room *r) -> bool
@@ -543,7 +543,6 @@ void Plan::idleidle(color_ostream & out)
         if (r->status != "plan" && r->status != "dig" &&
                 (r->type == "nobleroom" ||
                  r->type == "bedroom" ||
-                 r->type == "well" ||
                  r->type == "dininghall" ||
                  r->type == "cemetary" ||
                  r->type == "infirmary" ||
@@ -2032,7 +2031,11 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         AI::feed_key(interface_key::CIVZONE_MEETING);
         AI::feed_key(interface_key::ASSIGN_LOCATION);
         AI::feed_key(interface_key::LOCATION_NEW);
-        if (r->subtype == "library")
+        if (r->subtype == "tavern")
+        {
+            AI::feed_key(interface_key::LOCATION_INN_TAVERN);
+        }
+        else if (r->subtype == "library")
         {
             AI::feed_key(interface_key::LOCATION_LIBRARY);
         }
@@ -2043,6 +2046,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         }
         else
         {
+            AI::feed_key(interface_key::LEAVESCREEN);
             AI::feed_key(interface_key::LEAVESCREEN);
             ai->debug(out, "[ERROR] unknown location type: " + r->subtype);
         }
@@ -2239,7 +2243,7 @@ bool Plan::construct_cistern(color_ostream & out, room *r)
     dump_items_access(out, r);
 
     // build levers for floodgates
-    wantdig(out, find_room("well"));
+    wantdig(out, find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; }));
 
     // check smoothing progress, channel intermediate levels
     if (r->subtype == "well")
@@ -2588,31 +2592,6 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     {
         f->makeroom = true;
     }
-    else if (f->item == "well")
-    {
-        // Set up a tavern.
-        AI::feed_key(interface_key::D_CIVZONE);
-        Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
-        Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
-        AI::feed_key(interface_key::CURSOR_LEFT);
-        AI::feed_key(interface_key::SELECT);
-        for (int16_t x = r->min.x; x < r->max.x; x++)
-        {
-            AI::feed_key(interface_key::CURSOR_RIGHT);
-        }
-        for (int16_t y = r->min.y; y < r->max.y; y++)
-        {
-            AI::feed_key(interface_key::CURSOR_DOWN);
-        }
-        AI::feed_key(interface_key::SELECT);
-        AI::feed_key(interface_key::CIVZONE_MEETING);
-        AI::feed_key(interface_key::ASSIGN_LOCATION);
-        AI::feed_key(interface_key::LOCATION_NEW);
-        AI::feed_key(interface_key::LOCATION_INN_TAVERN);
-        AI::feed_key(interface_key::LEAVESCREEN);
-
-        ai->camera->ignore_pause();
-    }
 
     if (r->type == "infirmary")
     {
@@ -2711,7 +2690,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
 
 bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
 {
-    if (r->type == "well")
+    if (r->type == "location" && r->subtype == "tavern")
     {
         std::string way = f->way;
         if (!f->target)
@@ -2824,7 +2803,7 @@ void Plan::monitor_cistern(color_ostream & out)
 {
     if (!m_c_lever_in)
     {
-        room *well = find_room("well");
+        room *well = find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; });
         for (auto f = well->layout.begin(); f != well->layout.end(); f++)
         {
             if ((*f)->item == "trap" && (*f)->subtype == "lever")
@@ -2983,7 +2962,7 @@ void Plan::monitor_cistern(color_ostream & out)
             }
             else
             {
-                room *well = find_room("well");
+                room *well = find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; });
                 if (Maps::getTileDesignation(well->min + df::coord(-2, well->size().y / 2, 0))->bits.flow_size == 7)
                 {
                     // something went not as planned, but we have a water source
@@ -4372,16 +4351,54 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         }
     }
 
+    // tavern
+    room *cor = new room(f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0));
+    cor->accesspath.push_back(corridors.back());
+    corridors.push_back(cor);
+
+    df::coord tavern_center = f - df::coord(32, 0, 0);
+    room *tavern = new room("location", "tavern", tavern_center - df::coord(4, 4, 0), tavern_center + df::coord(4, 4, 0));
+    tavern->layout.push_back(new_door(9, 3));
+    tavern->layout.push_back(new_door(9, 5));
+    tavern->layout.push_back(new_furniture("chest", 8, 0));
+    tavern->accesspath.push_back(cor);
+    rooms.push_back(tavern);
+
+    room *booze = new room("stockpile", "food", tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0));
+    booze->stock_disable.insert(stockpile_list::FoodMeat);
+    booze->stock_disable.insert(stockpile_list::FoodFish);
+    booze->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
+    booze->stock_disable.insert(stockpile_list::FoodEgg);
+    booze->stock_disable.insert(stockpile_list::FoodPlants);
+    booze->stock_disable.insert(stockpile_list::FoodCheesePlant);
+    booze->stock_disable.insert(stockpile_list::FoodCheeseAnimal);
+    booze->stock_disable.insert(stockpile_list::FoodSeeds);
+    booze->stock_disable.insert(stockpile_list::FoodLeaves);
+    booze->stock_disable.insert(stockpile_list::FoodMilledPlant);
+    booze->stock_disable.insert(stockpile_list::FoodBoneMeal);
+    booze->stock_disable.insert(stockpile_list::FoodFat);
+    booze->stock_disable.insert(stockpile_list::FoodPaste);
+    booze->stock_disable.insert(stockpile_list::FoodPressedMaterial);
+    booze->stock_disable.insert(stockpile_list::FoodExtractPlant);
+    booze->stock_disable.insert(stockpile_list::FoodExtractAnimal);
+    booze->stock_disable.insert(stockpile_list::FoodMiscLiquid);
+    booze->stock_specific1 = true; // no prepared food
+    booze->workshop = tavern;
+    booze->level = 0;
+    tavern->accesspath.push_back(booze);
+    rooms.push_back(booze);
+
     if (allow_ice)
     {
         ai->debug(out, "icy embark, no well");
+        booze->min.x -= 2;
     }
     else
     {
         df::coord river = scan_river(out);
         if (river.isValid())
         {
-            command_result res = setup_blueprint_cistern_fromsource(out, river, f);
+            command_result res = setup_blueprint_cistern_fromsource(out, river, f, tavern);
             if (res != CR_OK)
                 return res;
         }
@@ -4389,6 +4406,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         {
             // TODO pool, pumps, etc
             ai->debug(out, "no river, no well");
+            booze->min.x -= 2;
         }
     }
 
@@ -4434,7 +4452,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     }
 
     farm_stairs->max.z = cz2;
-    room *cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2));
+    cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2));
     cor->accesspath.push_back(farm_stairs);
     corridors.push_back(cor);
     room *first_farm = nullptr;
@@ -4648,7 +4666,6 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 static furniture *new_well(int16_t x, int16_t y)
 {
     furniture *f = new_furniture("well", x, y);
-    f->makeroom = true;
     f->dig = tile_dig_designation::Channel;
     return f;
 }
@@ -4669,49 +4686,17 @@ static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string 
     return f;
 }
 
-command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f)
+command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern)
 {
     // TODO dynamic layout, at least move the well/cistern on the side of the river
     // TODO scan for solid ground for all this
 
-    // well
-    room *cor = new room(f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0));
-    cor->accesspath.push_back(corridors.back());
-    corridors.push_back(cor);
+    // add a well to the tavern
+    tavern->layout.push_back(new_well(4, 4));
+    tavern->layout.push_back(new_cistern_lever(1, 0, "out"));
+    tavern->layout.push_back(new_cistern_lever(0, 0, "in"));
 
-    df::coord c = f - df::coord(32, 0, 0);
-    room *well = new room("well", "well", c - df::coord(4, 4, 0), c + df::coord(4, 4, 0));
-    well->layout.push_back(new_well(4, 4));
-    well->layout.push_back(new_door(9, 3));
-    well->layout.push_back(new_door(9, 5));
-    well->layout.push_back(new_cistern_lever(1, 0, "out"));
-    well->layout.push_back(new_cistern_lever(0, 0, "in"));
-    well->layout.push_back(new_furniture("chest", 8, 0));
-    well->accesspath.push_back(cor);
-    rooms.push_back(well);
-
-    room *booze = new room("stockpile", "food", c + df::coord(-2, -4, 0), c + df::coord(3, -4, 0));
-    booze->stock_disable.insert(stockpile_list::FoodMeat);
-    booze->stock_disable.insert(stockpile_list::FoodFish);
-    booze->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
-    booze->stock_disable.insert(stockpile_list::FoodEgg);
-    booze->stock_disable.insert(stockpile_list::FoodPlants);
-    booze->stock_disable.insert(stockpile_list::FoodCheesePlant);
-    booze->stock_disable.insert(stockpile_list::FoodCheeseAnimal);
-    booze->stock_disable.insert(stockpile_list::FoodSeeds);
-    booze->stock_disable.insert(stockpile_list::FoodLeaves);
-    booze->stock_disable.insert(stockpile_list::FoodMilledPlant);
-    booze->stock_disable.insert(stockpile_list::FoodBoneMeal);
-    booze->stock_disable.insert(stockpile_list::FoodFat);
-    booze->stock_disable.insert(stockpile_list::FoodPaste);
-    booze->stock_disable.insert(stockpile_list::FoodPressedMaterial);
-    booze->stock_disable.insert(stockpile_list::FoodExtractPlant);
-    booze->stock_disable.insert(stockpile_list::FoodExtractAnimal);
-    booze->stock_disable.insert(stockpile_list::FoodMiscLiquid);
-    booze->workshop = well;
-    booze->level = 0;
-    well->accesspath.push_back(booze);
-    rooms.push_back(booze);
+    df::coord c = tavern->pos();
 
     // water cistern under the well (in the hole of bedroom blueprint)
     std::vector<room *> cist_cors = find_corridor_tosurface(out, c - df::coord(8, 0, 0));
@@ -4780,7 +4765,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     {
         // the tunnel should walk around other blueprint rooms
         df::coord p2 = p1 + df::coord(0, src.y >= p1.y ? 26 : -26, 0);
-        cor = new room(p1, p2);
+        room *cor = new room(p1, p2);
         corridors.push_back(cor);
         reserve->accesspath.push_back(cor);
         move_river(p2);
@@ -4842,7 +4827,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     int16_t y_x = 0;
     if (dst.x - 1 > output.x)
     {
-        cor = new room(df::coord(dst.x - 1, dst.y, dst.z), df::coord(output.x + 1, dst.y, dst.z));
+        room *cor = new room(df::coord(dst.x - 1, dst.y, dst.z), df::coord(output.x + 1, dst.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
         r = cor;
@@ -4850,7 +4835,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     }
     else if (output.x - 1 > dst.x)
     {
-        cor = new room(df::coord(dst.x + 1, dst.y, dst.z), df::coord(output.x - 1, dst.y, dst.z));
+        room *cor = new room(df::coord(dst.x + 1, dst.y, dst.z), df::coord(output.x - 1, dst.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
         r = cor;
@@ -4859,13 +4844,13 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 
     if (dst.y - 1 > output.y)
     {
-        cor = new room(df::coord(output.x + y_x, dst.y + 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
+        room *cor = new room(df::coord(output.x + y_x, dst.y + 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
     }
     else if (output.y - 1 > dst.y)
     {
-        cor = new room(df::coord(output.x + y_x, dst.y - 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
+        room *cor = new room(df::coord(output.x + y_x, dst.y - 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
     }
