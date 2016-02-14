@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 \
 && cd /dfhack/library/xml \
 && git checkout origin/master \
-&& git pull --ff-only \
+&& git pull --ff-only -u origin master \
 \
 && mkdir -p /dfhack/build-docker \
 && cd /dfhack/build-docker \
