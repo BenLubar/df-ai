@@ -4041,7 +4041,7 @@ df::coord Plan::spiral_search(df::coord t, int16_t max, int16_t min, int16_t ste
         for (auto it = sides.vec.begin(); it != sides.vec.end(); it++)
         {
             df::coord tt = t + *it * r;
-            if (b(tt))
+            if (Maps::isValidTilePos(tt.x, tt.y, tt.z) && b(tt))
                 return tt;
         }
 
@@ -4056,7 +4056,7 @@ df::coord Plan::spiral_search(df::coord t, int16_t max, int16_t min, int16_t ste
                     continue;
 
                 df::coord tt = t + dr * r + dv * v;
-                if (b(tt))
+                if (Maps::isValidTilePos(tt.x, tt.y, tt.z) && b(tt))
                     return tt;
             }
         }
