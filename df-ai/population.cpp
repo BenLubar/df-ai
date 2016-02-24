@@ -921,7 +921,7 @@ void Population::update_pets(color_ostream & out)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (!Units::isOwnCiv(u) || Units::isOwnRace(u))
+        if (!Units::isOwnCiv(u) || !Units::isOwnGroup(u) || Units::isOwnRace(u))
         {
             continue;
         }
@@ -932,11 +932,14 @@ void Population::update_pets(color_ostream & out)
 
         df::creature_raw *race = df::creature_raw::find(u->race);
         df::caste_raw *cst = race->caste[u->caste];
+
         int32_t age = (*cur_year - u->relations.birth_year) * 12 * 28 + (*cur_year_tick - u->relations.birth_time) / 1200; // days
 
         if (pet.count(u->id))
         {
-            if (cst->body_size_2.back() <= age && // full grown
+
+            if (!cst->flags.is_set(caste_raw_flags::CAN_LEARN) && // morally acceptable to slaughter
+                    cst->body_size_2.back() <= age && // full grown
                     u->profession != profession::TRAINED_HUNTER && // not trained
                     u->profession != profession::TRAINED_WAR && // not trained
                     u->relations.pet_owner_id == -1) // not owned
@@ -1019,10 +1022,9 @@ void Population::update_pets(color_ostream & out)
                 assign_unit_to_zone(u, bld);
                 // TODO monitor grass levels
             }
-            else
+            else if (u->relations.pet_owner_id == -1 && !cst->flags.is_set(caste_raw_flags::CAN_LEARN))
             {
                 // TODO slaughter best candidate, keep this one
-                // also avoid killing named pets
                 u->flags2.bits.slaughter = 1;
                 ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
                 continue;
