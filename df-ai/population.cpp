@@ -921,7 +921,7 @@ void Population::update_pets(color_ostream & out)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (!Units::isOwnCiv(u) || !Units::isOwnGroup(u) || Units::isOwnRace(u))
+        if (!Units::isOwnCiv(u) || Units::isOwnGroup(u) || Units::isOwnRace(u))
         {
             continue;
         }
