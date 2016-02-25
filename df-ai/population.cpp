@@ -569,7 +569,7 @@ void Population::assign_occupation(color_ostream & out, df::building *bld, df::a
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (!citizen.count(u->id))
+        if (!citizen.count(u->id) || Units::isChild(u))
         {
             continue;
         }
