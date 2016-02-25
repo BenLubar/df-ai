@@ -7,6 +7,9 @@
 #include "modules/Translation.h"
 #include "modules/Units.h"
 
+#include "df/abstract_building_inn_tavernst.h"
+#include "df/abstract_building_libraryst.h"
+#include "df/abstract_building_templest.h"
 #include "df/building_civzonest.h"
 #include "df/building_farmplotst.h"
 #include "df/building_stockpilest.h"
@@ -23,12 +26,14 @@
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_contains_unitst.h"
 #include "df/general_ref_unit_workerst.h"
+#include "df/histfig_entity_link_occupationst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
 #include "df/manager_order.h"
+#include "df/occupation.h"
 #include "df/reaction.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
@@ -43,7 +48,9 @@
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
+#include "df/viewscreen_locationsst.h"
 #include "df/world.h"
+#include "df/world_site.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -170,7 +177,7 @@ command_result Population::startup(color_ostream & out)
 
 command_result Population::onupdate_register(color_ostream & out)
 {
-    onupdate_handle = events.onupdate_register("df-ai pop", 36, 1, [this](color_ostream & out) { update(out); });
+    onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
@@ -183,28 +190,31 @@ command_result Population::onupdate_unregister(color_ostream & out)
 void Population::update(color_ostream & out)
 {
     update_counter++;
-    switch (update_counter % 100)
+    switch (update_counter % 10)
     {
-        case 10:
+        case 1:
             update_citizenlist(out);
             break;
-        case 20:
+        case 2:
             update_nobles(out);
             break;
-        case 30:
+        case 3:
             update_jobs(out);
             break;
-        case 40:
+        case 4:
             update_military(out);
             break;
-        case 50:
+        case 5:
             update_pets(out);
             break;
-        case 60:
+        case 6:
             update_deads(out);
             break;
-        case 70:
+        case 7:
             update_caged(out);
+            break;
+        case 8:
+            update_locations(out);
             break;
     }
 }
@@ -433,6 +443,215 @@ void Population::update_military(color_ostream & out)
         }
     }
     */
+}
+
+// with a population of 200:
+const static int32_t wanted_tavern_keeper = 4;
+const static int32_t wanted_tavern_keeper_min = 1;
+const static int32_t wanted_tavern_performer = 8;
+const static int32_t wanted_tavern_performer_min = 0;
+const static int32_t wanted_library_scholar = 16;
+const static int32_t wanted_library_scholar_min = 0;
+const static int32_t wanted_library_scribe = 2;
+const static int32_t wanted_library_scribe_min = 0;
+const static int32_t wanted_temple_performer = 4;
+const static int32_t wanted_temple_performer_min = 0;
+
+void Population::update_locations(color_ostream & out)
+{
+    // not urgent, wait for next cycle.
+    if (!AI::is_dwarfmode_viewscreen())
+        return;
+
+#define INIT_NEED(name) int32_t need_##name = std::max(wanted_##name * int32_t(citizen.size()) / 200, wanted_##name##_min)
+    INIT_NEED(tavern_keeper);
+    INIT_NEED(tavern_performer);
+    INIT_NEED(library_scholar);
+    INIT_NEED(library_scribe);
+    INIT_NEED(temple_performer);
+#undef INIT_NEED
+
+    if (room *tavern = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "tavern" && r->dfbuilding(); }))
+    {
+        df::building *bld = tavern->dfbuilding();
+        if (auto loc = virtual_cast<df::abstract_building_inn_tavernst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
+        {
+            for (auto it = loc->occupations.begin(); it != loc->occupations.end(); it++)
+            {
+                if ((*it)->unit_id != -1)
+                {
+                    if ((*it)->type == occupation_type::TAVERN_KEEPER)
+                    {
+                        need_tavern_keeper--;
+                    }
+                    else if ((*it)->type == occupation_type::PERFORMER)
+                    {
+                        need_tavern_performer--;
+                    }
+                }
+            }
+            if (need_tavern_keeper > 0)
+            {
+                assign_occupation(out, bld, loc, occupation_type::TAVERN_KEEPER);
+            }
+            if (need_tavern_performer > 0)
+            {
+                assign_occupation(out, bld, loc, occupation_type::PERFORMER);
+            }
+        }
+    }
+
+    if (room *library = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "library" && r->dfbuilding(); }))
+    {
+        df::building *bld = library->dfbuilding();
+        if (auto loc = virtual_cast<df::abstract_building_libraryst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
+        {
+            for (auto it = loc->occupations.begin(); it != loc->occupations.end(); it++)
+            {
+                if ((*it)->unit_id != -1)
+                {
+                    if ((*it)->type == occupation_type::SCHOLAR)
+                    {
+                        need_library_scholar--;
+                    }
+                    else if ((*it)->type == occupation_type::SCRIBE)
+                    {
+                        need_library_scribe--;
+                    }
+                }
+            }
+            if (need_library_scholar > 0)
+            {
+                assign_occupation(out, bld, loc, occupation_type::SCHOLAR);
+            }
+            if (need_library_scribe > 0)
+            {
+                assign_occupation(out, bld, loc, occupation_type::SCRIBE);
+            }
+        }
+    }
+
+    if (room *temple = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "temple" && r->dfbuilding(); }))
+    {
+        df::building *bld = temple->dfbuilding();
+        if (auto loc = virtual_cast<df::abstract_building_templest>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
+        {
+            for (auto it = loc->occupations.begin(); it != loc->occupations.end(); it++)
+            {
+                if ((*it)->unit_id != -1)
+                {
+                    if ((*it)->type == occupation_type::PERFORMER)
+                    {
+                        need_temple_performer--;
+                    }
+                }
+            }
+            if (need_temple_performer > 0)
+            {
+                assign_occupation(out, bld, loc, occupation_type::PERFORMER);
+            }
+        }
+    }
+}
+
+void Population::assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ)
+{
+    df::unit *chosen = nullptr;
+    int32_t best = std::numeric_limits<int32_t>::max();
+    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
+    {
+        df::unit *u = *it;
+        if (!citizen.count(u->id))
+        {
+            continue;
+        }
+
+        if (u->military.squad_id != -1)
+        {
+            continue;
+        }
+
+        df::historical_figure *hf = df::historical_figure::find(u->hist_figure_id);
+        if (!hf)
+        {
+            continue;
+        }
+
+        bool employed = false;
+        for (auto link = hf->entity_links.begin(); link != hf->entity_links.end(); link++)
+        {
+            if (strict_virtual_cast<df::histfig_entity_link_positionst>(*link))
+            {
+                employed = true;
+                break;
+            }
+            if (strict_virtual_cast<df::histfig_entity_link_occupationst>(*link))
+            {
+                employed = true;
+                break;
+            }
+        }
+        if (employed)
+        {
+            continue;
+        }
+
+        int32_t score = unit_totalxp(u);
+        if (!chosen || score < best)
+        {
+            chosen = u;
+            best = score;
+        }
+    }
+
+    if (!chosen)
+    {
+        ai->debug(out, "pop: could not find unit for occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true));
+        return;
+    }
+
+    AI::feed_key(interface_key::D_LOCATIONS);
+
+    auto view = strict_virtual_cast<df::viewscreen_locationsst>(Gui::getCurViewscreen(true));
+    if (!view)
+    {
+        ai->debug(out, "[ERROR] expected viewscreen_locationsst");
+        return;
+    }
+
+    while (view->locations[view->location_idx] != loc)
+    {
+        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+    }
+
+    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+
+    while (true)
+    {
+        if (view->occupations[view->occupation_idx]->unit_id == -1 &&
+                view->occupations[view->occupation_idx]->type == occ)
+        {
+            break;
+        }
+        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+    }
+
+    AI::feed_key(interface_key::SELECT);
+
+    while (true)
+    {
+        if (view->units[view->unit_idx] == chosen)
+        {
+            break;
+        }
+        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+    }
+
+    AI::feed_key(interface_key::SELECT);
+
+    AI::feed_key(interface_key::LEAVESCREEN);
+
+    ai->debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
 }
 
 void Population::military_random_squad_attack_unit(color_ostream & out, df::unit *u)

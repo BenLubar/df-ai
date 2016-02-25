@@ -7,10 +7,13 @@
 
 #include "df/entity_position_responsibility.h"
 #include "df/job_type.h"
+#include "df/occupation_type.h"
 #include "df/unit_labor.h"
 
 namespace df
 {
+    struct abstract_building;
+    struct building;
     struct building_civzonest;
     struct entity_position_assignment;
     struct squad;
@@ -63,6 +66,9 @@ public:
     void update_deads(color_ostream & out);
     void update_caged(color_ostream & out);
     void update_military(color_ostream & out);
+    void update_locations(color_ostream & out);
+
+    void assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ);
 
     void military_random_squad_attack_unit(color_ostream & out, df::unit *u);
     void military_all_squads_attack_unit(color_ostream & out, df::unit *u);
