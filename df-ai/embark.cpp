@@ -98,6 +98,12 @@ bool Embark::update(color_ostream & out)
     if (df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(curview))
     {
         ai->camera->check_record_status();
+
+        // dismiss the prerelease warning
+        std::vector<std::string> args;
+        args.push_back("dfhack.script_environment('gui/prerelease-warning').shown = true");
+        Core::getInstance().runCommand(out, "lua", args);
+
         switch (view->sel_subpage)
         {
             case df::viewscreen_titlest::None:

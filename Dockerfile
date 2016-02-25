@@ -29,7 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 && cd /df_linux \
 && rm -rf /dfhack \
 && echo "enable df-ai" > /df_linux/dfhack.init \
-&& echo -n > /df_linux/hack/scripts/gui/prerelease-warning.lua \
 && apt-get purge -y --auto-remove \
 	ca-certificates \
 	cmake \
