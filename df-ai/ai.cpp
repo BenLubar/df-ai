@@ -84,13 +84,18 @@ std::string AI::describe_item(df::item *i)
     return s;
 }
 
+std::string AI::describe_name(const df::language_name & name, bool in_english, bool only_last_part)
+{
+    std::string s = Translation::TranslateName(&name, in_english, only_last_part);
+    return Translation::capitalize(s);
+}
+
 std::string AI::describe_unit(df::unit *u)
 {
     if (!u)
         return "(unknown unit)";
 
-    std::string s = Translation::TranslateName(&u->name, false);
-    s = Translation::capitalize(s);
+    std::string s = describe_name(u->name);
     if (!s.empty())
         s += ", ";
     s += Units::getProfessionName(u);

@@ -10,6 +10,7 @@
 
 #include "df/coord.h"
 #include "df/interface_key.h"
+#include "df/language_name.h"
 
 namespace df
 {
@@ -52,6 +53,7 @@ public:
     static std::string timestamp(int32_t y, int32_t t);
     static std::string timestamp();
 
+    static std::string describe_name(const df::language_name & name, bool in_english = false, bool only_last_part = false);
     static std::string describe_item(df::item *i);
     static std::string describe_unit(df::unit *u);
 

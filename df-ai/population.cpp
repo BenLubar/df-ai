@@ -481,7 +481,7 @@ void Population::military_squad_attack_unit(color_ostream & out, df::squad *squa
     so->units.push_back(u->id);
     so->title = AI::describe_unit(u);
     squad->orders.push_back(so);
-    ai->debug(out, "sending " + Translation::capitalize(Translation::TranslateName(&squad->name, true)) + " to attack " + AI::describe_unit(u));
+    ai->debug(out, "sending " + AI::describe_name(squad->name, true) + " to attack " + AI::describe_unit(u));
 }
 
 std::string Population::military_find_commander_pos()

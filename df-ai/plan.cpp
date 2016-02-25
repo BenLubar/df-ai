@@ -5592,7 +5592,7 @@ std::string Plan::describe_room(room *r)
 
     if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (used by " << Translation::capitalize(Translation::TranslateName(&squad->name, true)) << ")";
+        s << " (used by " << AI::describe_name(squad->name, true) << ")";
     }
 
     if (r->level != -1)
