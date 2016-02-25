@@ -167,8 +167,7 @@ bool Embark::update(color_ostream & out)
     }
     else if (df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview))
     {
-        if (!AI_RANDOM_EMBARK_WORLD.empty())
-            return false;
+        AI_RANDOM_EMBARK_WORLD.clear();
 
         if (!view->welcome_msg.empty())
         {
