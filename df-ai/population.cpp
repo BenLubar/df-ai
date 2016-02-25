@@ -597,7 +597,7 @@ void Population::assign_occupation(color_ostream & out, df::building *bld, df::a
     {
         df::unit *u = *it;
 
-        if (u->military.squad_id != -1)
+        if (!u || u->military.squad_id != -1)
         {
             continue;
         }
