@@ -26,7 +26,6 @@
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_contains_unitst.h"
 #include "df/general_ref_unit_workerst.h"
-#include "df/histfig_entity_link_occupationst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
@@ -564,62 +563,6 @@ void Population::update_locations(color_ostream & out)
 
 void Population::assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ)
 {
-    df::unit *chosen = nullptr;
-    int32_t best = std::numeric_limits<int32_t>::max();
-    for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
-    {
-        df::unit *u = *it;
-        if (!citizen.count(u->id) || Units::isChild(u))
-        {
-            continue;
-        }
-
-        if (u->military.squad_id != -1)
-        {
-            continue;
-        }
-
-        df::historical_figure *hf = df::historical_figure::find(u->hist_figure_id);
-        if (!hf)
-        {
-            continue;
-        }
-
-        bool employed = false;
-        for (auto link = hf->entity_links.begin(); link != hf->entity_links.end(); link++)
-        {
-            if (strict_virtual_cast<df::histfig_entity_link_positionst>(*link))
-            {
-                employed = true;
-                break;
-            }
-            if (strict_virtual_cast<df::histfig_entity_link_occupationst>(*link))
-            {
-                employed = true;
-                break;
-            }
-        }
-        if (employed)
-        {
-            continue;
-        }
-
-        int32_t score = unit_totalxp(u);
-        if (!chosen || score < best)
-        {
-            chosen = u;
-            best = score;
-        }
-    }
-
-    if (!chosen)
-    {
-        ai->debug(out, "pop: could not find unit for occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true));
-        return;
-    }
-
-    ai->debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
-
     AI::feed_key(interface_key::D_LOCATIONS);
 
     auto view = strict_virtual_cast<df::viewscreen_locationsst>(Gui::getCurViewscreen(true));
@@ -647,6 +590,60 @@ void Population::assign_occupation(color_ostream & out, df::building *bld, df::a
     }
 
     AI::feed_key(interface_key::SELECT);
+
+    df::unit *chosen = nullptr;
+    int32_t best = std::numeric_limits<int32_t>::max();
+    for (auto it = view->units.begin(); it != view->units.end(); it++)
+    {
+        df::unit *u = *it;
+
+        if (u->military.squad_id != -1)
+        {
+            continue;
+        }
+
+        std::vector<Units::NoblePosition> positions;
+        Units::getNoblePositions(&positions, u);
+        if (!positions.empty())
+        {
+            continue;
+        }
+
+        bool has_occupation = false;
+        for (auto o = world->occupations.all.begin(); o != world->occupations.all.end(); o++)
+        {
+            if ((*o)->unit_id == u->id)
+            {
+                has_occupation = true;
+                break;
+            }
+        }
+
+        if (has_occupation)
+        {
+            continue;
+        }
+
+        int32_t score = unit_totalxp(u);
+        if (!chosen || score < best)
+        {
+            chosen = u;
+            best = score;
+        }
+    }
+
+    if (!chosen)
+    {
+        ai->debug(out, "pop: could not find unit for occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true));
+
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        return;
+    }
+
+    ai->debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
 
     while (true)
     {
