@@ -463,6 +463,14 @@ void Population::update_locations(color_ostream & out)
     if (!AI::is_dwarfmode_viewscreen())
         return;
 
+    // accept all petitions
+    while (!ui->petitions.empty())
+    {
+        AI::feed_key(interface_key::D_PETITIONS);
+        AI::feed_key(interface_key::OPTION1);
+        AI::feed_key(interface_key::LEAVESCREEN);
+    }
+
 #define INIT_NEED(name) int32_t need_##name = std::max(wanted_##name * int32_t(citizen.size()) / 200, wanted_##name##_min)
     INIT_NEED(tavern_keeper);
     INIT_NEED(tavern_performer);
@@ -610,6 +618,8 @@ void Population::assign_occupation(color_ostream & out, df::building *bld, df::a
         return;
     }
 
+    ai->debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
+
     AI::feed_key(interface_key::D_LOCATIONS);
 
     auto view = strict_virtual_cast<df::viewscreen_locationsst>(Gui::getCurViewscreen(true));
@@ -650,8 +660,6 @@ void Population::assign_occupation(color_ostream & out, df::building *bld, df::a
     AI::feed_key(interface_key::SELECT);
 
     AI::feed_key(interface_key::LEAVESCREEN);
-
-    ai->debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
 }
 
 void Population::military_random_squad_attack_unit(color_ostream & out, df::unit *u)
