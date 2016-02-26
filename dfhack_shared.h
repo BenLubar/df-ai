@@ -7,6 +7,10 @@
 
 #include "DataDefs.h"
 
+#ifndef HAVE_NULLPTR
+#define nullptr 0L
+#endif
+
 using namespace DFHack;
 using namespace df::enums;
 
