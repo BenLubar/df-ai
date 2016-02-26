@@ -69,10 +69,11 @@ const static int32_t spare_bedroom = 3; // dig this much free bedroom in advance
 const static int16_t farm_w = 3;
 const static int16_t farm_h = 3;
 const static int32_t dpf = farm_w * farm_h * dwarves_per_farmtile_num / dwarves_per_farmtile_den;
-const static int32_t nrfarms = (220 + dpf - 1) / dpf;
+const static int32_t extra_farms = 7; // built after utilities are finished
+const static int32_t nrfarms = (220 + dpf - 1) / dpf + extra_farms;
 
 const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -5;
-const int16_t Plan::MaxX = 35, Plan::MaxY = 22, Plan::MaxZ = 1;
+const int16_t Plan::MaxX = 48, Plan::MaxY = 22, Plan::MaxZ = 1;
 
 Plan::Plan(AI *ai) :
     ai(ai),
@@ -435,6 +436,45 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, "location", ifplan);
     if (r == nullptr)
         past_initial_phase = true;
+    int32_t need_food = extra_farms;
+    int32_t need_cloth = extra_farms;
+    FIND_ROOM(true, "farmplot", ([&need_food, &need_cloth](room *r) -> bool
+            {
+                if (!r->users.empty())
+                {
+                    return false;
+                }
+
+                if (r->subtype == "food")
+                {
+                    if (need_food <= 0)
+                    {
+                        return false;
+                    }
+
+                    if (r->status == "plan")
+                    {
+                        return true;
+                    }
+
+                    need_food--;
+                }
+                else if (r->subtype == "cloth")
+                {
+                    if (need_cloth <= 0)
+                    {
+                        return false;
+                    }
+
+                    if (r->status == "plan")
+                    {
+                        return true;
+                    }
+
+                    need_cloth--;
+                }
+                return false;
+            }));
     FIND_ROOM(true, "outpost", [](room *r) -> bool
             {
                 return r->status == "plan" && r->subtype == "cavern";
@@ -941,14 +981,6 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
         find_room(subtype, [id](room *r) -> bool
                 {
                     r->users.erase(id);
-                    if (r->bld_id != -1 && r->users.empty())
-                    {
-                        if (df::building *bld = r->dfbuilding())
-                        {
-                            Buildings::deconstruct(bld);
-                        }
-                        r->bld_id = -1;
-                    }
                     return false;
                 });
     }
