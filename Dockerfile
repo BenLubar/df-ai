@@ -1,6 +1,6 @@
 FROM benlubar/dwarffortress:df-0.42.06
 
-ADD df-ai /df-ai
+ADD . /df-ai
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	ca-certificates \
