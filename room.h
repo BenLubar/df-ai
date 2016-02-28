@@ -90,7 +90,7 @@ struct furniture
     furniture() :
         item(),
         subtype(),
-        construction(df::construction_type(-1)),
+        construction(construction_type::NONE),
         dig(tile_dig_designation::Default),
         direction(),
         way(),

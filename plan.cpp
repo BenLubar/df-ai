@@ -662,7 +662,7 @@ void Plan::checkroom(color_ostream & out, room *r)
 
                 tasks.push_back(new task("furnish", r, f));
             }
-            if (f->construction != df::construction_type(-1))
+            if (f->construction != construction_type::NONE)
             {
                 try_furnish_construction(out, f->construction, t);
             }
@@ -1412,7 +1412,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return true;
     df::coord tgtile = r->min + df::coord(f->x, f->y, f->z);
     df::tiletype tt = *Maps::getTileType(tgtile);
-    if (f->construction != df::construction_type(-1))
+    if (f->construction != construction_type::NONE)
     {
         if (try_furnish_construction(out, f->construction, tgtile))
         {

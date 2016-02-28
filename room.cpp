@@ -165,7 +165,7 @@ void room::fixup_open()
                     df::coord ft = min + df::coord(f->x, f->y, f->z);
                     if (t == ft)
                     {
-                        if (f->construction == df::construction_type(-1))
+                        if (f->construction == construction_type::NONE)
                         {
                             fixup_open_tile(ft, f->dig, f);
                         }
@@ -352,7 +352,7 @@ bool room::constructions_done() const
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         furniture *f = *it;
-        if (f->construction == df::construction_type(-1))
+        if (f->construction == construction_type::NONE)
             continue;
         df::coord ft = min + df::coord(f->x, f->y, f->z);
         // TODO check actual tile shape vs construction type
