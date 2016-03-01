@@ -124,7 +124,7 @@ public:
     void init_manager_subtype();
 
     std::vector<df::manager_order *> find_manager_orders(std::string order);
-    int32_t count_manager_orders_matcat(std::string matcat, df::job_type order = df::job_type(-1));
+    int32_t count_manager_orders_matcat(std::string matcat, df::job_type order = job_type::NONE);
     void add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
 
     std::string furniture_order(std::string k);

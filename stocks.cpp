@@ -334,7 +334,7 @@ Stocks::Stocks(AI *ai) :
     plants(),
     last_unforbidall_year(*cur_year),
     last_managerstall(*cur_year_tick / 28 / 1200),
-    last_managerorder(df::job_type(-1)),
+    last_managerorder(job_type::NONE),
     updating_seeds(false),
     updating_plants(false),
     updating_corpses(false),
@@ -1430,7 +1430,7 @@ int32_t Stocks::count_stocks_weapon(color_ostream & out, df::job_skill skill)
         for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
             df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
-            if (skill != df::job_skill(-1) && idef->skill_melee != skill)
+            if (skill != job_skill::NONE && idef->skill_melee != skill)
             {
                 continue;
             }
@@ -1880,7 +1880,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     if (Manager.MatCategory.count(order))
     {
         std::string matcat = Manager.MatCategory.at(order);
-        df::job_type job = df::job_type(-1);
+        df::job_type job = job_type::NONE;
         find_enum_item(&job, order);
         int32_t i_amount = count.at(matcat) - count_manager_orders_matcat(matcat, job);
         if (i_amount < amount && Watch.Needed.count(matcat))
@@ -1909,7 +1909,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 // forge weapons
 void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill)
 {
-    if (skill == df::job_skill(-1) && (count.at("pick") == 0 || count.at("axe") == 0))
+    if (skill == job_skill::NONE && (count.at("pick") == 0 || count.at("axe") == 0))
         return;
 
     std::map<int32_t, int32_t> bars;
@@ -1974,7 +1974,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
         for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
             df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
-            if (skill != df::job_skill(-1) && idef->skill_melee != skill)
+            if (skill != job_skill::NONE && idef->skill_melee != skill)
                 continue;
             if (idef->flags.is_set(weapon_flags::TRAINING))
                 continue;

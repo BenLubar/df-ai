@@ -1388,7 +1388,7 @@ static df::building_type FurnitureBuilding(std::string k)
         return building_type::NestBox;
 
     k[0] += 'A' - 'a';
-    df::building_type bt = df::building_type(-1);
+    df::building_type bt = building_type::NONE;
     find_enum_item(&bt, k);
     return bt;
 }
@@ -1811,10 +1811,11 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         df::item *bould;
         if (find_item(items_other_id::BOULDER, bould, true, true))
         {
-            df::furnace_type furnace_subtype = df::furnace_type(-1);
+            df::furnace_type furnace_subtype;
             if (!find_enum_item(&furnace_subtype, r->subtype))
             {
-                ai->debug(out, "could not find furnace subtype for " + r->subtype);
+                ai->debug(out, "[ERROR] could not find furnace subtype for " + r->subtype);
+                return true;
             }
             df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, furnace_subtype);
             Buildings::setSize(bld, r->size());
@@ -1856,10 +1857,11 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
     }
     else
     {
-        df::workshop_type subtype = df::workshop_type(-1);
+        df::workshop_type subtype;
         if (!find_enum_item(&subtype, r->subtype))
         {
-            ai->debug(out, "could not find workshop subtype for " + r->subtype);
+            ai->debug(out, "[ERROR] could not find workshop subtype for " + r->subtype);
+            return true;
         }
         df::item *bould;
         if (find_item(items_other_id::BOULDER, bould, false, true) ||
