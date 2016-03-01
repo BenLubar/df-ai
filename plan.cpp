@@ -1530,7 +1530,7 @@ bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coor
         items.push_back(buckt);
         items.push_back(chain);
         Buildings::constructWithItems(bld, items);
-        r->bld_id = f->bld_id = bld->id;
+        f->bld_id = bld->id;
         tasks.push_back(new task("checkfurnish", r, f));
         return true;
     }
