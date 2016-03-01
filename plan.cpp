@@ -5106,7 +5106,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new_furniture("chair", 1, 1));
             r->layout.back()->makeroom = true;
-            r->layout.push_back(new_furniture("chair", 1 - dirx, 1));
+            r->layout.push_back(new_furniture("table", 1 - dirx, 1));
             r->layout.push_back(new_furniture("chest", 1 + dirx, 0));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_furniture("cabinet", 1 + dirx, 2));
