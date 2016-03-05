@@ -1,6 +1,6 @@
 Watch Dwarf Fortress play itself!
 
-Plugin for DFHack 0.42.05-alpha1.
+Plugin for DFHack 0.42.06-alpha1.
 
 Installation:
 
