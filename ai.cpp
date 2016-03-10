@@ -214,11 +214,11 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
                 bool found = false;
                 for (auto it = world->units.active.rbegin(); it != world->units.active.rend(); it++)
                 {
-                    if ((*it)->flags2.bits.visitor_uninvited)
+                    if (Units::isAlive(*it) && Units::getPosition(*it).isValid() && (*it)->flags3.bits.announce_titan)
                     {
                         pop->military_all_squads_attack_unit(out, *it);
                         found = true;
-                        break;
+                        // no break
                     }
                 }
                 if (!found)
