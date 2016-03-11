@@ -18,19 +18,22 @@ namespace df
 
 struct furniture;
 
-enum class room_status
+namespace room_status
 {
-    plan,
-    dig,
-    dug,
-    finished
-};
+    enum status
+    {
+        plan,
+        dig,
+        dug,
+        finished
+    };
+}
 
-std::ostream & operator <<(std::ostream & stream, room_status status);
+std::ostream & operator <<(std::ostream & stream, room_status::status status);
 
 struct room
 {
-    room_status status;
+    room_status::status status;
     std::string type;
     std::string subtype;
     std::string comment;

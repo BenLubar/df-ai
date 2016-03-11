@@ -7,7 +7,7 @@
 
 #include "df/building.h"
 
-std::ostream & operator <<(std::ostream & stream, room_status status)
+std::ostream & operator <<(std::ostream & stream, room_status::status status)
 {
     switch (status)
     {
