@@ -29,6 +29,7 @@
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
+#include "df/incident.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
 #include "df/manager_order.h"
@@ -248,6 +249,23 @@ void Population::update_citizenlist(color_ostream & out)
             else
             {
                 new_citizen(out, u->id);
+
+                if (ai->eventsJson.is_open())
+                {
+                    Json::Value payload(Json::objectValue);
+                    payload["id"] = u->id;
+                    payload["name"] = DF2UTF(AI::describe_name(u->name, false));
+                    payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
+                    payload["birth_year"] = u->relations.birth_year;
+                    payload["birth_time"] = u->relations.birth_time;
+                    if (df::creature_raw *race = df::creature_raw::find(u->race))
+                    {
+                        payload["race"] = race->creature_id;
+                        payload["caste"] = race->caste[u->caste]->caste_id;
+                    }
+                    payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
+                    ai->event("new citizen", payload);
+                }
             }
         }
     }
@@ -257,7 +275,35 @@ void Population::update_citizenlist(color_ostream & out)
     {
         // u.counters.death_tg.flags.discovered dead/missing
         del_citizen(out, *it);
+
+        if (ai->eventsJson.is_open())
+        {
+            Json::Value payload(Json::objectValue);
+            payload["id"] = *it;
+            if (df::unit *u = df::unit::find(*it))
+            {
+                payload["name"] = DF2UTF(AI::describe_name(u->name, false));
+                payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
+                payload["birth_year"] = u->relations.birth_year;
+                payload["birth_time"] = u->relations.birth_time;
+                if (df::incident *i = df::incident::find(u->counters.death_id))
+                {
+                    payload["death_year"] = i->event_year;
+                    payload["death_time"] = i->event_time;
+                    payload["death_cause"] = ENUM_KEY_STR(death_type, i->death_cause);
+                }
+                if (df::creature_raw *race = df::creature_raw::find(u->race))
+                {
+                    payload["race"] = race->creature_id;
+                    payload["caste"] = race->caste[u->caste]->caste_id;
+                }
+                payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
+            }
+            ai->event("del citizen", payload);
+        }
     }
+
+    ai->event("citizen count", citizen.size());
 }
 
 void Population::update_jobs(color_ostream & out)
@@ -410,38 +456,6 @@ void Population::update_military(color_ostream & out)
     {
         ai->plan->getsoldierbarrack(out, *it);
     }
-
-    /*
-    for (int32_t sqid : ui->main.fortress_entity->squads)
-    {
-        df::squad *sq = df::squad::find(sqid);
-        int32_t soldier_count = 0;
-        for (auto sp : sq->positions)
-        {
-            if (sp->occupant != -1)
-            {
-                soldier_count++;
-            }
-        }
-        for (int32_t month = 0; month < 12; month++)
-        {
-            for (df::squad_schedule_order *so : sq->schedule[1][month]->orders)
-            {
-                df::squad_order_trainst *sot = virtual_cast<df::squad_order_trainst>(so->order);
-                if (!sot)
-                {
-                    continue;
-                }
-                so->min_count = soldier_count > 3 ? soldier_count - 1 : soldier_count;
-                room *r = ai->plan->find_room("barracks", [sqid](room *r) -> bool { return r->squad_id == sqid; });
-                if (r && r->status != "finished")
-                {
-                    so->min_count = 0;
-                }
-            }
-        }
-    }
-    */
 }
 
 // with a population of 200:

@@ -18,7 +18,7 @@ REQUIRE_GLOBAL(pause_state);
 AI *dwarfAI = nullptr;
 bool full_reset_requested = false;
 
-command_result status_command(color_ostream & out, std::vector<std::string> & args);
+command_result ai_command(color_ostream & out, std::vector<std::string> & args);
 
 // Check whether we are enabled and make sure the AI data exists iff we are.
 bool check_enabled(color_ostream & out)
@@ -84,9 +84,12 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
     commands.push_back(PluginCommand(
         "ai",
         "Dwarf Fortress + Artificial Intelligence",
-        status_command,
+        ai_command,
         false,
+        "ai\n"
         "  Shows the status of the AI. Use enable df-ai to enable the AI.\n"
+        "ai enable events\n"
+        "  Write events in JSON format to df-ai-events.json\n"
     ));
     return CR_OK;
 }
@@ -107,13 +110,8 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
     return CR_OK;
 }
 
-command_result status_command(color_ostream & out, std::vector<std::string> & args)
+command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 {
-    if (!args.empty())
-    {
-        return CR_WRONG_USAGE;
-    }
-
     CoreSuspender suspend;
 
     if (!check_enabled(out))
@@ -122,8 +120,37 @@ command_result status_command(color_ostream & out, std::vector<std::string> & ar
         return CR_OK;
     }
 
-    AI::write_df(out, dwarfAI->status(), "\n", "\n", DF2CONSOLE);
-    return CR_OK;
+    if (args.empty())
+    {
+        AI::write_df(out, dwarfAI->status(), "\n", "\n", DF2CONSOLE);
+        return CR_OK;
+    }
+
+    if (args.size() == 2 && (args[0] == "enable" || args[0] == "disable"))
+    {
+        bool enable = args[0] == "enable";
+
+        if (args[1] == "events")
+        {
+            if (enable == dwarfAI->eventsJson.is_open())
+            {
+                out << "df-ai-events.json is already " << (enable ? "enabled" : "disabled") << "\n";
+                return CR_OK;
+            }
+
+            if (enable)
+            {
+                dwarfAI->eventsJson.open("df-ai-events.json", std::ofstream::out | std::ofstream::app);
+            }
+            else
+            {
+                dwarfAI->eventsJson.close();
+            }
+            return CR_OK;
+        }
+    }
+
+    return CR_WRONG_USAGE;
 }
 
 DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_change_event event)

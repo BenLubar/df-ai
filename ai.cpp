@@ -35,6 +35,7 @@ REQUIRE_GLOBAL(world);
 AI::AI() :
     rng(0),
     logger("df-ai.log", std::ofstream::out | std::ofstream::app),
+    eventsJson(),
     pop(new Population(this)),
     plan(new Plan(this)),
     stocks(new Stocks(this)),
@@ -159,6 +160,23 @@ void AI::debug(color_ostream & out, const std::string & str)
         write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
     }
     write_df(logger, ts + " " + str, "\n                 ");
+}
+
+void AI::event(const std::string & name, const Json::Value & payload)
+{
+    if (!eventsJson.is_open())
+    {
+        return;
+    }
+
+    Json::Value wrapper(Json::objectValue);
+    wrapper["unix"] = Json::LargestInt(time(nullptr));
+    wrapper["year"] = Json::Int(*cur_year);
+    wrapper["tick"] = Json::Int(*cur_year_tick);
+    wrapper["name"] = name;
+    wrapper["payload"] = payload;
+    eventsJson << wrapper << "\n";
+    eventsJson.flush();
 }
 
 command_result AI::startup(color_ostream & out)

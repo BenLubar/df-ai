@@ -579,6 +579,32 @@ void Stocks::update(color_ostream & out)
                     farmplot(out, r, false);
                     return false;
                 }
+                if (ai->eventsJson.is_open())
+                {
+                    Json::Value payload(Json::objectValue);
+                    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
+                    {
+                        Json::Value needed(Json::arrayValue);
+                        needed.append(count.at(it->first));
+                        needed.append(num_needed(it->first));
+                        payload[it->first] = needed;
+                    }
+                    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
+                    {
+                        Json::Value watch(Json::arrayValue);
+                        watch.append(count.at(it->first));
+                        watch.append(-it->second);
+                        payload[it->first] = watch;
+                    }
+                    for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
+                    {
+                        Json::Value also(Json::arrayValue);
+                        also.append(count.at(*it));
+                        also.append(0);
+                        payload[*it] = also;
+                    }
+                    ai->event("stocks update", payload);
+                }
                 // finished, dismiss callback
                 return true;
             });

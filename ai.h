@@ -12,6 +12,8 @@
 #include "df/interface_key.h"
 #include "df/language_name.h"
 
+#include "jsoncpp.h"
+
 namespace df
 {
     struct item;
@@ -37,6 +39,7 @@ class AI
 public:
     std::mt19937 rng;
     std::ofstream logger;
+    std::ofstream eventsJson;
     Population *pop;
     Plan *plan;
     Stocks *stocks;
@@ -66,6 +69,8 @@ public:
 
     void debug(color_ostream & out, const std::string & str, df::coord announce);
     void debug(color_ostream & out, const std::string & str);
+
+    void event(const std::string & name, const Json::Value & payload);
 
     command_result startup(color_ostream & out);
 
