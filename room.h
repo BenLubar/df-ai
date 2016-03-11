@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iostream>
 #include <map>
 #include <string>
 #include <vector>
@@ -17,9 +18,19 @@ namespace df
 
 struct furniture;
 
+enum class room_status
+{
+    plan,
+    dig,
+    dug,
+    finished
+};
+
+std::ostream & operator <<(std::ostream & stream, room_status status);
+
 struct room
 {
-    std::string status;
+    room_status status;
     std::string type;
     std::string subtype;
     std::string comment;

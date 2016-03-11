@@ -1034,7 +1034,7 @@ void Population::update_nobles(color_ostream & out)
         }
     }
 
-    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != "plan"; }) && !cz.empty())
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
         ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());

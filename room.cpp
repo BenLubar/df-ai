@@ -7,8 +7,25 @@
 
 #include "df/building.h"
 
+std::ostream & operator <<(std::ostream & stream, room_status status)
+{
+    switch (status)
+    {
+        case room_status::plan:
+            return stream << "plan";
+        case room_status::dig:
+            return stream << "dig";
+        case room_status::dug:
+            return stream << "dug";
+        case room_status::finished:
+            return stream << "finished";
+        default:
+            return stream << "???";
+    }
+}
+
 room::room(df::coord mins, df::coord maxs, std::string comment) :
-    status("plan"),
+    status(room_status::plan),
     type("corridor"),
     subtype(""),
     comment(comment),
@@ -44,7 +61,7 @@ room::room(df::coord mins, df::coord maxs, std::string comment) :
 }
 
 room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs, std::string comment) :
-    status("plan"),
+    status(room_status::plan),
     type(type),
     subtype(subtype),
     comment(comment),
