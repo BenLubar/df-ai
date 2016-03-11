@@ -372,7 +372,7 @@ void Population::update_caged(color_ostream & out)
 
                     if (u->inventory.empty())
                     {
-                        room *r = ai->plan->find_room("pitcage", [](room *r) -> bool { return r->dfbuilding(); });
+                        room *r = ai->plan->find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
                         if (r && ai->plan->spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
                         {
                             assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
@@ -492,7 +492,7 @@ void Population::update_locations(color_ostream & out)
     INIT_NEED(temple_performer);
 #undef INIT_NEED
 
-    if (room *tavern = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "tavern" && r->dfbuilding(); }))
+    if (room *tavern = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->subtype == "tavern" && r->dfbuilding(); }))
     {
         df::building *bld = tavern->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_inn_tavernst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
@@ -522,7 +522,7 @@ void Population::update_locations(color_ostream & out)
         }
     }
 
-    if (room *library = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "library" && r->dfbuilding(); }))
+    if (room *library = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->subtype == "library" && r->dfbuilding(); }))
     {
         df::building *bld = library->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_libraryst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
@@ -552,7 +552,7 @@ void Population::update_locations(color_ostream & out)
         }
     }
 
-    if (room *temple = ai->plan->find_room("location", [](room *r) -> bool { return r->subtype == "temple" && r->dfbuilding(); }))
+    if (room *temple = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->subtype == "temple" && r->dfbuilding(); }))
     {
         df::building *bld = temple->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_templest>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
@@ -930,7 +930,7 @@ int32_t Population::military_find_free_squad()
 
 void Population::set_up_trading(bool should_be_trading)
 {
-    room *r = ai->plan->find_room("workshop", [](room *r) -> bool { return r->subtype == "TradeDepot"; });
+    room *r = ai->plan->find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "TradeDepot"; });
     if (!r)
     {
         return;
@@ -1034,7 +1034,7 @@ void Population::update_nobles(color_ostream & out)
         }
     }
 
-    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room("infirmary", [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
         ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());

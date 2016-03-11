@@ -182,12 +182,12 @@ command_result Plan::startup(color_ostream & out)
 
     categorize_all();
 
-    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Masons" && r->level == 0; }));
-    digroom(out, find_room("workshop", [](room *r) -> bool { return r->subtype == "Carpenters" && r->level == 0; }));
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 0; })->subtype = "Masons";
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 1; })->subtype = "Masons";
-    find_room("workshop", [](room *r) -> bool { return r->subtype.empty() && r->level == 2; })->subtype = "Masons";
-    wantdig(out, find_room("stockpile", [](room *r) -> bool { return r->subtype == "food" && r->level == 0 && r->workshop && r->workshop->type == "farmplot"; }));
+    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Masons" && r->level == 0; }));
+    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Carpenters" && r->level == 0; }));
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 0; })->subtype = "Masons";
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 1; })->subtype = "Masons";
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 2; })->subtype = "Masons";
+    wantdig(out, find_room(room_type::stockpile, [](room *r) -> bool { return r->subtype == "food" && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }));
 
     dig_garbagedump(out);
 
@@ -224,9 +224,9 @@ void Plan::update(color_ostream & out)
         if (t->type != "digroom")
             continue;
         df::coord size = t->r->size();
-        if (t->r->type != "corridor" || size.z > 1)
+        if (t->r->type != room_type::corridor || size.z > 1)
             nrdig++;
-        if (t->r->type != "corridor" && size.x * size.y * size.z >= 10)
+        if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
             nrdig++;
     }
 
@@ -336,7 +336,7 @@ task *Plan::is_digging()
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
-        if ((t->type == "wantdig" || t->type == "digroom") && t->r->type != "corridor")
+        if ((t->type == "wantdig" || t->type == "digroom") && t->r->type != room_type::corridor)
             return t;
     }
     return nullptr;
@@ -386,14 +386,14 @@ bool Plan::checkidle(color_ostream & out)
     if (r == nullptr && (cond)) \
         r = find_room(type, lambda)
 
-    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+    FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
             {
                 return r->subtype == "food" &&
                         r->level == 0 &&
                         !r->workshop &&
                         r->status == room_status::plan;
             });
-    FIND_ROOM(!important_workshops.empty(), "workshop", [this](room *r) -> bool
+    FIND_ROOM(!important_workshops.empty(), room_type::workshop, [this](room *r) -> bool
             {
                 if (r->subtype == important_workshops.back() &&
                         r->status == room_status::plan &&
@@ -404,11 +404,11 @@ bool Plan::checkidle(color_ostream & out)
                 }
                 return false;
             });
-    FIND_ROOM(true, "cistern", ifplan);
-    FIND_ROOM(true, "location", [](room *r) -> bool { return r->status == room_status::plan && r->subtype == "tavern"; });
-    FIND_ROOM(true, "infirmary", ifplan);
-    FIND_ROOM(!find_room("cemetary", [](room *r) -> bool { return r->status != room_status::plan; }), "cemetary", ifplan);
-    FIND_ROOM(!important_workshops2.empty(), "workshop", [this](room *r) -> bool
+    FIND_ROOM(true, room_type::cistern, ifplan);
+    FIND_ROOM(true, room_type::location, [](room *r) -> bool { return r->status == room_status::plan && r->subtype == "tavern"; });
+    FIND_ROOM(true, room_type::infirmary, ifplan);
+    FIND_ROOM(!find_room(room_type::cemetary, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetary, ifplan);
+    FIND_ROOM(!important_workshops2.empty(), room_type::workshop, [this](room *r) -> bool
             {
                 if (r->subtype == important_workshops2.back() &&
                         r->status == room_status::plan &&
@@ -419,13 +419,13 @@ bool Plan::checkidle(color_ostream & out)
                 }
                 return false;
             });
-    FIND_ROOM(true, "pitcage", ifplan);
-    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+    FIND_ROOM(true, room_type::pitcage, ifplan);
+    FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
             {
                 return r->status == room_status::plan &&
                         r->level <= 1;
             });
-    FIND_ROOM(true, "workshop", [](room *r) -> bool
+    FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
                         r->status == room_status::plan &&
@@ -433,12 +433,12 @@ bool Plan::checkidle(color_ostream & out)
             });
     if (r == nullptr && !fort_entrance->furnished)
         r = fort_entrance;
-    FIND_ROOM(true, "location", ifplan);
+    FIND_ROOM(true, room_type::location, ifplan);
     if (r == nullptr)
         past_initial_phase = true;
     int32_t need_food = extra_farms;
     int32_t need_cloth = extra_farms;
-    FIND_ROOM(true, "farmplot", ([&need_food, &need_cloth](room *r) -> bool
+    FIND_ROOM(true, room_type::farmplot, ([&need_food, &need_cloth](room *r) -> bool
             {
                 if (!r->users.empty())
                 {
@@ -475,17 +475,17 @@ bool Plan::checkidle(color_ostream & out)
                 }
                 return false;
             }));
-    FIND_ROOM(true, "outpost", [](room *r) -> bool
+    FIND_ROOM(true, room_type::outpost, [](room *r) -> bool
             {
                 return r->status == room_status::plan && r->subtype == "cavern";
             });
-    FIND_ROOM(true, "workshop", [](room *r) -> bool
+    FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
                         r->status == room_status::plan &&
                         r->level == 1;
             });
-    FIND_ROOM(true, "bedroom", [&freebed](room *r) -> bool
+    FIND_ROOM(true, room_type::bedroom, [&freebed](room *r) -> bool
             {
                 if (r->owner == -1)
                 {
@@ -494,7 +494,7 @@ bool Plan::checkidle(color_ostream & out)
                 }
                 return false;
             });
-    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+    FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
             {
                 return r->status == room_status::plan &&
                         r->level <= 2;
@@ -503,8 +503,8 @@ bool Plan::checkidle(color_ostream & out)
     {
         return r->status == room_status::finished && !r->furnished;
     };
-    FIND_ROOM(true, "nobleroom", finished_nofurnished);
-    FIND_ROOM(true, "bedroom", finished_nofurnished);
+    FIND_ROOM(true, room_type::nobleroom, finished_nofurnished);
+    FIND_ROOM(true, room_type::bedroom, finished_nofurnished);
     auto nousers_noplan = [](room *r) -> bool
     {
         return r->status != room_status::plan && std::find_if(r->layout.begin(), r->layout.end(), [](furniture *f) -> bool
@@ -519,19 +519,19 @@ bool Plan::checkidle(color_ostream & out)
                     return f->has_users && f->users.empty();
                 }) != r->layout.end();
     };
-    FIND_ROOM(!find_room("dininghall", nousers_noplan), "dininghall", nousers_plan);
-    FIND_ROOM(!find_room("barracks", nousers_noplan), "barracks", nousers_plan);
-    FIND_ROOM(true, "stockpile", [](room *r) -> bool
+    FIND_ROOM(!find_room(room_type::dininghall, nousers_noplan), room_type::dininghall, nousers_plan);
+    FIND_ROOM(!find_room(room_type::barracks, nousers_noplan), room_type::barracks, nousers_plan);
+    FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
             {
                 return r->status == room_status::plan &&
                         r->level <= 3;
             });
-    FIND_ROOM(true, "workshop", [](room *r) -> bool
+    FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
             {
                 return !r->subtype.empty() &&
                         r->status == room_status::plan;
             });
-    FIND_ROOM(true, "stockpile", ifplan);
+    FIND_ROOM(true, room_type::stockpile, ifplan);
 #undef FIND_ROOM
 
     if (r)
@@ -581,13 +581,13 @@ void Plan::idleidle(color_ostream & out)
     {
         room *r = *it;
         if (r->status != room_status::plan && r->status != room_status::dig &&
-                (r->type == "nobleroom" ||
-                 r->type == "bedroom" ||
-                 r->type == "dininghall" ||
-                 r->type == "cemetary" ||
-                 r->type == "infirmary" ||
-                 r->type == "barracks" ||
-                 r->type == "location"))
+                (r->type == room_type::nobleroom ||
+                 r->type == room_type::bedroom ||
+                 r->type == room_type::dininghall ||
+                 r->type == room_type::cemetary ||
+                 r->type == room_type::infirmary ||
+                 r->type == room_type::barracks ||
+                 r->type == room_type::location))
             idleidle_tab.push_back(r);
     }
     for (auto it = corridors.begin(); it != corridors.end(); it++)
@@ -679,11 +679,11 @@ void Plan::checkroom(color_ostream & out, room *r)
 
 void Plan::getbedroom(color_ostream & out, int32_t id)
 {
-    room *r = find_room("bedroom", [id](room *r) -> bool { return r->owner == id; });
+    room *r = find_room(room_type::bedroom, [id](room *r) -> bool { return r->owner == id; });
     if (!r)
-        r = find_room("bedroom", [](room *r) -> bool { return r->status != room_status::plan && r->owner == -1; });
+        r = find_room(room_type::bedroom, [](room *r) -> bool { return r->status != room_status::plan && r->owner == -1; });
     if (!r)
-        r = find_room("bedroom", [](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig; });
+        r = find_room(room_type::bedroom, [](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig; });
     if (r)
     {
         wantdig(out, r);
@@ -700,7 +700,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
 
 void Plan::getdiningroom(color_ostream & out, int32_t id)
 {
-    if (room *r = find_room("farmplot", [](room *r_) -> bool
+    if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
                 {
                     df::coord size = r_->size();
                     return r_->subtype == "food" &&
@@ -713,7 +713,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         r->users.insert(id);
     }
 
-    if (room *r = find_room("farmplot", [](room *r_) -> bool
+    if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
                 {
                     df::coord size = r_->size();
                     return r_->subtype == "cloth" &&
@@ -726,7 +726,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         r->users.insert(id);
     }
 
-    if (room *r = find_room("farmplot", [](room *r_) -> bool
+    if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
                 {
                     df::coord size = r_->size();
                     return r_->subtype == "food" &&
@@ -739,7 +739,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         r->users.insert(id);
     }
 
-    if (room *r = find_room("farmplot", [](room *r_) -> bool
+    if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
                 {
                     df::coord size = r_->size();
                     return r_->subtype == "cloth" &&
@@ -752,7 +752,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         r->users.insert(id);
     }
 
-    if (room *r = find_room("dininghall", [](room *r_) -> bool
+    if (room *r = find_room(room_type::dininghall, [](room *r_) -> bool
                 {
                     for (auto it = r_->layout.begin(); it != r_->layout.end(); it++)
                     {
@@ -794,7 +794,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
 void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & id_list)
 {
     // XXX tomb may be populated...
-    while (room *old = find_room("nobleroom", [id_list](room *r) -> bool { return r->owner != -1 && !id_list.count(r->owner); }))
+    while (room *old = find_room(room_type::nobleroom, [id_list](room *r) -> bool { return r->owner != -1 && !id_list.count(r->owner); }))
     {
         set_owner(out, old, -1);
     }
@@ -803,11 +803,11 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
     {
         std::vector<Units::NoblePosition> entpos;
         Units::getNoblePositions(&entpos, df::unit::find(*it));
-        room *base = find_room("nobleroom", [it](room *r) -> bool { return r->owner == *it; });
+        room *base = find_room(room_type::nobleroom, [it](room *r) -> bool { return r->owner == *it; });
         if (!base)
-            base = find_room("nobleroom", [](room *r) -> bool { return r->owner == -1; });
+            base = find_room(room_type::nobleroom, [](room *r) -> bool { return r->owner == -1; });
         std::set<std::string> seen;
-        while (room *r = find_room("nobleroom", [base, seen](room *r_) -> bool { return r_->noblesuite == base->noblesuite && !seen.count(r_->subtype); }))
+        while (room *r = find_room(room_type::nobleroom, [base, seen](room *r_) -> bool { return r_->noblesuite == base->noblesuite && !seen.count(r_->subtype); }))
         {
             seen.insert(r->subtype);
             set_owner(out, r, *it);
@@ -833,10 +833,10 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         return;
 
 
-    room *r = find_room("barracks", [squad_id](room *r) -> bool { return r->squad_id == squad_id; });
+    room *r = find_room(room_type::barracks, [squad_id](room *r) -> bool { return r->squad_id == squad_id; });
     if (!r)
     {
-        r = find_room("barracks", [](room *r) -> bool { return r->squad_id == -1; });
+        r = find_room(room_type::barracks, [](room *r) -> bool { return r->squad_id == -1; });
         if (!r)
         {
             ai->debug(out, "[ERROR] no free barracks");
@@ -920,7 +920,7 @@ void Plan::assign_barrack_squad(color_ostream & out, df::building *bld, int32_t 
 
 void Plan::getcoffin(color_ostream & out)
 {
-    if (room *r = find_room("cemetary", [](room *r_) -> bool { return std::find_if(r_->layout.begin(), r_->layout.end(), [](furniture *f) -> bool { return f->has_users && f->users.empty(); }) != r_->layout.end(); }))
+    if (room *r = find_room(room_type::cemetary, [](room *r_) -> bool { return std::find_if(r_->layout.begin(), r_->layout.end(), [](furniture *f) -> bool { return f->has_users && f->users.empty(); }) != r_->layout.end(); }))
     {
         wantdig(out, r);
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
@@ -943,7 +943,7 @@ void Plan::getcoffin(color_ostream & out)
 // free / deconstruct the bedroom assigned to this dwarf
 void Plan::freebedroom(color_ostream & out, int32_t id)
 {
-    if (room *r = find_room("bedroom", [id](room *r_) -> bool { return r_->owner == id; }))
+    if (room *r = find_room(room_type::bedroom, [id](room *r_) -> bool { return r_->owner == id; }))
     {
         ai->debug(out, "free " + describe_room(r), r->pos());
         set_owner(out, r, -1);
@@ -969,14 +969,14 @@ void Plan::freebedroom(color_ostream & out, int32_t id)
 //  [dininghall, farmplots, barracks]
 void Plan::freecommonrooms(color_ostream & out, int32_t id)
 {
-    freecommonrooms(out, id, "dininghall");
-    freecommonrooms(out, id, "farmplot");
-    freecommonrooms(out, id, "barracks");
+    freecommonrooms(out, id, room_type::dininghall);
+    freecommonrooms(out, id, room_type::farmplot);
+    freecommonrooms(out, id, room_type::barracks);
 }
 
-void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
+void Plan::freecommonrooms(color_ostream & out, int32_t id, room_type::type subtype)
 {
-    if (subtype == "farmplot")
+    if (subtype == room_type::farmplot)
     {
         find_room(subtype, [id](room *r) -> bool
                 {
@@ -1032,14 +1032,14 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, std::string subtype)
 
 void Plan::freesoldierbarrack(color_ostream & out, int32_t id)
 {
-    freecommonrooms(out, id, "barracks");
+    freecommonrooms(out, id, room_type::barracks);
 }
 
 df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
 {
     df::unit *pet = df::unit::find(pet_id);
     size_t limit = 1000 - (11*11*1000 / df::creature_raw::find(pet->race)->caste[pet->caste]->misc.grazer); // 1000 = arbitrary, based on dfwiki?pasture
-    if (room *r = find_room("pasture", [limit](room *r_) -> bool
+    if (room *r = find_room(room_type::pasture, [limit](room *r_) -> bool
                 {
                     size_t sum = 0;
                     for (auto it = r_->users.begin(); it != r_->users.end(); it++)
@@ -1061,7 +1061,7 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
 
 void Plan::freepasture(color_ostream & out, int32_t pet_id)
 {
-    if (room *r = find_room("pasture", [pet_id](room *r_) -> bool { return r_->users.count(pet_id); }))
+    if (room *r = find_room(room_type::pasture, [pet_id](room *r_) -> bool { return r_->users.count(pet_id); }))
     {
         r->users.erase(pet_id);
     }
@@ -1145,7 +1145,7 @@ void Plan::digroom(color_ostream & out, room *r)
         tasks.push_back(new task("furnish", r, f));
     }
 
-    if (r->type == "workshop" && r->level == 0)
+    if (r->type == room_type::workshop && r->level == 0)
     {
         // add minimal stockpile in front of workshop
         const static struct sptypes
@@ -1281,7 +1281,7 @@ void Plan::digroom(color_ostream & out, room *r)
             // XXX hardcoded fort layout
             int16_t y = r->layout[0]->y > 0 ? r->max.y + 2 : r->min.y - 2; // check door position
             auto stock = sptypes.map.at(r->subtype);
-            room *sp = new room("stockpile", std::get<0>(stock), df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
+            room *sp = new room(room_type::stockpile, std::get<0>(stock), df::coord(r->min.x, y, r->min.z), df::coord(r->max.x, y, r->min.z));
             sp->stock_disable = std::get<1>(stock);
             sp->stock_specific1 = std::get<2>(stock);
             sp->stock_specific2 = std::get<3>(stock);
@@ -1294,7 +1294,7 @@ void Plan::digroom(color_ostream & out, room *r)
     }
 
     df::coord size = r->size();
-    if (r->type != "corridor" || size.z > 1)
+    if (r->type != room_type::corridor || size.z > 1)
     {
         nrdig++;
         if (size.x * size.y * size.z >= 10)
@@ -1306,40 +1306,40 @@ bool Plan::construct_room(color_ostream & out, room *r)
 {
     ai->debug(out, "construct " + describe_room(r));
 
-    if (r->type == "corridor")
+    if (r->type == room_type::corridor)
     {
         return furnish_room(out, r);
     }
 
-    if (r->type == "stockpile")
+    if (r->type == room_type::stockpile)
     {
         furnish_room(out, r);
         tasks.push_back(new task("construct_stockpile", r));
         return true;
     }
 
-    if (r->type == "workshop")
+    if (r->type == room_type::workshop)
     {
         tasks.push_back(new task("construct_workshop", r));
         return true;
     }
 
-    if (r->type == "farmplot")
+    if (r->type == room_type::farmplot)
     {
         return construct_farmplot(out, r);
     }
 
-    if (r->type == "cistern")
+    if (r->type == room_type::cistern)
     {
         return construct_cistern(out, r);
     }
 
-    if (r->type == "cemetary")
+    if (r->type == room_type::cemetary)
     {
         return furnish_room(out, r);
     }
 
-    if (r->type == "infirmary" || r->type == "pasture" || r->type == "pitcage" || r->type == "location")
+    if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::location)
     {
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
@@ -1348,11 +1348,11 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return true;
     }
 
-    if (r->type == "dininghall")
+    if (r->type == room_type::dininghall)
     {
         if (!r->temporary)
         {
-            if (room *t = find_room("dininghall", [](room *r) -> bool { return r->temporary; }))
+            if (room *t = find_room(room_type::dininghall, [](room *r) -> bool { return r->temporary; }))
             {
                 move_dininghall_fromtemp(out, r, t);
             }
@@ -1983,14 +1983,14 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     if (r->level == 0 &&
             r->subtype != "stone" && r->subtype != "wood")
     {
-        if (room *rr = find_room("stockpile", [r](room *o) -> bool { return o->subtype == r->subtype && o->level == 1; }))
+        if (room *rr = find_room(room_type::stockpile, [r](room *o) -> bool { return o->subtype == r->subtype && o->level == 1; }))
         {
             wantdig(out, rr);
         }
     }
 
     // setup stockpile links with adjacent level
-    find_room("stockpile", [r, bld](room *o) -> bool
+    find_room(room_type::stockpile, [r, bld](room *o) -> bool
             {
                 int32_t diff = o->level - r->level;
                 if (o->subtype == r->subtype && (diff == -1 || diff == 1))
@@ -2049,7 +2049,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     bld->is_room = true;
 
     bld->zone_flags.bits.active = 1;
-    if (r->type == "infirmary")
+    if (r->type == room_type::infirmary)
     {
         bld->zone_flags.bits.hospital = 1;
         bld->hospital.max_splints = 5;
@@ -2060,20 +2060,20 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         bld->hospital.max_buckets = 2;
         bld->hospital.max_soap = 750;
     }
-    else if (r->type == "garbagedump")
+    else if (r->type == room_type::garbagedump)
     {
         bld->zone_flags.bits.garbage_dump = 1;
     }
-    else if (r->type == "pasture")
+    else if (r->type == room_type::pasture)
     {
         bld->zone_flags.bits.pen_pasture = 1;
         bld->pit_flags.whole |= 2;
     }
-    else if (r->type == "pitcage")
+    else if (r->type == room_type::pitcage)
     {
         bld->zone_flags.bits.pit_pond = 1;
     }
-    else if (r->type == "location")
+    else if (r->type == room_type::location)
     {
         AI::feed_key(interface_key::D_CIVZONE);
 
@@ -2168,7 +2168,7 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
     Buildings::constructWithItems(bld, std::vector<df::item *>());
     r->bld_id = bld->id;
     furnish_room(out, r);
-    if (room *st = find_room("stockpile", [r](room *o) -> bool { return o->workshop == r; }))
+    if (room *st = find_room(room_type::stockpile, [r](room *o) -> bool { return o->workshop == r; }))
     {
         digroom(out, st);
     }
@@ -2297,7 +2297,7 @@ bool Plan::construct_cistern(color_ostream & out, room *r)
     dump_items_access(out, r);
 
     // build levers for floodgates
-    wantdig(out, find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; }));
+    wantdig(out, find_room(room_type::location, [](room *r) -> bool { return r->subtype == "tavern"; }));
 
     // check smoothing progress, channel intermediate levels
     if (r->subtype == "well")
@@ -2533,7 +2533,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
 
 void Plan::dig_garbagedump(color_ostream & out)
 {
-    find_room("garbagepit", [this](room *r) -> bool
+    find_room(room_type::garbagepit, [this](room *r) -> bool
             {
                 if (r->status == room_status::plan)
                 {
@@ -2557,7 +2557,7 @@ bool Plan::try_diggarbage(color_ostream & out, room *r)
         {
             dig_tile(t, tile_dig_designation::Default);
         }
-        find_room("garbagedump", [this, &out](room *r) -> bool
+        find_room(room_type::garbagedump, [this, &out](room *r) -> bool
                 {
                     if (r->status == room_status::plan)
                     {
@@ -2647,7 +2647,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         f->makeroom = true;
     }
 
-    if (r->type == "infirmary")
+    if (r->type == room_type::infirmary)
     {
         // Toggle hospital off and on because it's easier than figuring out
         // what Dwarf Fortress does. Shouldn't cancel any jobs, but might
@@ -2722,11 +2722,11 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     set_owner(out, r, r->owner);
     furnish_room(out, r);
 
-    if (r->type == "dininghall")
+    if (r->type == room_type::dininghall)
     {
         virtual_cast<df::building_tablest>(bld)->table_flags.bits.meeting_hall = 1;
     }
-    else if (r->type == "barracks")
+    else if (r->type == room_type::barracks)
     {
         df::building *bld = r->dfbuilding();
         if (f->item == "archerytarget")
@@ -2744,12 +2744,12 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
 
 bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
 {
-    if (r->type == "location" && r->subtype == "tavern")
+    if (r->type == room_type::location && r->subtype == "tavern")
     {
         std::string way = f->way;
         if (!f->target)
         {
-            room *cistern = find_room("cistern", [](room *r) -> bool { return r->subtype == "reserve"; });
+            room *cistern = find_room(room_type::cistern, [](room *r) -> bool { return r->subtype == "reserve"; });
             for (auto gate = cistern->layout.begin(); gate != cistern->layout.end(); gate++)
             {
                 if ((*gate)->item == "floodgate" && (*gate)->way == way)
@@ -2857,7 +2857,7 @@ void Plan::monitor_cistern(color_ostream & out)
 {
     if (!m_c_lever_in)
     {
-        room *well = find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; });
+        room *well = find_room(room_type::location, [](room *r) -> bool { return r->subtype == "tavern"; });
         for (auto f = well->layout.begin(); f != well->layout.end(); f++)
         {
             if ((*f)->item == "trap" && (*f)->subtype == "lever")
@@ -2868,8 +2868,8 @@ void Plan::monitor_cistern(color_ostream & out)
                     m_c_lever_out = *f;
             }
         }
-        m_c_cistern = find_room("cistern", [](room *r) -> bool { return r->subtype == "well"; });
-        m_c_reserve = find_room("cistern", [](room *r) -> bool { return r->subtype == "reserve"; });
+        m_c_cistern = find_room(room_type::cistern, [](room *r) -> bool { return r->subtype == "well"; });
+        m_c_reserve = find_room(room_type::cistern, [](room *r) -> bool { return r->subtype == "reserve"; });
         if (m_c_reserve->channel_enable.isValid())
         {
             m_c_testgate_delay = 2;
@@ -2955,7 +2955,7 @@ void Plan::monitor_cistern(color_ostream & out)
                         for (int16_t z = r->min.z; z <= r->max.z; z++)
                         {
                             df::coord t(x, y, z);
-                            if (!is_smooth(t) && (r->type != "corridor" || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
+                            if (!is_smooth(t) && (r->type != room_type::corridor || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
                             {
                                 ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d) %s", x, y, z, describe_room(r).c_str()));
                                 empty = false;
@@ -3016,7 +3016,7 @@ void Plan::monitor_cistern(color_ostream & out)
             }
             else
             {
-                room *well = find_room("location", [](room *r) -> bool { return r->subtype == "tavern"; });
+                room *well = find_room(room_type::location, [](room *r) -> bool { return r->subtype == "tavern"; });
                 if (Maps::getTileDesignation(well->min + df::coord(-2, well->size().y / 2, 0))->bits.flow_size == 7)
                 {
                     // something went not as planned, but we have a water source
@@ -4020,33 +4020,33 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
             {
                 // stuff a quern&screwpress near the farmers'
                 df::coord c(cx - 2, f.y + 1, f.z);
-                room *r = new room("workshop", "Quern", c, c);
+                room *r = new room(room_type::workshop, "Quern", c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 0;
                 rooms.push_back(r);
 
                 c.x = cx - 6;
-                r = new room("workshop", "Quern", c, c);
+                r = new room(room_type::workshop, "Quern", c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 1;
                 rooms.push_back(r);
 
                 c.x = cx + 2;
-                r = new room("workshop", "Quern", c, c);
+                r = new room(room_type::workshop, "Quern", c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 2;
                 rooms.push_back(r);
 
                 c.x = cx - 2;
                 c.y = f.y - 1;
-                r = new room("workshop", "ScrewPress", c, c);
+                r = new room(room_type::workshop, "ScrewPress", c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 0;
                 rooms.push_back(r);
             }
             else if (dirx == -1 && dx == 6)
             {
-                room *r = new room("location", "library", df::coord(cx - 12, f.y - 5, f.z), df::coord(cx - 3, f.y - 1, f.z));
+                room *r = new room(room_type::location, "library", df::coord(cx - 12, f.y - 5, f.z), df::coord(cx - 3, f.y - 1, f.z));
                 r->layout.push_back(new_door(10, 4));
                 r->layout.push_back(new_furniture("chest", 9, 3));
                 r->layout.push_back(new_furniture("chest", 9, 2));
@@ -4062,7 +4062,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
                 r->accesspath.push_back(cor_x);
                 rooms.push_back(r);
 
-                r = new room("location", "temple", df::coord(cx - 12, f.y + 1, f.z), df::coord(cx - 3, f.y + 5, f.z));
+                r = new room(room_type::location, "temple", df::coord(cx - 12, f.y + 1, f.z), df::coord(cx - 3, f.y + 5, f.z));
                 r->layout.push_back(new_door(10, 0));
                 r->accesspath.push_back(cor_x);
                 rooms.push_back(r);
@@ -4070,7 +4070,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
 
             std::string t = *type_it++;
 
-            room *r = new room("workshop", t, df::coord(cx - 1, f.y - 5, f.z), df::coord(cx + 1, f.y - 3, f.z));
+            room *r = new room(room_type::workshop, t, df::coord(cx - 1, f.y - 5, f.z), df::coord(cx + 1, f.y - 3, f.z));
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new_door(1, 3));
             r->level = 0;
@@ -4080,18 +4080,18 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
             }
             rooms.push_back(r);
 
-            r = new room("workshop", t, df::coord(cx - 1, f.y - 8, f.z), df::coord(cx + 1, f.y - 6, f.z));
+            r = new room(room_type::workshop, t, df::coord(cx - 1, f.y - 8, f.z), df::coord(cx + 1, f.y - 6, f.z));
             r->accesspath.push_back(rooms.back());
             r->level = 1;
             rooms.push_back(r);
 
-            r = new room("workshop", t, df::coord(cx - 1, f.y - 11, f.z), df::coord(cx + 1, f.y - 9, f.z));
+            r = new room(room_type::workshop, t, df::coord(cx - 1, f.y - 11, f.z), df::coord(cx + 1, f.y - 9, f.z));
             r->accesspath.push_back(rooms.back());
             r->level = 2;
             rooms.push_back(r);
 
             t = *type_it++;
-            r = new room("workshop", t, df::coord(cx - 1, f.y + 3, f.z), df::coord(cx + 1, f.y + 5, f.z));
+            r = new room(room_type::workshop, t, df::coord(cx - 1, f.y + 3, f.z), df::coord(cx + 1, f.y + 5, f.z));
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new_door(1, -1));
             r->level = 0;
@@ -4101,12 +4101,12 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
             }
             rooms.push_back(r);
 
-            r = new room("workshop", t, df::coord(cx - 1, f.y + 6, f.z), df::coord(cx + 1, f.y + 8, f.z));
+            r = new room(room_type::workshop, t, df::coord(cx - 1, f.y + 6, f.z), df::coord(cx + 1, f.y + 8, f.z));
             r->accesspath.push_back(rooms.back());
             r->level = 1;
             rooms.push_back(r);
 
-            r = new room("workshop", t, df::coord(cx - 1, f.y + 9, f.z), df::coord(cx + 1, f.y + 11, f.z));
+            r = new room(room_type::workshop, t, df::coord(cx - 1, f.y + 9, f.z), df::coord(cx + 1, f.y + 11, f.z));
             r->accesspath.push_back(rooms.back());
             r->level = 2;
             rooms.push_back(r);
@@ -4144,7 +4144,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
 
     if (depot_center.isValid())
     {
-        room *r = new room("workshop", "TradeDepot", depot_center - df::coord(2,2, 0), depot_center + df::coord(2, 2, 0));
+        room *r = new room(room_type::workshop, "TradeDepot", depot_center - df::coord(2,2, 0), depot_center + df::coord(2, 2, 0));
         r->level = 0;
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 1));
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 2));
@@ -4153,7 +4153,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
     }
     else
     {
-        room *r = new room("workshop", "TradeDepot", df::coord(f.x - 7, f.y - 2, fort_entrance->max.z), df::coord(f.x - 3, f.y + 2, fort_entrance->max.z));
+        room *r = new room(room_type::workshop, "TradeDepot", df::coord(f.x - 7, f.y - 2, fort_entrance->max.z), df::coord(f.x - 3, f.y + 2, fort_entrance->max.z));
         r->level = 0;
         for (int16_t x = 0; x < 5; x++)
         {
@@ -4215,8 +4215,8 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
 
             std::string t0 = *type_it++;
             std::string t1 = *type_it++;
-            room *r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 4, f.z), df::coord(cx + 3, f.y - 3, f.z));
-            room *r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 3, f.z), df::coord(cx + 3, f.y + 4, f.z));
+            room *r0 = new room(room_type::stockpile, t0, df::coord(cx - 3, f.y - 4, f.z), df::coord(cx + 3, f.y - 3, f.z));
+            room *r1 = new room(room_type::stockpile, t1, df::coord(cx - 3, f.y + 3, f.z), df::coord(cx + 3, f.y + 4, f.z));
             r0->level = 1;
             r1->level = 1;
             r0->accesspath.push_back(cor_x);
@@ -4228,15 +4228,15 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
             rooms.push_back(r0);
             rooms.push_back(r1);
 
-            r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
-            r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
+            r0 = new room(room_type::stockpile, t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
+            r1 = new room(room_type::stockpile, t1, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
             r0->level = 2;
             r1->level = 2;
             rooms.push_back(r0);
             rooms.push_back(r1);
 
-            r0 = new room("stockpile", t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
-            r1 = new room("stockpile", t1, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
+            r0 = new room(room_type::stockpile, t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
+            r1 = new room(room_type::stockpile, t1, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
             r0->level = 3;
             r1->level = 3;
             rooms.push_back(r0);
@@ -4246,7 +4246,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
     for (auto it = rooms.begin(); it != rooms.end(); it++)
     {
         room *r = *it;
-        if (r->type == "stockpile" && r->subtype == "coins" &&
+        if (r->type == room_type::stockpile && r->subtype == "coins" &&
                 r->level > 1)
         {
             r->subtype = "furniture";
@@ -4269,7 +4269,7 @@ static furniture *new_hive_floor(int16_t x, int16_t y)
 
 command_result Plan::setup_blueprint_pitcage(color_ostream & out)
 {
-    room *gpit = find_room("garbagepit");
+    room *gpit = find_room(room_type::garbagepit);
     if (!gpit)
         return CR_OK;
     auto layout = [](room *r)
@@ -4304,12 +4304,12 @@ command_result Plan::setup_blueprint_pitcage(color_ostream & out)
         }
     };
 
-    room *r = new room("pitcage", "", gpit->min + df::coord(-1, -1, 10), gpit->min + df::coord(1, 1, 10));
+    room *r = new room(room_type::pitcage, "", gpit->min + df::coord(-1, -1, 10), gpit->min + df::coord(1, 1, 10));
     layout(r);
     r->layout.push_back(new_hive_floor(3, 1));
     rooms.push_back(r);
 
-    room *stockpile = new room("stockpile", "animals", r->min, r->max);
+    room *stockpile = new room(room_type::stockpile, "animals", r->min, r->max);
     stockpile->level = 0;
     stockpile->stock_specific1 = true; // no empty cages
     stockpile->stock_specific2 = true; // no empty animal traps
@@ -4348,7 +4348,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     room *old_cor = corridor_center0;
 
     // temporary dininghall, for fort start
-    room *tmp = new room("dininghall", "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0));
+    room *tmp = new room(room_type::dininghall, "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0));
     tmp->temporary = true;
     for (int16_t dy = 0; dy <= 2; dy++)
     {
@@ -4380,7 +4380,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         dxs.push_back(9);
         for (int16_t dy = -1; dy <= 1; dy += 2)
         {
-            room *dinner = new room("dininghall", "", df::coord(f.x - ax * 12 - 2 - 10, f.y + dy * 9, f.z), df::coord(f.x - ax * 12 - 2, f.y + dy * 3, f.z));
+            room *dinner = new room(room_type::dininghall, "", df::coord(f.x - ax * 12 - 2 - 10, f.y + dy * 9, f.z), df::coord(f.x - ax * 12 - 2, f.y + dy * 3, f.z));
             dinner->layout.push_back(new_door(7, dy > 0 ? -1 : 7));
             dinner->layout.push_back(new_wall(2, 3));
             dinner->layout.push_back(new_wall(8, 3));
@@ -4411,14 +4411,14 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     corridors.push_back(cor);
 
     df::coord tavern_center = f - df::coord(32, 0, 0);
-    room *tavern = new room("location", "tavern", tavern_center - df::coord(4, 4, 0), tavern_center + df::coord(4, 4, 0));
+    room *tavern = new room(room_type::location, "tavern", tavern_center - df::coord(4, 4, 0), tavern_center + df::coord(4, 4, 0));
     tavern->layout.push_back(new_door(9, 3));
     tavern->layout.push_back(new_door(9, 5));
     tavern->layout.push_back(new_furniture("chest", 8, 0));
     tavern->accesspath.push_back(cor);
     rooms.push_back(tavern);
 
-    room *booze = new room("stockpile", "food", tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0));
+    room *booze = new room(room_type::stockpile, "food", tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0));
     booze->stock_disable.insert(stockpile_list::FoodMeat);
     booze->stock_disable.insert(stockpile_list::FoodFish);
     booze->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
@@ -4467,7 +4467,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // farm plots
     int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
     int16_t cy = f.y;;
-    int16_t cz = find_room("workshop", [](room *r) -> bool { return r->subtype == "Farmers"; })->min.z;
+    int16_t cz = find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Farmers"; })->min.z;
     room *ws_cor = new room(df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz)); // ws_corr->accesspath ...
     corridors.push_back(ws_cor);
     room *farm_stairs = new room(df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz));
@@ -4516,7 +4516,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         {
             for (int16_t ddy = 0; ddy < 3; ddy++)
             {
-                room *r = new room("farmplot", st, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
+                room *r = new room(room_type::farmplot, st, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
                 r->has_users = true;
                 if (dx == 0 && ddy == 0)
                 {
@@ -4539,7 +4539,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     make_farms(1, "cloth");
 
     // seeds stockpile
-    room *r = new room("stockpile", "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2));
+    room *r = new room(room_type::stockpile, "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2));
     r->level = 0;
     r->stock_disable.insert(stockpile_list::FoodMeat);
     r->stock_disable.insert(stockpile_list::FoodFish);
@@ -4567,7 +4567,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // garbage dump
     // TODO ensure flat space, no pools/tree, ...
     df::coord tile(cx + 5, cy, cz);
-    r = new room("garbagedump", "", tile, tile);
+    r = new room(room_type::garbagedump, "", tile, tile);
     tile = spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
             {
                 t = surface_tile_at(t.x, t.y);
@@ -4594,7 +4594,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tile = surface_tile_at(tile.x, tile.y);
     r->min = r->max = tile;
     rooms.push_back(r);
-    r = new room("garbagepit", "", tile + df::coord(1, 0, 0), tile + df::coord(2, 0, 0));
+    r = new room(room_type::garbagepit, "", tile + df::coord(1, 0, 0), tile + df::coord(2, 0, 0));
     rooms.push_back(r);
 
     // infirmary
@@ -4604,7 +4604,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     corridors.push_back(cor);
     old_cor = cor;
 
-    room *infirmary = new room("infirmary", "", f + df::coord(2, -3, 0), f + df::coord(6, -7, 0));
+    room *infirmary = new room(room_type::infirmary, "", f + df::coord(2, -3, 0), f + df::coord(6, -7, 0));
     infirmary->layout.push_back(new_door(3, 5));
     infirmary->layout.push_back(new_furniture("bed", 0, 1));
     infirmary->layout.push_back(new_furniture("table", 1, 1));
@@ -4650,7 +4650,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t rx = 0; rx < 2; rx++)
             {
                 df::coord o = f + df::coord(10 + 5 * rx + 9 * rrx, -3 - 3 * ry, 0);
-                room *cemetary = new room("cemetary", "", o, o + df::coord(4, -3, 0));
+                room *cemetary = new room(room_type::cemetary, "", o, o + df::coord(4, -3, 0));
                 for (int16_t dx = 0; dx < 4; dx++)
                 {
                     for (int16_t dy = 0; dy < 2; dy++)
@@ -4685,7 +4685,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             if (ry == -1 && rx < 3) // infirmary/cemetary
                 continue;
 
-            room *barracks = new room("barracks", "", df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z));
+            room *barracks = new room(room_type::barracks, "", df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z));
             barracks->layout.push_back(new_door(3, ry > 0 ? -1 : 8));
             for (int16_t dy_ = 0; dy_ < 8; dy_++)
             {
@@ -4756,7 +4756,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     std::vector<room *> cist_cors = find_corridor_tosurface(out, c - df::coord(8, 0, 0));
     cist_cors.at(0)->min.z -= 3;
 
-    room *cistern = new room("cistern", "well", c + df::coord(-7, -1, -3), c + df::coord(1, 1, -1));
+    room *cistern = new room(room_type::cistern, "well", c + df::coord(-7, -1, -3), c + df::coord(1, 1, -1));
     cistern->accesspath.push_back(cist_cors.at(0));
 
     // handle low rivers / high mountain forts
@@ -4770,7 +4770,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     // should have capacity = 1 cistern level @7/7 + itself @1/7 (rounded up)
     //  cistern is 9x3 + 1 (stairs)
     //  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
-    room *reserve = new room("cistern", "reserve", c + df::coord(-10, -3, 0), c + df::coord(-14, 3, 0));
+    room *reserve = new room(room_type::cistern, "reserve", c + df::coord(-10, -3, 0), c + df::coord(-14, 3, 0));
     reserve->layout.push_back(new_cistern_floodgate(-1, 3, "in", false));
     reserve->layout.push_back(new_cistern_floodgate(5, 3, "out", true));
     reserve->accesspath.push_back(cist_cors.at(0));
@@ -4967,7 +4967,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
                 }
                 if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
                 {
-                    room *r = new room("pasture", "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
+                    room *r = new room(room_type::pasture, "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
                     r->has_users = true;
                     rooms.push_back(r);
                     want--;
@@ -5020,7 +5020,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
                         }
                     }
                 }
-                room *r = new room("farmplot", want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
+                room *r = new room(room_type::farmplot, want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
                 r->has_users = true;
                 r->outdoor = true;
                 want--;
@@ -5082,8 +5082,8 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
                         r->layout.push_back(new_door(r->min.x < cx ? 2 : -1, diry < 0 ? 1 : 0));
                         rooms.push_back(r);
                     };
-                    bedroom(new room("bedroom", "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z)));
-                    bedroom(new room("bedroom", "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z)));
                 }
             }
         }
@@ -5101,7 +5101,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
         {
             noblesuite++;
 
-            room *r = new room("nobleroom", "office", df::coord(cx - 1, f.y + diry * 3, f.z), df::coord(cx + 1, f.y + diry * 5, f.z));
+            room *r = new room(room_type::nobleroom, "office", df::coord(cx - 1, f.y + diry * 3, f.z), df::coord(cx + 1, f.y + diry * 5, f.z));
             r->noblesuite = noblesuite;
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new_furniture("chair", 1, 1));
@@ -5114,7 +5114,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             r->layout.push_back(new_door(1, 1 - 2 * diry));
             rooms.push_back(r);
 
-            r = new room("nobleroom", "bedroom", df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
+            r = new room(room_type::nobleroom, "bedroom", df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
             r->noblesuite = noblesuite;
             r->layout.push_back(new_furniture("bed", 1, 1));
             r->layout.back()->makeroom = true;
@@ -5126,7 +5126,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             r->accesspath.push_back(rooms.back());
             rooms.push_back(r);
 
-            r = new room("nobleroom", "diningroom", df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
+            r = new room(room_type::nobleroom, "diningroom", df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
             r->noblesuite = noblesuite;
             r->layout.push_back(new_furniture("table", 1, 1));
             r->layout.back()->makeroom = true;
@@ -5139,7 +5139,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
             r->accesspath.push_back(rooms.back());
             rooms.push_back(r);
 
-            r = new room("nobleroom", "tomb", df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
+            r = new room(room_type::nobleroom, "tomb", df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
             r->noblesuite = noblesuite;
             r->layout.push_back(new_furniture("coffin", 1, 1));
             r->layout.back()->makeroom = true;
@@ -5268,7 +5268,7 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
         return CR_FAILURE;
     }
 
-    room *r = new room("outpost", "cavern", target, target);
+    room *r = new room(room_type::outpost, "cavern", target, target);
 
     int16_t y_x = 0;
     if (wall.x - 1 > target.x)
@@ -5598,9 +5598,9 @@ void Plan::categorize_all()
         room_category[(*r)->type].push_back(*r);
     }
 
-    if (room_category.count("stockpile"))
+    if (room_category.count(room_type::stockpile))
     {
-        auto & stockpiles = room_category.at("stockpile");
+        auto & stockpiles = room_category.at(room_type::stockpile);
         std::sort(stockpiles.begin(), stockpiles.end(), [this](room *a, room *b) -> bool
                 {
                     if (a->level < b->level)
@@ -5669,7 +5669,7 @@ std::string Plan::describe_room(room *r)
     return s.str();
 }
 
-room *Plan::find_room(std::string type)
+room *Plan::find_room(room_type::type type)
 {
     if (room_category.empty())
     {
@@ -5691,7 +5691,7 @@ room *Plan::find_room(std::string type)
     return nullptr;
 }
 
-room *Plan::find_room(std::string type, std::function<bool(room *)> b)
+room *Plan::find_room(room_type::type type, std::function<bool(room *)> b)
 {
     if (room_category.empty())
     {

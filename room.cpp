@@ -19,14 +19,56 @@ std::ostream & operator <<(std::ostream & stream, room_status::status status)
             return stream << "dug";
         case room_status::finished:
             return stream << "finished";
-        default:
-            return stream << "???";
     }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, room_type::type type)
+{
+    switch (type)
+    {
+        case room_type::corridor:
+            return stream << "corridor";
+
+        case room_type::barracks:
+            return stream << "barracks";
+        case room_type::bedroom:
+            return stream << "bedroom";
+        case room_type::cemetary:
+            return stream << "cemetary";
+        case room_type::cistern:
+            return stream << "cistern";
+        case room_type::dininghall:
+            return stream << "dininghall";
+        case room_type::farmplot:
+            return stream << "farmplot";
+        case room_type::garbagedump:
+            return stream << "garbagedump";
+        case room_type::garbagepit:
+            return stream << "garbagepit";
+        case room_type::infirmary:
+            return stream << "infirmary";
+        case room_type::location:
+            return stream << "location";
+        case room_type::nobleroom:
+            return stream << "nobleroom";
+        case room_type::outpost:
+            return stream << "outpost";
+        case room_type::pasture:
+            return stream << "pasture";
+        case room_type::pitcage:
+            return stream << "pitcage";
+        case room_type::stockpile:
+            return stream << "stockpile";
+        case room_type::workshop:
+            return stream << "workshop";
+    }
+    return stream << "???";
 }
 
 room::room(df::coord mins, df::coord maxs, std::string comment) :
     status(room_status::plan),
-    type("corridor"),
+    type(room_type::corridor),
     subtype(""),
     comment(comment),
     min(mins),
@@ -60,7 +102,7 @@ room::room(df::coord mins, df::coord maxs, std::string comment) :
         std::swap(min.z, max.z);
 }
 
-room::room(std::string type, std::string subtype, df::coord mins, df::coord maxs, std::string comment) :
+room::room(room_type::type type, std::string subtype, df::coord mins, df::coord maxs, std::string comment) :
     status(room_status::plan),
     type(type),
     subtype(subtype),
@@ -288,7 +330,7 @@ bool room::safe_include(df::coord t) const
 
 df::tile_dig_designation room::dig_mode(df::coord t) const
 {
-    if (type != "corridor")
+    if (type != room_type::corridor)
     {
         return tile_dig_designation::Default;
     }

@@ -31,10 +31,37 @@ namespace room_status
 
 std::ostream & operator <<(std::ostream & stream, room_status::status status);
 
+namespace room_type
+{
+    enum type
+    {
+        corridor,
+
+        barracks,
+        bedroom,
+        cemetary,
+        cistern,
+        dininghall,
+        farmplot,
+        garbagedump,
+        garbagepit,
+        infirmary,
+        location,
+        nobleroom,
+        outpost,
+        pasture,
+        pitcage,
+        stockpile,
+        workshop
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, room_type::type type);
+
 struct room
 {
     room_status::status status;
-    std::string type;
+    room_type::type type;
     std::string subtype;
     std::string comment;
     df::coord min, max;
@@ -59,7 +86,7 @@ struct room
     bool channeled;
 
     room(df::coord min, df::coord max, std::string comment = "");
-    room(std::string type, std::string subtype, df::coord min, df::coord max, std::string comment = "");
+    room(room_type::type type, std::string subtype, df::coord min, df::coord max, std::string comment = "");
     ~room();
 
     inline df::coord size() const { return max - min + df::coord(1, 1, 1); }

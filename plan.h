@@ -45,7 +45,7 @@ class Plan
     std::list<task *> tasks;
     std::list<task *>::iterator bg_idx;
     std::vector<room *> rooms;
-    std::map<std::string, std::vector<room *>> room_category;
+    std::map<room_type::type, std::vector<room *>> room_category;
     std::vector<room *> corridors;
     std::set<std::string> cache_nofurnish;
 public:
@@ -106,7 +106,7 @@ public:
     void getcoffin(color_ostream & out);
 
     void freebedroom(color_ostream & out, int32_t id);
-    void freecommonrooms(color_ostream & out, int32_t id, std::string subtype);
+    void freecommonrooms(color_ostream & out, int32_t id, room_type::type subtype);
     void freecommonrooms(color_ostream & out, int32_t id);
     void freesoldierbarrack(color_ostream & out, int32_t id);
 
@@ -215,8 +215,8 @@ public:
 
     std::string describe_room(room *r);
 
-    room *find_room(std::string type);
-    room *find_room(std::string type, std::function<bool(room *)> b);
+    room *find_room(room_type::type type);
+    room *find_room(room_type::type type, std::function<bool(room *)> b);
 
     bool map_tile_intersects_room(df::coord t);
 
