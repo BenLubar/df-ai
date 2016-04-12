@@ -9,6 +9,7 @@
 
 #include "df/region_map_entry.h"
 #include "df/viewscreen_choose_start_sitest.h"
+#include "df/viewscreen_loadgamest.h"
 #include "df/viewscreen_new_regionst.h"
 #include "df/viewscreen_setupdwarfgamest.h"
 #include "df/viewscreen_textviewerst.h"
@@ -91,7 +92,7 @@ void Embark::register_restart_timer(color_ostream & out)
 
 bool Embark::update(color_ostream & out)
 {
-    df::viewscreen *curview = Gui::getCurViewscreen(true);
+    df::viewscreen *curview = Gui::getCurViewscreen(false);
     if (!curview || curview->breakdown_level != interface_breakdown_types::NONE)
         return false;
 
@@ -99,17 +100,18 @@ bool Embark::update(color_ostream & out)
     {
         ai->camera->check_record_status();
 
-        // dismiss the prerelease warning
-        std::vector<std::string> args;
-        args.push_back("dfhack.script_environment('gui/prerelease-warning').shown = true");
-        Core::getInstance().runCommand(out, "lua", args);
-
         switch (view->sel_subpage)
         {
             case df::viewscreen_titlest::None:
                 {
+                    auto continue_game = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::Continue);
                     auto start_game = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::Start);
-                    if (!AI_RANDOM_EMBARK_WORLD.empty() && start_game != view->menu_line_id.end())
+                    if (!AI_RANDOM_EMBARK_WORLD.empty() && continue_game != view->menu_line_id.end() && std::ifstream("data/save/" + AI_RANDOM_EMBARK_WORLD + "/world.sav").good())
+                    {
+                        ai->debug(out, "choosing \"Continue Game\"");
+                        view->sel_menu_line = continue_game - view->menu_line_id.begin();
+                    }
+                    else if (!AI_RANDOM_EMBARK_WORLD.empty() && start_game != view->menu_line_id.end())
                     {
                         ai->debug(out, "choosing \"Start Game\"");
                         view->sel_menu_line = start_game - view->menu_line_id.begin();
@@ -169,6 +171,41 @@ bool Embark::update(color_ostream & out)
                 }
             default:
                 break;
+        }
+    }
+    else if (df::viewscreen_loadgamest *view = strict_virtual_cast<df::viewscreen_loadgamest>(curview))
+    {
+        if (view->loading)
+        {
+            return false;
+        }
+        if (AI_RANDOM_EMBARK_WORLD.empty())
+        {
+            ai->debug(out, "leaving \"Select World\" (no save name)");
+            AI::feed_key(view, interface_key::LEAVESCREEN);
+            return false;
+        }
+        auto save = std::find_if(view->saves.begin(), view->saves.end(), [](df::loadgame_save_info *s) -> bool
+                {
+                    return s->folder_name == AI_RANDOM_EMBARK_WORLD;
+                });
+        if (save != view->saves.end())
+        {
+            ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+                        save - view->saves.begin(),
+                        (*save)->world_name.c_str(),
+                        (*save)->fort_name.c_str()));
+            while (view->sel_idx != save - view->saves.begin())
+            {
+                AI::feed_key(view, interface_key::STANDARDSCROLL_DOWN);
+            }
+            AI::feed_key(view, interface_key::SELECT);
+        }
+        else
+        {
+            ai->debug(out, "could not find save named " + AI_RANDOM_EMBARK_WORLD);
+            AI_RANDOM_EMBARK_WORLD = "";
+            AI::feed_key(view, interface_key::LEAVESCREEN);
         }
     }
     else if (df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview))

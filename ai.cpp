@@ -24,6 +24,7 @@
 #include "df/viewscreen_topicmeetingst.h"
 #include "df/world.h"
 
+#include <cstdio>
 #include <sstream>
 
 REQUIRE_GLOBAL(announcements);
@@ -399,13 +400,8 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 // get rid of all the remaining event handlers
                 events.clear();
 
-                // remove per-embark persisted data
-                std::vector<PersistentDataItem> data;
-                World::GetPersistentData(&data, "df-ai/embark/", true);
-                for (auto it = data.begin(); it != data.end(); it++)
-                {
-                    World::DeletePersistentData(*it);
-                }
+                // remove embark-specific saved data
+                std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
 
                 embark->register_restart_timer(out);
 

@@ -58,6 +58,8 @@
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
 
+#include <fstream>
+
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cursor);
 REQUIRE_GLOBAL(ui);
@@ -181,11 +183,10 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
 
 command_result Plan::startup(color_ostream & out)
 {
-    auto persist = World::GetPersistentData("df-ai/embark/plan");
-    if (persist.isValid())
+    std::ifstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
+    if (persist.is_open())
     {
-        std::istringstream str(persist.val());
-        load(str);
+        load(persist);
         return CR_OK;
     }
 
@@ -243,9 +244,9 @@ void Plan::update(color_ostream & out)
             nrdig++;
     }
 
-    std::ostringstream str;
-    save(str);
-    World::GetPersistentData("df-ai/embark/plan", nullptr).val() = str.str();
+    std::ofstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str(), std::ofstream::trunc);
+    save(persist);
+    persist.close();
 
     want_reupdate = false;
     events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
@@ -400,9 +401,11 @@ void Plan::save(std::ostream & out)
     for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
     {
         Json::Value r(Json::objectValue);
+        stringify.str(std::string());
         stringify.clear();
         stringify << (*it)->status;
         r["status"] = stringify.str();
+        stringify.str(std::string());
         stringify.clear();
         stringify << (*it)->type;
         r["type"] = stringify.str();
@@ -558,6 +561,7 @@ void Plan::load(std::istream & in)
     std::map<std::string, room_status::status> statuses;
     for (int i = 0; i < room_status::_room_status_count; i++)
     {
+        stringify.str(std::string());
         stringify.clear();
         stringify << room_status::status(i);
         statuses[stringify.str()] = room_status::status(i);
@@ -565,6 +569,7 @@ void Plan::load(std::istream & in)
     std::map<std::string, room_type::type> types;
     for (int i = 0; i < room_type::_room_type_count; i++)
     {
+        stringify.str(std::string());
         stringify.clear();
         stringify << room_type::type(i);
         types[stringify.str()] = room_type::type(i);
@@ -661,6 +666,7 @@ void Plan::load(std::istream & in)
         (*it)->internal = f["internal"].asBool();
     }
 
+    fort_entrance = corridors.at(0);
     categorize_all();
 }
 
@@ -4529,6 +4535,8 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
     room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
+    corridor_center2->accesspath = entr;
+    corridors.push_back(corridor_center2);
 
     std::vector<std::string> types;
     types.push_back("food");
@@ -5788,12 +5796,15 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord
                         t.z++;
                     }
 
-                    df::tiletype tt = *Maps::getTileType(t);
-                    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
+                    df::tiletype *tt = Maps::getTileType(t);
+                    if (!tt)
+                        return false;
+
+                    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt));
                     df::tile_designation td = *Maps::getTileDesignation(t);
 
                     return (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Floor) &&
-                            ENUM_ATTR(tiletype, material, tt) != tiletype_material::TREE &&
+                            ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE &&
                             td.bits.flow_size == 0 &&
                             !td.bits.hidden &&
                             !map_tile_intersects_room(t);
