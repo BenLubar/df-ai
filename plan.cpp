@@ -1047,13 +1047,13 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
 void Plan::getdiningroom(color_ostream & out, int32_t id)
 {
     // skip allocating space if there's already a dining room for this dwarf.
-    if (find_room(room_type::dininghall, [id](room *r) -> bool
+    auto is_user = [id](furniture *f) -> bool
+    {
+        return f->users.count(id);
+    };
+    if (find_room(room_type::dininghall, [is_user](room *r) -> bool
                 {
-                    return std::find_if(r->layout.begin(), r->layout.end(),
-                            [id](furniture *f) -> bool
-                            {
-                                return f->users.count(id);
-                            }) != r->layout.end();
+                    return std::find_if(r->layout.begin(), r->layout.end(), is_user) != r->layout.end();
                 }))
         return;
 
