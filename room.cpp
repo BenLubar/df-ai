@@ -19,6 +19,9 @@ std::ostream & operator <<(std::ostream & stream, room_status::status status)
             return stream << "dug";
         case room_status::finished:
             return stream << "finished";
+
+        case room_status::_room_status_count:
+            return stream << "???";
     }
     return stream << "???";
 }
@@ -62,6 +65,9 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
             return stream << "stockpile";
         case room_type::workshop:
             return stream << "workshop";
+
+        case room_type::_room_type_count:
+            return stream << "???";
     }
     return stream << "???";
 }

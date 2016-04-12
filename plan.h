@@ -82,6 +82,9 @@ public:
 
     void update(color_ostream & out);
 
+    void save(std::ostream & out);
+    void load(std::istream & in);
+
     static uint16_t getTileWalkable(df::coord t);
 
     task *is_digging();

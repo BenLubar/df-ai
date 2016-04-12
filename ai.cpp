@@ -9,6 +9,7 @@
 #include "modules/Screen.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
+#include "modules/World.h"
 
 #include "df/announcements.h"
 #include "df/item.h"
@@ -397,6 +398,14 @@ void AI::statechanged(color_ostream & out, state_change_event st)
 
                 // get rid of all the remaining event handlers
                 events.clear();
+
+                // remove per-embark persisted data
+                std::vector<PersistentDataItem> data;
+                World::GetPersistentData(&data, "df-ai/embark/", true);
+                for (auto it = data.begin(); it != data.end(); it++)
+                {
+                    World::DeletePersistentData(*it);
+                }
 
                 embark->register_restart_timer(out);
 

@@ -3,7 +3,11 @@
 #include "plan.h"
 #include "stocks.h"
 
+#include <sstream>
 #include <tuple>
+#include <unordered_map>
+
+#include "jsoncpp.h"
 
 #include "modules/Buildings.h"
 #include "modules/Gui.h"
@@ -14,6 +18,7 @@
 #include "modules/Screen.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
+#include "modules/World.h"
 
 #include "df/building_archerytargetst.h"
 #include "df/building_civzonest.h"
@@ -176,6 +181,14 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
 
 command_result Plan::startup(color_ostream & out)
 {
+    auto persist = World::GetPersistentData("df-ai/embark/plan");
+    if (persist.isValid())
+    {
+        std::istringstream str(persist.val());
+        load(str);
+        return CR_OK;
+    }
+
     command_result res = setup_blueprint(out);
     if (res != CR_OK)
         return res;
@@ -229,6 +242,10 @@ void Plan::update(color_ostream & out)
         if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
             nrdig++;
     }
+
+    std::ostringstream str;
+    save(str);
+    World::GetPersistentData("df-ai/embark/plan", nullptr).val() = str.str();
 
     want_reupdate = false;
     events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
@@ -322,6 +339,329 @@ void Plan::update(color_ostream & out)
                 }
                 return false;
             });
+}
+
+void Plan::save(std::ostream & out)
+{
+    std::vector<furniture *> all_furniture;
+    std::vector<room *> all_rooms;
+    std::unordered_map<furniture *, size_t> furniture_index;
+    std::unordered_map<room *, size_t> room_index;
+
+    auto add_furniture = [&all_furniture, &furniture_index](furniture *f)
+    {
+        if (furniture_index.count(f))
+            return;
+        furniture_index[f] = all_furniture.size();
+        all_furniture.push_back(f);
+    };
+
+    auto add_room = [add_furniture, &all_rooms, &room_index](room *r)
+    {
+        if (room_index.count(r))
+            return;
+        room_index[r] = all_rooms.size();
+        all_rooms.push_back(r);
+
+        for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+        {
+            add_furniture(*it);
+        }
+    };
+
+    for (auto it = corridors.begin(); it != corridors.end(); it++)
+    {
+        add_room(*it);
+    }
+    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    {
+        add_room(*it);
+    }
+
+    Json::Value converted_tasks(Json::arrayValue);
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    {
+        Json::Value t(Json::objectValue);
+        t["t"] = (*it)->type;
+        if ((*it)->r)
+        {
+            t["r"] = room_index.at((*it)->r);
+        }
+        if ((*it)->f)
+        {
+            t["f"] = furniture_index.at((*it)->f);
+        }
+        converted_tasks.append(t);
+    }
+
+    std::ostringstream stringify;
+
+    Json::Value converted_rooms(Json::arrayValue);
+    for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
+    {
+        Json::Value r(Json::objectValue);
+        stringify.clear();
+        stringify << (*it)->status;
+        r["status"] = stringify.str();
+        stringify.clear();
+        stringify << (*it)->type;
+        r["type"] = stringify.str();
+        r["subtype"] = (*it)->subtype;
+        r["comment"] = (*it)->comment;
+        Json::Value r_min(Json::arrayValue);
+        r_min.append((*it)->min.x);
+        r_min.append((*it)->min.y);
+        r_min.append((*it)->min.z);
+        r["min"] = r_min;
+        Json::Value r_max(Json::arrayValue);
+        r_max.append((*it)->max.x);
+        r_max.append((*it)->max.y);
+        r_max.append((*it)->max.z);
+        r["max"] = r_max;
+        Json::Value r_accesspath(Json::arrayValue);
+        for (auto it_ = (*it)->accesspath.begin(); it_ != (*it)->accesspath.end(); it_++)
+        {
+            r_accesspath.append(room_index.at(*it_));
+        }
+        r["accesspath"] = r_accesspath;
+        Json::Value r_layout(Json::arrayValue);
+        for (auto it_ = (*it)->layout.begin(); it_ != (*it)->layout.end(); it_++)
+        {
+            r_layout.append(furniture_index.at(*it_));
+        }
+        r["layout"] = r_layout;
+        r["owner"] = (*it)->owner;
+        r["bld_id"] = (*it)->bld_id;
+        r["squad_id"] = (*it)->squad_id;
+        r["level"] = (*it)->level;
+        r["noblesuite"] = (*it)->noblesuite;
+        if ((*it)->workshop)
+        {
+            r["workshop"] = room_index.at((*it)->workshop);
+        }
+        Json::Value r_users(Json::arrayValue);
+        for (auto it_ = (*it)->users.begin(); it_ != (*it)->users.end(); it_++)
+        {
+            r_users.append(*it_);
+        }
+        r["users"] = r_users;
+        Json::Value r_channel_enable(Json::arrayValue);
+        r_channel_enable.append((*it)->channel_enable.x);
+        r_channel_enable.append((*it)->channel_enable.y);
+        r_channel_enable.append((*it)->channel_enable.z);
+        r["channel_enable"] = r_channel_enable;
+        Json::Value r_stock_disable(Json::arrayValue);
+        for (auto it_ = (*it)->stock_disable.begin(); it_ != (*it)->stock_disable.end(); it_++)
+        {
+            r_stock_disable.append(ENUM_KEY_STR(stockpile_list, *it_));
+        }
+        r["stock_disable"] = r_stock_disable;
+        r["stock_specific1"] = (*it)->stock_specific1;
+        r["stock_specific2"] = (*it)->stock_specific2;
+        r["has_users"] = (*it)->has_users;
+        r["furnished"] = (*it)->furnished;
+        r["queue_dig"] = (*it)->queue_dig;
+        r["temporary"] = (*it)->temporary;
+        r["outdoor"] = (*it)->outdoor;
+        r["channeled"] = (*it)->channeled;
+        converted_rooms.append(r);
+    }
+
+    Json::Value converted_furniture(Json::arrayValue);
+    for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
+    {
+        Json::Value f(Json::objectValue);
+        f["item"] = (*it)->item;
+        f["subtype"] = (*it)->subtype;
+        f["construction"] = ENUM_KEY_STR(construction_type, (*it)->construction);
+        f["dig"] = ENUM_KEY_STR(tile_dig_designation, (*it)->dig);
+        f["direction"] = (*it)->direction;
+        f["way"] = (*it)->way;
+        f["bld_id"] = (*it)->bld_id;
+        f["x"] = (*it)->x;
+        f["y"] = (*it)->y;
+        f["z"] = (*it)->z;
+        if ((*it)->target)
+        {
+            f["target"] = furniture_index.at((*it)->target);
+        }
+        Json::Value f_users(Json::arrayValue);
+        for (auto it_ = (*it)->users.begin(); it_ != (*it)->users.end(); it_++)
+        {
+            f_users.append(*it_);
+        }
+        f["users"] = f_users;
+        f["has_users"] = (*it)->has_users;
+        f["ignore"] = (*it)->ignore;
+        f["makeroom"] = (*it)->makeroom;
+        f["internal"] = (*it)->internal;
+        converted_furniture.append(f);
+    }
+
+    Json::Value all(Json::objectValue);
+    all["t"] = converted_tasks;
+    all["r"] = converted_rooms;
+    all["f"] = converted_furniture;
+
+    out << all;
+}
+
+void Plan::load(std::istream & in)
+{
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    {
+        delete *it;
+    }
+    tasks.clear();
+    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    {
+        delete *it;
+    }
+    rooms.clear();
+    for (auto it = corridors.begin(); it != corridors.end(); it++)
+    {
+        delete *it;
+    }
+    corridors.clear();
+
+    Json::Value all(Json::objectValue);
+    in >> all;
+
+    std::vector<room *> all_rooms;
+    std::vector<furniture *> all_furniture;
+
+    for (unsigned int i = all["r"].size(); i > 0; i--)
+    {
+        all_rooms.push_back(new room(df::coord(), df::coord()));
+    }
+    for (unsigned int i = all["f"].size(); i > 0; i--)
+    {
+        all_furniture.push_back(new furniture());
+    }
+
+    for (auto it = all["t"].begin(); it != all["t"].end(); it++)
+    {
+        task *t = new task((*it)["t"].asString());
+        if (it->isMember("r"))
+        {
+            t->r = all_rooms.at((*it)["r"].asInt());
+        }
+        if (it->isMember("f"))
+        {
+            t->f = all_furniture.at((*it)["f"].asInt());
+        }
+        tasks.push_back(t);
+    }
+
+    std::ostringstream stringify;
+
+    std::map<std::string, room_status::status> statuses;
+    for (int i = 0; i < room_status::_room_status_count; i++)
+    {
+        stringify.clear();
+        stringify << room_status::status(i);
+        statuses[stringify.str()] = room_status::status(i);
+    }
+    std::map<std::string, room_type::type> types;
+    for (int i = 0; i < room_type::_room_type_count; i++)
+    {
+        stringify.clear();
+        stringify << room_type::type(i);
+        types[stringify.str()] = room_type::type(i);
+    }
+
+    for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
+    {
+        const Json::Value & r = all["r"][it - all_rooms.begin()];
+        (*it)->status = statuses.at(r["status"].asString());
+        (*it)->type = types.at(r["type"].asString());
+        (*it)->subtype = r["subtype"].asString();
+        (*it)->comment = r["comment"].asString();
+        (*it)->min.x = r["min"][0].asInt();
+        (*it)->min.y = r["min"][1].asInt();
+        (*it)->min.z = r["min"][2].asInt();
+        (*it)->max.x = r["max"][0].asInt();
+        (*it)->max.y = r["max"][1].asInt();
+        (*it)->max.z = r["max"][2].asInt();
+        for (auto it_ = r["accesspath"].begin(); it_ != r["accesspath"].end(); it_++)
+        {
+            (*it)->accesspath.push_back(all_rooms.at(it_->asInt()));
+        }
+        for (auto it_ = r["layout"].begin(); it_ != r["layout"].end(); it_++)
+        {
+            (*it)->layout.push_back(all_furniture.at(it_->asInt()));
+        }
+        (*it)->owner = r["owner"].asInt();
+        (*it)->bld_id = r["bld_id"].asInt();
+        (*it)->squad_id = r["squad_id"].asInt();
+        (*it)->level = r["level"].asInt();
+        (*it)->noblesuite = r["noblesuite"].asInt();
+        if (r.isMember("workshop"))
+        {
+            (*it)->workshop = all_rooms.at(r["workshop"].asInt());
+        }
+        for (auto it_ = r["users"].begin(); it_ != r["users"].end(); it_++)
+        {
+            (*it)->users.insert(it_->asInt());
+        }
+        (*it)->channel_enable.x = r["channel_enable"][0].asInt();
+        (*it)->channel_enable.y = r["channel_enable"][1].asInt();
+        (*it)->channel_enable.z = r["channel_enable"][2].asInt();
+        for (auto it_ = r["stock_disable"].begin(); it_ != r["stock_disable"].end(); it_++)
+        {
+            df::stockpile_list disable;
+            if (find_enum_item(&disable, it_->asString()))
+            {
+                (*it)->stock_disable.insert(disable);
+            }
+        }
+        (*it)->stock_specific1 = r["stock_specific1"].asBool();
+        (*it)->stock_specific2 = r["stock_specific2"].asBool();
+        (*it)->has_users = r["has_users"].asBool();
+        (*it)->furnished = r["furnished"].asBool();
+        (*it)->queue_dig = r["queue_dig"].asBool();
+        (*it)->temporary = r["temporary"].asBool();
+        (*it)->outdoor = r["outdoor"].asBool();
+        (*it)->channeled = r["channeled"].asBool();
+
+        if ((*it)->type == room_type::corridor)
+        {
+            corridors.push_back(*it);
+        }
+        else
+        {
+            rooms.push_back(*it);
+        }
+    }
+
+    for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
+    {
+        const Json::Value & f = all["f"][it - all_furniture.begin()];
+        (*it)->item = f["item"].asString();
+        (*it)->subtype = f["subtype"].asString();
+        find_enum_item(&(*it)->construction, f["construction"].asString());
+        find_enum_item(&(*it)->dig, f["dig"].asString());
+        (*it)->direction = f["direction"].asString();
+        (*it)->way = f["way"].asString();
+        (*it)->bld_id = f["bld_id"].asInt();
+        (*it)->x = f["x"].asInt();
+        (*it)->y = f["y"].asInt();
+        (*it)->z = f["z"].asInt();
+        if (f.isMember("target"))
+        {
+            (*it)->target = all_furniture.at(f["target"].asInt());
+        }
+        for (auto it_ = f["users"].begin(); it_ != f["users"].end(); it_++)
+        {
+            (*it)->users.insert(it_->asInt());
+        }
+        (*it)->has_users = f["has_users"].asBool();
+        (*it)->ignore = f["ignore"].asBool();
+        (*it)->makeroom = f["makeroom"].asBool();
+        (*it)->internal = f["internal"].asBool();
+    }
+
+    categorize_all();
 }
 
 uint16_t Plan::getTileWalkable(df::coord t)
@@ -700,6 +1040,17 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
 
 void Plan::getdiningroom(color_ostream & out, int32_t id)
 {
+    // skip allocating space if there's already a dining room for this dwarf.
+    if (find_room(room_type::dininghall, [id](room *r) -> bool
+                {
+                    return std::find_if(r->layout.begin(), r->layout.end(),
+                            [id](furniture *f) -> bool
+                            {
+                                return f->users.count(id);
+                            }) != r->layout.end();
+                }))
+        return;
+
     if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
                 {
                     df::coord size = r_->size();

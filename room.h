@@ -25,7 +25,9 @@ namespace room_status
         plan,
         dig,
         dug,
-        finished
+        finished,
+
+        _room_status_count
     };
 }
 
@@ -52,7 +54,9 @@ namespace room_type
         pasture,
         pitcage,
         stockpile,
-        workshop
+        workshop,
+
+        _room_type_count
     };
 }
 
