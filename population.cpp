@@ -157,6 +157,8 @@ Population::Population(AI *ai) :
     citizen(),
     military(),
     pet(),
+    visitor(),
+    resident(),
     update_counter(0),
     onupdate_handle(nullptr),
     medic(),
@@ -236,6 +238,9 @@ void Population::update_citizenlist(color_ostream & out)
 {
     std::set<int32_t> old = citizen;
 
+    visitor.clear();
+    resident.clear();
+
     // add new fort citizen to our list
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
@@ -267,6 +272,18 @@ void Population::update_citizenlist(color_ostream & out)
                     ai->event("new citizen", payload);
                 }
             }
+        }
+        else if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.slaughter)
+        {
+            // ignore
+        }
+        else if (u->flags2.bits.visitor)
+        {
+            visitor.insert(u->id);
+        }
+        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u))
+        {
+            resident.insert(u->id);
         }
     }
 
@@ -303,7 +320,16 @@ void Population::update_citizenlist(color_ostream & out)
         }
     }
 
-    ai->event("citizen count", citizen.size());
+    if (ai->eventsJson.is_open())
+    {
+        Json::Value payload(Json::objectValue);
+        payload["citizen"] = citizen.size();
+        payload["military"] = military.size();
+        payload["pet"] = pet.size();
+        payload["visitor"] = visitor.size();
+        payload["resident"] = resident.size();
+        ai->event("population", payload);
+    }
 }
 
 void Population::update_jobs(color_ostream & out)
@@ -1336,7 +1362,7 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 
 std::string Population::status()
 {
-    return stl_sprintf("%d citizen, %d military, %d pets", citizen.size(), military.size(), pet.size());
+    return stl_sprintf("%d citizen, %d military, %d pet, %d visitor, %d resident", citizen.size(), military.size(), pet.size(), visitor.size(), resident.size());
 }
 
 // vim: et:sw=4:ts=4

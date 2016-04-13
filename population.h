@@ -42,6 +42,8 @@ public:
 private:
     std::map<int32_t, int32_t> military;
     std::map<int32_t, pet_flags> pet;
+    std::set<int32_t> visitor;
+    std::set<int32_t> resident;
     size_t update_counter;
     OnupdateCallback *onupdate_handle;
     std::set<int32_t> medic;
