@@ -1,8 +1,10 @@
 Watch Dwarf Fortress play itself!
 
-Plugin for DFHack 0.42.06-alpha1.
+Plugin for DFHack 0.42.06-beta1.
 
-Installation:
+**[Download a pre-built version from the releases page.](https://github.com/BenLubar/df-ai/releases)**
+
+Compilation:
 
 - copy the df-ai folder to dfhack/plugins/df-ai
 - add `add_subdirectory(df-ai)` to dfhack/plugins/CMakeLists.custom.txt

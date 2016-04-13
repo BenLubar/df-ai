@@ -20,9 +20,6 @@
 
 - Trading
 - Trade contracts
-- Tavern
-- Temple
-- Library
 - Justice
 - Burrows
 
