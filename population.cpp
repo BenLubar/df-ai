@@ -281,7 +281,7 @@ void Population::update_citizenlist(color_ostream & out)
         {
             visitor.insert(u->id);
         }
-        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u))
+        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u) && u->cultural_identity != -1)
         {
             resident.insert(u->id);
         }
@@ -1185,7 +1185,7 @@ void Population::update_pets(color_ostream & out)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (!Units::isOwnCiv(u) || Units::isOwnGroup(u) || Units::isOwnRace(u))
+        if (!Units::isOwnCiv(u) || Units::isOwnGroup(u) || Units::isOwnRace(u) || u->cultural_identity != -1)
         {
             continue;
         }
