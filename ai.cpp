@@ -24,7 +24,6 @@
 #include "df/viewscreen_topicmeetingst.h"
 #include "df/world.h"
 
-#include <cstdio>
 #include <sstream>
 
 REQUIRE_GLOBAL(announcements);
@@ -401,7 +400,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 events.clear();
 
                 // remove embark-specific saved data
-                std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
+                unpersist(out);
 
                 embark->register_restart_timer(out);
 
@@ -566,6 +565,22 @@ std::string AI::status()
     str << "Stocks: " << stocks->status() << "\n";
     str << "Camera: " << camera->status();
     return str.str();
+}
+
+command_result AI::persist(color_ostream & out)
+{
+    command_result res = CR_OK;
+    if (res == CR_OK)
+        res = plan->persist(out);
+    return res;
+}
+
+command_result AI::unpersist(color_ostream & out)
+{
+    command_result res = CR_OK;
+    if (res == CR_OK)
+        res = plan->unpersist(out);
+    return res;
 }
 
 // vim: et:sw=4:ts=4

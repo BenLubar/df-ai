@@ -7,12 +7,14 @@
 #include "modules/Screen.h"
 
 #include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_optionst.h"
 #include "df/viewscreen_titlest.h"
 
 DFHACK_PLUGIN("df-ai");
 DFHACK_PLUGIN_IS_ENABLED(enabled);
 
 REQUIRE_GLOBAL(pause_state);
+REQUIRE_GLOBAL(ui);
 
 // Protected by CoreSuspender
 AI *dwarfAI = nullptr;
@@ -158,6 +160,13 @@ DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_cha
     if (!check_enabled(out))
         return CR_OK;
 
+    if (event == SC_VIEWSCREEN_CHANGED && strict_virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true)))
+    {
+        command_result res = dwarfAI->persist(out);
+        if (res != CR_OK)
+            return res;
+    }
+
     events.onstatechange(out, event);
     return CR_OK;
 }
@@ -166,6 +175,13 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
 {
     if (!check_enabled(out))
         return CR_OK;
+
+    if (ui->main.autosave_request)
+    {
+        command_result res = dwarfAI->persist(out);
+        if (res != CR_OK)
+            return res;
+    }
 
     events.onupdate(out);
     return CR_OK;

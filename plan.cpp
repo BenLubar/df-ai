@@ -3,6 +3,7 @@
 #include "plan.h"
 #include "stocks.h"
 
+#include <cstdio>
 #include <sstream>
 #include <tuple>
 #include <unordered_map>
@@ -184,7 +185,7 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
 command_result Plan::startup(color_ostream & out)
 {
     std::ifstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
-    if (persist.is_open())
+    if (persist.good())
     {
         load(persist);
         return CR_OK;
@@ -243,10 +244,6 @@ void Plan::update(color_ostream & out)
         if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
             nrdig++;
     }
-
-    std::ofstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str(), std::ofstream::trunc);
-    save(persist);
-    persist.close();
 
     want_reupdate = false;
     events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
@@ -340,6 +337,20 @@ void Plan::update(color_ostream & out)
                 }
                 return false;
             });
+}
+
+command_result Plan::persist(color_ostream & out)
+{
+    std::ofstream f("data/save/current/df-ai-plan.json", std::ofstream::trunc);
+    save(f);
+    return CR_OK;
+}
+
+command_result Plan::unpersist(color_ostream & out)
+{
+    std::remove("data/save/current/df-ai-plan.json");
+    std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
+    return CR_OK;
 }
 
 void Plan::save(std::ostream & out)

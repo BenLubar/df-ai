@@ -80,6 +80,9 @@ public:
     command_result onupdate_register(color_ostream & out);
     command_result onupdate_unregister(color_ostream & out);
 
+    command_result persist(color_ostream & out);
+    command_result unpersist(color_ostream & out);
+
     void update(color_ostream & out);
 
     void save(std::ostream & out);
