@@ -218,6 +218,18 @@ void Population::update(color_ostream & out)
         case 8:
             update_locations(out);
             break;
+        case 9:
+            if (ai->eventsJson.is_open())
+            {
+                Json::Value payload(Json::objectValue);
+                payload["citizen"] = citizen.size();
+                payload["military"] = military.size();
+                payload["pet"] = pet.size();
+                payload["visitor"] = visitor.size();
+                payload["resident"] = resident.size();
+                ai->event("population", payload);
+            }
+            break;
     }
 }
 
@@ -318,17 +330,6 @@ void Population::update_citizenlist(color_ostream & out)
             }
             ai->event("del citizen", payload);
         }
-    }
-
-    if (ai->eventsJson.is_open())
-    {
-        Json::Value payload(Json::objectValue);
-        payload["citizen"] = citizen.size();
-        payload["military"] = military.size();
-        payload["pet"] = pet.size();
-        payload["visitor"] = visitor.size();
-        payload["resident"] = resident.size();
-        ai->event("population", payload);
     }
 }
 
