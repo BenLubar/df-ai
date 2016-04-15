@@ -184,7 +184,7 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
 
 command_result Plan::startup(color_ostream & out)
 {
-    std::ifstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
+    std::ifstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.dat").c_str());
     if (persist.good())
     {
         load(persist);
@@ -341,15 +341,15 @@ void Plan::update(color_ostream & out)
 
 command_result Plan::persist(color_ostream & out)
 {
-    std::ofstream f("data/save/current/df-ai-plan.json", std::ofstream::trunc);
+    std::ofstream f("data/save/current/df-ai-plan.dat", std::ofstream::trunc);
     save(f);
     return CR_OK;
 }
 
 command_result Plan::unpersist(color_ostream & out)
 {
-    std::remove("data/save/current/df-ai-plan.json");
-    std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.json").c_str());
+    std::remove("data/save/current/df-ai-plan.dat");
+    std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.dat").c_str());
     return CR_OK;
 }
 
