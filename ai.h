@@ -90,8 +90,6 @@ public:
 
     std::string status();
 
-    command_result update(color_ostream & out);
-
     command_result persist(color_ostream & out);
     command_result unpersist(color_ostream & out);
 };
