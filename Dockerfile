@@ -1,4 +1,4 @@
-FROM benlubar/dwarffortress:dfhack-0.42.06-beta1
+FROM benlubar/dwarffortress:dfhack-latest
 
 ADD . /df-ai
 
@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	libxml-libxslt-perl \
 	make \
 	zlib1g-dev:i386 \
-&& git clone -b 0.42.06-beta1 --recursive --depth=1 https://github.com/DFHack/dfhack.git /dfhack \
+&& git clone -b ${DFHACK_VERSION} --recursive --depth=1 https://github.com/DFHack/dfhack.git /dfhack \
 && mkdir -p /dfhack/build-docker \
 && cd /dfhack/build-docker \
 && echo 'add_subdirectory(df-ai)' >> /dfhack/plugins/CMakeLists.custom.txt \
