@@ -49,6 +49,7 @@ public:
     OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;
     std::set<std::string> seen_cvname;
+    bool skip_persist;
 
     AI();
     ~AI();

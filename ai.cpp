@@ -44,7 +44,8 @@ AI::AI() :
     embark(new Embark(this)),
     status_onupdate(nullptr),
     pause_onupdate(nullptr),
-    seen_cvname()
+    seen_cvname(),
+    skip_persist(false)
 {
     seen_cvname.insert("viewscreen_dwarfmodest");
 }
@@ -401,6 +402,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
 
                 // remove embark-specific saved data
                 unpersist(out);
+                skip_persist = true;
 
                 embark->register_restart_timer(out);
 
@@ -570,6 +572,9 @@ std::string AI::status()
 command_result AI::persist(color_ostream & out)
 {
     command_result res = CR_OK;
+    if (skip_persist)
+        return res;
+
     if (res == CR_OK)
         res = plan->persist(out);
     return res;
