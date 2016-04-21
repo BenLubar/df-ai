@@ -2824,23 +2824,30 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
 // expensive method, dont call often
 std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list()
 {
+    auto add_from_vector = [this](std::vector<df::plant *> & trees)
+    {
+        for (auto it = trees.begin(); it != trees.end(); it++)
+        {
+            df::plant *p = *it;
+            df::tiletype tt = *Maps::getTileType(p->pos);
+            if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE &&
+                    ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::WALL &&
+                    !Maps::getTileDesignation(p->pos)->bits.hidden &&
+                    !Plan::spiral_search(p->pos, 1, [](df::coord t) -> bool
+                        {
+                            df::tile_designation *td = Maps::getTileDesignation(t);
+                            return td && td->bits.flow_size > 0;
+                        }).isValid())
+            {
+                last_treelist.insert(p->pos);
+            }
+        }
+    };
+
     last_treelist.clear();
-    for (auto p = world->plants.tree_dry.begin(); p != world->plants.tree_dry.end(); p++)
-    {
-        df::tiletype *tt = Maps::getTileType((*p)->pos);
-        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::TREE && ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
-        {
-            last_treelist.insert((*p)->pos);
-        }
-    }
-    for (auto p = world->plants.tree_wet.begin(); p != world->plants.tree_wet.end(); p++)
-    {
-        df::tiletype *tt = Maps::getTileType((*p)->pos);
-        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::TREE && ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL && !Maps::getTileDesignation((*p)->pos)->bits.hidden)
-        {
-            last_treelist.insert((*p)->pos);
-        }
-    }
+    add_from_vector(world->plants.tree_dry);
+    add_from_vector(world->plants.tree_wet);
+
     return last_treelist;
 }
 
