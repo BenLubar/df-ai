@@ -12,6 +12,7 @@
 #include "modules/World.h"
 
 #include "df/announcements.h"
+#include "df/creature_raw.h"
 #include "df/item.h"
 #include "df/report.h"
 #include "df/viewscreen.h"
@@ -44,6 +45,7 @@ AI::AI() :
     embark(new Embark(this)),
     status_onupdate(nullptr),
     pause_onupdate(nullptr),
+    tag_enemies_onupdate(nullptr),
     seen_cvname(),
     skip_persist(false)
 {
@@ -231,17 +233,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
         case announcement_type::MEGABEAST_ARRIVAL:
             {
                 debug(out, "pause: uh oh, megabeast...");
-                bool found = false;
-                for (auto it = world->units.active.rbegin(); it != world->units.active.rend(); it++)
-                {
-                    if (Units::isAlive(*it) && Units::getPosition(*it).isValid() && (*it)->flags3.bits.announce_titan)
-                    {
-                        pop->military_all_squads_attack_unit(out, *it);
-                        found = true;
-                        // no break
-                    }
-                }
-                if (!found)
+                if (!tag_enemies(out))
                 {
                     debug(out, "[ERROR] could not find megabeast");
                 }
@@ -466,6 +458,36 @@ void AI::abandon(color_ostream & out)
     feed_key(interface_key::SELECT);
 }
 
+bool AI::tag_enemies(color_ostream & out)
+{
+    bool found = false;
+    for (auto it = world->units.active.rbegin(); it != world->units.active.rend(); it++)
+    {
+        df::unit *u = *it;
+        df::creature_raw *race = df::creature_raw::find(u->race);
+        if (Units::isAlive(u) && Units::getPosition(u).isValid() &&
+                (u->flags1.bits.marauder ||
+                 u->flags2.bits.underworld ||
+                 u->flags2.bits.visitor_uninvited ||
+                 (race &&
+                  (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
+                   race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))))
+        {
+            if (pop->military_all_squads_attack_unit(out, u))
+            {
+                found = true;
+            }
+            // no break
+        }
+    }
+    return found;
+}
+
 void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb)
 {
     virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen(true));
@@ -523,6 +545,7 @@ command_result AI::onupdate_register(color_ostream & out)
                     }
                     return false;
                 });
+        tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7*1200, 7*1200, [this](color_ostream & out) { tag_enemies(out); });
         events.onstatechange_register_once([this](color_ostream & out, state_change_event st) -> bool
                 {
                     if (st == SC_WORLD_UNLOADED)
@@ -555,6 +578,7 @@ command_result AI::onupdate_unregister(color_ostream & out)
     {
         events.onupdate_unregister(status_onupdate);
         events.onupdate_unregister(pause_onupdate);
+        events.onupdate_unregister(tag_enemies_onupdate);
     }
     return res;
 }

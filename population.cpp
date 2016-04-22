@@ -732,21 +732,36 @@ void Population::military_random_squad_attack_unit(color_ostream & out, df::unit
     military_squad_attack_unit(out, squad, u);
 }
 
-void Population::military_all_squads_attack_unit(color_ostream & out, df::unit *u)
+bool Population::military_all_squads_attack_unit(color_ostream & out, df::unit *u)
 {
+    bool any = false;
     for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
     {
-        military_squad_attack_unit(out, df::squad::find(*sqid), u);
+        if (military_squad_attack_unit(out, df::squad::find(*sqid), u))
+            any = true;
     }
+    return any;
 }
 
-void Population::military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u)
+bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u)
 {
+    for (auto it = squad->orders.begin(); it != squad->orders.end(); it++)
+    {
+        if (auto so = strict_virtual_cast<df::squad_order_kill_listst>(*it))
+        {
+            if (std::find(so->units.begin(), so->units.end(), u->id) != so->units.end())
+            {
+                return false;
+            }
+        }
+    }
+
     df::squad_order_kill_listst *so = df::allocate<df::squad_order_kill_listst>();
     so->units.push_back(u->id);
     so->title = AI::describe_unit(u);
     squad->orders.push_back(so);
     ai->debug(out, "sending " + AI::describe_name(squad->name, true) + " to attack " + AI::describe_unit(u));
+    return true;
 }
 
 std::string Population::military_find_commander_pos()

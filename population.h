@@ -73,8 +73,8 @@ public:
     void assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ);
 
     void military_random_squad_attack_unit(color_ostream & out, df::unit *u);
-    void military_all_squads_attack_unit(color_ostream & out, df::unit *u);
-    void military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
+    bool military_all_squads_attack_unit(color_ostream & out, df::unit *u);
+    bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
     std::string military_find_commander_pos();
     std::string military_find_captain_pos();
 

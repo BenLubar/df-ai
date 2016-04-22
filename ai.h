@@ -48,6 +48,7 @@ public:
 
     OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;
+    OnupdateCallback *tag_enemies_onupdate;
     std::set<std::string> seen_cvname;
     bool skip_persist;
 
@@ -79,6 +80,7 @@ public:
     void handle_pause_event(color_ostream & out, df::report *announce);
     void statechanged(color_ostream & out, state_change_event event);
     static void abandon(color_ostream & out);
+    bool tag_enemies(color_ostream & out);
 
     void timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb);
     void timeout_sameview(std::function<void(color_ostream &)> cb)
