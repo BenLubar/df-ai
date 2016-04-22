@@ -466,6 +466,7 @@ bool AI::tag_enemies(color_ostream & out)
         df::unit *u = *it;
         df::creature_raw *race = df::creature_raw::find(u->race);
         if (Units::isAlive(u) && Units::getPosition(u).isValid() &&
+                !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden &&
                 (u->flags1.bits.marauder ||
                  u->flags2.bits.underworld ||
                  u->flags2.bits.visitor_uninvited ||
