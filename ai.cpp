@@ -6,6 +6,7 @@
 #include "embark.h"
 
 #include "modules/Gui.h"
+#include "modules/Maps.h"
 #include "modules/Screen.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
