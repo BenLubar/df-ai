@@ -2824,7 +2824,14 @@ df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coo
 // expensive method, dont call often
 std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list()
 {
-    auto add_from_vector = [this](std::vector<df::plant *> & trees)
+    uint16_t walkable = Plan::getTileWalkable(ai->plan->fort_entrance->max);
+
+    auto is_walkable = [walkable](df::coord t) -> bool
+    {
+        return walkable == Plan::getTileWalkable(t);
+    };
+
+    auto add_from_vector = [this, is_walkable](std::vector<df::plant *> & trees)
     {
         for (auto it = trees.begin(); it != trees.end(); it++)
         {
@@ -2837,7 +2844,8 @@ std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list
                         {
                             df::tile_designation *td = Maps::getTileDesignation(t);
                             return td && td->bits.flow_size > 0;
-                        }).isValid())
+                        }).isValid() &&
+                    Plan::spiral_search(p->pos, 1, is_walkable).isValid())
             {
                 last_treelist.insert(p->pos);
             }
