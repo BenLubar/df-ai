@@ -4631,8 +4631,8 @@ static furniture *new_hive_floor(int16_t x, int16_t y)
 {
     furniture *f = new furniture();
     f->construction = construction_type::Floor;
-    f->x = 3;
-    f->y = 1;
+    f->x = x;
+    f->y = y;
     f->item = "hive";
     return f;
 }
