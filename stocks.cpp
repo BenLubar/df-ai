@@ -65,6 +65,7 @@
 #include "df/itemdef_trapcompst.h"
 #include "df/itemdef_weaponst.h"
 #include "df/itemimprovement.h"
+#include "df/job.h"
 #include "df/manager_order.h"
 #include "df/material.h"
 #include "df/plant.h"
@@ -1753,26 +1754,12 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "wood")
     {
-        // dont bother if the last designated tree is not cut yet
-        if (is_cutting_trees())
-            return;
-
         amount *= 2;
         if (amount > 30)
             amount = 30;
-        std::set<df::coord, std::function<bool(df::coord, df::coord)>> tl = tree_list();
-        for (auto t = tl.begin(); t != tl.end(); t++)
-        {
-            if (Maps::getTileDesignation(*t)->bits.dig == tile_dig_designation::Default)
-            {
-                if (amount <= 6)
-                {
-                    return;
-                }
-                amount -= 6;
-            }
-        }
-        last_cutpos = cuttrees(out, amount / 6 + 1, tl);
+
+        last_cutpos = cuttrees(out, amount / 6 + 1);
+
         return;
     }
     else if (what == "honey")
@@ -2796,26 +2783,54 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
 }
 
 // designate some trees for woodcutting
-df::coord Stocks::cuttrees(color_ostream & out, int32_t amount, std::set<df::coord, std::function<bool(df::coord, df::coord)>> list)
+df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
 {
+    std::set<df::coord> jobs;
+
+    for (auto job = world->job_list.next; job; job = job->next)
+    {
+        if (job->item->job_type == job_type::FellTree)
+        {
+            jobs.insert(job->item->pos);
+        }
+    }
+
+    if (last_cutpos.isValid() && (Maps::getTileDesignation(last_cutpos)->bits.dig != tile_dig_designation::No || jobs.count(last_cutpos)))
+    {
+        // skip designating if we haven't cut the last tree yet
+        return last_cutpos;
+    }
+
     // return the bottom-rightest designated tree
     df::coord br;
     br.clear();
+
+    auto list = tree_list();
+
     for (auto tree = list.begin(); tree != list.end(); tree++)
     {
         if (ENUM_ATTR(tiletype, material, *Maps::getTileType(*tree)) != tiletype_material::TREE)
+        {
             continue;
-        if (Maps::getTileDesignation(*tree)->bits.dig == tile_dig_designation::Default)
-            continue;
-        Plan::dig_tile(*tree, tile_dig_designation::Default);
+        }
+
         if (!br.isValid() || (br.x & -16) < (tree->x & -16) || ((br.x & -16) == (tree->x & -16) && (br.y & -16) < (tree->y & -16)))
         {
             br = *tree;
         }
+
+        if (Maps::getTileDesignation(*tree)->bits.dig != tile_dig_designation::No && !jobs.count(*tree))
+        {
+            Plan::dig_tile(*tree, tile_dig_designation::Default);
+        }
+
         amount--;
         if (amount <= 0)
+        {
             break;
+        }
     }
+
     return br;
 }
 
@@ -3571,30 +3586,6 @@ int32_t Stocks::find_furniture_itemcount(std::string itm)
         }
     }
     return n;
-}
-
-bool Stocks::is_cutting_trees()
-{
-    if (!last_cutpos.isValid())
-    {
-        return false;
-    }
-    auto tl = tree_list();
-    if (tl.count(last_cutpos) && Maps::getTileDesignation(last_cutpos)->bits.dig == tile_dig_designation::Default)
-    {
-        return true;
-    }
-
-    for (auto t = tl.begin(); t != tl.end(); t++)
-    {
-        if (Maps::getTileDesignation(*t)->bits.dig == tile_dig_designation::Default)
-        {
-            last_cutpos = *t;
-            return true;
-        }
-    }
-    last_cutpos.clear();
-    return false;
 }
 
 void Stocks::farmplot(color_ostream & out, room *r, bool initial)

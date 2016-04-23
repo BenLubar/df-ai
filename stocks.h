@@ -105,11 +105,7 @@ public:
     void queue_use_raw_coke(color_ostream & out, int32_t amount);
 
     std::set<df::coord, std::function<bool(df::coord, df::coord)>> tree_list();
-    df::coord cuttrees(color_ostream & out, int32_t amount, std::set<df::coord, std::function<bool(df::coord, df::coord)>> list);
-    inline df::coord cuttrees(color_ostream & out, int32_t amount)
-    {
-        return cuttrees(out, amount, tree_list());
-    }
+    df::coord cuttrees(color_ostream & out, int32_t amount);
 
     static bool is_item_free(df::item *i, bool allow_nonempty = false);
     bool is_metal_ore(int32_t i);
@@ -131,8 +127,6 @@ public:
     std::function<bool(df::item *)> furniture_find(std::string k);
     df::item *find_furniture_item(std::string itm);
     int32_t find_furniture_itemcount(std::string itm);
-
-    bool is_cutting_trees();
 
     void farmplot(color_ostream & out, room *r, bool initial = true);
     void queue_slab(color_ostream & out, int32_t histfig_id);
