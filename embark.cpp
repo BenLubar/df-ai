@@ -341,7 +341,7 @@ bool Embark::update(color_ostream & out)
         AI::feed_key(view, interface_key::SELECT);
         // TODO custom embark loadout
     }
-    else if (df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview))
+    else if (strict_virtual_cast<df::viewscreen_textviewerst>(curview))
     {
         ai->debug(out, "site is ready.");
         ai->timeout_sameview([this](color_ostream & out)
