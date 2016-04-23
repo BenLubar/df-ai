@@ -41,19 +41,19 @@ Embark::~Embark()
 {
 }
 
-command_result Embark::startup(color_ostream & out)
+command_result Embark::startup(color_ostream &)
 {
     // do nothing
     return CR_OK;
 }
 
-command_result Embark::onupdate_register(color_ostream & out)
+command_result Embark::onupdate_register(color_ostream &)
 {
     // do nothing
     return CR_OK;
 }
 
-command_result Embark::onupdate_unregister(color_ostream & out)
+command_result Embark::onupdate_unregister(color_ostream &)
 {
     return CR_OK;
 }
@@ -63,7 +63,7 @@ void Embark::register_restart_timer(color_ostream & out)
     if (AI_RANDOM_EMBARK)
     {
         ai->debug(out, "game over. restarting in 1 minute.");
-        auto restart_wait = [this](color_ostream & out) -> bool
+        auto restart_wait = [this](color_ostream &) -> bool
         {
             if (!strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true)))
             {
@@ -311,7 +311,7 @@ bool Embark::update(color_ostream & out)
 
                 selected_embark = true;
 
-                ai->timeout_sameview(15, [](color_ostream & out)
+                ai->timeout_sameview(15, [](color_ostream &)
                         {
                             df::viewscreen *view = Gui::getCurViewscreen(true);
                             AI::feed_key(view, interface_key::SETUP_EMBARK);

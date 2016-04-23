@@ -307,10 +307,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
 
     if (announcements->flags[announce->type].bits.DO_MEGA)
     {
-        timeout_sameview([](color_ostream & out)
-                {
-                    unpause();
-                });
+        timeout_sameview([](color_ostream &) { unpause(); });
     }
     else
     {
@@ -365,7 +362,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos)
             {
                 debug(out, "exit diplomat textviewerst:" + text.str());
-                timeout_sameview([](color_ostream & out)
+                timeout_sameview([](color_ostream &)
                         {
                             AI::feed_key(interface_key::LEAVESCREEN);
                         });
@@ -376,7 +373,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
             {
                 debug(out, "exit siege textviewerst:" + text.str());
-                timeout_sameview([](color_ostream & out)
+                timeout_sameview([](color_ostream &)
                         {
                             AI::feed_key(interface_key::LEAVESCREEN);
                             unpause();
@@ -409,7 +406,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
         {
             debug(out, "exit diplomat topicmeetingst");
-            timeout_sameview([](color_ostream & out)
+            timeout_sameview([](color_ostream &)
                     {
                         AI::feed_key(interface_key::OPTION1);
                     });
@@ -417,7 +414,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
         {
             debug(out, "exit diplomat topicmeeting_takerequestsst");
-            timeout_sameview([](color_ostream & out)
+            timeout_sameview([](color_ostream &)
                     {
                         AI::feed_key(interface_key::LEAVESCREEN);
                     });
@@ -425,7 +422,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
         {
             debug(out, "exit diplomat requestagreementst");
-            timeout_sameview([](color_ostream & out)
+            timeout_sameview([](color_ostream &)
                     {
                         AI::feed_key(interface_key::LEAVESCREEN);
                     });
@@ -446,7 +443,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
     }
 }
 
-void AI::abandon(color_ostream & out)
+void AI::abandon(color_ostream &)
 {
     if (!AI_RANDOM_EMBARK)
         return;
@@ -536,13 +533,13 @@ command_result AI::onupdate_register(color_ostream & out)
     {
         status_onupdate = events.onupdate_register("df-ai status", 3*28*1200, 3*28*1200, [this](color_ostream & out) { debug(out, status()); });
         last_unpause = std::time(nullptr);
-        pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream & out) -> bool
+        pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream &) -> bool
                 {
                     if (std::time(nullptr) < last_unpause + 11)
                         return false;
                     if (*pause_state)
                     {
-                        timeout_sameview(10, [](color_ostream & out) { AI::unpause(); });
+                        timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
                         last_unpause = std::time(nullptr);
                     }
                     return false;

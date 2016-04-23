@@ -171,19 +171,19 @@ Population::~Population()
 {
 }
 
-command_result Population::startup(color_ostream & out)
+command_result Population::startup(color_ostream &)
 {
     *standing_orders_forbid_used_ammo = 0;
     return CR_OK;
 }
 
-command_result Population::onupdate_register(color_ostream & out)
+command_result Population::onupdate_register(color_ostream &)
 {
     onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
-command_result Population::onupdate_unregister(color_ostream & out)
+command_result Population::onupdate_unregister(color_ostream &)
 {
     events.onupdate_unregister(onupdate_handle);
     return CR_OK;
@@ -333,7 +333,7 @@ void Population::update_citizenlist(color_ostream & out)
     }
 }
 
-void Population::update_jobs(color_ostream & out)
+void Population::update_jobs(color_ostream &)
 {
     for (auto j = world->job_list.next; j; j = j->next)
     {
@@ -602,7 +602,7 @@ void Population::update_locations(color_ostream & out)
     }
 }
 
-void Population::assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ)
+void Population::assign_occupation(color_ostream & out, df::building *, df::abstract_building *loc, df::occupation_type occ)
 {
     AI::feed_key(interface_key::D_LOCATIONS);
 
@@ -1124,7 +1124,7 @@ void Population::check_noble_appartments(color_ostream & out)
     ai->plan->attribute_noblerooms(out, noble_ids);
 }
 
-df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::string pos_code, df::unit *unit)
+df::entity_position_assignment *Population::assign_new_noble(color_ostream &, std::string pos_code, df::unit *unit)
 {
     df::historical_entity *ent = ui->main.fortress_entity;
 

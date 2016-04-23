@@ -209,13 +209,13 @@ command_result Plan::startup(color_ostream & out)
     return res;
 }
 
-command_result Plan::onupdate_register(color_ostream & out)
+command_result Plan::onupdate_register(color_ostream &)
 {
     onupdate_handle = events.onupdate_register("df-ai plan", 240, 20, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
-command_result Plan::onupdate_unregister(color_ostream & out)
+command_result Plan::onupdate_unregister(color_ostream &)
 {
     events.onupdate_unregister(onupdate_handle);
     return CR_OK;
@@ -223,7 +223,7 @@ command_result Plan::onupdate_unregister(color_ostream & out)
 
 static bool want_reupdate = false;
 
-void Plan::update(color_ostream & out)
+void Plan::update(color_ostream &)
 {
     if (bg_idx != tasks.end())
         return;
@@ -339,14 +339,14 @@ void Plan::update(color_ostream & out)
             });
 }
 
-command_result Plan::persist(color_ostream & out)
+command_result Plan::persist(color_ostream &)
 {
     std::ofstream f("data/save/current/df-ai-plan.dat", std::ofstream::trunc);
     save(f);
     return CR_OK;
 }
 
-command_result Plan::unpersist(color_ostream & out)
+command_result Plan::unpersist(color_ostream &)
 {
     std::remove("data/save/current/df-ai-plan.dat");
     std::remove(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.dat").c_str());
@@ -1254,7 +1254,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
     }
 }
 
-void Plan::assign_barrack_squad(color_ostream & out, df::building *bld, int32_t squad_id)
+void Plan::assign_barrack_squad(color_ostream &, df::building *bld, int32_t squad_id)
 {
     std::vector<df::building_squad_use *> *squads = bld->getSquads();
     if (squads) // archerytarget has no such field
@@ -1427,7 +1427,7 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
     return nullptr;
 }
 
-void Plan::freepasture(color_ostream & out, int32_t pet_id)
+void Plan::freepasture(color_ostream &, int32_t pet_id)
 {
     if (room *r = find_room(room_type::pasture, [pet_id](room *r_) -> bool { return r_->users.count(pet_id); }))
     {
@@ -1435,7 +1435,7 @@ void Plan::freepasture(color_ostream & out, int32_t pet_id)
     }
 }
 
-void Plan::set_owner(color_ostream & out, room *r, int32_t uid)
+void Plan::set_owner(color_ostream &, room *r, int32_t uid)
 {
     r->owner = uid;
     if (r->bld_id != -1)
@@ -1731,7 +1731,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
     return furnish_room(out, r);
 }
 
-bool Plan::furnish_room(color_ostream & out, room *r)
+bool Plan::furnish_room(color_ostream &, room *r)
 {
     for (auto it = r->layout.begin(); it != r->layout.end(); it++)
     {
@@ -1882,7 +1882,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     return false;
 }
 
-bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t)
 {
     df::item *block, *mecha, *buckt, *chain;
     if (find_item(items_other_id::BLOCKS, block) &&
@@ -1905,7 +1905,7 @@ bool Plan::try_furnish_well(color_ostream & out, room *r, furniture *f, df::coor
     return false;
 }
 
-bool Plan::try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df::coord t)
 {
     df::item *bould = nullptr;
     if (!find_item(items_other_id::BOULDER, bould, false, true))
@@ -1922,7 +1922,7 @@ bool Plan::try_furnish_archerytarget(color_ostream & out, room *r, furniture *f,
     return true;
 }
 
-bool Plan::try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t)
+bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype, df::coord t)
 {
     df::tiletype tt = *Maps::getTileType(t);
     if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
@@ -2001,7 +2001,7 @@ bool Plan::try_furnish_construction(color_ostream & out, df::construction_type c
     return true;
 }
 
-bool Plan::try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coord t)
 {
     if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Open)
         return false;
@@ -2018,7 +2018,7 @@ bool Plan::try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::
     return true;
 }
 
-bool Plan::try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord t)
 {
     df::item *mecha, *chain;
     if (find_item(items_other_id::TRAPPARTS, mecha) &&
@@ -2038,7 +2038,7 @@ bool Plan::try_furnish_roller(color_ostream & out, room *r, furniture *f, df::co
     return false;
 }
 
-bool Plan::try_furnish_trap(color_ostream & out, room *r, furniture *f)
+bool Plan::try_furnish_trap(color_ostream &, room *r, furniture *f)
 {
     df::coord t = r->min + df::coord(f->x, f->y, f->z);
 
@@ -2544,7 +2544,7 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
     return true;
 }
 
-void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
+void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
 {
     // if we dug a real hall, get rid of the temporary one
     for (auto f = t->layout.begin(); f != t->layout.end(); f++)
@@ -2587,7 +2587,7 @@ void Plan::move_dininghall_fromtemp(color_ostream & out, room *r, room *t)
     categorize_all();
 }
 
-void Plan::smooth_room(color_ostream & out, room *r)
+void Plan::smooth_room(color_ostream &, room *r)
 {
     smooth_xyz(r->min - df::coord(1, 1, 0), r->max + df::coord(1, 1, 0));
 }
@@ -2694,7 +2694,7 @@ bool Plan::dump_items_access(color_ostream & out, room *r)
 }
 
 // yield every on_ground items in the room
-void Plan::room_items(color_ostream & out, room *r, std::function<void(df::item *)> f)
+void Plan::room_items(color_ostream &, room *r, std::function<void(df::item *)> f)
 {
     for (int16_t z = r->min.z; z <= r->max.z; z++)
     {
@@ -2899,7 +2899,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
     return false;
 }
 
-void Plan::dig_garbagedump(color_ostream & out)
+void Plan::dig_garbagedump(color_ostream &)
 {
     find_room(room_type::garbagepit, [this](room *r) -> bool
             {
@@ -3142,7 +3142,7 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
     return false;
 }
 
-bool Plan::link_lever(color_ostream & out, furniture *src, furniture *dst)
+bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst)
 {
     if (src->bld_id == -1 || dst->bld_id == -1)
         return false;
@@ -3501,7 +3501,7 @@ bool Plan::try_endconstruct(color_ostream & out, room *r)
 }
 
 // returns one tile of an outdoor river (if one exists)
-df::coord Plan::scan_river(color_ostream & out)
+df::coord Plan::scan_river(color_ostream &)
 {
     df::feature_init_outdoor_riverst *ifeat = nullptr;
     for (auto f = world->features.map_features.begin(); f != world->features.map_features.end(); f++)
@@ -3603,7 +3603,7 @@ command_result Plan::setup_blueprint(color_ostream & out)
     return CR_OK;
 }
 
-command_result Plan::make_map_walkable(color_ostream & out)
+command_result Plan::make_map_walkable(color_ostream &)
 {
     events.onupdate_register_once("df-ai plan make_map_walkable", [this](color_ostream & out) -> bool
             {
@@ -3708,7 +3708,7 @@ command_result Plan::make_map_walkable(color_ostream & out)
 
 // scan the map, list all map veins in @map_veins (mat_index => [block coords],
 // sorted by z)
-command_result Plan::list_map_veins(color_ostream & out)
+command_result Plan::list_map_veins(color_ostream &)
 {
     map_veins.clear();
     for (int16_t z = 0; z < world->map.z_count; z++)
@@ -4328,7 +4328,7 @@ static furniture *new_construction(df::construction_type c, int16_t x, int16_t y
     return f;
 }
 
-command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f, std::vector<room *> entr)
+command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, const std::vector<room *> & entr)
 {
     room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
     corridor_center0->layout.push_back(new_door(-1, 0));
@@ -4535,7 +4535,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream & out, df::coord f,
     return CR_OK;
 }
 
-command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f, std::vector<room *> entr)
+command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f, const std::vector<room *> & entr)
 {
     room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
     corridor_center0->layout.push_back(new_door(-1, 0));
@@ -4637,7 +4637,7 @@ static furniture *new_hive_floor(int16_t x, int16_t y)
     return f;
 }
 
-command_result Plan::setup_blueprint_pitcage(color_ostream & out)
+command_result Plan::setup_blueprint_pitcage(color_ostream &)
 {
     room *gpit = find_room(room_type::garbagepit);
     if (!gpit)
@@ -4699,7 +4699,7 @@ static furniture *new_wall(int16_t x, int16_t y)
     return f;
 }
 
-command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f, std::vector<room *> entr)
+command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f, const std::vector<room *> & entr)
 {
     room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
     corridor_center0->layout.push_back(new_door(-1, 0));
@@ -5399,7 +5399,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
     return CR_OK;
 }
 
-command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, std::vector<room *> entr)
+command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, const std::vector<room *> & entr)
 {
     room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
     corridor_center0->layout.push_back(new_door(-1, 0));
@@ -5524,7 +5524,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream & out, df::coord f, 
 static int16_t setup_outdoor_gathering_zones_counters[3];
 static std::map<int16_t, std::set<df::coord2d>> setup_outdoor_gathering_zones_ground;
 
-command_result Plan::setup_outdoor_gathering_zones(color_ostream & out)
+command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
 {
     setup_outdoor_gathering_zones_counters[0] = 0;
     setup_outdoor_gathering_zones_counters[1] = 0;

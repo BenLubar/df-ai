@@ -373,7 +373,7 @@ Stocks::Stocks(AI *ai) :
     complained_about_no_plants()
 {
     last_cutpos.clear();
-    events.onstatechange_register([this](color_ostream & out, state_change_event st)
+    events.onstatechange_register([this](color_ostream &, state_change_event st)
             {
                 if (st == SC_WORLD_LOADED)
                     init_manager_subtype();
@@ -404,14 +404,14 @@ command_result Stocks::startup(color_ostream & out)
     return CR_OK;
 }
 
-command_result Stocks::onupdate_register(color_ostream & out)
+command_result Stocks::onupdate_register(color_ostream &)
 {
     reset();
     onupdate_handle = events.onupdate_register("df-ai stocks", 4800, 30, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
-command_result Stocks::onupdate_unregister(color_ostream & out)
+command_result Stocks::onupdate_unregister(color_ostream &)
 {
     events.onupdate_unregister(onupdate_handle);
     return CR_OK;
@@ -627,7 +627,7 @@ void Stocks::update_kitchen(color_ostream & out)
     Core::getInstance().runCommand(out, "ban-cooking booze honey tallow seeds");
 }
 
-void Stocks::update_plants(color_ostream & out)
+void Stocks::update_plants(color_ostream &)
 {
     drink_plants.clear();
     drink_fruits.clear();
@@ -709,7 +709,7 @@ void Stocks::update_plants(color_ostream & out)
     }
 }
 
-void Stocks::count_seeds(color_ostream & out)
+void Stocks::count_seeds(color_ostream &)
 {
     farmplots.clear();
     ai->plan->find_room(room_type::farmplot, [this](room *r) -> bool
@@ -737,7 +737,7 @@ void Stocks::count_seeds(color_ostream & out)
     updating_seeds = false;
 }
 
-void Stocks::count_plants(color_ostream & out)
+void Stocks::count_plants(color_ostream &)
 {
     plants.clear();
     for (auto it = world->items.other[items_other_id::PLANT].begin(); it != world->items.other[items_other_id::PLANT].end(); it++)
@@ -1448,7 +1448,7 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
 
 // return the minimum of the number of free weapons for each subtype used by
 // current civ
-int32_t Stocks::count_stocks_weapon(color_ostream & out, df::job_skill skill)
+int32_t Stocks::count_stocks_weapon(color_ostream &, df::job_skill skill)
 {
     int32_t min = -1;
     auto search = [this, &min, skill](const std::vector<int16_t> & idefs)
@@ -1521,7 +1521,7 @@ static int32_t count_stocks_armor_helper(df::items_other_id oidx, const std::vec
 }
 
 // return the minimum count of free metal armor piece per subtype
-int32_t Stocks::count_stocks_armor(color_ostream & out, df::items_other_id oidx)
+int32_t Stocks::count_stocks_armor(color_ostream &, df::items_other_id oidx)
 {
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     switch (oidx)
@@ -1574,7 +1574,7 @@ static int32_t count_stocks_clothes_helper(df::items_other_id oidx, const std::v
     return min;
 }
 
-int32_t Stocks::count_stocks_clothes(color_ostream & out, df::items_other_id oidx)
+int32_t Stocks::count_stocks_clothes(color_ostream &, df::items_other_id oidx)
 {
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     switch (oidx)
@@ -3482,7 +3482,7 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
     if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire" || k == "rock_pot")
     {
         if (!manager_subtype.count(furniture_order(k)))
-            return [](df::item *i) -> bool { return false; };
+            return [](df::item *) -> bool { return false; };
         int32_t subtype = manager_subtype.at(furniture_order(k));
         return [subtype](df::item *item) -> bool
         {
@@ -3733,7 +3733,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
     }
 }
 
-void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
+void Stocks::queue_slab(color_ostream &, int32_t histfig_id)
 {
     for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {

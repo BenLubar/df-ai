@@ -41,16 +41,16 @@ Camera::~Camera()
     events.onstatechange_unregister(onstatechange_handle);
 }
 
-command_result Camera::startup(color_ostream & out)
+command_result Camera::startup(color_ostream &)
 {
     return CR_OK;
 }
 
-command_result Camera::onupdate_register(color_ostream & out)
+command_result Camera::onupdate_register(color_ostream &)
 {
     gps->display_frames = 1;
     onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
-    onstatechange_handle = events.onstatechange_register([this](color_ostream & out, state_change_event mode)
+    onstatechange_handle = events.onstatechange_register([this](color_ostream &, state_change_event mode)
             {
                 if (mode == SC_VIEWSCREEN_CHANGED)
                 {
@@ -78,12 +78,12 @@ void Camera::check_record_status()
     }
 }
 
-command_result Camera::onupdate_unregister(color_ostream & out)
+command_result Camera::onupdate_unregister(color_ostream &)
 {
     gps->display_frames = 0;
     if (!NO_QUIT && !AI_RANDOM_EMBARK)
     {
-        ai->timeout_sameview(60, [](color_ostream & out)
+        ai->timeout_sameview(60, [](color_ostream &)
                 {
                     Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
                 });
@@ -93,7 +93,7 @@ command_result Camera::onupdate_unregister(color_ostream & out)
     return CR_OK;
 }
 
-void Camera::update(color_ostream & out)
+void Camera::update(color_ostream &)
 {
     if (following != ui->follow_unit)
     {
