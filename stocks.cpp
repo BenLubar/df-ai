@@ -2819,7 +2819,7 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
             br = *tree;
         }
 
-        if (Maps::getTileDesignation(*tree)->bits.dig != tile_dig_designation::No && !jobs.count(*tree))
+        if (Maps::getTileDesignation(*tree)->bits.dig == tile_dig_designation::No && !jobs.count(*tree))
         {
             Plan::dig_tile(*tree, tile_dig_designation::Default);
         }
