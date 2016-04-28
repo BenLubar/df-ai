@@ -1307,7 +1307,6 @@ void Population::update_pets(color_ostream & out)
                 // TODO slaughter best candidate, keep this one
                 u->flags2.bits.slaughter = 1;
                 ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
-                continue;
             }
         }
 

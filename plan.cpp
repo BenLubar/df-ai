@@ -1,6 +1,7 @@
 #include "ai.h"
 #include "camera.h"
 #include "plan.h"
+#include "population.h"
 #include "stocks.h"
 
 #include <cstdio>
@@ -669,6 +670,7 @@ void Plan::load(std::istream & in)
         }
         for (auto it_ = f["users"].begin(); it_ != f["users"].end(); it_++)
         {
+            ai->pop->citizen.insert(it_->asInt());
             (*it)->users.insert(it_->asInt());
         }
         (*it)->has_users = f["has_users"].asBool();
@@ -1406,6 +1408,13 @@ void Plan::freesoldierbarrack(color_ostream & out, int32_t id)
 df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
 {
     df::unit *pet = df::unit::find(pet_id);
+
+    // don't assign multiple pastures
+    if (df::general_ref *ref = Units::getGeneralRef(pet, general_ref_type::BUILDING_CIVZONE_ASSIGNED))
+    {
+        return ref->getBuilding();
+    }
+
     size_t limit = 1000 - (11*11*1000 / df::creature_raw::find(pet->race)->caste[pet->caste]->misc.grazer); // 1000 = arbitrary, based on dfwiki?pasture
     if (room *r = find_room(room_type::pasture, [limit](room *r_) -> bool
                 {
