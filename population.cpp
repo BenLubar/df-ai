@@ -157,6 +157,7 @@ Population::Population(AI *ai) :
     citizen(),
     military(),
     pet(),
+    pet_check(),
     visitor(),
     resident(),
     update_counter(0),
@@ -1198,6 +1199,11 @@ void Population::update_pets(color_ostream & out)
     std::map<df::caste_raw *, std::set<std::pair<int32_t, df::unit *>>> forSlaughter;
 
     std::map<int32_t, pet_flags> np = pet;
+    for (auto it = pet_check.begin(); it != pet_check.end(); it++)
+    {
+        np[*it]; // make sure existing pasture assignments are checked
+    }
+    pet_check.clear();
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;

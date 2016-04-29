@@ -621,6 +621,10 @@ void Plan::load(std::istream & in)
         {
             (*it)->users.insert(it_->asInt());
         }
+        if ((*it)->type == room_type::pasture)
+        {
+            ai->pop->pet_check.insert((*it)->users.begin(), (*it)->users.end());
+        }
         (*it)->channel_enable.x = r["channel_enable"][0].asInt();
         (*it)->channel_enable.y = r["channel_enable"][1].asInt();
         (*it)->channel_enable.z = r["channel_enable"][2].asInt();
