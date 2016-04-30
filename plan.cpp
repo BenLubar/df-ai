@@ -69,10 +69,10 @@ REQUIRE_GLOBAL(world);
 
 const static int32_t manager_taskmax = 4; // when stacking manager jobs, do not stack more than this
 const static int32_t manager_maxbacklog = 10; // add new masonly if more that this much mason manager orders
-const static int32_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
+const static size_t dwarves_per_table = 3; // number of dwarves per dininghall table/chair
 const static int32_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot tile
 const static int32_t dwarves_per_farmtile_den = 2;
-const static int32_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
+const static size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
 const static int32_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
 
 const static int16_t farm_w = 3;
@@ -3678,7 +3678,7 @@ command_result Plan::make_map_walkable(color_ostream &)
                     return true;
 
                 // find the bottom of the staircases
-                int16_t z;
+                int16_t z = -1;
                 for (auto f = world->features.map_features.begin(); f != world->features.map_features.end(); f++)
                 {
                     df::feature_init_outdoor_riverst *r = virtual_cast<df::feature_init_outdoor_riverst>(*f);
