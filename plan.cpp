@@ -398,11 +398,11 @@ void Plan::save(std::ostream & out)
         t["t"] = (*it)->type;
         if ((*it)->r)
         {
-            t["r"] = room_index.at((*it)->r);
+            t["r"] = Json::Int(room_index.at((*it)->r));
         }
         if ((*it)->f)
         {
-            t["f"] = furniture_index.at((*it)->f);
+            t["f"] = Json::Int(furniture_index.at((*it)->f));
         }
         converted_tasks.append(t);
     }
@@ -424,46 +424,46 @@ void Plan::save(std::ostream & out)
         r["subtype"] = (*it)->subtype;
         r["comment"] = (*it)->comment;
         Json::Value r_min(Json::arrayValue);
-        r_min.append((*it)->min.x);
-        r_min.append((*it)->min.y);
-        r_min.append((*it)->min.z);
+        r_min.append(Json::Int((*it)->min.x));
+        r_min.append(Json::Int((*it)->min.y));
+        r_min.append(Json::Int((*it)->min.z));
         r["min"] = r_min;
         Json::Value r_max(Json::arrayValue);
-        r_max.append((*it)->max.x);
-        r_max.append((*it)->max.y);
-        r_max.append((*it)->max.z);
+        r_max.append(Json::Int((*it)->max.x));
+        r_max.append(Json::Int((*it)->max.y));
+        r_max.append(Json::Int((*it)->max.z));
         r["max"] = r_max;
         Json::Value r_accesspath(Json::arrayValue);
         for (auto it_ = (*it)->accesspath.begin(); it_ != (*it)->accesspath.end(); it_++)
         {
-            r_accesspath.append(room_index.at(*it_));
+            r_accesspath.append(Json::Int(room_index.at(*it_)));
         }
         r["accesspath"] = r_accesspath;
         Json::Value r_layout(Json::arrayValue);
         for (auto it_ = (*it)->layout.begin(); it_ != (*it)->layout.end(); it_++)
         {
-            r_layout.append(furniture_index.at(*it_));
+            r_layout.append(Json::Int(furniture_index.at(*it_)));
         }
         r["layout"] = r_layout;
-        r["owner"] = (*it)->owner;
-        r["bld_id"] = (*it)->bld_id;
-        r["squad_id"] = (*it)->squad_id;
-        r["level"] = (*it)->level;
-        r["noblesuite"] = (*it)->noblesuite;
+        r["owner"] = Json::Int((*it)->owner);
+        r["bld_id"] = Json::Int((*it)->bld_id);
+        r["squad_id"] = Json::Int((*it)->squad_id);
+        r["level"] = Json::Int((*it)->level);
+        r["noblesuite"] = Json::Int((*it)->noblesuite);
         if ((*it)->workshop)
         {
-            r["workshop"] = room_index.at((*it)->workshop);
+            r["workshop"] = Json::Int(room_index.at((*it)->workshop));
         }
         Json::Value r_users(Json::arrayValue);
         for (auto it_ = (*it)->users.begin(); it_ != (*it)->users.end(); it_++)
         {
-            r_users.append(*it_);
+            r_users.append(Json::Int(*it_));
         }
         r["users"] = r_users;
         Json::Value r_channel_enable(Json::arrayValue);
-        r_channel_enable.append((*it)->channel_enable.x);
-        r_channel_enable.append((*it)->channel_enable.y);
-        r_channel_enable.append((*it)->channel_enable.z);
+        r_channel_enable.append(Json::Int((*it)->channel_enable.x));
+        r_channel_enable.append(Json::Int((*it)->channel_enable.y));
+        r_channel_enable.append(Json::Int((*it)->channel_enable.z));
         r["channel_enable"] = r_channel_enable;
         Json::Value r_stock_disable(Json::arrayValue);
         for (auto it_ = (*it)->stock_disable.begin(); it_ != (*it)->stock_disable.end(); it_++)
@@ -492,18 +492,18 @@ void Plan::save(std::ostream & out)
         f["dig"] = ENUM_KEY_STR(tile_dig_designation, (*it)->dig);
         f["direction"] = (*it)->direction;
         f["way"] = (*it)->way;
-        f["bld_id"] = (*it)->bld_id;
-        f["x"] = (*it)->x;
-        f["y"] = (*it)->y;
-        f["z"] = (*it)->z;
+        f["bld_id"] = Json::Int((*it)->bld_id);
+        f["x"] = Json::Int((*it)->x);
+        f["y"] = Json::Int((*it)->y);
+        f["z"] = Json::Int((*it)->z);
         if ((*it)->target)
         {
-            f["target"] = furniture_index.at((*it)->target);
+            f["target"] = Json::Int(furniture_index.at((*it)->target));
         }
         Json::Value f_users(Json::arrayValue);
         for (auto it_ = (*it)->users.begin(); it_ != (*it)->users.end(); it_++)
         {
-            f_users.append(*it_);
+            f_users.append(Json::Int(*it_));
         }
         f["users"] = f_users;
         f["has_users"] = (*it)->has_users;

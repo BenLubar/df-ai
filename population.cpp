@@ -223,11 +223,11 @@ void Population::update(color_ostream & out)
             if (ai->eventsJson.is_open())
             {
                 Json::Value payload(Json::objectValue);
-                payload["citizen"] = citizen.size();
-                payload["military"] = military.size();
-                payload["pet"] = pet.size();
-                payload["visitor"] = visitor.size();
-                payload["resident"] = resident.size();
+                payload["citizen"] = Json::UInt(citizen.size());
+                payload["military"] = Json::UInt(military.size());
+                payload["pet"] = Json::UInt(pet.size());
+                payload["visitor"] = Json::UInt(visitor.size());
+                payload["resident"] = Json::UInt(resident.size());
                 ai->event("population", payload);
             }
             break;
@@ -271,11 +271,11 @@ void Population::update_citizenlist(color_ostream & out)
                 if (ai->eventsJson.is_open())
                 {
                     Json::Value payload(Json::objectValue);
-                    payload["id"] = u->id;
+                    payload["id"] = Json::Int(u->id);
                     payload["name"] = DF2UTF(AI::describe_name(u->name, false));
                     payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
-                    payload["birth_year"] = u->relations.birth_year;
-                    payload["birth_time"] = u->relations.birth_time;
+                    payload["birth_year"] = Json::Int(u->relations.birth_year);
+                    payload["birth_time"] = Json::Int(u->relations.birth_time);
                     if (df::creature_raw *race = df::creature_raw::find(u->race))
                     {
                         payload["race"] = race->creature_id;
@@ -309,17 +309,17 @@ void Population::update_citizenlist(color_ostream & out)
         if (ai->eventsJson.is_open())
         {
             Json::Value payload(Json::objectValue);
-            payload["id"] = *it;
+            payload["id"] = Json::Int(*it);
             if (df::unit *u = df::unit::find(*it))
             {
                 payload["name"] = DF2UTF(AI::describe_name(u->name, false));
                 payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
-                payload["birth_year"] = u->relations.birth_year;
-                payload["birth_time"] = u->relations.birth_time;
+                payload["birth_year"] = Json::Int(u->relations.birth_year);
+                payload["birth_time"] = Json::Int(u->relations.birth_time);
                 if (df::incident *i = df::incident::find(u->counters.death_id))
                 {
-                    payload["death_year"] = i->event_year;
-                    payload["death_time"] = i->event_time;
+                    payload["death_year"] = Json::Int(i->event_year);
+                    payload["death_time"] = Json::Int(i->event_time);
                     payload["death_cause"] = ENUM_KEY_STR(death_type, i->death_cause);
                 }
                 if (df::creature_raw *race = df::creature_raw::find(u->race))
