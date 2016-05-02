@@ -23,7 +23,6 @@ SET(PROJECT_HDRS
     embark.h
     room.h
     event_manager.h
-    cache_hash.h
     dfhack_shared.h
 )
 

@@ -2,7 +2,6 @@
 #include "stocks.h"
 #include "plan.h"
 #include "population.h"
-#include "cache_hash.h"
 
 #include "modules/Buildings.h"
 #include "modules/Maps.h"
@@ -371,6 +370,7 @@ Stocks::Stocks(AI *ai) :
     metal_weapon_pref(),
     metal_armor_pref(),
     metal_anvil_pref(),
+    simple_metal_ores(),
     complained_about_no_plants()
 {
     last_cutpos.clear();
@@ -401,6 +401,7 @@ command_result Stocks::startup(color_ostream & out)
 {
     update_kitchen(out);
     update_plants(out);
+    update_simple_metal_ores(out);
     ui->stockpile.reserved_barrels = 5;
     return CR_OK;
 }
@@ -1980,9 +1981,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
                 });
     }
 
-    cache_hash<int32_t, int32_t> may_forge_cache([this, &out](int32_t mi) -> int32_t { return may_forge_bars(out, mi); });
-
-    auto search = [this, &out, needed, skill, &bars, &coal_bars, &may_forge_cache](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
+    auto search = [this, &out, needed, skill, &bars, &coal_bars](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
     {
         for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
@@ -2017,7 +2016,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
 
             for (auto mi = pref.begin(); mi != pref.end(); mi++)
             {
-                if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
+                if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
                     break;
                 int32_t nw = bars[*mi] / need_bars;
                 if (nw > coal_bars)
@@ -2040,7 +2039,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
                 bars[*mi] -= nw * need_bars;
                 coal_bars -= nw;
                 cnt -= nw;
-                if (may_forge_cache[*mi] != -1) // dont use lesser metal
+                if (may_forge_bars(out, *mi) != -1) // dont use lesser metal
                     break;
             }
         }
@@ -2051,7 +2050,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
 }
 
 template<typename D, typename I>
-static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_pref, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, std::map<int32_t, int32_t> & bars, int32_t & coal_bars, cache_hash<int32_t, int32_t> & may_forge_cache, int32_t div = 1, std::function<bool(D *)> pred = is_armor_metal<D>)
+static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_pref, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, std::map<int32_t, int32_t> & bars, int32_t & coal_bars, int32_t div = 1, std::function<bool(D *)> pred = is_armor_metal<D>)
 {
     for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
@@ -2106,7 +2105,7 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
 
         for (auto mi = metal_armor_pref.begin(); mi != metal_armor_pref.end(); mi++)
         {
-            if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
+            if (bars[*mi] < need_bars && ai->stocks->may_forge_bars(out, *mi) != -1)
                 break;
             int32_t nw = bars[*mi] / need_bars;
             if (nw > coal_bars)
@@ -2129,7 +2128,7 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
             bars[*mi] -= nw * need_bars;
             coal_bars -= nw;
             cnt -= nw;
-            if (may_forge_cache[*mi] != -1)
+            if (ai->stocks->may_forge_bars(out, *mi) != -1)
                 break;
         }
     }
@@ -2177,29 +2176,27 @@ void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
                 });
     }
 
-    cache_hash<int32_t, int32_t> may_forge_cache([this, &out](int32_t mi) -> int32_t { return may_forge_bars(out, mi); });
-
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
 
     switch (oidx)
     {
         case items_other_id::ARMOR:
-            queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, metal_armor_pref, out, oidx, ue.armor_id, job_type::MakeArmor, bars, coal_bars, may_forge_cache);
+            queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, metal_armor_pref, out, oidx, ue.armor_id, job_type::MakeArmor, bars, coal_bars);
             return;
         case items_other_id::SHIELD:
-            queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, metal_armor_pref, out, oidx, ue.shield_id, job_type::MakeShield, bars, coal_bars, may_forge_cache, 1, [](df::itemdef_shieldst *) -> bool { return true; });
+            queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, metal_armor_pref, out, oidx, ue.shield_id, job_type::MakeShield, bars, coal_bars, 1, [](df::itemdef_shieldst *) -> bool { return true; });
             return;
         case items_other_id::HELM:
-            queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, metal_armor_pref, out, oidx, ue.helm_id, job_type::MakeHelm, bars, coal_bars, may_forge_cache);
+            queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, metal_armor_pref, out, oidx, ue.helm_id, job_type::MakeHelm, bars, coal_bars);
             return;
         case items_other_id::PANTS:
-            queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, metal_armor_pref, out, oidx, ue.pants_id, job_type::MakePants, bars, coal_bars, may_forge_cache);
+            queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, metal_armor_pref, out, oidx, ue.pants_id, job_type::MakePants, bars, coal_bars);
             return;
         case items_other_id::GLOVES:
-            queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, metal_armor_pref, out, oidx, ue.gloves_id, job_type::MakeGloves, bars, coal_bars, may_forge_cache, 2);
+            queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, metal_armor_pref, out, oidx, ue.gloves_id, job_type::MakeGloves, bars, coal_bars, 2);
             return;
         case items_other_id::SHOES:
-            queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, metal_armor_pref, out, oidx, ue.shoes_id, job_type::MakeGloves, bars, coal_bars, may_forge_cache, 2);
+            queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, metal_armor_pref, out, oidx, ue.shoes_id, job_type::MakeGloves, bars, coal_bars, 2);
             return;
         default:
             return;
@@ -2243,8 +2240,6 @@ void Stocks::queue_need_anvil(color_ostream & out)
         }
     }
 
-    cache_hash<int32_t, int32_t> may_forge_cache([this, &out](int32_t mi) -> int32_t { return may_forge_bars(out, mi); });
-
     int32_t cnt = Watch.Needed.at("anvil");
     cnt -= count.at("anvil");
 
@@ -2262,7 +2257,7 @@ void Stocks::queue_need_anvil(color_ostream & out)
 
     for (auto mi = metal_anvil_pref.begin(); mi != metal_anvil_pref.end(); mi++)
     {
-        if (bars[*mi] < need_bars && may_forge_cache[*mi] != -1)
+        if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
             break;
         int32_t nw = bars[*mi] / need_bars;
         if (nw > coal_bars)
@@ -2285,7 +2280,7 @@ void Stocks::queue_need_anvil(color_ostream & out)
         bars[*mi] -= nw * need_bars;
         coal_bars -= nw;
         cnt -= nw;
-        if (may_forge_cache[*mi] != -1)
+        if (may_forge_bars(out, *mi) != -1)
             break;
     }
 }
@@ -3051,29 +3046,30 @@ bool Stocks::is_gypsum(df::item *i)
     return false;
 }
 
+void Stocks::update_simple_metal_ores(color_ostream &)
+{
+    simple_metal_ores.clear();
+    simple_metal_ores.resize(world->raws.inorganics.size());
+    for (auto it = world->raws.inorganics.begin(); it != world->raws.inorganics.end(); it++)
+    {
+        const auto & bars = (*it)->metal_ore.mat_index;
+        for (auto bar = bars.begin(); bar != bars.end(); bar++)
+        {
+            simple_metal_ores.at(*bar).insert(it - world->raws.inorganics.begin());
+        }
+    }
+}
+
 // determine if we may be able to generate metal bars for this metal
 // may queue manager_jobs to do so
 // recursive (eg steel need pig_iron)
 // return the potential number of bars available (in dimensions, eg 1 bar => 150)
 int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t div)
 {
-    // simple metal ore
-    cache_hash<int32_t, bool> moc([mat_index](int32_t mi) -> bool
-            {
-                for (auto i = world->raws.inorganics[mi]->metal_ore.mat_index.begin(); i != world->raws.inorganics[mi]->metal_ore.mat_index.end(); i++)
-                {
-                    if (*i == mat_index)
-                    {
-                        return true;
-                    }
-                }
-                return false;
-            });
-
     int32_t can_melt = 0;
     for (auto i = world->items.other[items_other_id::BOULDER].begin(); i != world->items.other[items_other_id::BOULDER].end(); i++)
     {
-        if (is_metal_ore(*i) && moc[(*i)->getMaterialIndex()] && is_item_free(*i))
+        if (is_metal_ore(*i) && simple_metal_ores.at(mat_index).count((*i)->getMaterialIndex()) && is_item_free(*i))
         {
             can_melt++;
         }
@@ -3083,7 +3079,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
     {
         for (auto k = ai->plan->map_veins.begin(); k != ai->plan->map_veins.end(); k++)
         {
-            if (moc[k->first])
+            if (simple_metal_ores.at(mat_index).count(k->first))
             {
                 can_melt += ai->plan->dig_vein(out, k->first);
             }

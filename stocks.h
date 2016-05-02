@@ -65,6 +65,8 @@ private:
     std::vector<int32_t> metal_armor_pref;
     std::vector<int32_t> metal_anvil_pref;
 
+    std::vector<std::set<int32_t>> simple_metal_ores;
+
     std::set<std::tuple<std::string, bool, int8_t>> complained_about_no_plants;
 
 public:
@@ -115,6 +117,7 @@ public:
     bool is_gypsum(int32_t i);
     bool is_gypsum(df::item *i);
 
+    void update_simple_metal_ores(color_ostream & out);
     int32_t may_forge_bars(color_ostream & out, int32_t mat_index, int32_t div = 1);
 
     void init_manager_subtype();
