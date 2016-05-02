@@ -5,6 +5,7 @@
 struct Config
 {
     Config();
+    void load(color_ostream & out);
     void save(color_ostream & out);
     void set_random_embark_world(color_ostream & out, const std::string & value);
 

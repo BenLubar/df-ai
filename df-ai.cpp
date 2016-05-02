@@ -74,8 +74,11 @@ bool check_enabled(color_ostream & out)
 }
 
 // Mandatory init function. If you have some global state, create it here.
-DFhackCExport command_result plugin_init(color_ostream &, std::vector<PluginCommand> & commands)
+DFhackCExport command_result plugin_init(color_ostream & out, std::vector<PluginCommand> & commands)
 {
+    config.load(out);
+    config.save(out);
+
     commands.push_back(PluginCommand(
         "ai",
         "Dwarf Fortress + Artificial Intelligence",

@@ -15,6 +15,10 @@ Config::Config() :
     record_movie(false),
     no_quit(true)
 {
+}
+
+void Config::load(color_ostream & out)
+{
     std::ifstream f(config_name);
     if (f.good())
     {
@@ -46,10 +50,9 @@ Config::Config() :
         }
         catch (Json::Exception & ex)
         {
-            Core::getInstance().getConsole() << "Loading config failed:" << std::endl << ex.what() << std::endl;
+            out << "AI: loading config failed: " << ex.what() << std::endl;
         }
     }
-    save(Core::getInstance().getConsole());
 }
 
 void Config::save(color_ostream & out)
