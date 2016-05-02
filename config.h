@@ -2,6 +2,10 @@
 
 #include "dfhack_shared.h"
 
+#include "df/embark_finder_option.h"
+
+const int32_t embark_options_count = df::enum_traits<df::embark_finder_option>::last_item_value + 1;
+
 struct Config
 {
     Config();
@@ -14,6 +18,7 @@ struct Config
     bool debug;
     bool record_movie;
     bool no_quit;
+    int32_t embark_options[embark_options_count];
 };
 
 extern Config config;

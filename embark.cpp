@@ -238,10 +238,10 @@ bool Embark::update(color_ostream & out)
         {
             ai->debug(out, "choosing \"Site Finder\"");
             AI::feed_key(view, interface_key::SETUP_FIND);
-            view->finder.options[embark_finder_option::DimensionX] = 3;
-            view->finder.options[embark_finder_option::DimensionY] = 2;
-            view->finder.options[embark_finder_option::Aquifer] = 0;
-            view->finder.options[embark_finder_option::Savagery] = 2;
+            FOR_ENUM_ITEMS(embark_finder_option, o)
+            {
+                view->finder.options[o] = config.embark_options[0];
+            }
             AI::feed_key(view, interface_key::SELECT);
         }
         else if (view->finder.search_x == -1)

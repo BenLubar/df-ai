@@ -13,8 +13,17 @@ Config::Config() :
     random_embark_world(""),
     debug(true),
     record_movie(false),
-    no_quit(true)
+    no_quit(true),
+    embark_options()
 {
+    for (int32_t i = 0; i < embark_options_count; i++)
+    {
+        embark_options[i] = -1;
+    }
+    embark_options[embark_finder_option::DimensionX] = 3;
+    embark_options[embark_finder_option::DimensionY] = 2;
+    embark_options[embark_finder_option::Aquifer] = 0;
+    embark_options[embark_finder_option::Savagery] = 2;
 }
 
 void Config::load(color_ostream & out)
@@ -47,6 +56,18 @@ void Config::load(color_ostream & out)
             {
                 no_quit = v["no_quit"].asBool();
             }
+            if (v.isMember("embark_options"))
+            {
+                auto & options = v["embark_options"];
+                FOR_ENUM_ITEMS(embark_finder_option, o)
+                {
+                    auto name = ENUM_KEY_STR(embark_finder_option, o);
+                    if (options.isMember(name))
+                    {
+                        embark_options[o] = options[name].asInt();
+                    }
+                }
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -63,6 +84,13 @@ void Config::save(color_ostream & out)
     v["debug"] = debug;
     v["record_movie"] = record_movie;
     v["no_quit"] = no_quit;
+
+    Json::Value options(Json::objectValue);
+    FOR_ENUM_ITEMS(embark_finder_option, o)
+    {
+        options[ENUM_KEY_STR(embark_finder_option, o)] = Json::Int(embark_options[o]);
+    }
+    v["embark_options"] = options;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
