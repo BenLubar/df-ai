@@ -35,13 +35,6 @@ bool check_enabled(color_ostream & out)
         }
         if (!dwarfAI)
         {
-            df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true));
-            if (view && !AI_RANDOM_EMBARK)
-            {
-                AI::feed_key(view, interface_key::SELECT);
-                AI::feed_key(view, interface_key::SELECT);
-            }
-
             dwarfAI = new AI();
 
             events.onupdate_register_once("df-ai start", [](color_ostream & out) -> bool

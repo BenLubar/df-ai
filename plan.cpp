@@ -8,6 +8,7 @@
 #include <sstream>
 #include <tuple>
 #include <unordered_map>
+#include <fstream>
 
 #include "jsoncpp.h"
 
@@ -59,8 +60,6 @@
 #include "df/vehicle.h"
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
-
-#include <fstream>
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cursor);

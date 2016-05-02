@@ -160,7 +160,7 @@ void AI::debug(color_ostream & out, const std::string & str)
 {
     std::string ts = timestamp();
 
-    if (DEBUG)
+    if (config.debug)
     {
         write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
     }
@@ -445,7 +445,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
 
 void AI::abandon(color_ostream &)
 {
-    if (!AI_RANDOM_EMBARK)
+    if (!config.random_embark)
         return;
     df::viewscreen_optionst *view = df::allocate<df::viewscreen_optionst>();
     view->options.push_back(df::viewscreen_optionst::Abandon);

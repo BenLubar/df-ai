@@ -19,6 +19,4 @@ public:
     bool update(color_ostream & out);
 };
 
-extern std::string AI_RANDOM_EMBARK_WORLD;
-
 // vim: et:sw=4:ts=4

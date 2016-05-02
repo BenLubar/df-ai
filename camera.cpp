@@ -64,7 +64,7 @@ command_result Camera::onupdate_register(color_ostream &)
 
 void Camera::check_record_status()
 {
-    if (RECORD_MOVIE && gview->supermovie_on == 0)
+    if (config.record_movie && gview->supermovie_on == 0)
     {
         gview->supermovie_on = 1;
         gview->currentblocksize = 0;
@@ -81,12 +81,9 @@ void Camera::check_record_status()
 command_result Camera::onupdate_unregister(color_ostream &)
 {
     gps->display_frames = 0;
-    if (!NO_QUIT && !AI_RANDOM_EMBARK)
+    if (!config.no_quit && !config.random_embark)
     {
-        ai->timeout_sameview(60, [](color_ostream &)
-                {
-                    Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
-                });
+        Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
     }
     events.onupdate_unregister(onupdate_handle);
     events.onstatechange_unregister(onstatechange_handle);

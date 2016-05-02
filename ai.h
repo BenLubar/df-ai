@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dfhack_shared.h"
+#include "config.h"
 
 #include <ctime>
 #include <fstream>
@@ -21,11 +22,6 @@ namespace df
     struct unit;
     struct viewscreen;
 }
-
-const bool AI_RANDOM_EMBARK = true;
-const bool DEBUG = true;
-const bool RECORD_MOVIE = true;
-const bool NO_QUIT = true;
 
 struct OnupdateCallback;
 class Population;

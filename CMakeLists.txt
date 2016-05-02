@@ -3,6 +3,7 @@ PROJECT (df-ai)
 SET(PROJECT_SRCS
     df-ai.cpp
     ai.cpp
+    config.cpp
     population.cpp
     plan.cpp
     stocks.cpp
@@ -14,6 +15,7 @@ SET(PROJECT_SRCS
 
 SET(PROJECT_HDRS
     ai.h
+    config.h
     population.h
     plan.h
     stocks.h

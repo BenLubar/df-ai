@@ -22,13 +22,11 @@ REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
 
-std::string AI_RANDOM_EMBARK_WORLD = "region1";
-
 Embark::Embark(AI *ai) :
     ai(ai),
     selected_embark(false)
 {
-    if (AI_RANDOM_EMBARK)
+    if (config.random_embark)
     {
         events.onupdate_register_once("df-ai random_embark", [this](color_ostream & out) -> bool
                 {
@@ -60,7 +58,7 @@ command_result Embark::onupdate_unregister(color_ostream &)
 
 void Embark::register_restart_timer(color_ostream & out)
 {
-    if (AI_RANDOM_EMBARK)
+    if (config.random_embark)
     {
         ai->debug(out, "game over. restarting in 1 minute.");
         auto restart_wait = [this](color_ostream &) -> bool
@@ -70,7 +68,7 @@ void Embark::register_restart_timer(color_ostream & out)
                 return false;
             }
 
-            if (!NO_QUIT)
+            if (!config.no_quit)
             {
                 Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
                 return true;
@@ -106,12 +104,12 @@ bool Embark::update(color_ostream & out)
                 {
                     auto continue_game = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::Continue);
                     auto start_game = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::Start);
-                    if (!AI_RANDOM_EMBARK_WORLD.empty() && continue_game != view->menu_line_id.end() && std::ifstream("data/save/" + AI_RANDOM_EMBARK_WORLD + "/world.sav").good())
+                    if (!config.random_embark_world.empty() && continue_game != view->menu_line_id.end() && std::ifstream("data/save/" + config.random_embark_world + "/world.sav").good())
                     {
                         ai->debug(out, "choosing \"Continue Game\"");
                         view->sel_menu_line = continue_game - view->menu_line_id.begin();
                     }
-                    else if (!AI_RANDOM_EMBARK_WORLD.empty() && start_game != view->menu_line_id.end())
+                    else if (!config.random_embark_world.empty() && start_game != view->menu_line_id.end())
                     {
                         ai->debug(out, "choosing \"Start Game\"");
                         view->sel_menu_line = start_game - view->menu_line_id.begin();
@@ -126,7 +124,7 @@ bool Embark::update(color_ostream & out)
                 }
             case df::viewscreen_titlest::StartSelectWorld:
                 {
-                    if (AI_RANDOM_EMBARK_WORLD.empty())
+                    if (config.random_embark_world.empty())
                     {
                         ai->debug(out, "leaving \"Select World\" (no save name)");
                         AI::feed_key(view, interface_key::LEAVESCREEN);
@@ -134,7 +132,7 @@ bool Embark::update(color_ostream & out)
                     }
                     auto save = std::find_if(view->start_savegames.begin(), view->start_savegames.end(), [](df::viewscreen_titlest::T_start_savegames *s) -> bool
                             {
-                                return s->save_dir == AI_RANDOM_EMBARK_WORLD;
+                                return s->save_dir == config.random_embark_world;
                             });
                     if (save != view->start_savegames.end())
                     {
@@ -146,8 +144,8 @@ bool Embark::update(color_ostream & out)
                     }
                     else
                     {
-                        ai->debug(out, "could not find save named " + AI_RANDOM_EMBARK_WORLD);
-                        AI_RANDOM_EMBARK_WORLD = "";
+                        ai->debug(out, "could not find save named " + config.random_embark_world);
+                        config.set_random_embark_world(out, "");
                         AI::feed_key(view, interface_key::LEAVESCREEN);
                     }
                     break;
@@ -164,7 +162,7 @@ bool Embark::update(color_ostream & out)
                     else
                     {
                         ai->debug(out, "leaving \"Select Mode\" (no fortress mode available)");
-                        AI_RANDOM_EMBARK_WORLD = "";
+                        config.set_random_embark_world(out, "");
                         AI::feed_key(view, interface_key::LEAVESCREEN);
                     }
                     break;
@@ -179,7 +177,7 @@ bool Embark::update(color_ostream & out)
         {
             return false;
         }
-        if (AI_RANDOM_EMBARK_WORLD.empty())
+        if (config.random_embark_world.empty())
         {
             ai->debug(out, "leaving \"Select World\" (no save name)");
             AI::feed_key(view, interface_key::LEAVESCREEN);
@@ -187,7 +185,7 @@ bool Embark::update(color_ostream & out)
         }
         auto save = std::find_if(view->saves.begin(), view->saves.end(), [](df::loadgame_save_info *s) -> bool
                 {
-                    return s->folder_name == AI_RANDOM_EMBARK_WORLD;
+                    return s->folder_name == config.random_embark_world;
                 });
         if (save != view->saves.end())
         {
@@ -203,14 +201,14 @@ bool Embark::update(color_ostream & out)
         }
         else
         {
-            ai->debug(out, "could not find save named " + AI_RANDOM_EMBARK_WORLD);
-            AI_RANDOM_EMBARK_WORLD = "";
+            ai->debug(out, "could not find save named " + config.random_embark_world);
+            config.set_random_embark_world(out, "");
             AI::feed_key(view, interface_key::LEAVESCREEN);
         }
     }
     else if (df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview))
     {
-        AI_RANDOM_EMBARK_WORLD.clear();
+        config.set_random_embark_world(out, "");
 
         if (!view->welcome_msg.empty())
         {
@@ -226,7 +224,7 @@ bool Embark::update(color_ostream & out)
         else if (world->worldgen_status.state == 10)
         {
             ai->debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
-            AI_RANDOM_EMBARK_WORLD = world->cur_savegame.save_dir;
+            config.set_random_embark_world(out, world->cur_savegame.save_dir);
             AI::feed_key(view, interface_key::SELECT);
         }
     }
@@ -322,8 +320,8 @@ bool Embark::update(color_ostream & out)
             else
             {
                 ai->debug(out, "leaving embark selector (no good embarks)");
-                AI_RANDOM_EMBARK_WORLD = "";
-                view->breakdown_level = interface_breakdown_types::QUIT; // XXX
+                config.set_random_embark_world(out, "");
+                AI::abandon(out);
             }
         }
         else
