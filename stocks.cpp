@@ -4,6 +4,7 @@
 #include "population.h"
 
 #include "modules/Buildings.h"
+#include "modules/Gui.h"
 #include "modules/Maps.h"
 #include "modules/Materials.h"
 #include "modules/Units.h"
@@ -80,6 +81,7 @@
 #include "df/unit.h"
 #include "df/unit_inventory_item.h"
 #include "df/vehicle.h"
+#include "df/viewscreen_overallstatusst.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -536,6 +538,29 @@ void Stocks::update(color_ostream & out)
             });
 
     ai->debug(out, "updating stocks");
+
+    if (ai->eventsJson.is_open())
+    {
+        // update wealth by opening the status screen
+        AI::feed_key(interface_key::D_STATUS);
+        if (auto view = strict_virtual_cast<df::viewscreen_overallstatusst>(Gui::getCurViewscreen(true)))
+        {
+            // only leave if we're on the status screen
+            AI::feed_key(view, interface_key::LEAVESCREEN);
+        }
+        Json::Value payload(Json::objectValue);
+        payload["total"] = Json::Int(ui->tasks.wealth.total);
+        payload["weapons"] = Json::Int(ui->tasks.wealth.weapons);
+        payload["armor"] = Json::Int(ui->tasks.wealth.armor);
+        payload["furniture"] = Json::Int(ui->tasks.wealth.furniture);
+        payload["other"] = Json::Int(ui->tasks.wealth.other);
+        payload["architecture"] = Json::Int(ui->tasks.wealth.architecture);
+        payload["displayed"] = Json::Int(ui->tasks.wealth.displayed);
+        payload["held"] = Json::Int(ui->tasks.wealth.held);
+        payload["imported"] = Json::Int(ui->tasks.wealth.imported);
+        payload["exported"] = Json::Int(ui->tasks.wealth.exported);
+        ai->event("wealth", payload);
+    }
 
     // do stocks accounting 'in the background' (ie one bit at a time)
     events.onupdate_register_once("df-ai stocks bg", 8, [this](color_ostream & out) -> bool
