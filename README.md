@@ -10,11 +10,10 @@ Compilation:
 - add `add_subdirectory(df-ai)` to dfhack/plugins/CMakeLists.custom.txt
 - compile DFHack
 
-Run `enable df-ai` in the dfhack console.
+Run `enable df-ai` in the dfhack console to start. Run `help ai` for a list of commands.
 
-Does not handle already started forts, but can resume from df-ai saves.
+Does not handle already started forts, but can resume from df-ai saves. Check `dfhack-config/df-ai.json` for settings.
 
 [![xkcd 1223](http://imgs.xkcd.com/comics/dwarf_fortress.png "I may be the kind of person who wastes a year implementing a Turing-complete computer in Dwarf Fortress, but that makes you the kind of person who wastes ten more getting that computer to run Minecraft.")](http://xkcd.com/1223/)
 
-
-[![Join the chat at https://gitter.im/BenLubar/df-ai](https://badges.gitter.im/BenLubar/df-ai.svg)](https://gitter.im/BenLubar/df-ai?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/BenLubar/df-ai](https://badges.gitter.im/BenLubar/df-ai.svg)](https://gitter.im/BenLubar/df-ai)
