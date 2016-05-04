@@ -215,13 +215,13 @@ bool Embark::update(color_ostream & out)
             ai->debug(out, "leaving world gen disclaimer");
             AI::feed_key(view, interface_key::LEAVESCREEN);
         }
-        else if (world->worldgen_status.state == 0)
+        else if (view->simple_mode == 1)
         {
             ai->debug(out, "choosing \"Generate World\"");
-            view->world_size = 1;
+            view->world_size = config.world_size;
             AI::feed_key(view, interface_key::MENU_CONFIRM);
         }
-        else if (world->worldgen_status.state == 10)
+        else if (world->worldgen_status.state == 10 && view->simple_mode == 0)
         {
             ai->debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
             config.set_random_embark_world(out, world->cur_savegame.save_dir);

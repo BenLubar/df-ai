@@ -19,6 +19,7 @@ struct Config
     bool record_movie;
     bool no_quit;
     int32_t embark_options[embark_options_count];
+    int32_t world_size;
 };
 
 extern Config config;

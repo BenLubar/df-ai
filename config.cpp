@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <algorithm>
 #include <fstream>
 
 #include "jsoncpp.h"
@@ -14,7 +15,8 @@ Config::Config() :
     debug(true),
     record_movie(false),
     no_quit(true),
-    embark_options()
+    embark_options(),
+    world_size(1)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -68,6 +70,10 @@ void Config::load(color_ostream & out)
                     }
                 }
             }
+            if (v.isMember("world_size"))
+            {
+                world_size = std::min(std::max(int32_t(v["world_size"].asInt()), 0), 4);
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -91,6 +97,8 @@ void Config::save(color_ostream & out)
         options[ENUM_KEY_STR(embark_finder_option, o)] = Json::Int(embark_options[o]);
     }
     v["embark_options"] = options;
+
+    v["world_size"] = Json::Int(world_size);
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
