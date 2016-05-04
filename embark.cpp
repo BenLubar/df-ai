@@ -240,7 +240,7 @@ bool Embark::update(color_ostream & out)
             AI::feed_key(view, interface_key::SETUP_FIND);
             FOR_ENUM_ITEMS(embark_finder_option, o)
             {
-                view->finder.options[o] = config.embark_options[0];
+                view->finder.options[o] = config.embark_options[o];
             }
             AI::feed_key(view, interface_key::SELECT);
         }
