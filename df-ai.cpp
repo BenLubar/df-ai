@@ -66,7 +66,7 @@ bool check_enabled(color_ostream & out)
     if (dwarfAI)
     {
         dwarfAI->onupdate_unregister(out);
-        out << "removed onupdate\n";
+        out << "AI: removed onupdate" << std::endl;
         delete dwarfAI;
         dwarfAI = nullptr;
     }
@@ -114,7 +114,7 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 
     if (!check_enabled(out))
     {
-        out << "The AI is currently not running. Use enable df-ai to enable the AI.\n";
+        out << "The AI is currently not running. Use enable df-ai to enable the AI." << std::endl;
         return CR_OK;
     }
 
@@ -132,7 +132,7 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         {
             if (enable == dwarfAI->eventsJson.is_open())
             {
-                out << "df-ai-events.json is already " << (enable ? "enabled" : "disabled") << "\n";
+                out << "df-ai-events.json is already " << (enable ? "enabled" : "disabled") << std::endl;
                 return CR_OK;
             }
 

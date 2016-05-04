@@ -180,8 +180,7 @@ void AI::event(const std::string & name, const Json::Value & payload)
     wrapper["tick"] = Json::Int(*cur_year_tick);
     wrapper["name"] = name;
     wrapper["payload"] = payload;
-    eventsJson << wrapper << "\n";
-    eventsJson.flush();
+    eventsJson << wrapper << std::endl;
 }
 
 command_result AI::startup(color_ostream & out)
