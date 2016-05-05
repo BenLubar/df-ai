@@ -10,6 +10,7 @@
 
 #include "df/coord.h"
 #include "df/tile_dig_designation.h"
+#include "df/tiletype_material.h"
 #include "df/tiletype_shape_basic.h"
 
 namespace df
@@ -169,7 +170,6 @@ public:
 
     df::coord scan_river(color_ostream & out);
 
-    command_result setup_blueprint(color_ostream & out);
     command_result make_map_walkable(color_ostream & out);
     command_result list_map_veins(color_ostream & out);
 
@@ -190,22 +190,7 @@ public:
         return spiral_search(t, 100, 0, 1, b);
     }
 
-    const static int16_t MinX, MinY, MinZ;
-    const static int16_t MaxX, MaxY, MaxZ;
-
-    command_result scan_fort_entrance(color_ostream & out);
-    command_result scan_fort_body(color_ostream & out);
-    command_result setup_blueprint_rooms(color_ostream & out);
-    command_result setup_blueprint_workshops(color_ostream & out, df::coord f, const std::vector<room *> & entr);
-    command_result setup_blueprint_stockpiles(color_ostream & out, df::coord f, const std::vector<room *> & entr);
-    command_result setup_blueprint_pitcage(color_ostream & out);
-    command_result setup_blueprint_utilities(color_ostream & out, df::coord f, const std::vector<room *> & entr);
-    command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern);
-    command_result setup_blueprint_pastures(color_ostream & out);
-    command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
-    command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const std::vector<room *> & entr);
-    command_result setup_outdoor_gathering_zones(color_ostream & out);
-    command_result setup_blueprint_caverns(color_ostream & out);
+#include "plan_blueprint.h"
 
     bool map_tile_in_rock(df::coord tile);
     bool map_tile_nocavern(df::coord tile);
@@ -232,5 +217,19 @@ protected:
     bool corridor_include_hack(const room *r, df::coord t);
     friend struct room;
 };
+
+struct farm_allowed_materials_t
+{
+    std::set<df::tiletype_material> set;
+    farm_allowed_materials_t();
+};
+extern farm_allowed_materials_t farm_allowed_materials;
+
+extern const size_t dwarves_per_table;
+extern const int32_t dwarves_per_farmtile_num;
+extern const int32_t dwarves_per_farmtile_den;
+extern const size_t wantdig_max;
+extern const int32_t spare_bedroom;
+extern const int32_t extra_farms;
 
 // vim: et:sw=4:ts=4
