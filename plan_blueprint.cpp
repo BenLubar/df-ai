@@ -238,7 +238,7 @@ command_result Plan::scan_fort_entrance(color_ostream & out)
 
     df::coord ent = surface_tile_at(ent0.x, ent0.y);
 
-    fort_entrance = new room(ent - df::coord(0, 1, 0), ent + df::coord(0, 1, 0));
+    fort_entrance = new room(ent - df::coord(0, 1, 0), ent + df::coord(0, 1, 0), "main staircase - fort entrance");
     for (int i = 0; i < 3; i++)
     {
         fort_entrance->layout.push_back(new_cage_trap(i - 1, -1));
@@ -374,7 +374,7 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
     {
         fort_entrance->min.z--;
         f.z--;
-        res = setup_blueprint_bedrooms(out, f, fe);
+        res = setup_blueprint_bedrooms(out, f, fe, i);
         if (res != CR_OK)
             return res;
         ai->debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
@@ -385,13 +385,13 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
 
 command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, const std::vector<room *> & entr)
 {
-    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), "main staircase - west workshops");
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
     corridors.push_back(corridor_center0);
 
-    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east workshops");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
@@ -563,7 +563,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
         {
             // segments of the big central horizontal corridor
             int16_t cx = f.x + dirx * 4 * dx;
-            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + (dx <= 5 ? 0 : dirx), f.y + 1, f.z));
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + (dx <= 5 ? 0 : dirx), f.y + 1, f.z), stl_sprintf("%s workshops - segment %d", dirx == 1 ? "east" : "west", dx));
             cor_x->accesspath.push_back(prev_corx);
             corridors.push_back(cor_x);
             prev_corx = cor_x;
@@ -746,13 +746,13 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
 
 command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f, const std::vector<room *> & entr)
 {
-    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), "main staircase - west stockpiles");
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
     corridors.push_back(corridor_center0);
 
-    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east stockpiles");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
@@ -786,7 +786,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
         {
             // segments of the big central horizontal corridor
             int16_t cx = f.x + dirx * (8 * dx - 4);
-            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + dirx, f.y + 1, f.z));
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx + dirx, f.y + 1, f.z), stl_sprintf("%s stockpiles - segment %d", dirx == 1 ? "east" : "west", dx));
             cor_x->accesspath.push_back(prev_corx);
             corridors.push_back(cor_x);
             prev_corx = cor_x;
@@ -878,7 +878,7 @@ command_result Plan::setup_blueprint_pitcage(color_ostream &)
     r->layout.push_back(new_hive_floor(3, 1));
     rooms.push_back(r);
 
-    room *stockpile = new room(room_type::stockpile, "animals", r->min, r->max);
+    room *stockpile = new room(room_type::stockpile, "animals", r->min, r->max, "pitting queue");
     stockpile->level = 0;
     stockpile->stock_specific1 = true; // no empty cages
     stockpile->stock_specific2 = true; // no empty animal traps
@@ -890,13 +890,13 @@ command_result Plan::setup_blueprint_pitcage(color_ostream &)
 
 command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f, const std::vector<room *> & entr)
 {
-    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), "main staircase - west utilities");
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
     corridors.push_back(corridor_center0);
 
-    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east utilities");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
@@ -907,7 +907,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     room *old_cor = corridor_center0;
 
     // temporary dininghall, for fort start
-    room *tmp = new room(room_type::dininghall, "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0));
+    room *tmp = new room(room_type::dininghall, "", f + df::coord(-4, -1, 0), f + df::coord(-3, 1, 0), "temporary dining room");
     tmp->temporary = true;
     for (int16_t dy = 0; dy <= 2; dy++)
     {
@@ -921,7 +921,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // dininghalls x 4 (54 users each)
     for (int16_t ax = 0; ax <= 1; ax++)
     {
-        room *cor = new room(df::coord(ocx - 1, f.y - 1, f.z), df::coord(f.x - ax * 12 - 5, f.y + 1, f.z));
+        room *cor = new room(df::coord(ocx - 1, f.y - 1, f.z), df::coord(f.x - ax * 12 - 5, f.y + 1, f.z), stl_sprintf("west utilities - segment %d", ax + 1));
         cor->accesspath.push_back(old_cor);
         corridors.push_back(cor);
         ocx = f.x - ax * 12 - 4;
@@ -939,7 +939,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         dxs.push_back(9);
         for (int16_t dy = -1; dy <= 1; dy += 2)
         {
-            room *dinner = new room(room_type::dininghall, "", df::coord(f.x - ax * 12 - 2 - 10, f.y + dy * 9, f.z), df::coord(f.x - ax * 12 - 2, f.y + dy * 3, f.z));
+            room *dinner = new room(room_type::dininghall, "", df::coord(f.x - ax * 12 - 2 - 10, f.y + dy * 9, f.z), df::coord(f.x - ax * 12 - 2, f.y + dy * 3, f.z), stl_sprintf("dining room %c", 'A' + ax + dy + 1));
             dinner->layout.push_back(new_door(7, dy > 0 ? -1 : 7));
             dinner->layout.push_back(new_wall(2, 3));
             dinner->layout.push_back(new_wall(8, 3));
@@ -965,7 +965,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     }
 
     // tavern
-    room *cor = new room(f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0));
+    room *cor = new room(f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0), "tavern entrance");
     cor->accesspath.push_back(corridors.back());
     corridors.push_back(cor);
 
@@ -977,7 +977,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tavern->accesspath.push_back(cor);
     rooms.push_back(tavern);
 
-    room *booze = new room(room_type::stockpile, "food", tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0));
+    room *booze = new room(room_type::stockpile, "food", tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0), "tavern booze");
     booze->stock_disable.insert(stockpile_list::FoodMeat);
     booze->stock_disable.insert(stockpile_list::FoodFish);
     booze->stock_disable.insert(stockpile_list::FoodUnpreparedFish);
@@ -1025,11 +1025,11 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     // farm plots
     int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
-    int16_t cy = f.y;;
+    int16_t cy = f.y;
     int16_t cz = find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Farmers"; })->min.z;
-    room *ws_cor = new room(df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz)); // ws_corr->accesspath ...
+    room *ws_cor = new room(df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz), "farm access corridor"); // ws_corr->accesspath ...
     corridors.push_back(ws_cor);
-    room *farm_stairs = new room(df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz));
+    room *farm_stairs = new room(df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz), "farm stairs");
     farm_stairs->accesspath.push_back(ws_cor);
     corridors.push_back(farm_stairs);
     cx += 3;
@@ -1065,7 +1065,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     }
 
     farm_stairs->max.z = cz2;
-    cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2));
+    cor = new room(df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2), "farm corridor");
     cor->accesspath.push_back(farm_stairs);
     corridors.push_back(cor);
     room *first_farm = nullptr;
@@ -1098,7 +1098,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     make_farms(1, "cloth");
 
     // seeds stockpile
-    room *r = new room(room_type::stockpile, "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2));
+    room *r = new room(room_type::stockpile, "food", df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2), "farm seeds stockpile");
     r->level = 0;
     r->stock_disable.insert(stockpile_list::FoodMeat);
     r->stock_disable.insert(stockpile_list::FoodFish);
@@ -1158,7 +1158,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     // infirmary
     old_cor = corridor_center2;
-    cor = new room(f + df::coord(3, -1, 0), f + df::coord(5, 1, 0));
+    cor = new room(f + df::coord(3, -1, 0), f + df::coord(5, 1, 0), "east utilities - infirmary access");
     cor->accesspath.push_back(old_cor);
     corridors.push_back(cor);
     old_cor = cor;
@@ -1180,7 +1180,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     rooms.push_back(infirmary);
 
     // cemetary lots (160 spots)
-    cor = new room(f + df::coord(6, -1, 0), f + df::coord(14, 1, 0));
+    cor = new room(f + df::coord(6, -1, 0), f + df::coord(14, 1, 0), "east utilities - cemetary access");
     cor->accesspath.push_back(old_cor);
     corridors.push_back(cor);
     old_cor = cor;
@@ -1233,7 +1233,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     int16_t oldcx = old_cor->max.x + 2; // door
     for (int16_t rx = 0; rx < 4; rx++)
     {
-        cor = new room(df::coord(oldcx, f.y - 1, f.z), df::coord(f.x + 5 + 10 * rx, f.y + 1, f.z));
+        cor = new room(df::coord(oldcx, f.y - 1, f.z), df::coord(f.x + 5 + 10 * rx, f.y + 1, f.z), stl_sprintf("east utilities - segment %d", rx + 1));
         cor->accesspath.push_back(old_cor);
         corridors.push_back(cor);
         old_cor = cor;
@@ -1244,7 +1244,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             if (ry == -1 && rx < 3) // infirmary/cemetary
                 continue;
 
-            room *barracks = new room(room_type::barracks, "", df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z));
+            room *barracks = new room(room_type::barracks, "", df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z), stl_sprintf("barracks %c", ry == 1 ? 'B' + rx : 'A'));
             barracks->layout.push_back(new_door(3, ry > 0 ? -1 : 8));
             for (int16_t dy_ = 0; dy_ < 8; dy_++)
             {
@@ -1565,15 +1565,15 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
     return CR_OK;
 }
 
-command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, const std::vector<room *> & entr)
+command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, const std::vector<room *> & entr, int level)
 {
-    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0));
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), stl_sprintf("main staircase - west %s bedrooms", level == 0 ? "upper" : "lower"));
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
     corridors.push_back(corridor_center0);
 
-    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0));
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), stl_sprintf("main staircase - east %s bedrooms", level == 0 ? "upper" : "lower"));
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
@@ -1587,7 +1587,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
         {
             // segments of the big central horizontal corridor
             int16_t cx = f.x + dirx * (9 * dx - 4);
-            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z));
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s %s bedrooms - segment %d", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx));
             cor_x->accesspath.push_back(prev_corx);
             corridors.push_back(cor_x);
             prev_corx = cor_x;
@@ -1600,7 +1600,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                 for (int16_t dy = 1; dy <= 6; dy++)
                 {
                     int16_t cy = f.y + diry * 3 * dy;
-                    room *cor_y = new room(df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z));
+                    room *cor_y = new room(df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z), stl_sprintf("%s %s %s bedrooms - segment %d-%d", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy));
                     cor_y->accesspath.push_back(prev_cory);
                     corridors.push_back(cor_y);
                     prev_cory = cor_y;
@@ -1618,15 +1618,15 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                         r->layout.push_back(new_door(r->min.x < cx ? 2 : -1, diry < 0 ? 1 : 0));
                         rooms.push_back(r);
                     };
-                    bedroom(new room(room_type::bedroom, "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z)));
-                    bedroom(new room(room_type::bedroom, "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d A", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d B", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
                 }
             }
         }
 
         // noble suites
         int16_t cx = f.x + dirx * (9 * 3 - 4 + 6);
-        room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z));
+        room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s %s bedrooms - noble room hallway", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower"));
         room *cor_x2 = new room(df::coord(ocx - dirx, f.y, f.z), df::coord(f.x + dirx * 3, f.y, f.z));
         cor_x->accesspath.push_back(cor_x2);
         cor_x2->accesspath.push_back(dirx < 0 ? corridor_center0 : corridor_center2);

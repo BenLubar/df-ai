@@ -13,6 +13,6 @@ command_result setup_blueprint_utilities(color_ostream & out, df::coord f, const
 command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern);
 command_result setup_blueprint_pastures(color_ostream & out);
 command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
-command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const std::vector<room *> & entr);
+command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const std::vector<room *> & entr, int level);
 command_result setup_outdoor_gathering_zones(color_ostream & out);
 command_result setup_blueprint_caverns(color_ostream & out);
