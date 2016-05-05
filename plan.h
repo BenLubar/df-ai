@@ -47,6 +47,7 @@ class Plan
     std::list<task *>::iterator bg_idx;
     std::vector<room *> rooms;
     std::map<room_type::type, std::vector<room *>> room_category;
+    std::map<int32_t, std::set<room *>> room_by_z;
     std::vector<room *> corridors;
     std::set<std::string> cache_nofurnish;
 public:
@@ -196,8 +197,6 @@ public:
     bool map_tile_nocavern(df::coord tile);
     bool map_tile_cavernfloor(df::coord tile);
 
-    std::vector<room *> find_corridor_tosurface(color_ostream & out, df::coord origin);
-
     df::coord surface_tile_at(int16_t tx, int16_t ty, bool allow_trees = false);
 
     std::string status();
@@ -208,7 +207,7 @@ public:
 
     room *find_room(room_type::type type);
     room *find_room(room_type::type type, std::function<bool(room *)> b);
-
+    room *find_room_at(df::coord t);
     bool map_tile_intersects_room(df::coord t);
 
     static df::coord find_tree_base(df::coord t);

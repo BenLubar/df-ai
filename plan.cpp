@@ -92,6 +92,7 @@ Plan::Plan(AI *ai) :
     bg_idx(tasks.end()),
     rooms(),
     room_category(),
+    room_by_z(),
     corridors(),
     cache_nofurnish(),
     fort_entrance(nullptr),
@@ -3951,111 +3952,6 @@ bool Plan::map_tile_cavernfloor(df::coord t)
     return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Floor;
 }
 
-// create a new Corridor from origin to surface, through rock
-// may create multiple chunks to avoid obstacles, all parts are added to corridors
-// returns an array of Corridors, 1st = origin, last = surface
-std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord origin)
-{
-    std::vector<room *> cors;
-    for (;;)
-    {
-        room *cor = new room(origin, origin);
-        if (!cors.empty())
-        {
-            cors.back()->accesspath.push_back(cor);
-        }
-        cors.push_back(cor);
-
-        while (map_tile_in_rock(cor->max) && !map_tile_intersects_room(cor->max + df::coord(0, 0, 1)))
-        {
-            cor->max.z++;
-        }
-
-        df::tiletype tt = *Maps::getTileType(cor->max);
-        df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
-        df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
-        df::tile_designation td = *Maps::getTileDesignation(cor->max);
-        if ((sb == tiletype_shape_basic::Ramp ||
-                    sb == tiletype_shape_basic::Floor) &&
-                tm != tiletype_material::TREE &&
-                td.bits.flow_size == 0 &&
-                !td.bits.hidden)
-        {
-            break;
-        }
-
-        df::coord out2 = spiral_search(cor->max, [this](df::coord t) -> bool
-                {
-                    while (map_tile_in_rock(t))
-                    {
-                        t.z++;
-                    }
-
-                    df::tiletype *tt = Maps::getTileType(t);
-                    if (!tt)
-                        return false;
-
-                    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt));
-                    df::tile_designation td = *Maps::getTileDesignation(t);
-
-                    return (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Floor) &&
-                            ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE &&
-                            td.bits.flow_size == 0 &&
-                            !td.bits.hidden &&
-                            !map_tile_intersects_room(t);
-                });
-
-        if (Maps::getTileDesignation(cor->max)->bits.flow_size > 0)
-        {
-            // damp stone located
-            cor->max.z--;
-            out2.z--;
-        }
-        cor->max.z--;
-        out2.z--;
-
-        int16_t y_x = cor->max.x;
-        if (cor->max.x - 1 > out2.x)
-        {
-            cor = new room(df::coord(out2.x - 1, out2.y, out2.z), df::coord(cor->max.x + 1, out2.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-            y_x++;
-        }
-        else if (out2.x - 1 > cor->max.x)
-        {
-            cor = new room(df::coord(out2.x + 1, out2.y, out2.z), df::coord(cor->max.x - 1, out2.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-            y_x--;
-        }
-
-        if (cor->max.y - 1 > out2.y)
-        {
-            cor = new room(df::coord(y_x, out2.y - 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-        }
-        else if (out2.y - 1 > cor->max.y)
-        {
-            cor = new room(df::coord(y_x, out2.y + 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-        }
-
-        if (origin == out2)
-        {
-            ai->debug(out, stl_sprintf("[ERROR] find_corridor_tosurface: loop: %d, %d, %d", origin.x, origin.y, origin.z));
-            break;
-        }
-        ai->debug(out, stl_sprintf("find_corridor_tosurface: %d, %d, %d -> %d, %d, %d", origin.x, origin.y, origin.z, out2.x, out2.y, out2.z));
-
-        origin = out2;
-    }
-    corridors.insert(corridors.end(), cors.begin(), cors.end());
-    return cors;
-}
-
 df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
 {
     int16_t dx = tx & 0xf;
@@ -4150,9 +4046,29 @@ std::string Plan::status()
 void Plan::categorize_all()
 {
     room_category.clear();
+    room_by_z.clear();
     for (auto r = rooms.begin(); r != rooms.end(); r++)
     {
         room_category[(*r)->type].push_back(*r);
+        for (int32_t z = (*r)->min.z; z <= (*r)->max.z; z++)
+        {
+            room_by_z[z].insert(*r);
+        }
+        for (auto f = (*r)->layout.begin(); f != (*r)->layout.end(); f++)
+        {
+            room_by_z[(*r)->min.z + (*f)->z].insert(*r);
+        }
+    }
+    for (auto r = corridors.begin(); r != corridors.end(); r++)
+    {
+        for (int32_t z = (*r)->min.z; z <= (*r)->max.z; z++)
+        {
+            room_by_z[z].insert(*r);
+        }
+        for (auto f = (*r)->layout.begin(); f != (*r)->layout.end(); f++)
+        {
+            room_by_z[(*r)->min.z + (*f)->z].insert(*r);
+        }
     }
 
     if (room_category.count(room_type::stockpile))
@@ -4277,19 +4193,45 @@ room *Plan::find_room(room_type::type type, std::function<bool(room *)> b)
     return nullptr;
 }
 
+room *Plan::find_room_at(df::coord t)
+{
+    if (room_by_z.empty())
+    {
+        for (auto r = rooms.begin(); r != rooms.end(); r++)
+        {
+            if ((*r)->safe_include(t))
+            {
+                return *r;
+            }
+        }
+        for (auto r = corridors.begin(); r != corridors.end(); r++)
+        {
+            if ((*r)->safe_include(t))
+            {
+                return *r;
+            }
+        }
+        return nullptr;
+    }
+
+    auto by_z = room_by_z.find(t.z);
+    if (by_z == room_by_z.end())
+    {
+        return nullptr;
+    }
+    for (auto r = by_z->second.begin(); r != by_z->second.end(); r++)
+    {
+        if ((*r)->safe_include(t))
+        {
+            return *r;
+        }
+    }
+    return nullptr;
+}
+
 bool Plan::map_tile_intersects_room(df::coord t)
 {
-    for (auto r = rooms.begin(); r != rooms.end(); r++)
-    {
-        if ((*r)->safe_include(t))
-            return true;
-    }
-    for (auto r = corridors.begin(); r != corridors.end(); r++)
-    {
-        if ((*r)->safe_include(t))
-            return true;
-    }
-    return false;
+    return find_room_at(t) != nullptr;
 }
 
 df::coord Plan::find_tree_base(df::coord t)
