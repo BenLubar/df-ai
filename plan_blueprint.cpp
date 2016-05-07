@@ -2,6 +2,8 @@
 #include "plan.h"
 #include "room.h"
 
+#include <tuple>
+
 #include "modules/Buildings.h"
 
 #include "df/building_civzonest.h"
