@@ -1862,7 +1862,7 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord
         }
         cors.push_back(cor);
 
-        while (map_tile_in_rock(cor->max) && !map_tile_intersects_room(cor->max + df::coord(0, 0, 1)))
+        while (map_tile_in_rock(cor->max) && !map_tile_intersects_room(cor->max + df::coord(0, 0, 1)) && Maps::isValidTilePos(cor->max.x, cor->max.y, cor->max.z + 1))
         {
             cor->max.z++;
         }
@@ -1900,6 +1900,12 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord
                             !td.bits.hidden &&
                             !map_tile_intersects_room(t);
                 });
+
+        if (!out2.isValid())
+        {
+            ai->debug(out, stl_sprintf("[ERROR] could not find corridor to surface (%d, %d, %d)", cor->max.x, cor->max.y, cor->max.z));
+            break;
+        }
 
         if (Maps::getTileDesignation(cor->max)->bits.flow_size > 0)
         {

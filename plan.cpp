@@ -3885,7 +3885,7 @@ bool Plan::map_tile_in_rock(df::coord tile)
             }
 
             df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
-            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (allow_ice || tm != tiletype_material::FROZEN_LIQUID))
+            if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID))
             {
                 return false;
             }
