@@ -212,6 +212,11 @@ public:
 
     static df::coord find_tree_base(df::coord t);
 
+private:
+    void fixup_open(color_ostream & out, room *r);
+    void fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_dig_designation d, furniture *f = nullptr);
+    void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f = nullptr);
+
 protected:
     bool corridor_include_hack(const room *r, df::coord t);
     friend struct room;

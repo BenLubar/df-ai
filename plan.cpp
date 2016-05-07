@@ -271,6 +271,7 @@ void Plan::update(color_ostream &)
                 }
                 else if (t.type == "digroom")
                 {
+                    fixup_open(out, t.r);
                     if (t.r->is_dug())
                     {
                         t.r->status = room_status::dug;
@@ -1005,7 +1006,7 @@ void Plan::checkroom(color_ostream & out, room *r)
     }
 
     // fix missing walls/staircases
-    r->fixup_open();
+    fixup_open(out, r);
     // designation cancelled: damp stone, cave-in, or tree
     r->dig();
 
@@ -1506,7 +1507,7 @@ void Plan::digroom(color_ostream & out, room *r)
     ai->debug(out, "digroom " + describe_room(r));
     r->queue_dig = false;
     r->status = room_status::dig;
-    r->fixup_open();
+    fixup_open(out, r);
     r->dig();
 
     tasks.push_back(new task("digroom", r));
@@ -1871,14 +1872,14 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
         }
     }
 
-    df::item *block = nullptr;
-    if (!find_item(items_other_id::BLOCKS, block))
+    df::item *mat = nullptr;
+    if (!find_item(items_other_id::BLOCKS, mat) && !find_item(items_other_id::BOULDER, mat, false, true))
         return false;
 
     df::building *bld = Buildings::allocInstance(t, building_type::Construction, ctype);
     Buildings::setSize(bld, df::coord(1, 1, 1));
     std::vector<df::item *> item;
-    item.push_back(block);
+    item.push_back(mat);
     Buildings::constructWithItems(bld, item);
     return true;
 }
@@ -4283,6 +4284,109 @@ df::coord Plan::find_tree_base(df::coord t)
     df::coord invalid;
     invalid.clear();
     return invalid;
+}
+
+void Plan::fixup_open(color_ostream & out, room *r)
+{
+    for (int16_t x = r->min.x; x <= r->max.x; x++)
+    {
+        for (int16_t y = r->min.y; y <= r->max.y; y++)
+        {
+            for (int16_t z = r->min.z; z <= r->max.z; z++)
+            {
+                df::coord t(x, y, z);
+                for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+                {
+                    furniture *f = *it;
+                    df::coord ft = r->min + df::coord(f->x, f->y, f->z);
+                    if (t == ft)
+                    {
+                        if (f->construction == construction_type::NONE)
+                        {
+                            fixup_open_tile(out, r, ft, f->dig, f);
+                        }
+                        t.clear();
+                        break;
+                    }
+                }
+                if (t.isValid())
+                {
+                    fixup_open_tile(out, r, t, r->dig_mode(t));
+                }
+            }
+        }
+    }
+}
+
+void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_dig_designation d, furniture *f)
+{
+    df::tiletype *tt = Maps::getTileType(t);
+    if (!tt)
+        return;
+
+    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape,
+            ENUM_ATTR(tiletype, shape, *tt));
+
+    switch (d)
+    {
+        case tile_dig_designation::Channel:
+            // do nothing
+            break;
+        case tile_dig_designation::No:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(out, r, t, construction_type::Wall, f);
+            }
+            break;
+        case tile_dig_designation::Default:
+            if (sb == tiletype_shape_basic::Open)
+            {
+                fixup_open_helper(out, r, t, construction_type::Floor, f);
+            }
+            break;
+        case tile_dig_designation::UpDownStair:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(out, r, t, construction_type::UpDownStair, f);
+            }
+            break;
+        case tile_dig_designation::UpStair:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(out, r, t, construction_type::UpStair, f);
+            }
+            break;
+        case tile_dig_designation::Ramp:
+            if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+            {
+                fixup_open_helper(out, r, t, construction_type::Ramp, f);
+            }
+            break;
+        case tile_dig_designation::DownStair:
+            if (sb == tiletype_shape_basic::Open)
+            {
+                fixup_open_helper(out, r, t, construction_type::DownStair, f);
+            }
+            break;
+    }
+}
+
+void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f)
+{
+    if (!f)
+    {
+        f = new furniture();
+        f->x = t.x - r->min.x;
+        f->y = t.y - r->min.y;
+        f->z = t.z - r->min.z;
+        r->layout.push_back(f);
+    }
+    if (f->construction != c)
+    {
+        ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->x, f->y, f->z));
+        tasks.push_back(new task("furnish", r, f));
+    }
+    f->construction = c;
 }
 
 // XXX
