@@ -1,6 +1,7 @@
 const static int16_t MinX, MinY, MinZ;
 const static int16_t MaxX, MaxY, MaxZ;
 
+command_result setup_ready(color_ostream & out);
 command_result setup_blueprint(color_ostream & out);
 
 command_result scan_fort_entrance(color_ostream & out);

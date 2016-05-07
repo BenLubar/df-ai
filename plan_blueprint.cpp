@@ -106,6 +106,20 @@ static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string 
     return f;
 }
 
+command_result Plan::setup_ready(color_ostream & out)
+{
+    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Masons" && r->level == 0; }));
+    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->subtype == "Carpenters" && r->level == 0; }));
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 0; })->subtype = "Masons";
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 1; })->subtype = "Masons";
+    find_room(room_type::workshop, [](room *r) -> bool { return r->subtype.empty() && r->level == 2; })->subtype = "Masons";
+    wantdig(out, find_room(room_type::stockpile, [](room *r) -> bool { return r->subtype == "food" && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }));
+
+    dig_garbagedump(out);
+
+    return CR_OK;
+}
+
 command_result Plan::setup_blueprint(color_ostream & out)
 {
     command_result res;
