@@ -6,6 +6,7 @@ SET(PROJECT_SRCS
     config.cpp
     population.cpp
     plan.cpp
+    plan_blueprint.cpp
     stocks.cpp
     camera.cpp
     embark.cpp
@@ -18,6 +19,7 @@ SET(PROJECT_HDRS
     config.h
     population.h
     plan.h
+    plan_blueprint.h
     stocks.h
     camera.h
     embark.h

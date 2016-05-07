@@ -101,9 +101,6 @@ struct room
     }
 
     void dig(bool plan = false, bool channel = false);
-    void fixup_open();
-    void fixup_open_tile(df::coord t, df::tile_dig_designation d, furniture *f = nullptr);
-    void fixup_open_helper(df::coord t, df::construction_type c, furniture *f = nullptr);
 
     bool include(df::coord t) const;
     bool safe_include(df::coord t) const;
