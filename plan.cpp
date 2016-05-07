@@ -1001,17 +1001,16 @@ void Plan::checkroom(color_ostream & out, room *r)
 {
     if (r->status == room_status::plan)
     {
-        // moot
+        return;
     }
-    else if (r->status == room_status::dig)
+
+    // fix missing walls/staircases
+    r->fixup_open();
+    // designation cancelled: damp stone, cave-in, or tree
+    r->dig();
+
+    if (r->status == room_status::dug || r->status == room_status::finished)
     {
-        // designation cancelled: damp stone etc
-        r->dig();
-    }
-    else if (r->status == room_status::dug || r->status == room_status::finished)
-    {
-        // cavein / tree
-        r->dig();
         // tantrumed furniture
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
