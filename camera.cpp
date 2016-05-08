@@ -48,11 +48,14 @@ command_result Camera::startup(color_ostream &)
 
 command_result Camera::onupdate_register(color_ostream &)
 {
-    gps->display_frames = 1;
+    if (config.fps_meter)
+    {
+        gps->display_frames = 1;
+    }
     onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
     onstatechange_handle = events.onstatechange_register([this](color_ostream &, state_change_event mode)
             {
-                if (mode == SC_VIEWSCREEN_CHANGED)
+                if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
                 {
                     df::viewscreen *view = Gui::getCurViewscreen(true);
                     gps->display_frames = strict_virtual_cast<df::viewscreen_dwarfmodest>(view) ? 1 : 0;
@@ -80,7 +83,10 @@ void Camera::check_record_status()
 
 command_result Camera::onupdate_unregister(color_ostream &)
 {
-    gps->display_frames = 0;
+    if (config.fps_meter)
+    {
+        gps->display_frames = 0;
+    }
     if (!config.no_quit && !config.random_embark)
     {
         Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
@@ -92,6 +98,11 @@ command_result Camera::onupdate_unregister(color_ostream &)
 
 void Camera::update(color_ostream &)
 {
+    if (!config.camera)
+    {
+        return;
+    }
+
     if (following != ui->follow_unit)
     {
         following = ui->follow_unit;
@@ -238,6 +249,11 @@ void Camera::update(color_ostream &)
 
 void Camera::ignore_pause()
 {
+    if (!config.camera)
+    {
+        return;
+    }
+
     if (df::unit *u = df::unit::find(following))
     {
         Gui::revealInDwarfmodeMap(Units::getPosition(u), true);
@@ -247,6 +263,11 @@ void Camera::ignore_pause()
 
 std::string Camera::status()
 {
+    if (!config.camera)
+    {
+        return "disabled by config";
+    }
+
     std::string fp;
     for (auto it = following_prev.begin(); it != following_prev.end(); it++)
     {

@@ -20,6 +20,8 @@ struct Config
     bool no_quit;
     int32_t embark_options[embark_options_count];
     int32_t world_size;
+    bool camera;
+    bool fps_meter;
 };
 
 extern Config config;

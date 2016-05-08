@@ -16,7 +16,9 @@ Config::Config() :
     record_movie(false),
     no_quit(true),
     embark_options(),
-    world_size(1)
+    world_size(1),
+    camera(true),
+    fps_meter(true)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -74,6 +76,14 @@ void Config::load(color_ostream & out)
             {
                 world_size = std::min(std::max(int32_t(v["world_size"].asInt()), 0), 4);
             }
+            if (v.isMember("camera"))
+            {
+                camera = v["camera"].asBool();
+            }
+            if (v.isMember("fps_meter"))
+            {
+                fps_meter = v["fps_meter"].asBool();
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -99,6 +109,8 @@ void Config::save(color_ostream & out)
     v["embark_options"] = options;
 
     v["world_size"] = Json::Int(world_size);
+    v["camera"] = camera;
+    v["fps_meter"] = fps_meter;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
