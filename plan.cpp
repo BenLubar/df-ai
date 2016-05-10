@@ -334,6 +334,11 @@ void Plan::update(color_ostream &)
 
 command_result Plan::persist(color_ostream &)
 {
+    if (corridors.empty())
+    {
+        // we haven't initialized yet.
+        return CR_OK;
+    }
     std::ofstream f("data/save/current/df-ai-plan.dat", std::ofstream::trunc);
     save(f);
     return CR_OK;
