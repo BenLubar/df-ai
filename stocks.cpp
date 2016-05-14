@@ -489,7 +489,7 @@ void Stocks::update(color_ostream & out)
         if (!world->manager_orders.empty())
         {
             auto m = world->manager_orders.front();
-            if (m->is_validated)
+            if (m->status.bits.validated)
             {
                 if (m->job_type == last_managerorder)
                 {
