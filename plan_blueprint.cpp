@@ -1170,6 +1170,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     r->min = r->max = tile;
     rooms.push_back(r);
     r = new room(room_type::garbagepit, "", tile + df::coord(1, 0, 0), tile + df::coord(2, 0, 0));
+    r->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
+    r->layout.push_back(new_dig(tile_dig_designation::Channel, 1, 0));
     rooms.push_back(r);
 
     // infirmary
