@@ -13,6 +13,7 @@
 namespace df
 {
     struct manager_order;
+    struct manager_order_template;
 }
 
 class AI;
@@ -122,9 +123,10 @@ public:
 
     void init_manager_subtype();
 
-    std::vector<df::manager_order *> find_manager_orders(std::string order);
     int32_t count_manager_orders_matcat(std::string matcat, df::job_type order = job_type::NONE);
-    void add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
+    void legacy_add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
+    int32_t count_manager_orders(color_ostream & out, df::manager_order_template *tmpl);
+    void add_manager_order(color_ostream & out, df::manager_order_template *tmpl, int32_t amount = 1);
 
     std::string furniture_order(std::string k);
     std::function<bool(df::item *)> furniture_find(std::string k);

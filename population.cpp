@@ -1351,12 +1351,12 @@ void Population::update_pets(color_ostream & out)
     if (needmilk > 30)
         needmilk = 30;
     if (needmilk > 0)
-        ai->stocks->add_manager_order(out, "MilkCreature", needmilk);
+        ai->stocks->legacy_add_manager_order(out, "MilkCreature", needmilk);
 
     if (needshear > 30)
         needshear = 30;
     if (needshear > 0)
-        ai->stocks->add_manager_order(out, "ShearCreature", needshear);
+        ai->stocks->legacy_add_manager_order(out, "ShearCreature", needshear);
 }
 
 void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)

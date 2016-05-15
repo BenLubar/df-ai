@@ -60,6 +60,8 @@ public:
 
     static bool feed_key(df::viewscreen *view, df::interface_key key);
     static bool feed_key(df::interface_key key);
+    static bool feed_char(df::viewscreen *view, char ch);
+    static bool feed_char(char ch);
 
     static bool is_dwarfmode_viewscreen();
 
