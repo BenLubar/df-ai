@@ -28,10 +28,12 @@
 #include "df/building_def.h"
 #include "df/building_doorst.h"
 #include "df/building_floodgatest.h"
+#include "df/building_furnacest.h"
 #include "df/building_squad_use.h"
 #include "df/building_tablest.h"
 #include "df/building_trapst.h"
 #include "df/building_wagonst.h"
+#include "df/building_workshopst.h"
 #include "df/buildings_other_id.h"
 #include "df/builtin_mats.h"
 #include "df/caste_raw.h"
@@ -1979,6 +1981,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             items.push_back(bucket);
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -1998,6 +2001,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             items.push_back(bucket);
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2015,6 +2019,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             items.push_back(bould);
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2028,6 +2033,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::setSize(bld, r->size());
             Buildings::constructWithItems(bld, mechas);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2045,6 +2051,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             items.push_back(bould);
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2069,6 +2076,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             item.push_back(bould);
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2084,6 +2092,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             item.push_back(quern);
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
         }
@@ -2120,12 +2129,33 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             item.push_back(bould);
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
             tasks.push_back(new task("checkconstruct", r));
             return true;
             // XXX else quarry?
         }
     }
     return false;
+}
+
+void Plan::init_managed_workshop(color_ostream & out, room *r, df::building *bld)
+{
+    if (auto w = virtual_cast<df::building_workshopst>(bld))
+    {
+        w->profile.max_general_orders = 10;
+    }
+    else if (auto f = virtual_cast<df::building_furnacest>(bld))
+    {
+        f->profile.max_general_orders = 10;
+    }
+    else if (auto t = virtual_cast<df::building_trapst>(bld))
+    {
+        t->profile.max_general_orders = 10;
+    }
+    else if (auto ident = virtual_identity::get(bld))
+    {
+        ai->debug(out, stl_sprintf("[ERROR] unknown workshop type %s", ident->getName()));
+    }
 }
 
 bool Plan::try_construct_stockpile(color_ostream & out, room *r)

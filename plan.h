@@ -137,6 +137,7 @@ public:
     bool try_furnish_trap(color_ostream & out, room *r, furniture *f);
 
     bool try_construct_workshop(color_ostream & out, room *r);
+    void init_managed_workshop(color_ostream & out, room *r, df::building *bld);
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activityzone(color_ostream & out, room *r);
 
