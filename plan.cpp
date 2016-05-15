@@ -2138,7 +2138,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
     return false;
 }
 
-void Plan::init_managed_workshop(color_ostream & out, room *r, df::building *bld)
+void Plan::init_managed_workshop(color_ostream & out, room *, df::building *bld)
 {
     if (auto w = virtual_cast<df::building_workshopst>(bld))
     {
