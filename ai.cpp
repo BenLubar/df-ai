@@ -122,17 +122,15 @@ bool AI::feed_key(df::interface_key key)
     return feed_key(Gui::getCurViewscreen(true), key);
 }
 
-#define CHAR_TO_KEY(ch) df::interface_key(int32_t(interface_key::STRING_A000) + int32_t(uint8_t(ch)))
 bool AI::feed_char(df::viewscreen *view, char ch)
 {
-    return feed_key(view, CHAR_TO_KEY(ch));
+    return feed_key(view, Screen::charToKey(ch));
 }
 
 bool AI::feed_char(char ch)
 {
-    return feed_key(CHAR_TO_KEY(ch));
+    return feed_key(Screen::charToKey(ch));
 }
-#undef CHAR_TO_KEY
 
 bool AI::is_dwarfmode_viewscreen()
 {
