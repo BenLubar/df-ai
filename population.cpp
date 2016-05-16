@@ -265,6 +265,7 @@ void Population::update_citizenlist(color_ostream & out)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
+        df::creature_raw *race = df::creature_raw::find(u->race);
         if (Units::isCitizen(u) && !Units::isBaby(u))
         {
             if (old.count(u->id))
@@ -283,7 +284,7 @@ void Population::update_citizenlist(color_ostream & out)
                     payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
                     payload["birth_year"] = Json::Int(u->relations.birth_year);
                     payload["birth_time"] = Json::Int(u->relations.birth_time);
-                    if (df::creature_raw *race = df::creature_raw::find(u->race))
+                    if (race)
                     {
                         payload["race"] = race->creature_id;
                         payload["caste"] = race->caste[u->caste]->caste_id;
@@ -301,7 +302,7 @@ void Population::update_citizenlist(color_ostream & out)
         {
             visitor.insert(u->id);
         }
-        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u) && u->cultural_identity != -1)
+        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u) && race && race->caste[u->caste]->flags.is_set(caste_raw_flags::CAN_LEARN))
         {
             resident.insert(u->id);
         }
@@ -1226,13 +1227,16 @@ void Population::update_pets(color_ostream & out)
         df::creature_raw *race = df::creature_raw::find(u->race);
         df::caste_raw *cst = race->caste[u->caste];
 
+        if (cst->flags.is_set(caste_raw_flags::CAN_LEARN))
+        {
+            continue;
+        }
+
         int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
 
         if (pet.count(u->id))
         {
-
-            if (!cst->flags.is_set(caste_raw_flags::CAN_LEARN) && // morally acceptable to slaughter
-                    cst->body_size_2.back() <= age && // full grown
+            if (cst->body_size_2.back() <= age && // full grown
                     u->profession != profession::TRAINED_HUNTER && // not trained
                     u->profession != profession::TRAINED_WAR && // not trained
                     u->relations.pet_owner_id == -1) // not owned
@@ -1290,6 +1294,10 @@ void Population::update_pets(color_ostream & out)
         }
 
         pet_flags flags;
+        flags.bits.milkable = 0;
+        flags.bits.shearable = 0;
+        flags.bits.hunts_vermin = 0;
+        flags.bits.grazer = 0;
 
         if (cst->flags.is_set(caste_raw_flags::MILKABLE))
         {
