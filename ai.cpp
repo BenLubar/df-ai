@@ -634,6 +634,11 @@ command_result AI::onupdate_unregister(color_ostream & out)
 
 std::string AI::status()
 {
+    if (embark->is_embarking())
+    {
+        return "(embarking)";
+    }
+
     std::ostringstream str;
     str << "Plan: " << plan->status() << "\n";
     str << "Pop: " << pop->status() << "\n";
@@ -644,6 +649,11 @@ std::string AI::status()
 
 std::string AI::report()
 {
+    if (embark->is_embarking())
+    {
+        return "";
+    }
+
     std::ostringstream str;
     str << "# Plan\n" << plan->report() << "\n";
     str << "# Population\n" << pop->report() << "\n";

@@ -130,8 +130,15 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 
     if (args.size() == 1 && args[0] == "report")
     {
+        std::string str = dwarfAI->report();
+        if (str.empty())
+        {
+            out << "cannot write report during embark" << std::endl;
+            return CR_OK;
+        }
+
         std::ofstream f("df-ai-report.log", std::ofstream::trunc);
-        AI::write_df(f, dwarfAI->report(), "\n", "\n", DF2UTF);
+        AI::write_df(f, str, "\n", "\n", DF2UTF);
         out << "report written to df-ai-report.log" << std::endl;
         return CR_OK;
     }

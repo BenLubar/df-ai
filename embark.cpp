@@ -9,6 +9,7 @@
 
 #include "df/region_map_entry.h"
 #include "df/viewscreen_choose_start_sitest.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_loadgamest.h"
 #include "df/viewscreen_new_regionst.h"
 #include "df/viewscreen_setupdwarfgamest.h"
@@ -24,10 +25,12 @@ REQUIRE_GLOBAL(world);
 
 Embark::Embark(AI *ai) :
     ai(ai),
-    selected_embark(false)
+    selected_embark(false),
+    embarking(false)
 {
     if (config.random_embark)
     {
+        embarking = true;
         events.onupdate_register_once("df-ai random_embark", [this](color_ostream & out) -> bool
                 {
                     return update(out);
@@ -344,11 +347,17 @@ bool Embark::update(color_ostream & out)
         ai->debug(out, "site is ready.");
         ai->timeout_sameview([this](color_ostream & out)
                 {
+                    embarking = false;
                     ai->debug(out, "disabling minimap.");
                     AI::feed_key(interface_key::LEAVESCREEN);
                     Gui::setMenuWidth(3, 3);
                     *standing_orders_job_cancel_announce = 0;
                 });
+        return true;
+    }
+    else if (strict_virtual_cast<df::viewscreen_dwarfmodest>(curview))
+    {
+        embarking = false;
         return true;
     }
     return false;
