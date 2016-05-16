@@ -513,7 +513,7 @@ bool AI::tag_enemies(color_ostream & out)
     {
         df::unit *u = *it;
         df::creature_raw *race = df::creature_raw::find(u->race);
-        if (Units::isAlive(u) && Units::getPosition(u).isValid() &&
+        if (Units::isAlive(u) && Units::getPosition(u).isValid() && !Units::isOwnCiv(u) &&
                 !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden &&
                 (u->flags1.bits.marauder ||
                  u->flags2.bits.underworld ||
@@ -646,7 +646,7 @@ std::string AI::report()
 {
     std::ostringstream str;
     str << "# Plan\n" << plan->report() << "\n";
-    str << "# Pop\n" << pop->report() << "\n";
+    str << "# Population\n" << pop->report() << "\n";
     str << "# Stocks\n" << stocks->report();
     return str.str();
 }

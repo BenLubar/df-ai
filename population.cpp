@@ -754,6 +754,11 @@ bool Population::military_all_squads_attack_unit(color_ostream & out, df::unit *
 
 bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u)
 {
+    if (Units::isOwnCiv(u))
+    {
+        return false;
+    }
+
     for (auto it = squad->orders.begin(); it != squad->orders.end(); it++)
     {
         if (auto so = strict_virtual_cast<df::squad_order_kill_listst>(*it))
