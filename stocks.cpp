@@ -473,19 +473,19 @@ std::string Stocks::report()
     s << "## Need\n";
     for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
     {
-        s << it->first << ": " << count.at(it->first) << " / " << num_needed(it->first) << "\n";
+        s << it->first << ": " << count[it->first] << " / " << num_needed(it->first) << "\n";
     }
     s << "\n";
     s << "## Watch\n";
     for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
     {
-        s << it->first << ": " << count.at(it->first) << " / " << it->second << "\n";
+        s << it->first << ": " << count[it->first] << " / " << it->second << "\n";
     }
     s << "\n";
     s << "## Track\n";
     for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
     {
-        s << *it << ": " << count.at(*it) << "\n";
+        s << *it << ": " << count[*it] << "\n";
     }
     s << "\n";
     s << "## Orders\n";
