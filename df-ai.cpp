@@ -3,6 +3,8 @@
 #include "ai.h"
 #include "event_manager.h"
 
+#include <fstream>
+
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 
@@ -128,7 +130,9 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 
     if (args.size() == 1 && args[0] == "report")
     {
-        AI::write_df(out, dwarfAI->report(), "\n", "\n", DF2CONSOLE);
+        std::ofstream f("df-ai-report.log", std::ofstream::trunc);
+        AI::write_df(f, dwarfAI->report(), "\n", "\n", DF2UTF);
+        out << "report written to df-ai-report.log" << std::endl;
         return CR_OK;
     }
 
