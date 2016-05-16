@@ -18,6 +18,9 @@
 namespace df
 {
     struct item;
+    struct job;
+    struct manager_order;
+    struct manager_order_template;
     struct report;
     struct unit;
     struct viewscreen;
@@ -57,6 +60,9 @@ public:
     static std::string describe_name(const df::language_name & name, bool in_english = false, bool only_last_part = false);
     static std::string describe_item(df::item *i);
     static std::string describe_unit(df::unit *u);
+    static std::string describe_job(df::job *job);
+    static std::string describe_job(df::manager_order *job);
+    static std::string describe_job(df::manager_order_template *job);
 
     static bool feed_key(df::viewscreen *view, df::interface_key key);
     static bool feed_key(df::interface_key key);
@@ -90,6 +96,7 @@ public:
     command_result onupdate_unregister(color_ostream & out);
 
     std::string status();
+    std::string report();
 
     command_result persist(color_ostream & out);
     command_result unpersist(color_ostream & out);

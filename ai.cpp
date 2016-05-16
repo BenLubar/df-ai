@@ -14,7 +14,11 @@
 
 #include "df/announcements.h"
 #include "df/creature_raw.h"
+#include "df/interface_button_building_new_jobst.h"
 #include "df/item.h"
+#include "df/job.h"
+#include "df/manager_order.h"
+#include "df/manager_order_template.h"
 #include "df/report.h"
 #include "df/viewscreen.h"
 #include "df/viewscreen_dwarfmodest.h"
@@ -106,6 +110,42 @@ std::string AI::describe_unit(df::unit *u)
         s += ", ";
     s += Units::getProfessionName(u);
     return s;
+}
+
+template<typename T>
+static std::string do_describe_job(T *job)
+{
+    std::string desc;
+    auto button = df::allocate<df::interface_button_building_new_jobst>();
+    button->reaction_name = job->reaction_name;
+    button->hist_figure_id = job->hist_figure_id;
+    button->job_type = job->job_type;
+    button->item_type = job->item_type;
+    button->item_subtype = job->item_subtype;
+    button->mat_type = job->mat_type;
+    button->mat_index = job->mat_index;
+    button->item_category = job->item_category;
+    button->material_category = job->material_category;
+
+    button->getLabel(&desc);
+    delete button;
+
+    return desc;
+}
+
+std::string AI::describe_job(df::job *job)
+{
+    return do_describe_job(job);
+}
+
+std::string AI::describe_job(df::manager_order *job)
+{
+    return do_describe_job(job);
+}
+
+std::string AI::describe_job(df::manager_order_template *job)
+{
+    return do_describe_job(job);
 }
 
 bool AI::feed_key(df::viewscreen *view, df::interface_key key)
@@ -599,6 +639,15 @@ std::string AI::status()
     str << "Pop: " << pop->status() << "\n";
     str << "Stocks: " << stocks->status() << "\n";
     str << "Camera: " << camera->status();
+    return str.str();
+}
+
+std::string AI::report()
+{
+    std::ostringstream str;
+    str << "# Plan\n" << plan->report() << "\n";
+    str << "# Pop\n" << pop->report() << "\n";
+    str << "# Stocks\n" << stocks->report();
     return str.str();
 }
 

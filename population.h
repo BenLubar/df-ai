@@ -99,6 +99,7 @@ public:
     void assign_unit_to_zone(df::unit *u, df::building_civzonest *bld);
 
     std::string status();
+    std::string report();
 };
 
 // vim: et:sw=4:ts=4

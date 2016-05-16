@@ -201,10 +201,12 @@ public:
     df::coord surface_tile_at(int16_t tx, int16_t ty, bool allow_trees = false);
 
     std::string status();
+    std::string report();
 
     void categorize_all();
 
     std::string describe_room(room *r);
+    std::string describe_furniture(furniture *f);
 
     room *find_room(room_type::type type);
     room *find_room(room_type::type type, std::function<bool(room *)> b);

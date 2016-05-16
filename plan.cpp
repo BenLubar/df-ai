@@ -4068,6 +4068,38 @@ std::string Plan::status()
     return s.str();
 }
 
+std::string Plan::report()
+{
+    std::ostringstream s;
+
+    s << "## Tasks\n";
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    {
+        if (bg_idx == it)
+        {
+            s << "--- current position ---\n";
+        }
+
+        task *t = *it;
+        s << "- " << t->type << "\n";
+        if (t->r != nullptr)
+        {
+            s << "  " << describe_room(t->r) << "\n";
+        }
+        if (t->f != nullptr)
+        {
+            s << "  " << describe_furniture(t->f) << "\n";
+        }
+    }
+    if (bg_idx == tasks.end())
+    {
+        s << "--- current position ---\n";
+    }
+    s << "\n";
+
+    return s.str();
+}
+
 void Plan::categorize_all()
 {
     room_category.clear();
@@ -4163,6 +4195,74 @@ std::string Plan::describe_room(room *r)
     }
 
     s << " (" << r->status << ")";
+
+    return s.str();
+}
+
+std::string Plan::describe_furniture(furniture *f)
+{
+    std::ostringstream s;
+
+    if (!f->item.empty())
+    {
+        s << f->item;
+
+        if (!f->subtype.empty())
+        {
+            s << " (" << f->subtype << ")";
+        }
+    }
+    else
+    {
+        s << "[no furniture]";
+    }
+
+    if (f->construction != construction_type::NONE)
+    {
+        s << " (construct " << ENUM_KEY_STR(construction_type, f->construction) << ")";
+    }
+
+    if (f->dig != tile_dig_designation::Default)
+    {
+        s << " (dig " << ENUM_KEY_STR(tile_dig_designation, f->dig) << ")";
+    }
+
+    if (!f->direction.empty())
+    {
+        s << " (" << f->direction << ")";
+    }
+
+    if (!f->way.empty())
+    {
+        s << " (" << f->way << ")";
+    }
+
+    if (f->has_users)
+    {
+        s << " (" << f->users.size() << " users)";
+    }
+
+    if (f->ignore)
+    {
+        s << " (ignored)";
+    }
+
+    if (f->makeroom)
+    {
+        s << " (room)";
+    }
+
+    if (f->internal)
+    {
+        s << " (internal)";
+    }
+
+    s << " (" << f->x << ", " << f->y << ", " << f->z << ")";
+
+    if (f->target != nullptr)
+    {
+        s << " (" << describe_furniture(f->target) << ")";
+    }
 
     return s.str();
 }

@@ -25,7 +25,6 @@
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
 #include "df/inorganic_raw.h"
-#include "df/interface_button_building_new_jobst.h"
 #include "df/item.h"
 #include "df/item_ammost.h"
 #include "df/item_animaltrapst.h"
@@ -463,6 +462,38 @@ std::string Stocks::status()
 
         s << it->first;
     }
+
+    return s.str();
+}
+
+std::string Stocks::report()
+{
+    std::ostringstream s;
+
+    s << "## Need\n";
+    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
+    {
+        s << it->first << ": " << count.at(it->first) << " / " << num_needed(it->first) << "\n";
+    }
+    s << "\n";
+    s << "## Watch\n";
+    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
+    {
+        s << it->first << ": " << count.at(it->first) << " / " << it->second << "\n";
+    }
+    s << "\n";
+    s << "## Track\n";
+    for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
+    {
+        s << *it << ": " << count.at(*it) << "\n";
+    }
+    s << "\n";
+    s << "## Orders\n";
+    for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
+    {
+        s << stl_sprintf("% 4d /% 4d ", (*it)->amount_left, (*it)->amount_total) << AI::describe_job(*it) << "\n";
+    }
+    s << "\n";
 
     return s.str();
 }
@@ -1900,7 +1931,6 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         order = furniture_order(what);
     }
-    ai->debug(out, stl_sprintf("stocks: need %d %s for %s", amount, order.c_str(), what.c_str()));
 
     if (amount > 30)
         amount = 30;
@@ -1917,7 +1947,6 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
             }
             if (c < amount && Watch.Needed.count(*i))
             {
-                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i->c_str(), i_amount, amount, order.c_str()));
                 queue_need(out, *i, amount - c);
             }
         }
@@ -1932,7 +1961,6 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         int32_t i_amount = count.at(matcat) - count_manager_orders_matcat(matcat, job);
         if (i_amount < amount && Watch.Needed.count(matcat))
         {
-            ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - i_amount, matcat.c_str(), i_amount, amount, order.c_str()));
             queue_need(out, matcat, amount - i_amount);
         }
         if (amount > i_amount)
@@ -2050,7 +2078,6 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
                 if (nw <= 0)
                     continue;
 
-                ai->debug(out, stl_sprintf("stocks: queue %d MakeWeapon %s %s", nw, world->raws.inorganics[*mi]->id.c_str(), idef->id.c_str()));
                 auto tmpl = df::allocate<df::manager_order_template>();
                 tmpl->job_type = job_type::MakeWeapon;
                 tmpl->item_type = item_type::NONE;
@@ -2137,7 +2164,6 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
             if (nw <= 0)
                 continue;
 
-            ai->debug(out, stl_sprintf("stocks: queue %d %s %s %s", nw, ENUM_KEY_STR(job_type, job).c_str(), world->raws.inorganics[*mi]->id.c_str(), idef->id.c_str()));
             auto tmpl = df::allocate<df::manager_order_template>();
             tmpl->job_type = job;
             tmpl->item_type = item_type::NONE;
@@ -2287,7 +2313,6 @@ void Stocks::queue_need_anvil(color_ostream & out)
         if (nw <= 0)
             continue;
 
-        ai->debug(out, stl_sprintf("stocks: queue %d ForgeAnvil %s", nw, world->raws.inorganics[*mi]->id.c_str()));
         auto tmpl = df::allocate<df::manager_order_template>();
         tmpl->job_type = job_type::ForgeAnvil;
         tmpl->item_type = item_type::NONE;
@@ -2340,7 +2365,6 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         if (cnt <= 0)
             continue;
 
-        ai->debug(out, stl_sprintf("stocks: queue %d %s cloth %s", cnt, ENUM_KEY_STR(job_type, job).c_str(), idef->id.c_str()));
         auto tmpl = df::allocate<df::manager_order_template>();
         tmpl->job_type = job;
         tmpl->item_type = item_type::NONE;
@@ -2580,8 +2604,6 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
         }
     }
 
-    ai->debug(out, stl_sprintf("stocks: use %d %s for %s", amount, order.c_str(), what.c_str()));
-
     if (amount > 30)
         amount = 30;
 
@@ -2595,7 +2617,6 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
                 i_amount = c;
             if (c < amount && Watch.Needed.count(*i))
             {
-                ai->debug(out, stl_sprintf("stocks: want %d more %s for %d/%d %s", amount - c, i->c_str(), i_amount, amount, order.c_str()));
                 queue_need(out, *i, amount - c);
             }
         }
@@ -2643,7 +2664,6 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
     if (amount > 30)
         amount = 30;
 
-    ai->debug(out, stl_sprintf("stocks: queue %d CutGems %s", amount, MaterialInfo(base).getToken().c_str()));
     auto tmpl = df::allocate<df::manager_order_template>();
     tmpl->job_type = job_type::CutGems;
     tmpl->item_type = item_type::NONE;
@@ -2705,7 +2725,6 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
             return;
     }
 
-    ai->debug(out, stl_sprintf("stocks: queue %d SmeltOre %s", amount, MaterialInfo(base).getToken().c_str()));
     auto tmpl = df::allocate<df::manager_order_template>();
     tmpl->job_type = job_type::SmeltOre;
     tmpl->item_type = item_type::NONE;
@@ -2767,7 +2786,6 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
         }
     }
 
-    ai->debug(out, stl_sprintf("stocks: queue %d %s", amount, reaction.c_str()));
     auto tmpl = df::allocate<df::manager_order_template>();
     tmpl->job_type = job_type::CustomReaction;
     tmpl->reaction_name = reaction;
@@ -3222,7 +3240,6 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 }
                 if (!found)
                 {
-                    ai->debug(out, stl_sprintf("stocks: queue %d %s", can_reaction, (*r)->code.c_str()));
                     auto tmpl = df::allocate<df::manager_order_template>();
                     tmpl->job_type = job_type::CustomReaction;
                     tmpl->reaction_name = (*r)->code;
@@ -3390,28 +3407,6 @@ int32_t Stocks::count_manager_orders(color_ostream &, df::manager_order_template
     return amount;
 }
 
-// template-ified library/modules/Job.cpp
-template<typename T>
-static std::string job_name(T *job)
-{
-    std::string desc;
-    auto button = df::allocate<df::interface_button_building_new_jobst>();
-    button->reaction_name = job->reaction_name;
-    button->hist_figure_id = job->hist_figure_id;
-    button->job_type = job->job_type;
-    button->item_type = job->item_type;
-    button->item_subtype = job->item_subtype;
-    button->mat_type = job->mat_type;
-    button->mat_index = job->mat_index;
-    button->item_category = job->item_category;
-    button->material_category = job->material_category;
-
-    button->getLabel(&desc);
-    delete button;
-
-    return desc;
-}
-
 void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *tmpl, int32_t amount)
 {
     amount -= count_manager_orders(out, tmpl);
@@ -3477,7 +3472,7 @@ void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *
     AI::feed_key(interface_key::SELECT);
     AI::feed_key(interface_key::LEAVESCREEN);
     AI::feed_key(interface_key::LEAVESCREEN);
-    ai->debug(out, stl_sprintf("add_manager_order(%d) %s", amount, job_name(world->manager_orders.back()).c_str()));
+    ai->debug(out, stl_sprintf("add_manager_order(%d) %s", amount, AI::describe_job(world->manager_orders.back()).c_str()));
 }
 
 std::string Stocks::furniture_order(std::string k)

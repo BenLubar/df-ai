@@ -3,6 +3,8 @@
 #include "plan.h"
 #include "stocks.h"
 
+#include <sstream>
+
 #include "modules/Gui.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
@@ -151,6 +153,11 @@ const static struct LaborInfo
         }
     }
 } labors;
+
+static int32_t days_since(int32_t year, int32_t tick)
+{
+    return (*cur_year - year) * 12 * 28 + (*cur_year_tick - tick) / 1200;
+}
 
 Population::Population(AI *ai) :
     ai(ai),
@@ -1219,7 +1226,7 @@ void Population::update_pets(color_ostream & out)
         df::creature_raw *race = df::creature_raw::find(u->race);
         df::caste_raw *cst = race->caste[u->caste];
 
-        int32_t age = (*cur_year - u->relations.birth_year) * 12 * 28 + (*cur_year_tick - u->relations.birth_time) / 1200; // days
+        int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
 
         if (pet.count(u->id))
         {
@@ -1384,6 +1391,119 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 std::string Population::status()
 {
     return stl_sprintf("%d citizen, %d military, %d pet, %d visitor, %d resident", citizen.size(), military.size(), pet.size(), visitor.size(), resident.size());
+}
+
+std::string Population::report()
+{
+    std::ostringstream s;
+
+    auto do_unit = [&s](int32_t id)
+    {
+        auto u = df::unit::find(id);
+
+        s << "- " << AI::describe_unit(u);
+
+        if (u == nullptr)
+        {
+            s << "\n";
+            return;
+        }
+
+        int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
+        s << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)\n";
+
+        if (u->job.current_job != nullptr)
+        {
+            s << "  " << AI::describe_job(u->job.current_job) << "\n";
+        }
+    };
+
+    s << "## Citizens\n";
+    for (auto it = citizen.begin(); it != citizen.end(); it++)
+    {
+        do_unit(*it);
+    }
+    s << "\n";
+    s << "## Military\n";
+    for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
+    {
+        df::squad *sq = df::squad::find(*sqid);
+
+        s << "### " << AI::describe_name(sq->name, false) << ", " << AI::describe_name(sq->name, true) << "\n";
+
+        for (auto sp = sq->positions.begin(); sp != sq->positions.end(); sp++)
+        {
+            if ((*sp)->occupant == -1)
+            {
+                s << "- (vacant)\n";
+            }
+            else
+            {
+                do_unit((*sp)->occupant);
+            }
+        }
+        s << "\n";
+
+        for (auto o = sq->orders.begin(); o != sq->orders.end(); o++)
+        {
+            std::string description;
+            (*o)->getDescription(&description);
+            s << "- " << description << "\n";
+        }
+        s << "\n";
+    }
+    s << "\n";
+    s << "## Pets\n";
+    for (auto it = pet.begin(); it != pet.end(); it++)
+    {
+        do_unit(it->first);
+
+        bool first = true;
+
+        if (it->second.bits.milkable)
+        {
+            s << "  milkable";
+            first = false;
+        }
+
+        if (it->second.bits.shearable)
+        {
+            s << (first ? "  " : ", ") << "shearable";
+            first = false;
+        }
+
+        if (it->second.bits.hunts_vermin)
+        {
+            s << (first ? "  " : ", ") << "hunts vermin";
+            first = false;
+        }
+
+        if (it->second.bits.grazer)
+        {
+            s << (first ? "  " : ", ") << "grazer";
+            first = false;
+        }
+
+        if (!first)
+        {
+            s << "\n";
+        }
+    }
+    s << "\n";
+    s << "## Visitors\n";
+    for (auto it = visitor.begin(); it != visitor.end(); it++)
+    {
+        do_unit(*it);
+    }
+    s << "\n";
+    s << "## Residents\n";
+    for (auto it = resident.begin(); it != resident.end(); it++)
+    {
+        do_unit(*it);
+    }
+    s << "\n";
+
+    return s.str();
 }
 
 // vim: et:sw=4:ts=4

@@ -86,6 +86,8 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         false,
         "ai\n"
         "  Shows the status of the AI. Use enable df-ai to enable the AI.\n"
+        "ai report\n"
+        "  Shows a more detailed status report.\n"
         "ai enable events\n"
         "  Write events in JSON format to df-ai-events.json\n"
     ));
@@ -121,6 +123,12 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
     if (args.empty())
     {
         AI::write_df(out, dwarfAI->status(), "\n", "\n", DF2CONSOLE);
+        return CR_OK;
+    }
+
+    if (args.size() == 1 && args[0] == "report")
+    {
+        AI::write_df(out, dwarfAI->report(), "\n", "\n", DF2CONSOLE);
         return CR_OK;
     }
 
