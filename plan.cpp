@@ -157,7 +157,7 @@ static bool find_item(df::items_other_id idx, df::item *&item, bool fire_safe = 
         df::item *i = *it;
         if (Stocks::is_item_free(i) &&
                 (!fire_safe || i->isTemperatureSafe(1)) &&
-                (!non_economic || !ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
+                (!non_economic || virtual_cast<df::item_boulderst>(i)->mat_type != 0 || !ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
         {
             item = i;
             return true;
@@ -174,7 +174,7 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
         df::item *i = *it;
         if (Stocks::is_item_free(i) &&
                 (!fire_safe || i->isTemperatureSafe(1)) &&
-                (!non_economic || !ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
+                (!non_economic || virtual_cast<df::item_boulderst>(i)->mat_type != 0 || !ui->economic_stone[virtual_cast<df::item_boulderst>(i)->mat_index]))
         {
             items.push_back(i);
             j++;
