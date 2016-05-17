@@ -3430,7 +3430,7 @@ void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *
     auto view = strict_virtual_cast<df::viewscreen_createquotast>(Gui::getCurViewscreen(true));
     if (!view)
     {
-        ai->debug(out, stl_sprintf("[ERROR] viewscreen when queueing manager job is %s, not viewscreen_createquotast", virtual_identity::get(Gui::getCurViewscreen(true))));
+        ai->debug(out, stl_sprintf("[ERROR] viewscreen when queueing manager job is %s, not viewscreen_createquotast", virtual_identity::get(Gui::getCurViewscreen(true))->getName()));
         return;
     }
     int32_t idx = -1;
