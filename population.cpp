@@ -1410,7 +1410,7 @@ std::string Population::report()
 {
     std::ostringstream s;
 
-    auto do_unit = [&s](int32_t id)
+    auto do_unit = [this, &s](int32_t id)
     {
         auto u = df::unit::find(id);
 
@@ -1424,6 +1424,11 @@ std::string Population::report()
 
         int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
         s << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)\n";
+
+        if (room *r = ai->plan->find_room_at(Units::getPosition(u)))
+        {
+            s << "  " << ai->plan->describe_room(r) << "\n";
+        }
 
         if (u->job.current_job != nullptr)
         {
