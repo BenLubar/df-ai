@@ -6,6 +6,7 @@
 
 #include <sstream>
 
+#include "modules/Buildings.h"
 #include "modules/Gui.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
@@ -1408,6 +1409,14 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
     {
         AI::feed_key(interface_key::CIVZONE_NEXT);
     }
+    if (Buildings::isPitPond(bld))
+    {
+        AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
+    }
+    else if (Buildings::isPenPasture(bld))
+    {
+        AI::feed_key(interface_key::CIVZONE_PEN_OPTIONS);
+    }
     if (std::find(ui_building_assign_units->begin(), ui_building_assign_units->end(), u) != ui_building_assign_units->end())
     {
         while (ui_building_assign_units->at(*ui_building_item_cursor) != u)
@@ -1416,6 +1425,7 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
         }
         AI::feed_key(interface_key::SELECT);
     }
+    AI::feed_key(interface_key::LEAVESCREEN);
     AI::feed_key(interface_key::LEAVESCREEN);
     ai->camera->ignore_pause();
 }
