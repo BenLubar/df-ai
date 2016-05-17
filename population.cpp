@@ -1444,6 +1444,7 @@ std::string Population::report()
 
         s << "### " << AI::describe_name(sq->name, false) << ", " << AI::describe_name(sq->name, true) << "\n";
 
+        s << "#### Members";
         for (auto sp = sq->positions.begin(); sp != sq->positions.end(); sp++)
         {
             if ((*sp)->occupant == -1)
@@ -1452,11 +1453,13 @@ std::string Population::report()
             }
             else
             {
-                do_unit((*sp)->occupant);
+                auto hf = df::historical_figure::find((*sp)->occupant);
+                do_unit(hf ? hf->unit_id : -1);
             }
         }
         s << "\n";
 
+        s << "#### Targets";
         for (auto o = sq->orders.begin(); o != sq->orders.end(); o++)
         {
             std::string description;
