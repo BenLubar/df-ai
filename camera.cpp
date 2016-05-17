@@ -113,7 +113,8 @@ void Camera::update(color_ostream &)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (u->flags1.bits.dead || Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
+        df::tile_designation *td = Maps::getTileDesignation(Units::getPosition(u));
+        if (u->flags1.bits.dead || !td || td->bits.hidden)
             continue;
         if (u->flags1.bits.marauder ||
                 u->flags1.bits.active_invader ||
