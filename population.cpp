@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "population.h"
+#include "camera.h"
 #include "plan.h"
 #include "stocks.h"
 
@@ -45,6 +46,7 @@
 #include "df/squad_schedule_order.h"
 #include "df/squad_uniform_spec.h"
 #include "df/ui.h"
+#include "df/ui_sidebar_menus.h"
 #include "df/uniform_category.h"
 #include "df/unit_misc_trait.h"
 #include "df/unit_skill.h"
@@ -58,6 +60,9 @@ REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
 REQUIRE_GLOBAL(ui);
+REQUIRE_GLOBAL(ui_building_assign_units);
+REQUIRE_GLOBAL(ui_building_item_cursor);
+REQUIRE_GLOBAL(ui_sidebar_menus);
 REQUIRE_GLOBAL(world);
 
 const static struct LaborInfo
@@ -1381,24 +1386,38 @@ void Population::update_pets(color_ostream & out)
 
 void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 {
-    // remove existing zone assignments
-    // TODO remove existing chains/cages ?
-    u->general_refs.erase(std::remove_if(u->general_refs.begin(), u->general_refs.end(), [u](df::general_ref *ref) -> bool
-            {
-                if (!virtual_cast<df::general_ref_building_civzone_assignedst>(ref))
-                {
-                    return false;
-                }
-                df::building_civzonest *bld = virtual_cast<df::building_civzonest>(ref->getBuilding());
-                bld->assigned_units.erase(std::remove(bld->assigned_units.begin(), bld->assigned_units.end(), u->id), bld->assigned_units.end());
-                delete ref;
-                return true;
-            }), u->general_refs.end());
+    if (auto ref = Units::getGeneralRef(u, general_ref_type::BUILDING_CIVZONE_ASSIGNED))
+    {
+        if (ref->getBuilding() == bld)
+        {
+            // already assigned to the correct zone
+            return;
+        }
+    }
 
-    df::general_ref_building_civzone_assignedst *ref = df::allocate<df::general_ref_building_civzone_assignedst>();
-    ref->building_id = bld->id;
-    u->general_refs.push_back(ref);
-    bld->assigned_units.push_back(u->id);
+    AI::feed_key(interface_key::D_CIVZONE);
+    if (ui->main.mode != ui_sidebar_mode::Zones)
+    {
+        // we probably aren't on the main dwarf fortress screen
+        return;
+    }
+    Gui::revealInDwarfmodeMap(df::coord(bld->x1 + 1, bld->y1, bld->z), true);
+    Gui::setCursorCoords(bld->x1 + 1, bld->y1, bld->z);
+    AI::feed_key(interface_key::CURSOR_LEFT);
+    while (ui_sidebar_menus->zone.selected != bld)
+    {
+        AI::feed_key(interface_key::CIVZONE_NEXT);
+    }
+    if (std::find(ui_building_assign_units->begin(), ui_building_assign_units->end(), u) != ui_building_assign_units->end())
+    {
+        while (ui_building_assign_units->at(*ui_building_item_cursor) != u)
+        {
+            AI::feed_key(interface_key::SECONDSCROLL_DOWN);
+        }
+        AI::feed_key(interface_key::SELECT);
+    }
+    AI::feed_key(interface_key::LEAVESCREEN);
+    ai->camera->ignore_pause();
 }
 
 std::string Population::status()
