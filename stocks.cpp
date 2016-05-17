@@ -3379,6 +3379,8 @@ static bool template_equals(T *a, df::manager_order_template *b)
         return false;
     if (a->item_type != b->item_type)
         return false;
+    if (a->item_subtype != b->item_subtype)
+        return false;
     if (a->mat_type != b->mat_type)
         return false;
     if (a->mat_index != b->mat_index)
