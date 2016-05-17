@@ -1466,6 +1466,10 @@ std::string Population::report()
             (*o)->getDescription(&description);
             s << "- " << description << "\n";
         }
+        if (sq->orders.empty())
+        {
+            s << "(none)\n";
+        }
         s << "\n";
     }
     s << "\n";
