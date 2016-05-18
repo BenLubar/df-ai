@@ -14,6 +14,9 @@
 #include "df/abstract_building_inn_tavernst.h"
 #include "df/abstract_building_libraryst.h"
 #include "df/abstract_building_templest.h"
+#include "df/activity_entry.h"
+#include "df/activity_event.h"
+#include "df/activity_event_participants.h"
 #include "df/building_civzonest.h"
 #include "df/building_farmplotst.h"
 #include "df/building_stockpilest.h"
@@ -1462,6 +1465,39 @@ std::string Population::report()
         if (u->job.current_job != nullptr)
         {
             s << "  " << AI::describe_job(u->job.current_job) << "\n";
+        }
+        else
+        {
+            bool any = false;
+            for (auto it = world->activities.all.begin(); it != world->activities.all.end(); it++)
+            {
+                for (auto e = (*it)->events.begin(); e != (*it)->events.end(); e++)
+                {
+                    if (auto p = (*e)->getParticipantInfo())
+                    {
+                        if (std::find(p->units.begin(), p->units.end(), u->id) != p->units.end())
+                        {
+                            std::string name;
+                            // TODO: figure out what the int parameter is
+                            (*e)->getName(0, &name);
+                            if (any)
+                            {
+                                s << " / ";
+                            }
+                            else
+                            {
+                                s << "  ";
+                                any = true;
+                            }
+                            s << name;
+                        }
+                    }
+                }
+            }
+            if (any)
+            {
+                s << "\n";
+            }
         }
     };
 
