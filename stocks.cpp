@@ -170,7 +170,6 @@ const static struct Watch
         Needed["slurry"] = 5;
         Needed["paper"] = 5;
         Needed["quire"] = 5;
-        Needed["training_axe"] = 3;
         Needed["rock_pot"] = 4;
 
         NeededPerDwarf["food"] = 100;
@@ -3519,7 +3518,6 @@ std::string Stocks::furniture_order(std::string k)
             map["goblet"] = "MakeGoblet";
             map["bookcase"] = "MakeRockBookcase";
             map["quire"] = "MakeQuire";
-            map["training_axe"] = "MakeTrainingAxe";
             map["rock_pot"] = "MakeRockPot";
         }
     } diff;
@@ -3564,15 +3562,6 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
         {
             df::item_weaponst *i = virtual_cast<df::item_weaponst>(item);
             return i && !i->subtype->flags.is_set(weapon_flags::TRAINING);
-        };
-    }
-    if (k == "training_axe")
-    {
-        int32_t subtype = manager_subtype.at(furniture_order(k));
-        return [subtype](df::item *item) -> bool
-        {
-            df::item_weaponst *i = virtual_cast<df::item_weaponst>(item);
-            return i && i->subtype->subtype == subtype;
         };
     }
 
