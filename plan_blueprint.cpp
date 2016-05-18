@@ -731,6 +731,9 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                         return false;
                     if (map_tile_intersects_room(ttt))
                         return false;
+                    df::tile_occupancy *occ = Maps::getTileOccupancy(ttt);
+                    if (occ && occ->bits.building != tile_building_occ::None)
+                        return false;
                 }
                 return true;
             });
