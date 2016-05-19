@@ -11,7 +11,7 @@
 
 REQUIRE_GLOBAL(world);
 
-const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -5;
+const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -7;
 const int16_t Plan::MaxX = 48, Plan::MaxY = 22, Plan::MaxZ = 1;
 
 const static int16_t farm_w = 3;
@@ -386,14 +386,14 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
         return res;
     ai->debug(out, "stockpile floor ready");
 
-    for (size_t i = 0; i < 2; i++)
+    for (size_t i = 0; i < 4; i++)
     {
         fort_entrance->min.z--;
         f.z--;
         res = setup_blueprint_bedrooms(out, f, fe, i);
         if (res != CR_OK)
             return res;
-        ai->debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
+        ai->debug(out, stl_sprintf("bedroom floor ready %d/4", i + 1));
     }
 
     return CR_OK;
@@ -1588,13 +1588,13 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
 
 command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, const std::vector<room *> & entr, int level)
 {
-    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), stl_sprintf("main staircase - west %s bedrooms", level == 0 ? "upper" : "lower"));
+    room *corridor_center0 = new room(f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), stl_sprintf("main staircase - west level %d bedrooms", level + 1));
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
     corridors.push_back(corridor_center0);
 
-    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), stl_sprintf("main staircase - east %s bedrooms", level == 0 ? "upper" : "lower"));
+    room *corridor_center2 = new room(f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), stl_sprintf("main staircase - east level %d bedrooms", level + 1));
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
@@ -1608,7 +1608,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
         {
             // segments of the big central horizontal corridor
             int16_t cx = f.x + dirx * (9 * dx - 4);
-            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s %s bedrooms - segment %d", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx));
+            room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s level %d bedrooms - segment %d", dirx == -1 ? "west" : "east", level + 1, dx));
             cor_x->accesspath.push_back(prev_corx);
             corridors.push_back(cor_x);
             prev_corx = cor_x;
@@ -1621,7 +1621,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                 for (int16_t dy = 1; dy <= 6; dy++)
                 {
                     int16_t cy = f.y + diry * 3 * dy;
-                    room *cor_y = new room(df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z), stl_sprintf("%s %s %s bedrooms - segment %d-%d", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy));
+                    room *cor_y = new room(df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z), stl_sprintf("%s %s level %d bedrooms - segment %d-%d", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level + 1, dx, dy));
                     cor_y->accesspath.push_back(prev_cory);
                     corridors.push_back(cor_y);
                     prev_cory = cor_y;
@@ -1639,15 +1639,15 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                         r->layout.push_back(new_door(r->min.x < cx ? 2 : -1, diry < 0 ? 1 : 0));
                         rooms.push_back(r);
                     };
-                    bedroom(new room(room_type::bedroom, "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d A", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
-                    bedroom(new room(room_type::bedroom, "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d B", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z), stl_sprintf("%s %s level %d bedrooms - room %d-%d A", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level + 1, dx, dy)));
+                    bedroom(new room(room_type::bedroom, "", df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z), stl_sprintf("%s %s level %d bedrooms - room %d-%d B", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level + 1, dx, dy)));
                 }
             }
         }
 
         // noble suites
         int16_t cx = f.x + dirx * (9 * 3 - 4 + 6);
-        room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s %s bedrooms - noble room hallway", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower"));
+        room *cor_x = new room(df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s level %d bedrooms - noble room hallway", dirx == -1 ? "west" : "east", level + 1));
         room *cor_x2 = new room(df::coord(ocx - dirx, f.y, f.z), df::coord(f.x + dirx * 3, f.y, f.z));
         cor_x->accesspath.push_back(cor_x2);
         cor_x2->accesspath.push_back(dirx < 0 ? corridor_center0 : corridor_center2);
