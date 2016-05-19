@@ -47,6 +47,8 @@ public:
 private:
     size_t update_counter;
     OnupdateCallback *onupdate_handle;
+    size_t seen_death;
+    OnupdateCallback *deathwatch_handle;
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
@@ -60,6 +62,7 @@ public:
     command_result onupdate_unregister(color_ostream & out);
 
     void update(color_ostream & out);
+    void deathwatch(color_ostream & out);
 
     void new_citizen(color_ostream & out, int32_t id);
     void del_citizen(color_ostream & out, int32_t id);

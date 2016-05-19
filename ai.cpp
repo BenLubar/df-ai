@@ -14,6 +14,8 @@
 
 #include "df/announcements.h"
 #include "df/creature_raw.h"
+#include "df/history_event.h"
+#include "df/history_event_context.h"
 #include "df/interface_button_building_new_jobst.h"
 #include "df/item.h"
 #include "df/job.h"
@@ -146,6 +148,16 @@ std::string AI::describe_job(df::manager_order *job)
 std::string AI::describe_job(df::manager_order_template *job)
 {
     return do_describe_job(job);
+}
+
+std::string AI::describe_event(df::history_event *event)
+{
+    auto context = df::allocate<df::history_event_context>();
+    // TODO: do something with the context
+    std::string str;
+    event->getSentence(&str, context, 1, 0);
+    delete context;
+    return str;
 }
 
 bool AI::feed_key(df::viewscreen *view, df::interface_key key)

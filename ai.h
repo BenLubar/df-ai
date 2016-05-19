@@ -17,6 +17,7 @@
 
 namespace df
 {
+    struct history_event;
     struct item;
     struct job;
     struct manager_order;
@@ -63,6 +64,7 @@ public:
     static std::string describe_job(df::job *job);
     static std::string describe_job(df::manager_order *job);
     static std::string describe_job(df::manager_order_template *job);
+    static std::string describe_event(df::history_event *event);
 
     static bool feed_key(df::viewscreen *view, df::interface_key key);
     static bool feed_key(df::interface_key key);

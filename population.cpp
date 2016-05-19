@@ -36,6 +36,7 @@
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
+#include "df/history_event_hist_figure_diedst.h"
 #include "df/incident.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
@@ -178,6 +179,8 @@ Population::Population(AI *ai) :
     resident(),
     update_counter(0),
     onupdate_handle(nullptr),
+    seen_death(0),
+    deathwatch_handle(nullptr),
     medic(),
     workers(),
     seen_badwork()
@@ -197,12 +200,14 @@ command_result Population::startup(color_ostream &)
 command_result Population::onupdate_register(color_ostream &)
 {
     onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
+    deathwatch_handle = events.onupdate_register("df-ai pop deathwatch", 1, 1, [this](color_ostream & out) { deathwatch(out); });
     return CR_OK;
 }
 
 command_result Population::onupdate_unregister(color_ostream &)
 {
     events.onupdate_unregister(onupdate_handle);
+    events.onupdate_unregister(deathwatch_handle);
     return CR_OK;
 }
 
@@ -248,6 +253,30 @@ void Population::update(color_ostream & out)
             }
             break;
     }
+}
+
+void Population::deathwatch(color_ostream & out)
+{
+    if (world->history.events2.size() == seen_death)
+    {
+        return;
+    }
+
+    auto it = world->history.events2.begin();
+    std::advance(it, seen_death);
+    for (; it != world->history.events2.end(); it++)
+    {
+        auto d = virtual_cast<df::history_event_hist_figure_diedst>(*it);
+
+        if (!d || d->site != ui->site_id)
+        {
+            continue;
+        }
+
+        ai->debug(out, "[RIP] " + AI::describe_event(d));
+    }
+
+    seen_death = world->history.events2.size();
 }
 
 void Population::new_citizen(color_ostream & out, int32_t id)
@@ -1590,6 +1619,19 @@ std::string Population::report()
     for (auto it = resident.begin(); it != resident.end(); it++)
     {
         do_unit(*it);
+    }
+    s << "\n";
+    s << "## Deaths\n";
+    for (auto it = world->history.events2.begin(); it != world->history.events2.end(); it++)
+    {
+        auto d = virtual_cast<df::history_event_hist_figure_diedst>(*it);
+
+        if (!d || d->site != ui->site_id)
+        {
+            continue;
+        }
+
+        s << "- " << AI::describe_event(d) << "\n";
     }
     s << "\n";
 
