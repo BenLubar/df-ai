@@ -497,7 +497,8 @@ void Population::update_military(color_ostream & out)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None)
+        std::vector<Units::NoblePosition> positions;
+        if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None && u->military.squad_id == -1 && !Units::getNoblePositions(&positions, u))
         {
             bool hasTool = false;
             for (auto it = labors.tool.begin(); it != labors.tool.end(); it++)
@@ -850,9 +851,7 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
         df::unit *u = *it;
         if (u->military.squad_id == -1)
         {
-            std::vector<Units::NoblePosition> positions;
-            Units::getNoblePositions(&positions, u);
-            int32_t score = unit_totalxp(u) + 5000 * positions.size();
+            int32_t score = unit_totalxp(u);
             if (!ns || score < best)
             {
                 ns = u;
@@ -1094,7 +1093,7 @@ void Population::update_nobles(color_ostream & out)
     {
         df::unit *u = *it;
         std::vector<Units::NoblePosition> positions;
-        if (Units::isCitizen(u) && !Units::isBaby(u) && !Units::isChild(u) && u->military.squad_id == -1 && !Units::getNoblePositions(&positions, u))
+        if (Units::isCitizen(u) && !Units::isChild(u) && !Units::isBaby(u) && u->mood == mood_type::None && u->military.squad_id == -1 && !Units::getNoblePositions(&positions, u))
         {
             cz.push_back(u);
         }
