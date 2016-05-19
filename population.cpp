@@ -1506,8 +1506,7 @@ std::string Population::report()
                         if (std::find(p->units.begin(), p->units.end(), u->id) != p->units.end())
                         {
                             std::string name;
-                            // TODO: figure out what the int parameter is
-                            (*e)->getName(0, &name);
+                            (*e)->getName(u->id, &name);
                             if (any)
                             {
                                 s << " / ";
