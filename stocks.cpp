@@ -83,7 +83,6 @@
 #include "df/unit_inventory_item.h"
 #include "df/vehicle.h"
 #include "df/viewscreen_createquotast.h"
-#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_overallstatusst.h"
 #include "df/world.h"
 
@@ -3417,7 +3416,7 @@ void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *
         return;
     }
 
-    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true)))
+    if (!ai->is_dwarfmode_viewscreen())
     {
         ai->debug(out, stl_sprintf("cannot add manager order for %s - not on main screen", tmpl->job_type == job_type::CustomReaction ? tmpl->reaction_name.c_str() : ENUM_ATTR(job_type, caption, tmpl->job_type)));
         delete tmpl;
