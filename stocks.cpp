@@ -286,7 +286,7 @@ const static struct Manager
         MatCategory["MakeBackpack"].bits.leather = 1;
         MatCategory["MakeWoodenStepladder"].bits.wood = 1;
         MatCategory["DecorateWithShell"].bits.shell = 1;
-        MatCategory["SpinThread"].bits.hair_wool = 1;
+        MatCategory["SpinThread"].bits.strand = 1;
 
         Type["ProcessPlants"] = -1;
         Type["ProcessPlantsBag"] = -1;
