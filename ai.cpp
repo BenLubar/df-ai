@@ -152,11 +152,9 @@ std::string AI::describe_job(df::manager_order_template *job)
 
 std::string AI::describe_event(df::history_event *event)
 {
-    auto context = df::allocate<df::history_event_context>();
-    // TODO: do something with the context
+    static df::history_event_context context; // never written to
     std::string str;
-    event->getSentence(&str, context, 1, 0);
-    delete context;
+    event->getSentence(&str, &context, 1, 0);
     return str;
 }
 
