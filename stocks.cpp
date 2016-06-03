@@ -225,7 +225,7 @@ const static struct Watch
 const static struct Manager
 {
     std::map<std::string, df::job_type> RealOrder;
-    std::map<std::string, std::string> MatCategory;
+    std::map<std::string, df::job_material_category> MatCategory;
     // no MatCategory => mat_type = 0 (ie generic rock), unless specified here
     std::map<std::string, int32_t> Type;
     std::map<std::string, std::string> Custom;
@@ -262,30 +262,31 @@ const static struct Manager
         RealOrder["MakeQuire"] = job_type::CustomReaction;
         RealOrder["MakeRockPot"] = job_type::MakeTool;
 
-        MatCategory["MakeRope"] = "cloth";
-        MatCategory["MakeBag"] = "cloth";
-        MatCategory["ConstructBed"] = "wood";
-        MatCategory["MakeBarrel"] = "wood";
-        MatCategory["MakeBucket"] = "wood";
-        MatCategory["ConstructBin"] = "wood";
-        MatCategory["MakeWoodenWheelbarrow"] = "wood";
-        MatCategory["MakeWoodenMinecart"] = "wood";
-        MatCategory["MakeTrainingAxe"] = "wood";
-        MatCategory["MakeTrainingShortSword"] = "wood";
-        MatCategory["MakeTrainingSpear"] = "wood";
-        MatCategory["ConstructCrutch"] = "wood";
-        MatCategory["ConstructSplint"] = "wood";
-        MatCategory["MakeCage"] = "wood";
-        MatCategory["MakeGiantCorkscrew"] = "wood";
-        MatCategory["MakePipeSection"] = "wood";
-        MatCategory["ConstructWoodenBlocks"] = "wood";
-        MatCategory["MakeBoneBolt"] = "bone";
-        MatCategory["MakeBoneCrossbow"] = "bone";
-        MatCategory["MakeQuiver"] = "leather";
-        MatCategory["MakeFlask"] = "leather";
-        MatCategory["MakeBackpack"] = "leather";
-        MatCategory["MakeWoodenStepladder"] = "wood";
-        MatCategory["DecorateWithShell"] = "shell";
+        MatCategory["MakeRope"].bits.cloth = 1;
+        MatCategory["MakeBag"].bits.cloth = 1;
+        MatCategory["ConstructBed"].bits.wood = 1;
+        MatCategory["MakeBarrel"].bits.wood = 1;
+        MatCategory["MakeBucket"].bits.wood = 1;
+        MatCategory["ConstructBin"].bits.wood = 1;
+        MatCategory["MakeWoodenWheelbarrow"].bits.wood = 1;
+        MatCategory["MakeWoodenMinecart"].bits.wood = 1;
+        MatCategory["MakeTrainingAxe"].bits.wood = 1;
+        MatCategory["MakeTrainingShortSword"].bits.wood = 1;
+        MatCategory["MakeTrainingSpear"].bits.wood = 1;
+        MatCategory["ConstructCrutch"].bits.wood = 1;
+        MatCategory["ConstructSplint"].bits.wood = 1;
+        MatCategory["MakeCage"].bits.wood = 1;
+        MatCategory["MakeGiantCorkscrew"].bits.wood = 1;
+        MatCategory["MakePipeSection"].bits.wood = 1;
+        MatCategory["ConstructWoodenBlocks"].bits.wood = 1;
+        MatCategory["MakeBoneBolt"].bits.bone = 1;
+        MatCategory["MakeBoneCrossbow"].bits.bone = 1;
+        MatCategory["MakeQuiver"].bits.leather = 1;
+        MatCategory["MakeFlask"].bits.leather = 1;
+        MatCategory["MakeBackpack"].bits.leather = 1;
+        MatCategory["MakeWoodenStepladder"].bits.wood = 1;
+        MatCategory["DecorateWithShell"].bits.shell = 1;
+        MatCategory["SpinThread"].bits.hair_wool = 1;
 
         Type["ProcessPlants"] = -1;
         Type["ProcessPlantsBag"] = -1;
@@ -1836,15 +1837,14 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         auto score = [this, &out](std::pair<const std::string, std::string> i) -> int32_t
         {
             int32_t c = count.at(i.first);
-            auto tmpl = df::allocate<df::manager_order_template>();
-            tmpl->job_type = job_type::CustomReaction;
-            tmpl->reaction_name = Manager.Custom.at(i.second);
-            tmpl->item_type = item_type::NONE;
-            tmpl->item_subtype = -1;
-            tmpl->mat_type = -1;
-            tmpl->mat_index = -1;
+            df::manager_order_template tmpl;
+            tmpl.job_type = job_type::CustomReaction;
+            tmpl.reaction_name = Manager.Custom.at(i.second);
+            tmpl.item_type = item_type::NONE;
+            tmpl.item_subtype = -1;
+            tmpl.mat_type = -1;
+            tmpl.mat_index = -1;
             c -= count_manager_orders(out, tmpl);
-            delete tmpl;
             return c;
         };
         auto max = std::max_element(orders.begin(), orders.end(), [score](std::pair<const std::string, std::string> a, std::pair<const std::string, std::string> b) -> bool { return score(a) < score(b); });
@@ -1953,13 +1953,14 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 
     if (Manager.MatCategory.count(order))
     {
-        std::string matcat = Manager.MatCategory.at(order);
+        df::job_material_category matcat = Manager.MatCategory.at(order);
         df::job_type job = job_type::NONE;
         find_enum_item(&job, order);
-        int32_t i_amount = count.at(matcat) - count_manager_orders_matcat(matcat, job);
-        if (i_amount < amount && Watch.Needed.count(matcat))
+        std::string matcat_str = bitfield_to_string(matcat);
+        int32_t i_amount = count.at(matcat_str) - count_manager_orders_matcat(matcat, job);
+        if (i_amount < amount && Watch.Needed.count(matcat_str))
         {
-            queue_need(out, matcat, amount - i_amount);
+            queue_need(out, matcat_str, amount - i_amount);
         }
         if (amount > i_amount)
         {
@@ -2076,12 +2077,12 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
                 if (nw <= 0)
                     continue;
 
-                auto tmpl = df::allocate<df::manager_order_template>();
-                tmpl->job_type = job_type::MakeWeapon;
-                tmpl->item_type = item_type::NONE;
-                tmpl->item_subtype = idef->subtype;
-                tmpl->mat_type = 0;
-                tmpl->mat_index = *mi;
+                df::manager_order_template tmpl;
+                tmpl.job_type = job_type::MakeWeapon;
+                tmpl.item_type = item_type::NONE;
+                tmpl.item_subtype = idef->subtype;
+                tmpl.mat_type = 0;
+                tmpl.mat_index = *mi;
                 add_manager_order(out, tmpl, nw);
                 bars[*mi] -= nw * need_bars;
                 coal_bars -= nw;
@@ -2162,12 +2163,12 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
             if (nw <= 0)
                 continue;
 
-            auto tmpl = df::allocate<df::manager_order_template>();
-            tmpl->job_type = job;
-            tmpl->item_type = item_type::NONE;
-            tmpl->item_subtype = idef->subtype;
-            tmpl->mat_type = 0;
-            tmpl->mat_index = *mi;
+            df::manager_order_template tmpl;
+            tmpl.job_type = job;
+            tmpl.item_type = item_type::NONE;
+            tmpl.item_subtype = idef->subtype;
+            tmpl.mat_type = 0;
+            tmpl.mat_index = *mi;
             ai->stocks->add_manager_order(out, tmpl, nw);
             bars[*mi] -= nw * need_bars;
             coal_bars -= nw;
@@ -2311,12 +2312,12 @@ void Stocks::queue_need_anvil(color_ostream & out)
         if (nw <= 0)
             continue;
 
-        auto tmpl = df::allocate<df::manager_order_template>();
-        tmpl->job_type = job_type::ForgeAnvil;
-        tmpl->item_type = item_type::NONE;
-        tmpl->item_subtype = -1;
-        tmpl->mat_type = 0;
-        tmpl->mat_index = *mi;
+        df::manager_order_template tmpl;
+        tmpl.job_type = job_type::ForgeAnvil;
+        tmpl.item_type = item_type::NONE;
+        tmpl.item_subtype = -1;
+        tmpl.mat_type = 0;
+        tmpl.mat_index = *mi;
         add_manager_order(out, tmpl, nw);
         bars[*mi] -= nw * need_bars;
         coal_bars -= nw;
@@ -2363,13 +2364,13 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         if (cnt <= 0)
             continue;
 
-        auto tmpl = df::allocate<df::manager_order_template>();
-        tmpl->job_type = job;
-        tmpl->item_type = item_type::NONE;
-        tmpl->item_subtype = idef->subtype;
-        tmpl->mat_type = -1;
-        tmpl->mat_index = -1;
-        tmpl->material_category.bits.cloth = 1;
+        df::manager_order_template tmpl;
+        tmpl.job_type = job;
+        tmpl.item_type = item_type::NONE;
+        tmpl.item_subtype = idef->subtype;
+        tmpl.mat_type = -1;
+        tmpl.mat_index = -1;
+        tmpl.material_category.bits.cloth = 1;
         ai->stocks->add_manager_order(out, tmpl, cnt);
 
         available_cloth -= cnt;
@@ -2662,12 +2663,12 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
     if (amount > 30)
         amount = 30;
 
-    auto tmpl = df::allocate<df::manager_order_template>();
-    tmpl->job_type = job_type::CutGems;
-    tmpl->item_type = item_type::NONE;
-    tmpl->item_subtype = -1;
-    tmpl->mat_type = base->getMaterial();
-    tmpl->mat_index = base->getMaterialIndex();
+    df::manager_order_template tmpl;
+    tmpl.job_type = job_type::CutGems;
+    tmpl.item_type = item_type::NONE;
+    tmpl.item_subtype = -1;
+    tmpl.mat_type = base->getMaterial();
+    tmpl.mat_index = base->getMaterialIndex();
     add_manager_order(out, tmpl, amount);
 }
 
@@ -2723,12 +2724,12 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
             return;
     }
 
-    auto tmpl = df::allocate<df::manager_order_template>();
-    tmpl->job_type = job_type::SmeltOre;
-    tmpl->item_type = item_type::NONE;
-    tmpl->item_subtype = -1;
-    tmpl->mat_type = base->getMaterial();
-    tmpl->mat_index = base->getMaterialIndex();
+    df::manager_order_template tmpl;
+    tmpl.job_type = job_type::SmeltOre;
+    tmpl.item_type = item_type::NONE;
+    tmpl.item_subtype = -1;
+    tmpl.mat_type = base->getMaterial();
+    tmpl.mat_index = base->getMaterialIndex();
     add_manager_order(out, tmpl, amount);
 }
 
@@ -2784,13 +2785,13 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
         }
     }
 
-    auto tmpl = df::allocate<df::manager_order_template>();
-    tmpl->job_type = job_type::CustomReaction;
-    tmpl->reaction_name = reaction;
-    tmpl->item_type = item_type::NONE;
-    tmpl->item_subtype = -1;
-    tmpl->mat_type = -1;
-    tmpl->mat_index = -1;
+    df::manager_order_template tmpl;
+    tmpl.job_type = job_type::CustomReaction;
+    tmpl.reaction_name = reaction;
+    tmpl.item_type = item_type::NONE;
+    tmpl.item_subtype = -1;
+    tmpl.mat_type = -1;
+    tmpl.mat_index = -1;
     add_manager_order(out, tmpl, amount);
 }
 
@@ -3238,13 +3239,13 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 }
                 if (!found)
                 {
-                    auto tmpl = df::allocate<df::manager_order_template>();
-                    tmpl->job_type = job_type::CustomReaction;
-                    tmpl->reaction_name = (*r)->code;
-                    tmpl->item_type = item_type::NONE;
-                    tmpl->item_subtype = -1;
-                    tmpl->mat_type = -1;
-                    tmpl->mat_index = -1;
+                    df::manager_order_template tmpl;
+                    tmpl.job_type = job_type::CustomReaction;
+                    tmpl.reaction_name = (*r)->code;
+                    tmpl.item_type = item_type::NONE;
+                    tmpl.item_subtype = -1;
+                    tmpl.mat_type = -1;
+                    tmpl.mat_index = -1;
                     add_manager_order(out, tmpl, can_reaction);
                 }
             }
@@ -3320,16 +3321,12 @@ void Stocks::init_manager_subtype()
 
 // return the number of current manager orders that share the same material (leather, cloth)
 // ignore inorganics, ignore order
-int32_t Stocks::count_manager_orders_matcat(std::string matcat, df::job_type order)
+int32_t Stocks::count_manager_orders_matcat(const df::job_material_category & matcat, df::job_type order)
 {
-    df::job_material_category cat;
-    if (!parseJobMaterialCategory(&cat, matcat))
-        return 0;
-
     int32_t cnt = 0;
     for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
     {
-        if ((*it)->material_category.whole == cat.whole && (*it)->job_type != order)
+        if ((*it)->material_category.whole == matcat.whole && (*it)->job_type != order)
         {
             cnt += (*it)->amount_total;
         }
@@ -3339,37 +3336,38 @@ int32_t Stocks::count_manager_orders_matcat(std::string matcat, df::job_type ord
 
 void Stocks::legacy_add_manager_order(color_ostream & out, std::string order, int32_t amount, int32_t)
 {
-    auto tmpl = df::allocate<df::manager_order_template>();
+    df::manager_order_template tmpl;
     if (Manager.RealOrder.count(order))
     {
-        tmpl->job_type = Manager.RealOrder.at(order);
+        tmpl.job_type = Manager.RealOrder.at(order);
     }
-    else if (!find_enum_item(&tmpl->job_type, order))
+    else if (!find_enum_item(&tmpl.job_type, order))
     {
         ai->debug(out, "[ERROR] no such manager order: " + order);
-        delete tmpl;
         return;
     }
 
     if (Manager.MatCategory.count(order))
-        parseJobMaterialCategory(&tmpl->material_category, Manager.MatCategory.at(order));
-    tmpl->mat_type = Manager.Type.count(order) ? Manager.Type.at(order) : Manager.MatCategory.count(order) ? -1 : 0;
-    tmpl->mat_index = -1;
-    if (tmpl->job_type == job_type::ExtractMetalStrands)
+    {
+        tmpl.material_category = Manager.MatCategory.at(order);
+    }
+    tmpl.mat_type = Manager.Type.count(order) ? Manager.Type.at(order) : Manager.MatCategory.count(order) ? -1 : 0;
+    tmpl.mat_index = -1;
+    if (tmpl.job_type == job_type::ExtractMetalStrands)
     {
         MaterialInfo candy;
         candy.findInorganic("RAW_ADAMANTINE");
-        tmpl->mat_index = candy.index;
+        tmpl.mat_index = candy.index;
     }
-    tmpl->item_type = item_type::NONE;
-    tmpl->item_subtype = manager_subtype.count(order) ? manager_subtype.at(order) : -1;
-    tmpl->reaction_name = Manager.Custom.count(order) ? Manager.Custom.at(order) : "";
+    tmpl.item_type = item_type::NONE;
+    tmpl.item_subtype = manager_subtype.count(order) ? manager_subtype.at(order) : -1;
+    tmpl.reaction_name = Manager.Custom.count(order) ? Manager.Custom.at(order) : "";
 
     add_manager_order(out, tmpl, amount);
 }
 
 template<typename T>
-static bool template_equals(T *a, df::manager_order_template *b)
+static bool template_equals(const T *a, const df::manager_order_template *b)
 {
     if (a->job_type != b->job_type)
         return false;
@@ -3392,13 +3390,13 @@ static bool template_equals(T *a, df::manager_order_template *b)
     return true;
 }
 
-int32_t Stocks::count_manager_orders(color_ostream &, df::manager_order_template *tmpl)
+int32_t Stocks::count_manager_orders(color_ostream &, const df::manager_order_template & tmpl)
 {
     int32_t amount = 0;
 
     for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
     {
-        if (template_equals<df::manager_order>(*it, tmpl))
+        if (template_equals<df::manager_order>(*it, &tmpl))
         {
             amount += (*it)->amount_left;
         }
@@ -3407,19 +3405,17 @@ int32_t Stocks::count_manager_orders(color_ostream &, df::manager_order_template
     return amount;
 }
 
-void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *tmpl, int32_t amount)
+void Stocks::add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount)
 {
     amount -= count_manager_orders(out, tmpl);
     if (amount <= 0)
     {
-        delete tmpl;
         return;
     }
 
     if (!ai->is_dwarfmode_viewscreen())
     {
-        ai->debug(out, stl_sprintf("cannot add manager order for %s - not on main screen", tmpl->job_type == job_type::CustomReaction ? tmpl->reaction_name.c_str() : ENUM_ATTR(job_type, caption, tmpl->job_type)));
-        delete tmpl;
+        ai->debug(out, stl_sprintf("cannot add manager order for %s - not on main screen", tmpl.job_type == job_type::CustomReaction ? tmpl.reaction_name.c_str() : ENUM_ATTR(job_type, caption, tmpl.job_type)));
         return;
     }
     AI::feed_key(interface_key::D_JOBLIST);
@@ -3435,17 +3431,17 @@ void Stocks::add_manager_order(color_ostream & out, df::manager_order_template *
     df::manager_order_template *target = nullptr;
     for (auto it = view->orders.begin(); it != view->orders.end(); it++)
     {
-        if (template_equals<df::manager_order_template>(*it, tmpl))
+        if (template_equals<df::manager_order_template>(*it, &tmpl))
         {
             idx = it - view->orders.begin();
             target = *it;
-            delete tmpl;
             break;
         }
     }
     if (!target)
     {
-        target = tmpl;
+        target = df::allocate<df::manager_order_template>();
+        *target = tmpl;
         idx = int32_t(view->orders.size());
         view->orders.push_back(target);
         view->all_orders.push_back(target);
@@ -3769,13 +3765,13 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
         }
     }
 
-    auto tmpl = df::allocate<df::manager_order_template>();
-    tmpl->job_type = job_type::EngraveSlab;
-    tmpl->item_type = item_type::NONE;
-    tmpl->item_subtype = -1;
-    tmpl->mat_type = 0;
-    tmpl->mat_index = -1;
-    tmpl->hist_figure_id = histfig_id;
+    df::manager_order_template tmpl;
+    tmpl.job_type = job_type::EngraveSlab;
+    tmpl.item_type = item_type::NONE;
+    tmpl.item_subtype = -1;
+    tmpl.mat_type = 0;
+    tmpl.mat_index = -1;
+    tmpl.hist_figure_id = histfig_id;
     add_manager_order(out, tmpl);
 }
 

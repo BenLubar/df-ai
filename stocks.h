@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "df/items_other_id.h"
+#include "df/job_material_category.h"
 #include "df/job_skill.h"
 #include "df/job_type.h"
 
@@ -124,10 +125,10 @@ public:
 
     void init_manager_subtype();
 
-    int32_t count_manager_orders_matcat(std::string matcat, df::job_type order = job_type::NONE);
+    int32_t count_manager_orders_matcat(const df::job_material_category & matcat, df::job_type order = job_type::NONE);
     void legacy_add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
-    int32_t count_manager_orders(color_ostream & out, df::manager_order_template *tmpl);
-    void add_manager_order(color_ostream & out, df::manager_order_template *tmpl, int32_t amount = 1);
+    int32_t count_manager_orders(color_ostream & out, const df::manager_order_template & tmpl);
+    void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount = 1);
 
     std::string furniture_order(std::string k);
     std::function<bool(df::item *)> furniture_find(std::string k);
