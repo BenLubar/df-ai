@@ -4161,6 +4161,11 @@ void Plan::categorize_all()
 
 std::string Plan::describe_room(room *r)
 {
+    if (!r)
+    {
+        return "(unknown room)";
+    }
+
     std::ostringstream s;
     s << r->type;
     if (!r->subtype.empty())
@@ -4210,6 +4215,11 @@ std::string Plan::describe_room(room *r)
 
 std::string Plan::describe_furniture(furniture *f)
 {
+    if (!f)
+    {
+        return "(unknown furniture)";
+    }
+
     std::ostringstream s;
 
     if (!f->item.empty())

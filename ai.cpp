@@ -81,6 +81,11 @@ std::string AI::timestamp(int32_t y, int32_t t)
         // split up to avoid trigraphs
         return "?????" "-" "??" "-" "??" ":" "????";
     }
+    if (t == -1)
+    {
+        // split up to avoid trigraphs
+        return stl_sprintf("%05d-" "??" "-" "??" ":" "????", y);
+    }
     return stl_sprintf("%05d-%02d-%02d:%04d",
             y,                    // year
             t / 50 / 24 / 28 + 1, // month
@@ -95,6 +100,11 @@ std::string AI::timestamp()
 
 std::string AI::describe_item(df::item *i)
 {
+    if (!i)
+    {
+        return "(unknown item)";
+    }
+
     std::string s;
     i->getItemDescription(&s, 0);
     return s;
@@ -109,7 +119,9 @@ std::string AI::describe_name(const df::language_name & name, bool in_english, b
 std::string AI::describe_unit(df::unit *u)
 {
     if (!u)
+    {
         return "(unknown unit)";
+    }
 
     std::string s = describe_name(u->name);
     if (!s.empty())
@@ -121,6 +133,11 @@ std::string AI::describe_unit(df::unit *u)
 template<typename T>
 static std::string do_describe_job(T *job)
 {
+    if (!job)
+    {
+        return "(unknown job)";
+    }
+
     std::string desc;
     auto button = df::allocate<df::interface_button_building_new_jobst>();
     button->reaction_name = job->reaction_name;
@@ -156,6 +173,11 @@ std::string AI::describe_job(df::manager_order_template *job)
 
 std::string AI::describe_event(df::history_event *event)
 {
+    if (!event)
+    {
+        return "(unknown event)";
+    }
+
     static df::history_event_context context; // never written to
     std::string str;
     event->getSentence(&str, &context, 1, 0);
