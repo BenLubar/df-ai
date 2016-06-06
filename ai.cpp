@@ -600,13 +600,19 @@ command_result AI::onupdate_register(color_ostream & out)
         last_unpause = std::time(nullptr);
         pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream &) -> bool
                 {
-                    if (std::time(nullptr) < last_unpause + 11)
-                        return false;
-                    if (*pause_state)
+                    if (!*pause_state && world->status.popups.empty())
                     {
-                        timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
-                        last_unpause = std::time(nullptr);
+                        Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
+                        return false;
                     }
+
+                    if (std::time(nullptr) < last_unpause + 11)
+                    {
+                        return false;
+                    }
+
+                    timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
+                    last_unpause = std::time(nullptr);
                     return false;
                 });
         tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7*1200, 7*1200, [this](color_ostream & out) { tag_enemies(out); });
