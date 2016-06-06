@@ -57,8 +57,7 @@ command_result Camera::onupdate_register(color_ostream &)
             {
                 if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
                 {
-                    df::viewscreen *view = Gui::getCurViewscreen(true);
-                    gps->display_frames = strict_virtual_cast<df::viewscreen_dwarfmodest>(view) ? 1 : 0;
+                    gps->display_frames = AI::is_dwarfmode_viewscreen() ? 1 : 0;
                 }
             });
     check_record_status();
