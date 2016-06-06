@@ -2166,6 +2166,9 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     if (!AI::is_dwarfmode_viewscreen())
         return false;
 
+    int32_t start_x, start_y, start_z;
+    Gui::getViewCoords(start_x, start_y, start_z);
+
     AI::feed_key(interface_key::D_STOCKPILES);
     cursor->x = r->min.x + 1;
     cursor->y = r->min.y;
@@ -2246,7 +2249,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     }
     AI::feed_key(interface_key::SELECT);
     AI::feed_key(interface_key::LEAVESCREEN);
-    ai->camera->ignore_pause();
+    ai->camera->ignore_pause(start_x, start_y, start_z);
     df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
     r->bld_id = bld->id;
     furnish_room(out, r);
@@ -2351,6 +2354,9 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     }
     else if (r->type == room_type::location)
     {
+        int32_t start_x, start_y, start_z;
+        Gui::getViewCoords(start_x, start_y, start_z);
+
         AI::feed_key(interface_key::D_CIVZONE);
 
         df::coord pos = r->pos();
@@ -2382,7 +2388,7 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
         }
         AI::feed_key(interface_key::LEAVESCREEN);
 
-        ai->camera->ignore_pause();
+        ai->camera->ignore_pause(start_x, start_y, start_z);
     }
 
     return true;
@@ -2916,6 +2922,9 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         // what Dwarf Fortress does. Shouldn't cancel any jobs, but might
         // create jobs if we just built a box.
 
+        int32_t start_x, start_y, start_z;
+        Gui::getViewCoords(start_x, start_y, start_z);
+
         AI::feed_key(interface_key::D_CIVZONE);
 
         df::coord pos = r->pos();
@@ -2927,7 +2936,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         AI::feed_key(interface_key::CIVZONE_HOSPITAL);
         AI::feed_key(interface_key::LEAVESCREEN);
 
-        ai->camera->ignore_pause();
+        ai->camera->ignore_pause(start_x, start_y, start_z);
     }
 
     if (!f->makeroom)

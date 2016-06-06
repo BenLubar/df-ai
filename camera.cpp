@@ -248,10 +248,11 @@ void Camera::update(color_ostream &)
     world->status.flags.bits.sparring = 0;
 }
 
-void Camera::ignore_pause()
+void Camera::ignore_pause(int32_t x, int32_t y, int32_t z)
 {
     if (!config.camera)
     {
+        Gui::setViewCoords(x, y, z);
         return;
     }
 

@@ -54,9 +54,13 @@ AI::AI() :
     pause_onupdate(nullptr),
     tag_enemies_onupdate(nullptr),
     seen_cvname(),
+    last_good_x(-1),
+    last_good_y(-1),
+    last_good_z(-1),
     skip_persist(false)
 {
     seen_cvname.insert("viewscreen_dwarfmodest");
+    Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
 }
 
 AI::~AI()
@@ -310,7 +314,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
             break;
         case announcement_type::DIG_CANCEL_DAMP:
         case announcement_type::DIG_CANCEL_WARM:
-            camera->ignore_pause();
+            camera->ignore_pause(last_good_x, last_good_y, last_good_z);
             debug(out, "pause: lazy miners");
             break;
         case announcement_type::BIRTH_CITIZEN:
