@@ -13,6 +13,7 @@ Config::Config() :
     random_embark(true),
     random_embark_world(""),
     debug(true),
+    write_log(true),
     record_movie(false),
     no_quit(true),
     embark_options(),
@@ -51,6 +52,10 @@ void Config::load(color_ostream & out)
             if (v.isMember("debug"))
             {
                 debug = v["debug"].asBool();
+            }
+            if (v.isMember("write_log"))
+            {
+                write_log = v["write_log"].asBool();
             }
             if (v.isMember("record_movie"))
             {
@@ -98,6 +103,7 @@ void Config::save(color_ostream & out)
     v["random_embark"] = random_embark;
     v["random_embark_world"] = random_embark_world;
     v["debug"] = debug;
+    v["write_log"] = write_log;
     v["record_movie"] = record_movie;
     v["no_quit"] = no_quit;
 

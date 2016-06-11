@@ -138,7 +138,7 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         }
 
         std::ofstream f("df-ai-report.log", std::ofstream::trunc);
-        AI::write_df(f, str, "\n", "\n", DF2UTF);
+        AI::write_df(f, str);
         out << "report written to df-ai-report.log" << std::endl;
         return CR_OK;
     }

@@ -250,7 +250,10 @@ void AI::debug(color_ostream & out, const std::string & str)
     {
         write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
     }
-    write_df(logger, ts + " " + str, "\n                 ");
+    if (config.write_log)
+    {
+        write_df(logger, ts + " " + str, "\n                 ");
+    }
 }
 
 void AI::event(const std::string & name, const Json::Value & payload)

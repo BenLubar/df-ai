@@ -16,6 +16,7 @@ struct Config
     bool random_embark;
     std::string random_embark_world;
     bool debug;
+    bool write_log;
     bool record_movie;
     bool no_quit;
     int32_t embark_options[embark_options_count];
