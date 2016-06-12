@@ -15,6 +15,7 @@ namespace df
     struct abstract_building;
     struct building;
     struct building_civzonest;
+    struct entity_position;
     struct entity_position_assignment;
     struct squad;
     struct unit;
@@ -79,8 +80,7 @@ public:
     void military_random_squad_attack_unit(color_ostream & out, df::unit *u);
     bool military_all_squads_attack_unit(color_ostream & out, df::unit *u);
     bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
-    std::string military_find_commander_pos();
-    std::string military_find_captain_pos();
+    df::entity_position *military_find_captain_pos();
 
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
@@ -90,12 +90,12 @@ public:
     bool unit_hasmilitaryduty(df::unit *u);
     int32_t unit_totalxp(df::unit *u);
 
-    static std::string positionCode(df::entity_position_responsibility responsibility);
+    static df::entity_position *position_with_responsibility(df::entity_position_responsibility responsibility);
 
     void update_nobles(color_ostream & out);
     void check_noble_appartments(color_ostream & out);
 
-    df::entity_position_assignment *assign_new_noble(color_ostream & out, std::string pos_code, df::unit *unit);
+    df::entity_position_assignment *assign_new_noble(color_ostream & out, df::entity_position *pos, df::unit *unit, int32_t squad_id = -1);
 
     void update_pets(color_ostream & out);
 

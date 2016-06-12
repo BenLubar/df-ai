@@ -818,28 +818,16 @@ bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squa
     return true;
 }
 
-std::string Population::military_find_commander_pos()
+df::entity_position *Population::military_find_captain_pos()
 {
-    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
+    for (auto it = ui->main.fortress_entity->positions.own.begin(); it != ui->main.fortress_entity->positions.own.end(); it++)
     {
-        if ((*it)->responsibilities[entity_position_responsibility::MILITARY_STRATEGY] && (*it)->flags.is_set(entity_position_raw_flags::SITE))
+        if ((*it)->flags.is_set(entity_position_flags::MILITARY_SCREEN_ONLY))
         {
-            return (*it)->code;
+            return *it;
         }
     }
-    return "";
-}
-
-std::string Population::military_find_captain_pos()
-{
-    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
-    {
-        if ((*it)->flags.is_set(entity_position_raw_flags::MILITARY_SCREEN_ONLY) && (*it)->flags.is_set(entity_position_raw_flags::SITE))
-        {
-            return (*it)->code;
-        }
-    }
-    return "";
+    return nullptr;
 }
 
 // returns an unit newly assigned to a military squad
@@ -887,11 +875,11 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
 
     if (ui->main.fortress_entity->assignments_by_type[entity_position_responsibility::MILITARY_STRATEGY].empty())
     {
-        assign_new_noble(out, military_find_commander_pos(), ns)->squad_id = squad_id;
+        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::MILITARY_STRATEGY), ns, squad_id);
     }
     else
     {
-        assign_new_noble(out, military_find_captain_pos(), ns)->squad_id = squad_id;
+        assign_new_noble(out, military_find_captain_pos(), ns, squad_id);
     }
 
     return ns;
@@ -1075,16 +1063,16 @@ int32_t Population::unit_totalxp(df::unit *u)
     return t;
 }
 
-std::string Population::positionCode(df::entity_position_responsibility responsibility)
+df::entity_position *Population::position_with_responsibility(df::entity_position_responsibility responsibility)
 {
-    for (auto it = ui->main.fortress_entity->entity_raw->positions.begin(); it != ui->main.fortress_entity->entity_raw->positions.end(); it++)
+    for (auto it = ui->main.fortress_entity->positions.own.begin(); it != ui->main.fortress_entity->positions.own.end(); it++)
     {
         if ((*it)->responsibilities[responsibility])
         {
-            return (*it)->code;
+            return *it;
         }
     }
-    return "";
+    return nullptr;
 }
 
 void Population::update_nobles(color_ostream & out)
@@ -1109,7 +1097,7 @@ void Population::update_nobles(color_ostream & out)
     {
         ai->debug(out, "assigning new manager: " + AI::describe_unit(cz.back()));
         // TODO do check population caps, ...
-        assign_new_noble(out, positionCode(entity_position_responsibility::MANAGE_PRODUCTION), cz.back());
+        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::MANAGE_PRODUCTION), cz.back());
         cz.pop_back();
     }
 
@@ -1120,7 +1108,7 @@ void Population::update_nobles(color_ostream & out)
             if (!(*it)->status.labors[unit_labor::MINE])
             {
                 ai->debug(out, "assigning new bookkeeper: " + AI::describe_unit(*it));
-                assign_new_noble(out, positionCode(entity_position_responsibility::ACCOUNTING), *it);
+                assign_new_noble(out, position_with_responsibility(entity_position_responsibility::ACCOUNTING), *it);
                 ui->bookkeeper_settings = 4;
                 cz.erase(it.base() - 1);
                 break;
@@ -1131,7 +1119,7 @@ void Population::update_nobles(color_ostream & out)
     if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
         ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
-        assign_new_noble(out, positionCode(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());
+        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());
         cz.pop_back();
     }
 
@@ -1150,7 +1138,7 @@ void Population::update_nobles(color_ostream & out)
     if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty() && !cz.empty())
     {
         ai->debug(out, "assigning new broker: " + AI::describe_unit(cz.back()));
-        assign_new_noble(out, positionCode(entity_position_responsibility::TRADE), cz.back());
+        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::TRADE), cz.back());
         cz.pop_back();
     }
 
@@ -1176,11 +1164,16 @@ void Population::check_noble_appartments(color_ostream & out)
     ai->plan->attribute_noblerooms(out, noble_ids);
 }
 
-df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::string pos_code, df::unit *unit)
+df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, df::entity_position *pos, df::unit *unit, int32_t squad_id)
 {
+    if (pos == nullptr)
+    {
+        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as unknown position");
+        return nullptr;
+    }
     if (!AI::is_dwarfmode_viewscreen())
     {
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos_code + ": not on dwarfmode viewscreen");
+        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": not on dwarfmode viewscreen");
         return nullptr;
     }
     AI::feed_key(interface_key::D_NOBLES);
@@ -1189,34 +1182,31 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
         for (auto it = view->assignments.begin(); it != view->assignments.end(); it++)
         {
             auto assign = *it;
-            if (auto pos = binsearch_in_vector(ui->main.fortress_entity->positions.own, assign->position_id))
+            if (assign != nullptr && assign->position_id == pos->id && assign->histfig == -1 && assign->squad_id == squad_id)
             {
-                if (pos->code == pos_code && assign->histfig == -1)
+                AI::feed_key(interface_key::SELECT);
+                for (auto c = view->candidates.begin(); c != view->candidates.end(); c++)
                 {
-                    AI::feed_key(interface_key::SELECT);
-                    for (auto c = view->candidates.begin(); c != view->candidates.end(); c++)
+                    if ((*c)->unit == unit)
                     {
-                        if ((*c)->unit == unit)
-                        {
-                            AI::feed_key(interface_key::SELECT);
-                            AI::feed_key(interface_key::LEAVESCREEN);
-                            return assign;
-                        }
-                        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                        AI::feed_key(interface_key::SELECT);
+                        AI::feed_key(interface_key::LEAVESCREEN);
+                        return assign;
                     }
-                    AI::feed_key(interface_key::LEAVESCREEN);
-                    AI::feed_key(interface_key::LEAVESCREEN);
-                    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos_code + ": unit is not candidate");
-                    return nullptr;
+                    AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
                 }
+                AI::feed_key(interface_key::LEAVESCREEN);
+                AI::feed_key(interface_key::LEAVESCREEN);
+                ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": unit is not candidate");
+                return nullptr;
             }
             AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
         }
         AI::feed_key(interface_key::LEAVESCREEN);
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos_code + ": could not find position");
+        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": could not find position");
         return nullptr;
     }
-    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos_code + ": nobles screen did not appear");
+    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": nobles screen did not appear");
     return nullptr;
 }
 
