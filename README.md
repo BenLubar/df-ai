@@ -1,6 +1,6 @@
 Watch Dwarf Fortress play itself!
 
-Plugin for DFHack 0.42.06-r1.
+Plugin for DFHack 0.43.03-alpha1.
 
 **[Download a pre-built version from the releases page.](https://github.com/BenLubar/df-ai/releases)**
 
