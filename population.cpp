@@ -1077,6 +1077,12 @@ df::entity_position *Population::position_with_responsibility(df::entity_positio
 
 void Population::update_nobles(color_ostream & out)
 {
+    if (!config.manage_nobles)
+    {
+        check_noble_appartments(out);
+        return;
+    }
+
     std::vector<df::unit *> cz;
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {

@@ -19,7 +19,9 @@ Config::Config() :
     embark_options(),
     world_size(1),
     camera(true),
-    fps_meter(true)
+    fps_meter(true),
+    manage_labors(true),
+    manage_nobles(true)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -89,6 +91,14 @@ void Config::load(color_ostream & out)
             {
                 fps_meter = v["fps_meter"].asBool();
             }
+            if (v.isMember("manage_labors"))
+            {
+                manage_labors = v["manage_labors"].asBool();
+            }
+            if (v.isMember("manage_nobles"))
+            {
+                manage_nobles = v["manage_nobles"].asBool();
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -117,6 +127,8 @@ void Config::save(color_ostream & out)
     v["world_size"] = Json::Int(world_size);
     v["camera"] = camera;
     v["fps_meter"] = fps_meter;
+    v["manage_labors"] = manage_labors;
+    v["manage_nobles"] = manage_nobles;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
