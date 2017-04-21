@@ -78,6 +78,7 @@
 #include "df/reaction_reagent.h"
 #include "df/reaction_reagent_itemst.h"
 #include "df/strain_type.h"
+#include "df/tile_occupancy.h"
 #include "df/ui.h"
 #include "df/unit.h"
 #include "df/unit_inventory_item.h"
@@ -700,10 +701,10 @@ void Stocks::update_plants(color_ostream &)
     grow_plants.clear();
     milk_creatures.clear();
     clay_stones.clear();
-    for (size_t i = 0; i < world->raws.plants.all.size(); i++)
+    for (int32_t i = 0; i < int32_t(world->raws.plants.all.size()); i++)
     {
         df::plant_raw *p = world->raws.plants.all[i];
-        for (size_t j = 0; j < p->material.size(); j++)
+        for (int16_t j = 0; j < int16_t(p->material.size()); j++)
         {
             df::material *m = p->material[j];
             if (has_reaction_product(m, "DRINK_MAT"))
@@ -748,10 +749,10 @@ void Stocks::update_plants(color_ostream &)
             grow_plants[i] = basic.type;
         }
     }
-    for (size_t i = 0; i < world->raws.creatures.all.size(); i++)
+    for (int32_t i = 0; i < int32_t(world->raws.creatures.all.size()); i++)
     {
         df::creature_raw *c = world->raws.creatures.all[i];
-        for (size_t j = 0; j < c->material.size(); j++)
+        for (int16_t j = 0; j < int16_t(c->material.size()); j++)
         {
             df::material *m = c->material[j];
             if (has_reaction_product(m, "CHEESE_MAT"))
@@ -761,7 +762,7 @@ void Stocks::update_plants(color_ostream &)
             }
         }
     }
-    for (size_t i = 0; i < world->raws.inorganics.size(); i++)
+    for (int32_t i = 0; i < int32_t(world->raws.inorganics.size()); i++)
     {
         if (has_reaction_product(&world->raws.inorganics[i]->material, "FIRED_MAT"))
         {
@@ -921,7 +922,7 @@ int32_t Stocks::num_needed(const std::string & key)
     int32_t amount = Watch.Needed.at(key);
     if (Watch.NeededPerDwarf.count(key))
     {
-        amount += ai->pop->citizen.size() * Watch.NeededPerDwarf.at(key) / 100;
+        amount += int32_t(ai->pop->citizen.size()) * Watch.NeededPerDwarf.at(key) / 100;
     }
 
     if (key == "coffin" && count.count("dead_dwarf") && count.count("coffin_bld"))

@@ -54,6 +54,7 @@
 #include "df/ui_sidebar_menus.h"
 #include "df/uniform_category.h"
 #include "df/unit_misc_trait.h"
+#include "df/unit_relationship_type.h"
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
@@ -321,8 +322,8 @@ void Population::update_citizenlist(color_ostream & out)
                     payload["id"] = Json::Int(u->id);
                     payload["name"] = DF2UTF(AI::describe_name(u->name, false));
                     payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
-                    payload["birth_year"] = Json::Int(u->relations.birth_year);
-                    payload["birth_time"] = Json::Int(u->relations.birth_time);
+                    payload["birth_year"] = Json::Int(u->birth_year);
+                    payload["birth_time"] = Json::Int(u->birth_time);
                     if (race)
                     {
                         payload["race"] = race->creature_id;
@@ -361,8 +362,8 @@ void Population::update_citizenlist(color_ostream & out)
             {
                 payload["name"] = DF2UTF(AI::describe_name(u->name, false));
                 payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
-                payload["birth_year"] = Json::Int(u->relations.birth_year);
-                payload["birth_time"] = Json::Int(u->relations.birth_time);
+                payload["birth_year"] = Json::Int(u->birth_year);
+                payload["birth_time"] = Json::Int(u->birth_time);
                 if (df::incident *i = df::incident::find(u->counters.death_id))
                 {
                     payload["death_year"] = Json::Int(i->event_year);
@@ -765,7 +766,7 @@ void Population::military_random_squad_attack_unit(color_ostream & out, df::unit
                 score++;
             }
         }
-        score -= sq->orders.size();
+        score -= int32_t(sq->orders.size());
 
         if (!squad || best < score)
         {
@@ -996,7 +997,7 @@ int32_t Population::military_find_free_squad()
         }
         else
         {
-            int32_t n = ui->main.fortress_entity->squads.size();
+            int32_t n = int32_t(ui->main.fortress_entity->squads.size());
             n -= n / 3 + 1;
             n *= 10;
             for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
@@ -1260,14 +1261,14 @@ void Population::update_pets(color_ostream & out)
             continue;
         }
 
-        int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
+        int32_t age = days_since(u->birth_year, u->birth_time);
 
         if (pet.count(u->id))
         {
             if (cst->body_size_2.back() <= age && // full grown
                     u->profession != profession::TRAINED_HUNTER && // not trained
                     u->profession != profession::TRAINED_WAR && // not trained
-                    u->relations.pet_owner_id == -1) // not owned
+                    u->relationship_ids[df::unit_relationship_type::Pet] == -1) // not owned
             {
 
                 if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || cst->gender == -1)
@@ -1351,7 +1352,7 @@ void Population::update_pets(color_ostream & out)
                 assign_unit_to_zone(u, bld);
                 // TODO monitor grass levels
             }
-            else if (u->relations.pet_owner_id == -1 && !cst->flags.is_set(caste_raw_flags::CAN_LEARN))
+            else if (u->relationship_ids[df::unit_relationship_type::Pet] == -1 && !cst->flags.is_set(caste_raw_flags::CAN_LEARN))
             {
                 // TODO slaughter best candidate, keep this one
                 u->flags2.bits.slaughter = 1;
@@ -1470,7 +1471,7 @@ std::string Population::report()
             return;
         }
 
-        int32_t age = days_since(u->relations.birth_year, u->relations.birth_time);
+        int32_t age = days_since(u->birth_year, u->birth_time);
         s << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)\n";
 
         if (room *r = ai->plan->find_room_at(Units::getPosition(u)))

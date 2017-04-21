@@ -22,6 +22,8 @@
 #include "modules/Units.h"
 #include "modules/World.h"
 
+#include "df/block_square_event_material_spatterst.h"
+#include "df/block_square_event_mineralst.h"
 #include "df/building_archerytargetst.h"
 #include "df/building_civzonest.h"
 #include "df/building_coffinst.h"
@@ -49,6 +51,7 @@
 #include "df/itemdef_toolst.h"
 #include "df/items_other_id.h"
 #include "df/job.h"
+#include "df/map_block.h"
 #include "df/organic_mat_category.h"
 #include "df/plant.h"
 #include "df/plant_tree_info.h"
@@ -588,7 +591,7 @@ void Plan::load(std::istream & in)
 
     for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
     {
-        const Json::Value & r = all["r"][it - all_rooms.begin()];
+        const Json::Value & r = all["r"][Json::ArrayIndex(it - all_rooms.begin())];
         (*it)->status = statuses.at(r["status"].asString());
         (*it)->type = types.at(r["type"].asString());
         (*it)->subtype = r["subtype"].asString();
@@ -656,7 +659,7 @@ void Plan::load(std::istream & in)
 
     for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
     {
-        const Json::Value & f = all["f"][it - all_furniture.begin()];
+        const Json::Value & f = all["f"][Json::ArrayIndex(it - all_furniture.begin())];
         (*it)->item = f["item"].asString();
         (*it)->subtype = f["subtype"].asString();
         find_enum_item(&(*it)->construction, f["construction"].asString());

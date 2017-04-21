@@ -6,7 +6,11 @@
 
 #include "modules/Buildings.h"
 
+#include "df/block_square_event_grassst.h"
 #include "df/building_civzonest.h"
+#include "df/map_block.h"
+#include "df/tile_designation.h"
+#include "df/tile_occupancy.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(world);
@@ -386,7 +390,7 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
         return res;
     ai->debug(out, "stockpile floor ready");
 
-    for (size_t i = 0; i < 2; i++)
+    for (int i = 0; i < 2; i++)
     {
         fort_entrance->min.z--;
         f.z--;
