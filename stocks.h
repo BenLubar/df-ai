@@ -140,5 +140,3 @@ public:
 
     bool need_more(std::string type);
 };
-
-// vim: et:sw=4:ts=4

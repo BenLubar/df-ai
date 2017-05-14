@@ -11,17 +11,17 @@ std::ostream & operator <<(std::ostream & stream, room_status::status status)
 {
     switch (status)
     {
-        case room_status::plan:
-            return stream << "plan";
-        case room_status::dig:
-            return stream << "dig";
-        case room_status::dug:
-            return stream << "dug";
-        case room_status::finished:
-            return stream << "finished";
+    case room_status::plan:
+        return stream << "plan";
+    case room_status::dig:
+        return stream << "dig";
+    case room_status::dug:
+        return stream << "dug";
+    case room_status::finished:
+        return stream << "finished";
 
-        case room_status::_room_status_count:
-            return stream << "???";
+    case room_status::_room_status_count:
+        return stream << "???";
     }
     return stream << "???";
 }
@@ -30,44 +30,44 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
 {
     switch (type)
     {
-        case room_type::corridor:
-            return stream << "corridor";
+    case room_type::corridor:
+        return stream << "corridor";
 
-        case room_type::barracks:
-            return stream << "barracks";
-        case room_type::bedroom:
-            return stream << "bedroom";
-        case room_type::cemetary:
-            return stream << "cemetary";
-        case room_type::cistern:
-            return stream << "cistern";
-        case room_type::dininghall:
-            return stream << "dininghall";
-        case room_type::farmplot:
-            return stream << "farmplot";
-        case room_type::garbagedump:
-            return stream << "garbagedump";
-        case room_type::garbagepit:
-            return stream << "garbagepit";
-        case room_type::infirmary:
-            return stream << "infirmary";
-        case room_type::location:
-            return stream << "location";
-        case room_type::nobleroom:
-            return stream << "nobleroom";
-        case room_type::outpost:
-            return stream << "outpost";
-        case room_type::pasture:
-            return stream << "pasture";
-        case room_type::pitcage:
-            return stream << "pitcage";
-        case room_type::stockpile:
-            return stream << "stockpile";
-        case room_type::workshop:
-            return stream << "workshop";
+    case room_type::barracks:
+        return stream << "barracks";
+    case room_type::bedroom:
+        return stream << "bedroom";
+    case room_type::cemetary:
+        return stream << "cemetary";
+    case room_type::cistern:
+        return stream << "cistern";
+    case room_type::dininghall:
+        return stream << "dininghall";
+    case room_type::farmplot:
+        return stream << "farmplot";
+    case room_type::garbagedump:
+        return stream << "garbagedump";
+    case room_type::garbagepit:
+        return stream << "garbagepit";
+    case room_type::infirmary:
+        return stream << "infirmary";
+    case room_type::location:
+        return stream << "location";
+    case room_type::nobleroom:
+        return stream << "nobleroom";
+    case room_type::outpost:
+        return stream << "outpost";
+    case room_type::pasture:
+        return stream << "pasture";
+    case room_type::pitcage:
+        return stream << "pitcage";
+    case room_type::stockpile:
+        return stream << "stockpile";
+    case room_type::workshop:
+        return stream << "workshop";
 
-        case room_type::_room_type_count:
-            return stream << "???";
+    case room_type::_room_type_count:
+        return stream << "???";
     }
     return stream << "???";
 }
@@ -275,14 +275,14 @@ bool room::is_dug(df::tiletype_shape_basic want) const
 
         switch (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft))))
         {
-            case tiletype_shape_basic::Wall:
+        case tiletype_shape_basic::Wall:
+            return false;
+        case tiletype_shape_basic::Open:
+            break;
+        default:
+            if (f->dig == tile_dig_designation::Channel)
                 return false;
-            case tiletype_shape_basic::Open:
-                break;
-            default:
-                if (f->dig == tile_dig_designation::Channel)
-                    return false;
-                break;
+            break;
         }
     }
     for (int16_t x = min.x; x <= max.x; x++)
@@ -333,5 +333,3 @@ df::building *room::dfbuilding() const
 {
     return df::building::find(bld_id);
 }
-
-// vim: et:sw=4:ts=4

@@ -4,7 +4,7 @@
 
 #include "df/embark_finder_option.h"
 
-const int32_t embark_options_count = df::enum_traits<df::embark_finder_option>::last_item_value + 1;
+constexpr int32_t embark_options_count = df::enum_traits<df::embark_finder_option>::last_item_value + 1;
 
 struct Config
 {

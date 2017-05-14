@@ -5,6 +5,9 @@
 
 #include <fstream>
 
+#include "DFHackVersion.h"
+#include "df-ai-git-describe.h"
+
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 
@@ -40,28 +43,28 @@ bool check_enabled(color_ostream & out)
             dwarfAI = new AI();
 
             events.onupdate_register_once("df-ai start", [](color_ostream & out) -> bool
+            {
+                df::viewscreen_dwarfmodest *view = strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true));
+                if (view)
+                {
+                    command_result res = dwarfAI->onupdate_register(out);
+                    if (res == CR_OK)
+                        res = dwarfAI->startup(out);
+                    if (res == CR_OK)
                     {
-                        df::viewscreen_dwarfmodest *view = strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true));
-                        if (view)
+                        if (*pause_state)
                         {
-                            command_result res = dwarfAI->onupdate_register(out);
-                            if (res == CR_OK)
-                                res = dwarfAI->startup(out);
-                            if (res == CR_OK)
-                            {
-                                if (*pause_state)
-                                {
-                                    AI::feed_key(view, interface_key::D_PAUSE);
-                                }
-                                return true;
-                            }
-                            dwarfAI->onupdate_unregister(out);
-                            dwarfAI->abandon(out);
-                            full_reset_requested = true;
-                            return true;
+                            AI::feed_key(view, interface_key::D_PAUSE);
                         }
-                        return false;
-                    });
+                        return true;
+                    }
+                    dwarfAI->onupdate_unregister(out);
+                    dwarfAI->abandon(out);
+                    full_reset_requested = true;
+                    return true;
+                }
+                return false;
+            });
         }
         return true;
     }
@@ -88,10 +91,14 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         false,
         "ai\n"
         "  Shows the status of the AI. Use enable df-ai to enable the AI.\n"
+        "ai version\n"
+        "  Shows information that uniquely identifies this build of df-ai.\n"
         "ai report\n"
-        "  Shows a more detailed status report.\n"
+        "  Writes a more detailed status report to df-ai-report.log\n"
         "ai enable events\n"
         "  Write events in JSON format to df-ai-events.json\n"
+        "ai disable events\n"
+        "  Stop writing events to df-ai-events.json\n"
     ));
     return CR_OK;
 }
@@ -115,6 +122,32 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
 command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 {
     CoreSuspender suspend;
+
+    if (args.size() == 1 && args[0] == "version")
+    {
+#ifdef DFHACK64
+        constexpr int bits = 64;
+#else
+        constexpr int bits = 32;
+#endif
+#ifdef WIN32
+        constexpr const char *os = "Windows";
+#elif _LINUX
+        constexpr const char *os = "Linux";
+#elif _DARWIN
+        constexpr const char *os = "Mac";
+#else
+        constexpr const char *os = "UNKNOWN";
+#endif
+        out << "Dwarf Fortress " << DF_VERSION << std::endl;
+        out << "  " << os << " " << bits << "-bit" << std::endl;
+        out << "df-ai " << DF_AI_GIT_DESCRIPTION << std::endl;
+        out << "  code " << DF_AI_GIT_COMMIT << std::endl;
+        out << "DFHack " << DFHACK_GIT_DESCRIPTION << std::endl;
+        out << "  library " << DFHACK_GIT_COMMIT << std::endl;
+        out << "  structures " << DFHACK_GIT_XML_COMMIT << std::endl;
+        return CR_OK;
+    }
 
     if (!check_enabled(out))
     {
@@ -201,5 +234,3 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
     events.onupdate(out);
     return CR_OK;
 }
-
-// vim: et:sw=4:ts=4

@@ -87,10 +87,10 @@ std::string AI::timestamp(int32_t y, int32_t t)
         return stl_sprintf("%05d-" "??" "-" "??" ":" "????", y);
     }
     return stl_sprintf("%05d-%02d-%02d:%04d",
-            y,                    // year
-            t / 50 / 24 / 28 + 1, // month
-            t / 50 / 24 % 28 + 1, // day
-            t % (24 * 50));       // time
+        y,                    // year
+        t / 50 / 24 / 28 + 1, // month
+        t / 50 / 24 % 28 + 1, // day
+        t % (24 * 50));       // time
 }
 
 std::string AI::timestamp()
@@ -319,78 +319,78 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
 
     switch (announce->type)
     {
-        case announcement_type::MEGABEAST_ARRIVAL:
-            {
-                debug(out, "pause: uh oh, megabeast...");
-                if (!tag_enemies(out))
-                {
-                    debug(out, "[ERROR] could not find megabeast");
-                }
-                break;
-            }
-        case announcement_type::BERSERK_CITIZEN:
-            debug(out, "pause: berserk");
-            break;
-        case announcement_type::UNDEAD_ATTACK:
-            debug(out, "pause: i see dead people");
-            break;
-        case announcement_type::CAVE_COLLAPSE:
-            debug(out, "pause: kevin?");
-            break;
-        case announcement_type::DIG_CANCEL_DAMP:
-        case announcement_type::DIG_CANCEL_WARM:
-            camera->ignore_pause(last_good_x, last_good_y, last_good_z);
-            debug(out, "pause: lazy miners");
-            break;
-        case announcement_type::BIRTH_CITIZEN:
-            debug(out, "pause: newborn");
-            break;
-        case announcement_type::BIRTH_ANIMAL:
-            break;
-        case announcement_type::D_MIGRANTS_ARRIVAL:
-        case announcement_type::D_MIGRANT_ARRIVAL:
-        case announcement_type::MIGRANT_ARRIVAL:
-        case announcement_type::NOBLE_ARRIVAL:
-        case announcement_type::FORT_POSITION_SUCCESSION:
-            debug(out, "pause: more minions");
-            break;
-        case announcement_type::DIPLOMAT_ARRIVAL:
-        case announcement_type::LIAISON_ARRIVAL:
-        case announcement_type::CARAVAN_ARRIVAL:
-        case announcement_type::TRADE_DIPLOMAT_ARRIVAL:
-            debug(out, "pause: visitors");
-            break;
-        case announcement_type::STRANGE_MOOD:
-        case announcement_type::MOOD_BUILDING_CLAIMED:
-        case announcement_type::ARTIFACT_BEGUN:
-        case announcement_type::MADE_ARTIFACT:
-            debug(out, "pause: mood");
-            break;
-        case announcement_type::FEATURE_DISCOVERY:
-        case announcement_type::STRUCK_DEEP_METAL:
-            debug(out, "pause: dig dig dig");
-            break;
-        case announcement_type::TRAINING_FULL_REVERSION:
-            debug(out, "pause: born to be wild");
-            break;
-        case announcement_type::NAMED_ARTIFACT:
-            debug(out, "pause: hallo");
-            break;
-        default:
-            {
-                const static std::string prefix("AMBUSH");
-                std::string type(ENUM_KEY_STR(announcement_type, announce->type));
-                if (std::mismatch(prefix.begin(), prefix.end(), type.begin()).first == prefix.end())
-                {
-                    debug(out, "pause: an ambush!");
-                }
-                else
-                {
-                    debug(out, "pause: unhandled pausing event " + type);
-                    // return;
-                }
-                break;
-            }
+    case announcement_type::MEGABEAST_ARRIVAL:
+    {
+        debug(out, "pause: uh oh, megabeast...");
+        if (!tag_enemies(out))
+        {
+            debug(out, "[ERROR] could not find megabeast");
+        }
+        break;
+    }
+    case announcement_type::BERSERK_CITIZEN:
+        debug(out, "pause: berserk");
+        break;
+    case announcement_type::UNDEAD_ATTACK:
+        debug(out, "pause: i see dead people");
+        break;
+    case announcement_type::CAVE_COLLAPSE:
+        debug(out, "pause: kevin?");
+        break;
+    case announcement_type::DIG_CANCEL_DAMP:
+    case announcement_type::DIG_CANCEL_WARM:
+        camera->ignore_pause(last_good_x, last_good_y, last_good_z);
+        debug(out, "pause: lazy miners");
+        break;
+    case announcement_type::BIRTH_CITIZEN:
+        debug(out, "pause: newborn");
+        break;
+    case announcement_type::BIRTH_ANIMAL:
+        break;
+    case announcement_type::D_MIGRANTS_ARRIVAL:
+    case announcement_type::D_MIGRANT_ARRIVAL:
+    case announcement_type::MIGRANT_ARRIVAL:
+    case announcement_type::NOBLE_ARRIVAL:
+    case announcement_type::FORT_POSITION_SUCCESSION:
+        debug(out, "pause: more minions");
+        break;
+    case announcement_type::DIPLOMAT_ARRIVAL:
+    case announcement_type::LIAISON_ARRIVAL:
+    case announcement_type::CARAVAN_ARRIVAL:
+    case announcement_type::TRADE_DIPLOMAT_ARRIVAL:
+        debug(out, "pause: visitors");
+        break;
+    case announcement_type::STRANGE_MOOD:
+    case announcement_type::MOOD_BUILDING_CLAIMED:
+    case announcement_type::ARTIFACT_BEGUN:
+    case announcement_type::MADE_ARTIFACT:
+        debug(out, "pause: mood");
+        break;
+    case announcement_type::FEATURE_DISCOVERY:
+    case announcement_type::STRUCK_DEEP_METAL:
+        debug(out, "pause: dig dig dig");
+        break;
+    case announcement_type::TRAINING_FULL_REVERSION:
+        debug(out, "pause: born to be wild");
+        break;
+    case announcement_type::NAMED_ARTIFACT:
+        debug(out, "pause: hallo");
+        break;
+    default:
+    {
+        const static std::string prefix("AMBUSH");
+        std::string type(ENUM_KEY_STR(announcement_type, announce->type));
+        if (std::mismatch(prefix.begin(), prefix.end(), type.begin()).first == prefix.end())
+        {
+            debug(out, "pause: an ambush!");
+        }
+        else
+        {
+            debug(out, "pause: unhandled pausing event " + type);
+            // return;
+        }
+        break;
+    }
     }
 
     if (announcements->flags[announce->type].bits.DO_MEGA)
@@ -409,12 +409,12 @@ void AI::statechanged(color_ostream & out, state_change_event st)
     if (st == SC_PAUSED)
     {
         auto la = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), [](df::report *a) -> bool
-                {
-                    return announcements->flags[a->type].bits.PAUSE;
-                });
+        {
+            return announcements->flags[a->type].bits.PAUSE;
+        });
         if (la != world->status.announcements.rend() &&
-                (*la)->year == *cur_year &&
-                (*la)->time == *cur_year_tick)
+            (*la)->year == *cur_year &&
+            (*la)->time == *cur_year_tick)
         {
             handle_pause_event(out, *la);
         }
@@ -443,34 +443,34 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             stripped.erase(std::remove(stripped.begin(), stripped.end(), ' '), stripped.end());
 
             if (stripped.find("I" "am" "your" "liaison" "from" "the" "Mountainhomes." "Let's" "discuss" "your" "situation.") != std::string::npos ||
-                    stripped.find("I" "look" "forward" "to" "our" "meeting" "next" "year.") != std::string::npos ||
-                    stripped.find("A" "diplomat" "has" "left" "unhappy.") != std::string::npos ||
-                    stripped.find("What" "a" "pleasant" "surprise!" "Not" "a" "single" "tree" "here" "weeps" "from" "the" "abuses" "meted" "out" "with" "such" "ease" "by" "your" "people." "Joy!" "The" "dwarves" "have" "turned" "a" "page," "not" "that" "we" "would" "make" "paper." "A" "travesty!" "Perhaps" "it" "is" "better" "said" "that" "the" "dwarves" "have" "turned" "over" "a" "new" "leaf," "and" "the" "springtime" "for" "our" "two" "races" "has" "only" "just" "begun.") != std::string::npos ||
-                    stripped.find("You" "have" "disrespected" "the" "trees" "in" "this" "area," "but" "this" "is" "what" "we" "have" "come" "to" "expect" "from" "your" "stunted" "kind." "Further" "abuse" "cannot" "be" "tolerated." "Let" "this" "be" "a" "warning" "to" "you.") != std::string::npos ||
-                    stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
-                    stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos)
+                stripped.find("I" "look" "forward" "to" "our" "meeting" "next" "year.") != std::string::npos ||
+                stripped.find("A" "diplomat" "has" "left" "unhappy.") != std::string::npos ||
+                stripped.find("What" "a" "pleasant" "surprise!" "Not" "a" "single" "tree" "here" "weeps" "from" "the" "abuses" "meted" "out" "with" "such" "ease" "by" "your" "people." "Joy!" "The" "dwarves" "have" "turned" "a" "page," "not" "that" "we" "would" "make" "paper." "A" "travesty!" "Perhaps" "it" "is" "better" "said" "that" "the" "dwarves" "have" "turned" "over" "a" "new" "leaf," "and" "the" "springtime" "for" "our" "two" "races" "has" "only" "just" "begun.") != std::string::npos ||
+                stripped.find("You" "have" "disrespected" "the" "trees" "in" "this" "area," "but" "this" "is" "what" "we" "have" "come" "to" "expect" "from" "your" "stunted" "kind." "Further" "abuse" "cannot" "be" "tolerated." "Let" "this" "be" "a" "warning" "to" "you.") != std::string::npos ||
+                stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
+                stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos)
             {
                 debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream &)
-                        {
-                            AI::feed_key(interface_key::LEAVESCREEN);
-                        });
+                {
+                    AI::feed_key(interface_key::LEAVESCREEN);
+                });
             }
             else if (stripped.find("A" "vile" "force" "of" "darkness" "has" "arrived!") != std::string::npos ||
-                    stripped.find("have" "brought" "the" "full" "forces" "of" "their" "lands" "against" "you.") != std::string::npos ||
-                    stripped.find("The" "enemy" "have" "come" "and" "are" "laying" "siege" "to" "the" "fortress.") != std::string::npos ||
-                    stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
+                stripped.find("have" "brought" "the" "full" "forces" "of" "their" "lands" "against" "you.") != std::string::npos ||
+                stripped.find("The" "enemy" "have" "come" "and" "are" "laying" "siege" "to" "the" "fortress.") != std::string::npos ||
+                stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
             {
                 debug(out, "exit siege textviewerst:" + text.str());
                 timeout_sameview([](color_ostream &)
-                        {
-                            AI::feed_key(interface_key::LEAVESCREEN);
-                            unpause();
-                        });
+                {
+                    AI::feed_key(interface_key::LEAVESCREEN);
+                    unpause();
+                });
             }
             else if (stripped.find("Your" "strength" "has" "been" "broken.") != std::string::npos ||
-                    stripped.find("Your" "settlement" "has" "crumbled" "to" "its" "end.") != std::string::npos ||
-                    stripped.find("Your" "settlement" "has" "been" "abandoned.") != std::string::npos)
+                stripped.find("Your" "settlement" "has" "crumbled" "to" "its" "end.") != std::string::npos ||
+                stripped.find("Your" "settlement" "has" "been" "abandoned.") != std::string::npos)
             {
                 debug(out, "you just lost the game:" + text.str());
                 debug(out, "Exiting AI");
@@ -496,25 +496,25 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         {
             debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream &)
-                    {
-                        AI::feed_key(interface_key::OPTION1);
-                    });
+            {
+                AI::feed_key(interface_key::OPTION1);
+            });
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
         {
             debug(out, "exit diplomat topicmeeting_takerequestsst");
             timeout_sameview([](color_ostream &)
-                    {
-                        AI::feed_key(interface_key::LEAVESCREEN);
-                    });
+            {
+                AI::feed_key(interface_key::LEAVESCREEN);
+            });
         }
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
         {
             debug(out, "exit diplomat requestagreementst");
             timeout_sameview([](color_ostream &)
-                    {
-                        AI::feed_key(interface_key::LEAVESCREEN);
-                    });
+            {
+                AI::feed_key(interface_key::LEAVESCREEN);
+            });
         }
         else if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
         {
@@ -553,19 +553,19 @@ bool AI::tag_enemies(color_ostream & out)
         df::unit *u = *it;
         df::creature_raw *race = df::creature_raw::find(u->race);
         if (Units::isAlive(u) && Units::getPosition(u).isValid() &&
-                !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
-                !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden &&
-                (u->flags1.bits.marauder ||
-                 u->flags2.bits.underworld ||
-                 u->flags2.bits.visitor_uninvited ||
-                 (race &&
-                  (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
-                   race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))))
+            !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
+            !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden &&
+            (u->flags1.bits.marauder ||
+                u->flags2.bits.underworld ||
+                u->flags2.bits.visitor_uninvited ||
+                (race &&
+                (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
+                    race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))))
         {
             if (pop->military_all_squads_attack_unit(out, u))
             {
@@ -583,25 +583,25 @@ void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)
     std::time_t timeoff = std::time(nullptr) + delay;
 
     events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [this, curscreen, timeoff, cb](color_ostream & out) -> bool
+    {
+        if (virtual_identity::get(Gui::getCurViewscreen(true)) != curscreen)
+        {
+            if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
             {
-                if (virtual_identity::get(Gui::getCurViewscreen(true)) != curscreen)
-                {
-                    if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
-                    {
-                        Screen::dismiss(view);
-                        camera->check_record_status();
-                        return false;
-                    }
-                    return true;
-                }
-
-                if (std::time(nullptr) >= timeoff)
-                {
-                    cb(out);
-                    return true;
-                }
+                Screen::dismiss(view);
+                camera->check_record_status();
                 return false;
-            });
+            }
+            return true;
+        }
+
+        if (std::time(nullptr) >= timeoff)
+        {
+            cb(out);
+            return true;
+        }
+        return false;
+    });
 }
 
 static std::time_t last_unpause;
@@ -621,37 +621,37 @@ command_result AI::onupdate_register(color_ostream & out)
         res = embark->onupdate_register(out);
     if (res == CR_OK)
     {
-        status_onupdate = events.onupdate_register("df-ai status", 3*28*1200, 3*28*1200, [this](color_ostream & out) { debug(out, status()); });
+        status_onupdate = events.onupdate_register("df-ai status", 3 * 28 * 1200, 3 * 28 * 1200, [this](color_ostream & out) { debug(out, status()); });
         last_unpause = std::time(nullptr);
         pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream &) -> bool
-                {
-                    if (!*pause_state && world->status.popups.empty())
-                    {
-                        Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
-                        return false;
-                    }
+        {
+            if (!*pause_state && world->status.popups.empty())
+            {
+                Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
+                return false;
+            }
 
-                    if (std::time(nullptr) < last_unpause + 11)
-                    {
-                        return false;
-                    }
+            if (std::time(nullptr) < last_unpause + 11)
+            {
+                return false;
+            }
 
-                    timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
-                    last_unpause = std::time(nullptr);
-                    return false;
-                });
-        tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7*1200, 7*1200, [this](color_ostream & out) { tag_enemies(out); });
+            timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
+            last_unpause = std::time(nullptr);
+            return false;
+        });
+        tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7 * 1200, 7 * 1200, [this](color_ostream & out) { tag_enemies(out); });
         events.onstatechange_register_once([this](color_ostream & out, state_change_event st) -> bool
-                {
-                    if (st == SC_WORLD_UNLOADED)
-                    {
-                        debug(out, "world unloaded, disabling self");
-                        onupdate_unregister(out);
-                        return true;
-                    }
-                    statechanged(out, st);
-                    return false;
-                });
+        {
+            if (st == SC_WORLD_UNLOADED)
+            {
+                debug(out, "world unloaded, disabling self");
+                onupdate_unregister(out);
+                return true;
+            }
+            statechanged(out, st);
+            return false;
+        });
     }
     return res;
 }
@@ -725,5 +725,3 @@ command_result AI::unpersist(color_ostream & out)
         res = plan->unpersist(out);
     return res;
 }
-
-// vim: et:sw=4:ts=4

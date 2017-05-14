@@ -151,22 +151,22 @@ command_result Plan::setup_blueprint(color_ostream & out)
         (*i)->z = surface_tile_at(fort_entrance->min.x + (*i)->x, fort_entrance->min.y + (*i)->y, true).z - fort_entrance->min.z;
     }
     fort_entrance->layout.erase(std::remove_if(fort_entrance->layout.begin(), fort_entrance->layout.end(), [this](furniture *i) -> bool
-                {
-                    df::coord t = fort_entrance->min + df::coord(i->x, i->y, i->z - 1);
-                    df::tiletype *tt = Maps::getTileType(t);
-                    if (!tt)
-                    {
-                        delete i;
-                        return true;
-                    }
-                    df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
-                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall || (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID)))
-                    {
-                        delete i;
-                        return true;
-                    }
-                    return false;
-                }), fort_entrance->layout.end());
+    {
+        df::coord t = fort_entrance->min + df::coord(i->x, i->y, i->z - 1);
+        df::tiletype *tt = Maps::getTileType(t);
+        if (!tt)
+        {
+            delete i;
+            return true;
+        }
+        df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall || (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID)))
+        {
+            delete i;
+            return true;
+        }
+        return false;
+    }), fort_entrance->layout.end());
     res = list_map_veins(out);
     if (res != CR_OK)
         return res;
@@ -194,54 +194,54 @@ command_result Plan::scan_fort_entrance(color_ostream & out)
     df::coord center = surface_tile_at(cx, cy, true);
 
     df::coord ent0 = spiral_search(center, [this](df::coord t0) -> bool
+    {
+        // test the whole map for 3x5 clear spots
+        df::coord t = surface_tile_at(t0.x, t0.y);
+        if (!t.isValid())
+            return false;
+
+        // make sure we're not too close to the edge of the map.
+        if (t.x + MinX < 0 || t.x + MaxX >= world->map.x_count ||
+            t.y + MinY < 0 || t.y + MaxY >= world->map.y_count ||
+            t.z + MinZ < 0 || t.z + MaxZ >= world->map.z_count)
+        {
+            return false;
+        }
+
+        for (int16_t _x = -1; _x <= 1; _x++)
+        {
+            for (int16_t _y = -2; _y <= 2; _y++)
             {
-                // test the whole map for 3x5 clear spots
-                df::coord t = surface_tile_at(t0.x, t0.y);
-                if (!t.isValid())
+                df::tiletype tt = *Maps::getTileType(t + df::coord(_x, _y, -1));
+                if (ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::WALL)
                     return false;
-
-                // make sure we're not too close to the edge of the map.
-                if (t.x + MinX < 0 || t.x + MaxX >= world->map.x_count ||
-                        t.y + MinY < 0 || t.y + MaxY >= world->map.y_count ||
-                        t.z + MinZ < 0 || t.z + MaxZ >= world->map.z_count)
-                {
+                df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
+                if (!allow_ice &&
+                    tm != tiletype_material::STONE &&
+                    tm != tiletype_material::MINERAL &&
+                    tm != tiletype_material::SOIL &&
+                    tm != tiletype_material::ROOT)
                     return false;
-                }
-
-                for (int16_t _x = -1; _x <= 1; _x++)
-                {
-                    for (int16_t _y = -2; _y <= 2; _y++)
-                    {
-                        df::tiletype tt = *Maps::getTileType(t + df::coord(_x, _y, -1));
-                        if (ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::WALL)
-                            return false;
-                        df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
-                        if (!allow_ice &&
-                                tm != tiletype_material::STONE &&
-                                tm != tiletype_material::MINERAL &&
-                                tm != tiletype_material::SOIL &&
-                                tm != tiletype_material::ROOT)
-                            return false;
-                        df::coord ttt = t + df::coord(_x, _y, 0);
-                        if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt)) != tiletype_shape::FLOOR)
-                            return false;
-                        df::tile_designation td = *Maps::getTileDesignation(ttt);
-                        if (td.bits.flow_size != 0 || td.bits.hidden)
-                            return false;
-                        if (Buildings::findAtTile(ttt))
-                            return false;
-                    }
-                }
-                for (int16_t _x = -3; _x <= 3; _x++)
-                {
-                    for (int16_t _y = -4; _y <= 4; _y++)
-                    {
-                        if (!surface_tile_at(t.x + _x, t.y + _y, true).isValid())
-                            return false;
-                    }
-                }
-                return true;
-            });
+                df::coord ttt = t + df::coord(_x, _y, 0);
+                if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt)) != tiletype_shape::FLOOR)
+                    return false;
+                df::tile_designation td = *Maps::getTileDesignation(ttt);
+                if (td.bits.flow_size != 0 || td.bits.hidden)
+                    return false;
+                if (Buildings::findAtTile(ttt))
+                    return false;
+            }
+        }
+        for (int16_t _x = -3; _x <= 3; _x++)
+        {
+            for (int16_t _y = -4; _y <= 4; _y++)
+            {
+                if (!surface_tile_at(t.x + _x, t.y + _y, true).isValid())
+                    return false;
+            }
+        }
+        return true;
+    });
 
     if (!ent0.isValid())
     {
@@ -309,12 +309,12 @@ command_result Plan::scan_fort_body(color_ostream & out)
             df::tiletype tt = *Maps::getTileType(t);
             df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
             if (ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::WALL ||
-                    Maps::getTileDesignation(t)->bits.water_table ||
-                    (tm != tiletype_material::STONE &&
-                     tm != tiletype_material::MINERAL &&
-                     (!allow_ice || tm != tiletype_material::FROZEN_LIQUID) &&
-                     (dz < 0 || (tm != tiletype_material::SOIL &&
-                                 tm != tiletype_material::ROOT))))
+                Maps::getTileDesignation(t)->bits.water_table ||
+                (tm != tiletype_material::STONE &&
+                    tm != tiletype_material::MINERAL &&
+                    (!allow_ice || tm != tiletype_material::FROZEN_LIQUID) &&
+                    (dz < 0 || (tm != tiletype_material::SOIL &&
+                        tm != tiletype_material::ROOT))))
                 stop = true;
         };
 
@@ -711,40 +711,40 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
     }
 
     df::coord depot_center = spiral_search(df::coord(f.x - 4, f.y, fort_entrance->max.z - 1), [this](df::coord t) -> bool
+    {
+        for (int16_t dx = -2; dx <= 2; dx++)
+        {
+            for (int16_t dy = -2; dy <= 2; dy++)
             {
-                for (int16_t dx = -2; dx <= 2; dx++)
-                {
-                    for (int16_t dy = -2; dy <= 2; dy++)
-                    {
-                        df::coord tt = t + df::coord(dx, dy, 0);
-                        if (!map_tile_in_rock(tt))
-                            return false;
-                        if (map_tile_intersects_room(tt))
-                            return false;
-                    }
-                }
-                for (int16_t dy = -1; dy <= 1; dy++)
-                {
-                    df::coord tt = t + df::coord(-3, dy, 0);
-                    if (!map_tile_in_rock(tt))
-                        return false;
-                    df::coord ttt = tt + df::coord(0, 0, 1);
-                    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt))) != tiletype_shape_basic::Floor)
-                        return false;
-                    if (map_tile_intersects_room(tt))
-                        return false;
-                    if (map_tile_intersects_room(ttt))
-                        return false;
-                    df::tile_occupancy *occ = Maps::getTileOccupancy(ttt);
-                    if (occ && occ->bits.building != tile_building_occ::None)
-                        return false;
-                }
-                return true;
-            });
+                df::coord tt = t + df::coord(dx, dy, 0);
+                if (!map_tile_in_rock(tt))
+                    return false;
+                if (map_tile_intersects_room(tt))
+                    return false;
+            }
+        }
+        for (int16_t dy = -1; dy <= 1; dy++)
+        {
+            df::coord tt = t + df::coord(-3, dy, 0);
+            if (!map_tile_in_rock(tt))
+                return false;
+            df::coord ttt = tt + df::coord(0, 0, 1);
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt))) != tiletype_shape_basic::Floor)
+                return false;
+            if (map_tile_intersects_room(tt))
+                return false;
+            if (map_tile_intersects_room(ttt))
+                return false;
+            df::tile_occupancy *occ = Maps::getTileOccupancy(ttt);
+            if (occ && occ->bits.building != tile_building_occ::None)
+                return false;
+        }
+        return true;
+    });
 
     if (depot_center.isValid())
     {
-        room *r = new room(room_type::workshop, "TradeDepot", depot_center - df::coord(2,2, 0), depot_center + df::coord(2, 2, 0));
+        room *r = new room(room_type::workshop, "TradeDepot", depot_center - df::coord(2, 2, 0), depot_center + df::coord(2, 2, 0));
         r->level = 0;
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 1));
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 2));
@@ -849,7 +849,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
     {
         room *r = *it;
         if (r->type == room_type::stockpile && r->subtype == "coins" &&
-                r->level > 1)
+            r->level > 1)
         {
             r->subtype = "furniture";
             r->level += 2;
@@ -1151,28 +1151,28 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     df::coord tile(cx + 5, cy, cz);
     r = new room(room_type::garbagedump, "", tile, tile);
     tile = spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
-            {
-                t = surface_tile_at(t.x, t.y);
-                if (!t.isValid())
-                    return false;
-                if (t.x < cx + 5 && (t.z <= cz + 2 || t.x <= f.x + 5))
-                    return false;
-                if (!map_tile_in_rock(t + df::coord(0, 0, -1)))
-                    return false;
-                if (!map_tile_in_rock(t + df::coord(2, 0, -1)))
-                    return false;
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Floor)
-                    return false;
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 0, 0)))) != tiletype_shape_basic::Floor)
-                    return false;
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(2, 0, 0)))) != tiletype_shape_basic::Floor)
-                    return false;
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 1, 0)))) == tiletype_shape_basic::Floor)
-                    return true;
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, -1, 0)))) == tiletype_shape_basic::Floor)
-                    return true;
-                return false;
-            });
+    {
+        t = surface_tile_at(t.x, t.y);
+        if (!t.isValid())
+            return false;
+        if (t.x < cx + 5 && (t.z <= cz + 2 || t.x <= f.x + 5))
+            return false;
+        if (!map_tile_in_rock(t + df::coord(0, 0, -1)))
+            return false;
+        if (!map_tile_in_rock(t + df::coord(2, 0, -1)))
+            return false;
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Floor)
+            return false;
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 0, 0)))) != tiletype_shape_basic::Floor)
+            return false;
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(2, 0, 0)))) != tiletype_shape_basic::Floor)
+            return false;
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 1, 0)))) == tiletype_shape_basic::Floor)
+            return true;
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, -1, 0)))) == tiletype_shape_basic::Floor)
+            return true;
+        return false;
+    });
     tile = surface_tile_at(tile.x, tile.y);
     r->min = r->max = tile;
     rooms.push_back(r);
@@ -1219,8 +1219,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             {
                 df::tiletype *t = Maps::getTileType(f + df::coord(10 + tx, -3 - 3 * ry - ty, 0));
                 if (!t || ENUM_ATTR(tiletype_shape, basic_shape,
-                            ENUM_ATTR(tiletype, shape, *t)) !=
-                        tiletype_shape_basic::Wall)
+                    ENUM_ATTR(tiletype, shape, *t)) !=
+                    tiletype_shape_basic::Wall)
                 {
                     stop = true;
                 }
@@ -1360,11 +1360,11 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
             src = nsrc;
             int16_t dist = distance(src, dst);
             nsrc = spiral_search(src, 1, 1, [distance, dist, dst](df::coord t) -> bool
-                    {
-                        if (distance(t, dst) > dist)
-                            return false;
-                        return Maps::getTileDesignation(t)->bits.feature_local;
-                    });
+            {
+                if (distance(t, dst) > dist)
+                    return false;
+                return Maps::getTileDesignation(t)->bits.feature_local;
+            });
         }
     };
 
@@ -1406,31 +1406,31 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     df::coord channel;
     channel.clear();
     df::coord output = spiral_search(src, [this, &channel](df::coord t) -> bool
+    {
+        if (!map_tile_in_rock(t))
+        {
+            return false;
+        }
+        channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+        {
+            return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
             {
-                if (!map_tile_in_rock(t))
+                return Maps::getTileDesignation(t)->bits.feature_local;
+            }).isValid();
+        });
+        if (!channel.isValid())
+        {
+            channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+            {
+                return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
                 {
-                    return false;
-                }
-                channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
-                        {
-                            return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
-                                    {
-                                        return Maps::getTileDesignation(t)->bits.feature_local;
-                                    }).isValid();
-                        });
-                if (!channel.isValid())
-                {
-                    channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
-                            {
-                                return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
-                                        {
-                                            return Maps::getTileDesignation(t)->bits.flow_size != 0 ||
-                                                    ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID;
-                                        }).isValid();
-                            });
-                }
-                return channel.isValid();
+                    return Maps::getTileDesignation(t)->bits.flow_size != 0 ||
+                        ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID;
+                }).isValid();
             });
+        }
+        return channel.isValid();
+    });
 
     if (channel.isValid())
     {
@@ -1482,59 +1482,59 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
 {
     size_t want = 36;
     spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 10, 5, [this, &out, &want](df::coord _t) -> bool
+    {
+        df::coord sf = surface_tile_at(_t.x, _t.y);
+        if (!sf.isValid())
+            return false;
+        size_t floortile = 0;
+        size_t grasstile = 0;
+        bool ok = true;
+        for (int16_t dx = -5; ok && dx <= 5; dx++)
+        {
+            for (int16_t dy = -5; ok && dy <= 5; dy++)
             {
-                df::coord sf = surface_tile_at(_t.x, _t.y);
-                if (!sf.isValid())
-                    return false;
-                size_t floortile = 0;
-                size_t grasstile = 0;
-                bool ok = true;
-                for (int16_t dx = -5; ok && dx <= 5; dx++)
+                df::coord t = sf + df::coord(dx, dy, 0);
+                df::tiletype *tt = Maps::getTileType(t);
+                if (!tt)
                 {
-                    for (int16_t dy = -5; ok && dy <= 5; dy++)
+                    ok = false;
+                    continue;
+                }
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE)
+                {
+                    ok = false;
+                    continue;
+                }
+                if (Maps::getTileDesignation(t)->bits.flow_size != 0)
+                {
+                    continue;
+                }
+                if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::FROZEN_LIQUID)
+                {
+                    continue;
+                }
+                floortile++;
+                auto & events = Maps::getTileBlock(t)->block_events;
+                for (auto be = events.begin(); be != events.end(); be++)
+                {
+                    df::block_square_event_grassst *grass = virtual_cast<df::block_square_event_grassst>(*be);
+                    if (grass && grass->amount[t.x & 0xf][t.y & 0xf] > 0)
                     {
-                        df::coord t = sf + df::coord(dx, dy, 0);
-                        df::tiletype *tt = Maps::getTileType(t);
-                        if (!tt)
-                        {
-                            ok = false;
-                            continue;
-                        }
-                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE)
-                        {
-                            ok = false;
-                            continue;
-                        }
-                        if (Maps::getTileDesignation(t)->bits.flow_size != 0)
-                        {
-                            continue;
-                        }
-                        if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::FROZEN_LIQUID)
-                        {
-                            continue;
-                        }
-                        floortile++;
-                        auto & events = Maps::getTileBlock(t)->block_events;
-                        for (auto be = events.begin(); be != events.end(); be++)
-                        {
-                            df::block_square_event_grassst *grass = virtual_cast<df::block_square_event_grassst>(*be);
-                            if (grass && grass->amount[t.x & 0xf][t.y & 0xf] > 0)
-                            {
-                                grasstile++;
-                                break;
-                            }
-                        }
+                        grasstile++;
+                        break;
                     }
                 }
-                if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
-                {
-                    room *r = new room(room_type::pasture, "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
-                    r->has_users = true;
-                    rooms.push_back(r);
-                    want--;
-                }
-                return want == 0;
-            });
+            }
+        }
+        if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
+        {
+            room *r = new room(room_type::pasture, "", sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
+            r->has_users = true;
+            rooms.push_back(r);
+            want--;
+        }
+        return want == 0;
+    });
     return CR_OK;
 }
 
@@ -1542,51 +1542,51 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
 command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t want)
 {
     spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 9, 3, [this, &out, &want](df::coord _t) -> bool
+    {
+        df::coord sf = surface_tile_at(_t.x, _t.y);
+        if (!sf.isValid())
+            return false;
+        df::tile_designation sd = *Maps::getTileDesignation(sf);
+        for (int16_t dx = -1; dx <= 1; dx++)
+        {
+            for (int16_t dy = -1; dy <= 1; dy++)
             {
-                df::coord sf = surface_tile_at(_t.x, _t.y);
-                if (!sf.isValid())
-                    return false;
-                df::tile_designation sd = *Maps::getTileDesignation(sf);
-                for (int16_t dx = -1; dx <= 1; dx++)
+                df::coord t = sf + df::coord(dx, dy, 0);
+                df::tile_designation *td = Maps::getTileDesignation(t);
+                if (!td)
                 {
-                    for (int16_t dy = -1; dy <= 1; dy++)
-                    {
-                        df::coord t = sf + df::coord(dx, dy, 0);
-                        df::tile_designation *td = Maps::getTileDesignation(t);
-                        if (!td)
-                        {
-                            return false;
-                        }
-                        if (sd.bits.subterranean != td->bits.subterranean)
-                        {
-                            return false;
-                        }
-                        if (!sd.bits.subterranean &&
-                                sd.bits.biome != td->bits.biome)
-                        {
-                            return false;
-                        }
-                        df::tiletype tt = *Maps::getTileType(t);
-                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Floor)
-                        {
-                            return false;
-                        }
-                        if (td->bits.flow_size != 0)
-                        {
-                            return false;
-                        }
-                        if (!farm_allowed_materials.set.count(ENUM_ATTR(tiletype, material, tt)))
-                        {
-                            return false;
-                        }
-                    }
+                    return false;
                 }
-                room *r = new room(room_type::farmplot, want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
-                r->has_users = true;
-                r->outdoor = true;
-                want--;
-                return want == 0;
-            });
+                if (sd.bits.subterranean != td->bits.subterranean)
+                {
+                    return false;
+                }
+                if (!sd.bits.subterranean &&
+                    sd.bits.biome != td->bits.biome)
+                {
+                    return false;
+                }
+                df::tiletype tt = *Maps::getTileType(t);
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Floor)
+                {
+                    return false;
+                }
+                if (td->bits.flow_size != 0)
+                {
+                    return false;
+                }
+                if (!farm_allowed_materials.set.count(ENUM_ATTR(tiletype, material, tt)))
+                {
+                    return false;
+                }
+            }
+        }
+        room *r = new room(room_type::farmplot, want % 2 == 0 ? "food" : "cloth", sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
+        r->has_users = true;
+        r->outdoor = true;
+        want--;
+        return want == 0;
+    });
     return CR_OK;
 }
 
@@ -1722,73 +1722,73 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
     setup_outdoor_gathering_zones_counters[2] = 0;
     setup_outdoor_gathering_zones_ground.clear();
     events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this](color_ostream & out) -> bool
+    {
+        int16_t & x = setup_outdoor_gathering_zones_counters[0];
+        int16_t & y = setup_outdoor_gathering_zones_counters[1];
+        int16_t & i = setup_outdoor_gathering_zones_counters[2];
+        std::map<int16_t, std::set<df::coord2d>> & ground = setup_outdoor_gathering_zones_ground;
+        if (i == 31 || x + i == world->map.x_count)
+        {
+            for (auto g = ground.begin(); g != ground.end(); g++)
             {
-                int16_t & x = setup_outdoor_gathering_zones_counters[0];
-                int16_t & y = setup_outdoor_gathering_zones_counters[1];
-                int16_t & i = setup_outdoor_gathering_zones_counters[2];
-                std::map<int16_t, std::set<df::coord2d>> & ground = setup_outdoor_gathering_zones_ground;
-                if (i == 31 || x + i == world->map.x_count)
+                df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(df::coord(x, y, g->first), building_type::Civzone, civzone_type::ActivityZone));
+                int16_t w = 31;
+                int16_t h = 31;
+                if (x + 31 > world->map.x_count)
+                    w = world->map.x_count % 31;
+                if (y + 31 > world->map.y_count)
+                    h = world->map.y_count % 31;
+                Buildings::setSize(bld, df::coord(w, h, 1));
+                delete[] bld->room.extents;
+                bld->room.extents = new uint8_t[w * h]();
+                bld->room.x = x;
+                bld->room.y = y;
+                bld->room.width = w;
+                bld->room.height = h;
+                for (int16_t dx = 0; dx < w; dx++)
                 {
-                    for (auto g = ground.begin(); g != ground.end(); g++)
+                    for (int16_t dy = 0; dy < h; dy++)
                     {
-                        df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(df::coord(x, y, g->first), building_type::Civzone, civzone_type::ActivityZone));
-                        int16_t w = 31;
-                        int16_t h = 31;
-                        if (x + 31 > world->map.x_count)
-                            w = world->map.x_count % 31;
-                        if (y + 31 > world->map.y_count)
-                            h = world->map.y_count % 31;
-                        Buildings::setSize(bld, df::coord(w, h, 1));
-                        delete[] bld->room.extents;
-                        bld->room.extents = new uint8_t[w * h]();
-                        bld->room.x = x;
-                        bld->room.y = y;
-                        bld->room.width = w;
-                        bld->room.height = h;
-                        for (int16_t dx = 0; dx < w; dx++)
-                        {
-                            for (int16_t dy = 0; dy < h; dy++)
-                            {
-                                bld->room.extents[dx + w * dy] = g->second.count(df::coord2d(dx, dy)) ? 1 : 0;
-                            }
-                        }
-                        Buildings::constructAbstract(bld);
-                        bld->is_room = true;
-
-                        bld->zone_flags.bits.active = 1;
-                        bld->zone_flags.bits.gather = 1;
-                        bld->gather_flags.bits.pick_trees = 1;
-                        bld->gather_flags.bits.pick_shrubs = 1;
-                        bld->gather_flags.bits.gather_fallen = 1;
+                        bld->room.extents[dx + w * dy] = g->second.count(df::coord2d(dx, dy)) ? 1 : 0;
                     }
-
-                    ground.clear();
-                    i = 0;
-                    x += 31;
-                    if (x >= world->map.x_count)
-                    {
-                        x = 0;
-                        y += 31;
-                        if (y >= world->map.y_count)
-                        {
-                            ai->debug(out, "plan setup_outdoor_gathering_zones finished");
-                            return true;
-                        }
-                    }
-                    return false;
                 }
+                Buildings::constructAbstract(bld);
+                bld->is_room = true;
 
-                int16_t tx = x + i;
-                for (int16_t ty = y; ty < y + 31 && ty < world->map.y_count; ty++)
+                bld->zone_flags.bits.active = 1;
+                bld->zone_flags.bits.gather = 1;
+                bld->gather_flags.bits.pick_trees = 1;
+                bld->gather_flags.bits.pick_shrubs = 1;
+                bld->gather_flags.bits.gather_fallen = 1;
+            }
+
+            ground.clear();
+            i = 0;
+            x += 31;
+            if (x >= world->map.x_count)
+            {
+                x = 0;
+                y += 31;
+                if (y >= world->map.y_count)
                 {
-                    df::coord t = surface_tile_at(tx, ty, true);
-                    if (!t.isValid())
-                        continue;
-                    ground[t.z].insert(df::coord2d(tx % 31, ty % 31));
+                    ai->debug(out, "plan setup_outdoor_gathering_zones finished");
+                    return true;
                 }
-                i++;
-                return false;
-            });
+            }
+            return false;
+        }
+
+        int16_t tx = x + i;
+        for (int16_t ty = y; ty < y + 31 && ty < world->map.y_count; ty++)
+        {
+            df::coord t = surface_tile_at(tx, ty, true);
+            if (!t.isValid())
+                continue;
+            ground[t.z].insert(df::coord2d(tx % 31, ty % 31));
+        }
+        i++;
+        return false;
+    });
 
     return CR_OK;
 }
@@ -1815,9 +1815,9 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
                     continue;
                 // find a floor next to the wall
                 target = spiral_search(t, 2, 2, [this](df::coord _t) -> bool
-                        {
-                            return map_tile_cavernfloor(_t);
-                        });
+                {
+                    return map_tile_cavernfloor(_t);
+                });
                 if (target.isValid())
                     wall = t;
             }
@@ -1897,34 +1897,34 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, df::coord
         df::tiletype_material tm = ENUM_ATTR(tiletype, material, tt);
         df::tile_designation td = *Maps::getTileDesignation(cor->max);
         if ((sb == tiletype_shape_basic::Ramp ||
-                    sb == tiletype_shape_basic::Floor) &&
-                tm != tiletype_material::TREE &&
-                td.bits.flow_size == 0 &&
-                !td.bits.hidden)
+            sb == tiletype_shape_basic::Floor) &&
+            tm != tiletype_material::TREE &&
+            td.bits.flow_size == 0 &&
+            !td.bits.hidden)
         {
             break;
         }
 
         df::coord out2 = spiral_search(cor->max, [this](df::coord t) -> bool
-                {
-                    while (map_tile_in_rock(t))
-                    {
-                        t.z++;
-                    }
+        {
+            while (map_tile_in_rock(t))
+            {
+                t.z++;
+            }
 
-                    df::tiletype *tt = Maps::getTileType(t);
-                    if (!tt)
-                        return false;
+            df::tiletype *tt = Maps::getTileType(t);
+            if (!tt)
+                return false;
 
-                    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt));
-                    df::tile_designation td = *Maps::getTileDesignation(t);
+            df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt));
+            df::tile_designation td = *Maps::getTileDesignation(t);
 
-                    return (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Floor) &&
-                            ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE &&
-                            td.bits.flow_size == 0 &&
-                            !td.bits.hidden &&
-                            !map_tile_intersects_room(t);
-                });
+            return (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Floor) &&
+                ENUM_ATTR(tiletype, material, *tt) != tiletype_material::TREE &&
+                td.bits.flow_size == 0 &&
+                !td.bits.hidden &&
+                !map_tile_intersects_room(t);
+        });
 
         if (!out2.isValid())
         {

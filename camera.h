@@ -26,5 +26,3 @@ public:
     void ignore_pause(int32_t x, int32_t y, int32_t z);
     std::string status();
 };
-
-// vim: et:sw=4:ts=4

@@ -54,12 +54,12 @@ command_result Camera::onupdate_register(color_ostream &)
     }
     onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
     onstatechange_handle = events.onstatechange_register([this](color_ostream &, state_change_event mode)
-            {
-                if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
-                {
-                    gps->display_frames = AI::is_dwarfmode_viewscreen() ? 1 : 0;
-                }
-            });
+    {
+        if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
+        {
+            gps->display_frames = AI::is_dwarfmode_viewscreen() ? 1 : 0;
+        }
+    });
     check_record_status();
     return CR_OK;
 }
@@ -116,17 +116,17 @@ void Camera::update(color_ostream &)
         if (u->flags1.bits.dead || !td || td->bits.hidden)
             continue;
         if (u->flags1.bits.marauder ||
-                u->flags1.bits.active_invader ||
-                u->flags2.bits.visitor_uninvited ||
-                !u->status.attacker_ids.empty() ||
-                std::find_if(u->syndromes.active.begin(), u->syndromes.active.end(), [](df::unit_syndrome *us) -> bool
-                    {
-                        auto & s = df::syndrome::find(us->type)->ce;
-                        return std::find_if(s.begin(), s.end(), [](df::creature_interaction_effect *ce) -> bool
-                                {
-                                    return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
-                                }) != s.end();
-                    }) != u->syndromes.active.end())
+            u->flags1.bits.active_invader ||
+            u->flags2.bits.visitor_uninvited ||
+            !u->status.attacker_ids.empty() ||
+            std::find_if(u->syndromes.active.begin(), u->syndromes.active.end(), [](df::unit_syndrome *us) -> bool
+        {
+            auto & s = df::syndrome::find(us->type)->ce;
+            return std::find_if(s.begin(), s.end(), [](df::creature_interaction_effect *ce) -> bool
+            {
+                return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
+            }) != s.end();
+        }) != u->syndromes.active.end())
         {
             targets1.push_back(u);
         }
@@ -151,38 +151,38 @@ void Camera::update(color_ostream &)
         }
         switch (ENUM_ATTR(job_type, type, u->job.current_job->job_type))
         {
-            case job_type_class::Misc:
-                return -20;
-            case job_type_class::Digging:
-                return -50;
-            case job_type_class::Building:
-                return -20;
-            case job_type_class::Hauling:
-                return -30;
-            case job_type_class::LifeSupport:
-                return -10;
-            case job_type_class::TidyUp:
-                return -20;
-            case job_type_class::Leisure:
-                return -20;
-            case job_type_class::Gathering:
-                return -30;
-            case job_type_class::Manufacture:
-                return -10;
-            case job_type_class::Improvement:
-                return -10;
-            case job_type_class::Crime:
-                return -50;
-            case job_type_class::LawEnforcement:
-                return -30;
-            case job_type_class::StrangeMood:
-                return -20;
-            case job_type_class::UnitHandling:
-                return -30;
-            case job_type_class::SiegeWeapon:
-                return -50;
-            case job_type_class::Medicine:
-                return -50;
+        case job_type_class::Misc:
+            return -20;
+        case job_type_class::Digging:
+            return -50;
+        case job_type_class::Building:
+            return -20;
+        case job_type_class::Hauling:
+            return -30;
+        case job_type_class::LifeSupport:
+            return -10;
+        case job_type_class::TidyUp:
+            return -20;
+        case job_type_class::Leisure:
+            return -20;
+        case job_type_class::Gathering:
+            return -30;
+        case job_type_class::Manufacture:
+            return -10;
+        case job_type_class::Improvement:
+            return -10;
+        case job_type_class::Crime:
+            return -50;
+        case job_type_class::LawEnforcement:
+            return -30;
+        case job_type_class::StrangeMood:
+            return -20;
+        case job_type_class::UnitHandling:
+            return -30;
+        case job_type_class::SiegeWeapon:
+            return -50;
+        case job_type_class::Medicine:
+            return -50;
         }
         return 0;
     };
@@ -288,5 +288,3 @@ std::string Camera::status()
     }
     return "inactive" + fp;
 }
-
-// vim: et:sw=4:ts=4

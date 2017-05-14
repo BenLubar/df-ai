@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dfhack_shared.h"
+
 class AI;
 
 class Embark
@@ -21,5 +23,3 @@ public:
 
     bool update(color_ostream & out);
 };
-
-// vim: et:sw=4:ts=4

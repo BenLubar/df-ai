@@ -218,42 +218,42 @@ void Population::update(color_ostream & out)
     update_counter++;
     switch (update_counter % 10)
     {
-        case 1:
-            update_citizenlist(out);
-            break;
-        case 2:
-            update_nobles(out);
-            break;
-        case 3:
-            update_jobs(out);
-            break;
-        case 4:
-            update_military(out);
-            break;
-        case 5:
-            update_pets(out);
-            break;
-        case 6:
-            update_deads(out);
-            break;
-        case 7:
-            update_caged(out);
-            break;
-        case 8:
-            update_locations(out);
-            break;
-        case 9:
-            if (ai->eventsJson.is_open())
-            {
-                Json::Value payload(Json::objectValue);
-                payload["citizen"] = Json::UInt(citizen.size());
-                payload["military"] = Json::UInt(military.size());
-                payload["pet"] = Json::UInt(pet.size());
-                payload["visitor"] = Json::UInt(visitor.size());
-                payload["resident"] = Json::UInt(resident.size());
-                ai->event("population", payload);
-            }
-            break;
+    case 1:
+        update_citizenlist(out);
+        break;
+    case 2:
+        update_nobles(out);
+        break;
+    case 3:
+        update_jobs(out);
+        break;
+    case 4:
+        update_military(out);
+        break;
+    case 5:
+        update_pets(out);
+        break;
+    case 6:
+        update_deads(out);
+        break;
+    case 7:
+        update_caged(out);
+        break;
+    case 8:
+        update_locations(out);
+        break;
+    case 9:
+        if (ai->eventsJson.is_open())
+        {
+            Json::Value payload(Json::objectValue);
+            payload["citizen"] = Json::UInt(citizen.size());
+            payload["military"] = Json::UInt(military.size());
+            payload["pet"] = Json::UInt(pet.size());
+            payload["visitor"] = Json::UInt(visitor.size());
+            payload["resident"] = Json::UInt(resident.size());
+            ai->event("population", payload);
+        }
+        break;
     }
 }
 
@@ -673,7 +673,7 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
     while (true)
     {
         if (view->occupations[view->occupation_idx]->unit_id == -1 &&
-                view->occupations[view->occupation_idx]->type == occ)
+            view->occupations[view->occupation_idx]->type == occ)
         {
             break;
         }
@@ -1095,9 +1095,9 @@ void Population::update_nobles(color_ostream & out)
         }
     }
     std::sort(cz.begin(), cz.end(), [this](df::unit *a, df::unit *b) -> bool
-            {
-                return unit_totalxp(a) > unit_totalxp(b);
-            });
+    {
+        return unit_totalxp(a) > unit_totalxp(b);
+    });
     df::historical_entity *ent = ui->main.fortress_entity;
 
     if (ent->assignments_by_type[entity_position_responsibility::MANAGE_PRODUCTION].empty() && !cz.empty())
@@ -1266,9 +1266,9 @@ void Population::update_pets(color_ostream & out)
         if (pet.count(u->id))
         {
             if (cst->body_size_2.back() <= age && // full grown
-                    u->profession != profession::TRAINED_HUNTER && // not trained
-                    u->profession != profession::TRAINED_WAR && // not trained
-                    u->relationship_ids[df::unit_relationship_type::Pet] == -1) // not owned
+                u->profession != profession::TRAINED_HUNTER && // not trained
+                u->profession != profession::TRAINED_WAR && // not trained
+                u->relationship_ids[df::unit_relationship_type::Pet] == -1) // not owned
             {
 
                 if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || cst->gender == -1)
@@ -1624,5 +1624,3 @@ std::string Population::report()
 
     return s.str();
 }
-
-// vim: et:sw=4:ts=4
