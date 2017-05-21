@@ -2705,6 +2705,10 @@ void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
         if ((*it)->r == t)
         {
             delete *it;
+            if (bg_idx == it)
+            {
+                bg_idx++;
+            }
             tasks.erase(it++);
         }
         else
