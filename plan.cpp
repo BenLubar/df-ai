@@ -28,6 +28,9 @@
 #include "df/building_civzonest.h"
 #include "df/building_coffinst.h"
 #include "df/building_def.h"
+#include "df/building_def_furnacest.h"
+#include "df/building_def_item.h"
+#include "df/building_def_workshopst.h"
 #include "df/building_doorst.h"
 #include "df/building_floodgatest.h"
 #include "df/building_furnacest.h"
@@ -51,6 +54,7 @@
 #include "df/itemdef_toolst.h"
 #include "df/items_other_id.h"
 #include "df/job.h"
+#include "df/job_item.h"
 #include "df/map_block.h"
 #include "df/organic_mat_category.h"
 #include "df/plant.h"
@@ -232,6 +236,66 @@ static bool find_items(df::items_other_id idx, std::vector<df::item *> & items, 
         }
     }
     return false;
+}
+
+template<typename T>
+static df::job_item *make_job_item(T *t)
+{
+    df::job_item *item = new df::job_item();
+    item->item_type = t->item_type;
+    item->item_subtype = t->item_subtype;
+    item->mat_type = t->mat_type;
+    item->mat_index = t->mat_index;
+    item->reaction_class = t->reaction_class;
+    item->has_material_reaction_product = t->has_material_reaction_product;
+    item->flags1.whole = t->flags1.whole;
+    item->flags2.whole = t->flags2.whole;
+    item->flags3.whole = t->flags3.whole;
+    item->flags4 = t->flags4;
+    item->flags5 = t->flags5;
+    item->metal_ore = t->metal_ore;
+    item->min_dimension = t->min_dimension;
+    item->quantity = t->quantity;
+    item->has_tool_use = t->has_tool_use;
+    return item;
+}
+
+// Not perfect, but it should at least cut down on cancellation spam.
+static bool find_items(const std::vector<df::job_item *> & filters, std::vector<df::item *> & items)
+{
+    for (auto filter = filters.begin(); filter != filters.end(); filter++)
+    {
+        int32_t found = 0;
+
+        for (auto it = world->items.all.begin(); it != world->items.all.end(); it++)
+        {
+            if (std::find(items.begin(), items.end(), *it) != items.end())
+            {
+                continue;
+            }
+
+            ItemTypeInfo iinfo(*it);
+            MaterialInfo minfo(*it);
+            if (!iinfo.matches(**filter, &minfo, true))
+            {
+                continue;
+            }
+
+            items.push_back(*it);
+            found++;
+
+            if ((*filter)->quantity >= found)
+            {
+                break;
+            }
+        }
+
+        if ((*filter)->quantity < found)
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 command_result Plan::startup(color_ostream & out)
@@ -2275,38 +2339,6 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             return true;
         }
     }
-    else if (r->workshop_type == workshop_type::Custom && r->raw_type == "SOAP_MAKER")
-    {
-        df::item *buckt, *bould;
-        if (find_item(items_other_id::BUCKET, buckt) &&
-            find_item(items_other_id::BOULDER, bould, false, true))
-        {
-            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SOAP_MAKER"));
-            Buildings::setSize(bld, r->size());
-            std::vector<df::item *> items;
-            items.push_back(buckt);
-            items.push_back(bould);
-            Buildings::constructWithItems(bld, items);
-            r->bld_id = bld->id;
-            init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
-            return true;
-        }
-    }
-    else if (r->workshop_type == workshop_type::Custom && r->raw_type == "SCREW_PRESS")
-    {
-        std::vector<df::item *> mechas;
-        if (find_items(items_other_id::TRAPPARTS, mechas, 2))
-        {
-            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, find_custom_building("SCREW_PRESS"));
-            Buildings::setSize(bld, r->size());
-            Buildings::constructWithItems(bld, mechas);
-            r->bld_id = bld->id;
-            init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
-            return true;
-        }
-    }
     else if (r->workshop_type == workshop_type::MetalsmithsForge)
     {
         df::item *anvil, *bould;
@@ -2341,6 +2373,37 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             return true;
         }
     }
+    else if (r->workshop_type == workshop_type::Custom)
+    {
+        auto cursor = std::find_if(world->raws.buildings.all.begin(), world->raws.buildings.all.end(), [r](df::building_def *def) -> bool { return def->code == r->raw_type; });
+        df::building_def_workshopst *def = cursor == world->raws.buildings.all.end() ? nullptr : virtual_cast<df::building_def_workshopst>(*cursor);
+        if (!def)
+        {
+            ai->debug(out, "Cannot find workshop type: " + r->raw_type);
+            return true;
+        }
+        std::vector<df::job_item *> filters;
+        for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
+        {
+            filters.push_back(make_job_item(*it));
+        }
+        std::vector<df::item *> items;
+        if (!find_items(filters, items))
+        {
+            for (auto it = filters.begin(); it != filters.end(); it++)
+            {
+                delete *it;
+            }
+            return false;
+        }
+        df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Custom, def->id);
+        Buildings::setSize(bld, r->size());
+        Buildings::constructWithFilters(bld, filters);
+        r->bld_id = bld->id;
+        init_managed_workshop(out, r, bld);
+        tasks.push_back(new task(task_type::check_construct, r));
+        return true;
+    }
     else
     {
         df::item *bould;
@@ -2348,7 +2411,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             // use wood if we can't find stone
             find_item(items_other_id::WOOD, bould))
         {
-            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, r->workshop_type, find_custom_building(r->raw_type));
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, r->workshop_type);
             Buildings::setSize(bld, r->size());
             std::vector<df::item *> item;
             item.push_back(bould);
@@ -2368,20 +2431,54 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r)
     if (!r->constructions_done())
         return false;
 
-    df::item *bould;
-    if (find_item(items_other_id::BOULDER, bould, true, true))
+    if (r->furnace_type == furnace_type::Custom)
     {
-        df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, r->furnace_type, find_custom_building(r->raw_type));
+        auto cursor = std::find_if(world->raws.buildings.all.begin(), world->raws.buildings.all.end(), [r](df::building_def *def) -> bool { return def->code == r->raw_type; });
+        df::building_def_furnacest *def = cursor == world->raws.buildings.all.end() ? nullptr : virtual_cast<df::building_def_furnacest>(*cursor);
+        if (!def)
+        {
+            ai->debug(out, "Cannot find furnace type: " + r->raw_type);
+            return true;
+        }
+        std::vector<df::job_item *> filters;
+        for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
+        {
+            filters.push_back(make_job_item(*it));
+        }
+        std::vector<df::item *> items;
+        if (!find_items(filters, items))
+        {
+            for (auto it = filters.begin(); it != filters.end(); it++)
+            {
+                delete *it;
+            }
+            return false;
+        }
+        df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, furnace_type::Custom, def->id);
         Buildings::setSize(bld, r->size());
-        std::vector<df::item *> item;
-        item.push_back(bould);
-        Buildings::constructWithItems(bld, item);
+        Buildings::constructWithFilters(bld, filters);
         r->bld_id = bld->id;
         init_managed_workshop(out, r, bld);
         tasks.push_back(new task(task_type::check_construct, r));
         return true;
     }
-    return false;
+    else
+    {
+        df::item *bould;
+        if (find_item(items_other_id::BOULDER, bould, true, true))
+        {
+            df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, r->furnace_type);
+            Buildings::setSize(bld, r->size());
+            std::vector<df::item *> item;
+            item.push_back(bould);
+            Buildings::constructWithItems(bld, item);
+            r->bld_id = bld->id;
+            init_managed_workshop(out, r, bld);
+            tasks.push_back(new task(task_type::check_construct, r));
+            return true;
+        }
+        return false;
+    }
 }
 
 bool Plan::try_construct_stockpile(color_ostream & out, room *r)
