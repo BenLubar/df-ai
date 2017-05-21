@@ -281,7 +281,7 @@ command_result AI::startup(color_ostream & out)
 {
     command_result res = CR_OK;
     if (res == CR_OK && config.manage_labors)
-        res = Core::getInstance().runCommand(out, "enable autolabor");
+        res = Core::getInstance().runCommand(out, "enable labormanager");
     if (res == CR_OK)
         res = pop->startup(out);
     if (res == CR_OK)
