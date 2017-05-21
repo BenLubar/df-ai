@@ -427,6 +427,8 @@ void Plan::update(color_ostream &)
         case task_type::monitor_cistern:
             monitor_cistern(out);
             break;
+        case task_type::_task_type_count:
+            break;
         }
 
         if (del)
@@ -2220,7 +2222,7 @@ bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord 
     return false;
 }
 
-static void init_managed_workshop(color_ostream & out, room *, df::building *bld)
+static void init_managed_workshop(color_ostream &, room *, df::building *bld)
 {
     if (auto w = virtual_cast<df::building_workshopst>(bld))
     {
@@ -2269,19 +2271,7 @@ bool Plan::try_furnish_trap(color_ostream &, room *r, furniture *f)
     return true;
 }
 
-static int32_t find_custom_building(const std::string & code)
-{
-    for (auto it = world->raws.buildings.all.begin(); it != world->raws.buildings.all.end(); it++)
-    {
-        if ((*it)->code == code)
-        {
-            return (*it)->id;
-        }
-    }
-    return -1;
-}
-
-bool Plan::try_construct_tradedepot(color_ostream & out, room *r)
+bool Plan::try_construct_tradedepot(color_ostream &, room *r)
 {
     std::vector<df::item *> boulds;
     if (find_items(items_other_id::BOULDER, boulds, 3, false, true))
