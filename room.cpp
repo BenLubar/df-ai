@@ -6,6 +6,7 @@
 #include "modules/Maps.h"
 
 #include "df/building.h"
+#include "df/tile_occupancy.h"
 
 std::ostream & operator <<(std::ostream & stream, room_status::status status)
 {
@@ -344,6 +345,7 @@ void room::dig(bool plan, bool channel)
                     if (((dm == tile_dig_designation::DownStair || dm == tile_dig_designation::Channel) && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Open) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
                     {
                         Plan::dig_tile(t, dm);
+                        Maps::getTileOccupancy(t)->bits.dig_marked = plan ? 1 : 0;
                     }
                 }
             }
