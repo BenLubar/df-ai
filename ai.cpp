@@ -178,7 +178,12 @@ std::string AI::describe_event(df::history_event *event)
         return "(unknown event)";
     }
 
-    static df::history_event_context context; // never written to
+    static df::history_event_context context;
+    context.anon_1 = 0;
+    context.anon_2 = 0;
+    context.histfig_id_talker = -1;
+    context.histfig_id_listener = -1;
+
     std::string str;
     event->getSentence(&str, &context, 1, 0);
     return str;
