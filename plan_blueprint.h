@@ -18,4 +18,4 @@ command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const 
 command_result setup_outdoor_gathering_zones(color_ostream & out);
 command_result setup_blueprint_caverns(color_ostream & out);
 
-std::vector<room *> find_corridor_tosurface(color_ostream & out, df::coord origin);
+std::vector<room *> find_corridor_tosurface(color_ostream & out, corridor_type::type type, df::coord origin);

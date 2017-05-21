@@ -45,6 +45,8 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
         return stream << "dininghall";
     case room_type::farmplot:
         return stream << "farmplot";
+    case room_type::furnace:
+        return stream << "furnace";
     case room_type::garbagedump:
         return stream << "garbagedump";
     case room_type::garbagepit:
@@ -63,6 +65,8 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
         return stream << "pitcage";
     case room_type::stockpile:
         return stream << "stockpile";
+    case room_type::tradedepot:
+        return stream << "tradedepot";
     case room_type::workshop:
         return stream << "workshop";
 
@@ -72,46 +76,160 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
     return stream << "???";
 }
 
-room::room(df::coord mins, df::coord maxs, std::string comment) :
-    status(room_status::plan),
-    type(room_type::corridor),
-    subtype(""),
-    comment(comment),
-    min(mins),
-    max(maxs),
-    accesspath(),
-    layout(),
-    owner(-1),
-    bld_id(-1),
-    squad_id(-1),
-    level(-1),
-    noblesuite(-1),
-    workshop(nullptr),
-    users(),
-    channel_enable(),
-    stock_disable(),
-    stock_specific1(false),
-    stock_specific2(false),
-    has_users(false),
-    furnished(false),
-    queue_dig(false),
-    temporary(false),
-    outdoor(false),
-    channeled(false)
+std::ostream & operator <<(std::ostream & stream, corridor_type::type type)
 {
-    channel_enable.clear();
-    if (min.x > max.x)
-        std::swap(min.x, max.x);
-    if (min.y > max.y)
-        std::swap(min.y, max.y);
-    if (min.z > max.z)
-        std::swap(min.z, max.z);
+    switch (type)
+    {
+    case corridor_type::corridor:
+        return stream << "corridor";
+    case corridor_type::veinshaft:
+        return stream << "veinshaft";
+    case corridor_type::aqueduct:
+        return stream << "aqueduct";
+
+    case corridor_type::_corridor_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
 }
 
-room::room(room_type::type type, std::string subtype, df::coord mins, df::coord maxs, std::string comment) :
+std::ostream & operator <<(std::ostream & stream, farm_type::type type)
+{
+    switch (type)
+    {
+    case farm_type::food:
+        return stream << "food";
+    case farm_type::cloth:
+        return stream << "cloth";
+
+    case farm_type::_farm_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, stockpile_type::type type)
+{
+    switch (type)
+    {
+    case stockpile_type::food:
+        return stream << "food";
+    case stockpile_type::furniture:
+        return stream << "furniture";
+    case stockpile_type::wood:
+        return stream << "wood";
+    case stockpile_type::stone:
+        return stream << "stone";
+    case stockpile_type::refuse:
+        return stream << "refuse";
+    case stockpile_type::animals:
+        return stream << "animals";
+    case stockpile_type::corpses:
+        return stream << "corpses";
+    case stockpile_type::gems:
+        return stream << "gems";
+    case stockpile_type::finished_goods:
+        return stream << "finished_goods";
+    case stockpile_type::cloth:
+        return stream << "cloth";
+    case stockpile_type::bars_blocks:
+        return stream << "bars_blocks";
+    case stockpile_type::leather:
+        return stream << "leather";
+    case stockpile_type::ammo:
+        return stream << "ammo";
+    case stockpile_type::armor:
+        return stream << "armor";
+    case stockpile_type::weapons:
+        return stream << "weapons";
+    case stockpile_type::coins:
+        return stream << "coins";
+    case stockpile_type::sheets:
+        return stream << "sheets";
+
+    case stockpile_type::_stockpile_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, nobleroom_type::type type)
+{
+    switch (type)
+    {
+    case nobleroom_type::tomb:
+        return stream << "tomb";
+    case nobleroom_type::dining:
+        return stream << "dining";
+    case nobleroom_type::bedroom:
+        return stream << "bedroom";
+    case nobleroom_type::office:
+        return stream << "office";
+
+    case nobleroom_type::_nobleroom_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, outpost_type::type type)
+{
+    switch (type)
+    {
+    case outpost_type::cavern:
+        return stream << "cavern";
+
+    case outpost_type::_outpost_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, location_type::type type)
+{
+    switch (type)
+    {
+    case location_type::tavern:
+        return stream << "tavern";
+    case location_type::library:
+        return stream << "library";
+    case location_type::temple:
+        return stream << "temple";
+
+    case location_type::_location_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+std::ostream & operator <<(std::ostream & stream, cistern_type::type type)
+{
+    switch (type)
+    {
+    case cistern_type::well:
+        return stream << "well";
+    case cistern_type::reserve:
+        return stream << "reserve";
+
+    case cistern_type::_cistern_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+room::room(room_type::type type, df::coord mins, df::coord maxs, std::string comment) :
     status(room_status::plan),
     type(type),
-    subtype(subtype),
+    corridor_type(),
+    farm_type(),
+    stockpile_type(),
+    nobleroom_type(),
+    outpost_type(),
+    location_type(),
+    cistern_type(),
+    workshop_type(),
+    furnace_type(),
+    raw_type(""),
     comment(comment),
     min(mins),
     max(maxs),
@@ -144,13 +262,62 @@ room::room(room_type::type type, std::string subtype, df::coord mins, df::coord 
         std::swap(min.z, max.z);
 }
 
-std::string room_type_for_debugging;
-std::string room_subtype_for_debugging;
+room::room(corridor_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::corridor, mins, maxs, comment)
+{
+    corridor_type = subtype;
+}
+
+room::room(farm_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::farmplot, mins, maxs, comment)
+{
+    farm_type = subtype;
+}
+
+room::room(stockpile_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::stockpile, mins, maxs, comment)
+{
+    stockpile_type = subtype;
+}
+
+room::room(nobleroom_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::nobleroom, mins, maxs, comment)
+{
+    nobleroom_type = subtype;
+}
+
+room::room(outpost_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::outpost, mins, maxs, comment)
+{
+    outpost_type = subtype;
+}
+
+room::room(location_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::location, mins, maxs, comment)
+{
+    location_type = subtype;
+}
+
+room::room(cistern_type::type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::cistern, mins, maxs, comment)
+{
+    cistern_type = subtype;
+}
+
+room::room(df::workshop_type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::workshop, mins, maxs, comment)
+{
+    workshop_type = subtype;
+}
+
+room::room(df::furnace_type subtype, df::coord mins, df::coord maxs, std::string comment) :
+    room::room(room_type::furnace, mins, maxs, comment)
+{
+    furnace_type = subtype;
+}
 
 room::~room()
 {
-    room_type_for_debugging = type;
-    room_subtype_for_debugging = subtype;
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         delete *it;

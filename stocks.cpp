@@ -3643,7 +3643,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
     for (int8_t season = 0; season < 4; season++)
     {
         std::vector<int32_t> pids;
-        if (r->subtype == "food")
+        if (r->farm_type == farm_type::food)
         {
             for (auto i = may.begin(); i != may.end(); i++)
             {
@@ -3692,7 +3692,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                 }
             }
         }
-        else if (r->subtype == "cloth")
+        else if (r->farm_type == farm_type::cloth)
         {
             if (isfirst)
             {
@@ -3738,9 +3738,11 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
 
         if (pids.empty())
         {
-            if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->subtype, subterranean, season)).second)
+            std::ostringstream str;
+            str << r->farm_type;
+            if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->farm_type, subterranean, season)).second)
             {
-                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", r->subtype.c_str(), subterranean ? "underground" : "outdoor", season));
+                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", str.str().c_str(), subterranean ? "underground" : "outdoor", season));
             }
         }
         else

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "event_manager.h"
+#include "room.h"
 
 #include <map>
 #include <set>
@@ -69,7 +70,7 @@ private:
 
     std::vector<std::set<int32_t>> simple_metal_ores;
 
-    std::set<std::tuple<std::string, bool, int8_t>> complained_about_no_plants;
+    std::set<std::tuple<farm_type::type, bool, int8_t>> complained_about_no_plants;
 
 public:
     Stocks(AI *ai);

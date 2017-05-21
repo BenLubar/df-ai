@@ -7,9 +7,11 @@
 
 #include "df/construction_type.h"
 #include "df/coord.h"
+#include "df/furnace_type.h"
 #include "df/stockpile_list.h"
 #include "df/tile_dig_designation.h"
 #include "df/tiletype_shape_basic.h"
+#include "df/workshop_type.h"
 
 namespace df
 {
@@ -45,6 +47,7 @@ namespace room_type
         cistern,
         dininghall,
         farmplot,
+        furnace,
         garbagedump,
         garbagepit,
         infirmary,
@@ -54,6 +57,7 @@ namespace room_type
         pasture,
         pitcage,
         stockpile,
+        tradedepot,
         workshop,
 
         _room_type_count
@@ -62,11 +66,129 @@ namespace room_type
 
 std::ostream & operator <<(std::ostream & stream, room_type::type type);
 
+namespace corridor_type
+{
+    enum type
+    {
+        corridor,
+        veinshaft,
+        aqueduct,
+
+        _corridor_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, corridor_type::type type);
+
+namespace farm_type
+{
+    enum type
+    {
+        food,
+        cloth,
+
+        _farm_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, farm_type::type type);
+
+namespace stockpile_type
+{
+    enum type
+    {
+        food,
+        furniture,
+        wood,
+        stone,
+        refuse,
+        animals,
+        corpses,
+        gems,
+        finished_goods,
+        cloth,
+        bars_blocks,
+        leather,
+        ammo,
+        armor,
+        weapons,
+        coins,
+        sheets,
+
+        _stockpile_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, stockpile_type::type type);
+
+namespace nobleroom_type
+{
+    enum type
+    {
+        tomb,
+        dining,
+        bedroom,
+        office,
+
+        _nobleroom_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, nobleroom_type::type type);
+
+namespace outpost_type
+{
+    enum type
+    {
+        cavern,
+
+        _outpost_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, outpost_type::type type);
+
+namespace location_type
+{
+    enum type
+    {
+        tavern,
+        library,
+        temple,
+
+        _location_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, location_type::type type);
+
+namespace cistern_type
+{
+    enum type
+    {
+        well,
+        reserve,
+
+        _cistern_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, cistern_type::type type);
+
 struct room
 {
     room_status::status status;
     room_type::type type;
-    std::string subtype;
+    corridor_type::type corridor_type;
+    farm_type::type farm_type;
+    stockpile_type::type stockpile_type;
+    nobleroom_type::type nobleroom_type;
+    outpost_type::type outpost_type;
+    location_type::type location_type;
+    cistern_type::type cistern_type;
+    df::workshop_type workshop_type;
+    df::furnace_type furnace_type;
+    std::string raw_type;
     std::string comment;
     df::coord min, max;
     std::vector<room *> accesspath;
@@ -89,8 +211,16 @@ struct room
     bool outdoor;
     bool channeled;
 
-    room(df::coord min, df::coord max, std::string comment = "");
-    room(room_type::type type, std::string subtype, df::coord min, df::coord max, std::string comment = "");
+    room(room_type::type type, df::coord min, df::coord max, std::string comment = "");
+    room(corridor_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(farm_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(stockpile_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(nobleroom_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(outpost_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(location_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(cistern_type::type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(df::workshop_type subtype, df::coord min, df::coord max, std::string comment = "");
+    room(df::furnace_type subtype, df::coord min, df::coord max, std::string comment = "");
     ~room();
 
     inline df::coord size() const { return max - min + df::coord(1, 1, 1); }

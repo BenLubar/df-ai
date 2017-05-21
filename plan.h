@@ -9,9 +9,11 @@
 #include <set>
 
 #include "df/coord.h"
+#include "df/furnace_type.h"
 #include "df/tile_dig_designation.h"
 #include "df/tiletype_material.h"
 #include "df/tiletype_shape_basic.h"
+#include "df/workshop_type.h"
 
 namespace df
 {
@@ -54,8 +56,9 @@ public:
     room *fort_entrance;
     std::map<int32_t, std::set<df::coord>> map_veins;
 private:
-    std::vector<std::string> important_workshops;
-    std::vector<std::string> important_workshops2;
+    std::vector<df::workshop_type> important_workshops;
+    std::vector<df::furnace_type> important_workshops2;
+    std::vector<df::workshop_type> important_workshops3;
     furniture *m_c_lever_in;
     furniture *m_c_lever_out;
     room *m_c_cistern;
@@ -136,8 +139,9 @@ public:
     bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_trap(color_ostream & out, room *r, furniture *f);
 
+    bool try_construct_tradedepot(color_ostream & out, room *r);
     bool try_construct_workshop(color_ostream & out, room *r);
-    void init_managed_workshop(color_ostream & out, room *r, df::building *bld);
+    bool try_construct_furnace(color_ostream & out, room *r);
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activityzone(color_ostream & out, room *r);
 
