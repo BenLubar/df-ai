@@ -4414,7 +4414,7 @@ std::string Plan::describe_room(room *r)
         }
         else
         {
-            s << " (" << r->furnace_type << ")";
+            s << " (" << enum_item_key(r->furnace_type) << ")";
         }
         break;
     case room_type::location:
@@ -4436,7 +4436,7 @@ std::string Plan::describe_room(room *r)
         }
         else
         {
-            s << " (" << r->workshop_type << ")";
+            s << " (" << enum_item_key(r->workshop_type) << ")";
         }
         break;
     default:
