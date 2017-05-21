@@ -999,7 +999,8 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
-            r->level <= 1;
+            r->level <= 1 &&
+            r->workshop == nullptr;
     });
     FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
     {
