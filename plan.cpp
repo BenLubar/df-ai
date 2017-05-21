@@ -970,7 +970,6 @@ bool Plan::checkidle(color_ostream & out)
     });
     FIND_ROOM(true, room_type::tradedepot, ifplan);
     FIND_ROOM(true, room_type::cistern, ifplan);
-    FIND_ROOM(true, room_type::location, [](room *r) -> bool { return r->status == room_status::plan && r->location_type == location_type::tavern; });
     FIND_ROOM(true, room_type::infirmary, ifplan);
     FIND_ROOM(!find_room(room_type::cemetary, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetary, ifplan);
     FIND_ROOM(!important_workshops2.empty(), room_type::furnace, [this](room *r) -> bool
@@ -1012,6 +1011,7 @@ bool Plan::checkidle(color_ostream & out)
         return r->status == room_status::plan &&
             r->level == 0;
     });
+    FIND_ROOM(true, room_type::location, [](room *r) -> bool { return r->status == room_status::plan && r->location_type == location_type::tavern; });
     if (r == nullptr && !fort_entrance->furnished)
         r = fort_entrance;
     FIND_ROOM(true, room_type::location, ifplan);
