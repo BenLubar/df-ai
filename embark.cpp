@@ -247,93 +247,90 @@ bool Embark::update(color_ostream & out)
             }
             AI::feed_key(view, interface_key::SELECT);
         }
-        else if (view->finder.search_x == -1)
-        {
-            if (selected_embark)
-            {
-                return false;
-            }
-            else if (view->finder.finder_state == 2)
-            {
-                ai->debug(out, "choosing \"Embark\"");
-                AI::feed_key(view, interface_key::LEAVESCREEN);
-
-                df::coord2d start = view->location.region_pos;
-                std::vector<df::coord2d> sites;
-                for (int16_t x = 0; x < world->world_data->world_width; x++)
-                {
-                    for (int16_t y = 0; y < world->world_data->world_height; y++)
-                    {
-                        if (world->world_data->region_map[x][y].finder_rank >= 10000)
-                        {
-                            sites.push_back(df::coord2d(x, y));
-                        }
-                    }
-                }
-                assert(!sites.empty());
-                ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
-                for (int32_t i = 0; i < *cur_year; i++)
-                {
-                    // Don't embark on the same region every time.
-                    ai->rng();
-                }
-                df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(ai->rng)];
-                df::coord2d diff = site - start;
-
-                if (diff.x >= 0)
-                {
-                    for (int16_t x = 0; x < diff.x; x++)
-                    {
-                        AI::feed_key(view, interface_key::CURSOR_RIGHT);
-                    }
-                }
-                else
-                {
-                    for (int16_t x = 0; x > diff.x; x--)
-                    {
-                        AI::feed_key(view, interface_key::CURSOR_LEFT);
-                    }
-                }
-
-                if (diff.y >= 0)
-                {
-                    for (int16_t y = 0; y < diff.y; y++)
-                    {
-                        AI::feed_key(view, interface_key::CURSOR_DOWN);
-                    }
-                }
-                else
-                {
-                    for (int16_t y = 0; y > diff.y; y--)
-                    {
-                        AI::feed_key(view, interface_key::CURSOR_UP);
-                    }
-                }
-
-                selected_embark = true;
-
-                ai->timeout_sameview(15, [](color_ostream &)
-                {
-                    df::viewscreen *view = Gui::getCurViewscreen(true);
-                    AI::feed_key(view, interface_key::SETUP_EMBARK);
-                    // dismiss warnings
-                    AI::feed_key(view, interface_key::SELECT);
-                });
-            }
-            else
-            {
-                ai->debug(out, "leaving embark selector (no good embarks)");
-                config.set_random_embark_world(out, "");
-                AI::abandon(out);
-            }
-        }
-        else
+        else if (view->finder.finder_state == 0)
         {
             ai->debug(out, stl_sprintf("searching for a site (%d/%d, %d/%d)",
                 view->finder.search_x,
                 world->world_data->world_width / 16,
                 view->finder.search_y,
                 world->world_data->world_height / 16));
+        }
+        else if (selected_embark)
+        {
+            return false;
+        }
+        else
+        {
+            ai->debug(out, "choosing \"Embark\"");
+            AI::feed_key(view, interface_key::LEAVESCREEN);
+
+            df::coord2d start = view->location.region_pos;
+            std::vector<df::coord2d> sites;
+            for (int16_t x = 0; x < world->world_data->world_width; x++)
+            {
+                for (int16_t y = 0; y < world->world_data->world_height; y++)
+                {
+                    if (world->world_data->region_map[x][y].finder_rank >= 10000)
+                    {
+                        sites.push_back(df::coord2d(x, y));
+                    }
+                }
+            }
+            if (sites.empty())
+            {
+                ai->debug(out, "leaving embark selector (no good embarks)");
+                config.set_random_embark_world(out, "");
+                AI::abandon(out);
+                return false;
+            }
+            ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
+            for (int32_t i = 0; i < *cur_year; i++)
+            {
+                // Don't embark on the same region every time.
+                ai->rng();
+            }
+            df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(ai->rng)];
+            df::coord2d diff = site - start;
+
+            if (diff.x >= 0)
+            {
+                for (int16_t x = 0; x < diff.x; x++)
+                {
+                    AI::feed_key(view, interface_key::CURSOR_RIGHT);
+                }
+            }
+            else
+            {
+                for (int16_t x = 0; x > diff.x; x--)
+                {
+                    AI::feed_key(view, interface_key::CURSOR_LEFT);
+                }
+            }
+
+            if (diff.y >= 0)
+            {
+                for (int16_t y = 0; y < diff.y; y++)
+                {
+                    AI::feed_key(view, interface_key::CURSOR_DOWN);
+                }
+            }
+            else
+            {
+                for (int16_t y = 0; y > diff.y; y--)
+                {
+                    AI::feed_key(view, interface_key::CURSOR_UP);
+                }
+            }
+
+            selected_embark = true;
+
+            ai->timeout_sameview(15, [](color_ostream &)
+            {
+                df::viewscreen *view = Gui::getCurViewscreen(true);
+                AI::feed_key(view, interface_key::SETUP_EMBARK);
+                // dismiss warnings
+                AI::feed_key(view, interface_key::SELECT);
+            });
         }
     }
     else if (df::viewscreen_setupdwarfgamest *view = strict_virtual_cast<df::viewscreen_setupdwarfgamest>(curview))
