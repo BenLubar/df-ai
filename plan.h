@@ -25,17 +25,41 @@ namespace df
 
 class AI;
 
+namespace task_type
+{
+    enum type
+    {
+        check_construct,
+        check_furnish,
+        check_idle,
+        check_rooms,
+        construct_activityzone,
+        construct_furnace,
+        construct_stockpile,
+        construct_tradedepot,
+        construct_workshop,
+        dig_cistern,
+        dig_garbage,
+        dig_room,
+        furnish,
+        monitor_cistern,
+        setup_farmplot,
+        want_dig,
+
+        _task_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, task_type::type type);
+
 struct task
 {
-    std::string type;
+    task_type::type type;
     room *r;
     furniture *f;
 
-    task(std::string type, room *r = nullptr, furniture *f = nullptr) :
+    task(task_type::type type, room *r = nullptr, furniture *f = nullptr) :
         type(type), r(r), f(f)
-    {
-    }
-    ~task()
     {
     }
 };

@@ -88,6 +88,50 @@ farm_allowed_materials_t::farm_allowed_materials_t()
 
 farm_allowed_materials_t farm_allowed_materials;
 
+std::ostream & operator <<(std::ostream & stream, task_type::type type)
+{
+    switch (type)
+    {
+    case task_type::check_construct:
+        return stream << "check_construct";
+    case task_type::check_furnish:
+        return stream << "check_furnish";
+    case task_type::check_idle:
+        return stream << "check_idle";
+    case task_type::check_rooms:
+        return stream << "check_rooms";
+    case task_type::construct_activityzone:
+        return stream << "construct_activityzone";
+    case task_type::construct_furnace:
+        return stream << "construct_furnace";
+    case task_type::construct_stockpile:
+        return stream << "construct_stockpile";
+    case task_type::construct_tradedepot:
+        return stream << "construct_tradedepot";
+    case task_type::construct_workshop:
+        return stream << "construct_workshop";
+    case task_type::dig_cistern:
+        return stream << "dig_cistern";
+    case task_type::dig_garbage:
+        return stream << "dig_garbage";
+    case task_type::dig_room:
+        return stream << "dig_room";
+    case task_type::furnish:
+        return stream << "furnish";
+    case task_type::monitor_cistern:
+        return stream << "monitor_cistern";
+    case task_type::setup_farmplot:
+        return stream << "setup_farmplot";
+    case task_type::want_dig:
+        return stream << "want_dig";
+
+    case task_type::_task_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
+
 Plan::Plan(AI *ai) :
     ai(ai),
     onupdate_handle(nullptr),
@@ -120,7 +164,7 @@ Plan::Plan(AI *ai) :
     past_initial_phase(false),
     cistern_channel_requested(false)
 {
-    tasks.push_back(new task("checkrooms"));
+    tasks.push_back(new task(task_type::check_rooms));
 
     important_workshops.push_back(workshop_type::Butchers);
     important_workshops.push_back(workshop_type::Quern);
@@ -235,7 +279,7 @@ void Plan::update(color_ostream &)
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
-        if (t->type != "digroom")
+        if (t->type != task_type::dig_room)
             continue;
         df::coord size = t->r->size();
         if (t->r->type != room_type::corridor || size.z > 1)
@@ -258,16 +302,16 @@ void Plan::update(color_ostream &)
         task & t = **bg_idx;
 
         bool del = false;
-        if (t.type == "wantdig")
+        switch (t.type)
         {
+        case task_type::want_dig:
             if (t.r->is_dug() || nrdig < wantdig_max)
             {
                 digroom(out, t.r);
                 del = true;
             }
-        }
-        else if (t.type == "digroom")
-        {
+            break;
+        case task_type::dig_room:
             fixup_open(out, t.r);
             if (t.r->is_dug())
             {
@@ -276,62 +320,49 @@ void Plan::update(color_ostream &)
                 want_reupdate = true; // wantdig asap
                 del = true;
             }
-        }
-        else if (t.type == "construct_tradedepot")
-        {
+            break;
+        case task_type::construct_tradedepot:
             del = try_construct_tradedepot(out, t.r);
-        }
-        else if (t.type == "construct_workshop")
-        {
+            break;
+        case task_type::construct_workshop:
             del = try_construct_workshop(out, t.r);
-        }
-        else if (t.type == "construct_furnace")
-        {
+            break;
+        case task_type::construct_furnace:
             del = try_construct_furnace(out, t.r);
-        }
-        else if (t.type == "construct_stockpile")
-        {
+            break;
+        case task_type::construct_stockpile:
             del = try_construct_stockpile(out, t.r);
-        }
-        else if (t.type == "construct_activityzone")
-        {
+            break;
+        case task_type::construct_activityzone:
             del = try_construct_activityzone(out, t.r);
-        }
-        else if (t.type == "setup_farmplot")
-        {
+            break;
+        case task_type::setup_farmplot:
             del = try_setup_farmplot(out, t.r);
-        }
-        else if (t.type == "furnish")
-        {
+            break;
+        case task_type::furnish:
             del = try_furnish(out, t.r, t.f);
-        }
-        else if (t.type == "checkfurnish")
-        {
+            break;
+        case task_type::check_furnish:
             del = try_endfurnish(out, t.r, t.f);
-        }
-        else if (t.type == "checkconstruct")
-        {
+            break;
+        case task_type::check_construct:
             del = try_endconstruct(out, t.r);
-        }
-        else if (t.type == "dig_cistern")
-        {
+            break;
+        case task_type::dig_cistern:
             del = try_digcistern(out, t.r);
-        }
-        else if (t.type == "dig_garbage")
-        {
+            break;
+        case task_type::dig_garbage:
             del = try_diggarbage(out, t.r);
-        }
-        else if (t.type == "checkidle")
-        {
+            break;
+        case task_type::check_idle:
             del = checkidle(out);
-        }
-        else if (t.type == "checkrooms")
-        {
+            break;
+        case task_type::check_rooms:
             checkrooms(out);
-        }
-        else if (t.type == "monitor_cistern")
-        {
+            break;
+        case task_type::monitor_cistern:
             monitor_cistern(out);
+            break;
         }
 
         if (del)
@@ -403,11 +434,16 @@ void Plan::save(std::ostream & out)
         add_room(*it);
     }
 
+    std::ostringstream stringify;
+
     Json::Value converted_tasks(Json::arrayValue);
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         Json::Value t(Json::objectValue);
-        t["t"] = (*it)->type;
+        stringify.str(std::string());
+        stringify.clear();
+        stringify << (*it)->type;
+        t["t"] = stringify.str();
         if ((*it)->r)
         {
             t["r"] = Json::Int(room_index.at((*it)->r));
@@ -418,8 +454,6 @@ void Plan::save(std::ostream & out)
         }
         converted_tasks.append(t);
     }
-
-    std::ostringstream stringify;
 
     Json::Value converted_rooms(Json::arrayValue);
     for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
@@ -628,20 +662,6 @@ void Plan::load(std::istream & in)
         all_furniture.push_back(new furniture());
     }
 
-    for (auto it = all["t"].begin(); it != all["t"].end(); it++)
-    {
-        task *t = new task((*it)["t"].asString());
-        if (it->isMember("r"))
-        {
-            t->r = all_rooms.at((*it)["r"].asInt());
-        }
-        if (it->isMember("f"))
-        {
-            t->f = all_furniture.at((*it)["f"].asInt());
-        }
-        tasks.push_back(t);
-    }
-
     std::ostringstream stringify;
 
 #define ENUM_NAMES(name, type) \
@@ -652,6 +672,28 @@ void Plan::load(std::istream & in)
         stringify.clear(); \
         stringify << name::type(i); \
         name ## _names[stringify.str()] = name::type(i); \
+    }
+
+    ENUM_NAMES(task_type, type);
+    task_type_names["checkconstruct"] = task_type::check_construct;
+    task_type_names["checkfurnish"] = task_type::check_furnish;
+    task_type_names["checkidle"] = task_type::check_idle;
+    task_type_names["checkrooms"] = task_type::check_rooms;
+    task_type_names["digroom"] = task_type::dig_room;
+    task_type_names["wantdig"] = task_type::want_dig;
+
+    for (auto it = all["t"].begin(); it != all["t"].end(); it++)
+    {
+        task *t = new task(task_type_names.at((*it)["t"].asString()));
+        if (it->isMember("r"))
+        {
+            t->r = all_rooms.at((*it)["r"].asInt());
+        }
+        if (it->isMember("f"))
+        {
+            t->f = all_furniture.at((*it)["f"].asInt());
+        }
+        tasks.push_back(t);
     }
 
     ENUM_NAMES(room_status, status);
@@ -858,7 +900,7 @@ task *Plan::is_digging()
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
-        if ((t->type == "wantdig" || t->type == "digroom") && t->r->type != room_type::corridor)
+        if ((t->type == task_type::want_dig || t->type == task_type::dig_room) && t->r->type != room_type::corridor)
             return t;
     }
     return nullptr;
@@ -869,7 +911,7 @@ bool Plan::is_idle()
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
-        if (t->type != "monitor_cistern" && t->type != "checkrooms" && t->type != "checkidle")
+        if (t->type != task_type::monitor_cistern && t->type != task_type::check_rooms && t->type != task_type::check_idle)
             return false;
     }
     return true;
@@ -877,9 +919,9 @@ bool Plan::is_idle()
 
 void Plan::new_citizen(color_ostream & out, int32_t uid)
 {
-    if (std::find_if(tasks.begin(), tasks.end(), [](task *t) -> bool { return t->type == "checkidle"; }) == tasks.end())
+    if (std::find_if(tasks.begin(), tasks.end(), [](task *t) -> bool { return t->type == task_type::check_idle; }) == tasks.end())
     {
-        tasks.push_back(new task("checkidle"));
+        tasks.push_back(new task(task_type::check_idle));
     }
     getdiningroom(out, uid);
     getbedroom(out, uid);
@@ -1204,7 +1246,7 @@ void Plan::checkroom(color_ostream & out, room *r)
                 ai->debug(out, "fix furniture " + f->item + " in " + describe_room(r), t);
                 f->bld_id = -1;
 
-                tasks.push_back(new task("furnish", r, f));
+                tasks.push_back(new task(task_type::furnish, r, f));
             }
             if (f->construction != construction_type::NONE)
             {
@@ -1677,7 +1719,7 @@ void Plan::wantdig(color_ostream & out, room *r)
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
     r->dig(true);
-    tasks.push_back(new task("wantdig", r));
+    tasks.push_back(new task(task_type::want_dig, r));
 }
 
 void Plan::digroom(color_ostream & out, room *r)
@@ -1690,7 +1732,7 @@ void Plan::digroom(color_ostream & out, room *r)
     fixup_open(out, r);
     r->dig();
 
-    tasks.push_back(new task("digroom", r));
+    tasks.push_back(new task(task_type::dig_room, r));
 
     for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
     {
@@ -1704,7 +1746,7 @@ void Plan::digroom(color_ostream & out, room *r)
             continue;
         if (f->dig != tile_dig_designation::Default)
             continue;
-        tasks.push_back(new task("furnish", r, f));
+        tasks.push_back(new task(task_type::furnish, r, f));
     }
 
     if (r->type == room_type::workshop)
@@ -1745,25 +1787,25 @@ bool Plan::construct_room(color_ostream & out, room *r)
     if (r->type == room_type::stockpile)
     {
         furnish_room(out, r);
-        tasks.push_back(new task("construct_stockpile", r));
+        tasks.push_back(new task(task_type::construct_stockpile, r));
         return true;
     }
 
     if (r->type == room_type::tradedepot)
     {
-        tasks.push_back(new task("construct_tradedepot", r));
+        tasks.push_back(new task(task_type::construct_tradedepot, r));
         return true;
     }
 
     if (r->type == room_type::workshop)
     {
-        tasks.push_back(new task("construct_workshop", r));
+        tasks.push_back(new task(task_type::construct_workshop, r));
         return true;
     }
 
     if (r->type == room_type::furnace)
     {
-        tasks.push_back(new task("construct_furnace", r));
+        tasks.push_back(new task(task_type::construct_furnace, r));
         return true;
     }
 
@@ -1787,7 +1829,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
             return true;
-        tasks.push_back(new task("construct_activityzone", r));
+        tasks.push_back(new task(task_type::construct_activityzone, r));
         return true;
     }
 
@@ -1811,7 +1853,7 @@ bool Plan::furnish_room(color_ostream &, room *r)
     for (auto it = r->layout.begin(); it != r->layout.end(); it++)
     {
         furniture *f = *it;
-        tasks.push_back(new task("furnish", r, f));
+        tasks.push_back(new task(task_type::furnish, r, f));
     }
     r->status = room_status::finished;
     return true;
@@ -1949,7 +1991,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
             r->bld_id = bld->id;
         }
         f->bld_id = bld->id;
-        tasks.push_back(new task("checkfurnish", r, f));
+        tasks.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
 
@@ -1974,7 +2016,7 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t)
         items.push_back(chain);
         Buildings::constructWithItems(bld, items);
         f->bld_id = bld->id;
-        tasks.push_back(new task("checkfurnish", r, f));
+        tasks.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
     return false;
@@ -1993,7 +2035,7 @@ bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df:
     item.push_back(bould);
     Buildings::constructWithItems(bld, item);
     f->bld_id = bld->id;
-    tasks.push_back(new task("checkfurnish", r, f));
+    tasks.push_back(new task(task_type::check_furnish, r, f));
     return true;
 }
 
@@ -2089,7 +2131,7 @@ bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coor
     Buildings::setSize(bld, df::coord(3, 3, 1));
     Buildings::constructWithItems(bld, mat);
     f->bld_id = bld->id;
-    tasks.push_back(new task("checkfurnish", r, f));
+    tasks.push_back(new task(task_type::check_furnish, r, f));
     return true;
 }
 
@@ -2107,7 +2149,7 @@ bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord 
         Buildings::constructWithItems(bld, items);
         r->bld_id = bld->id;
         f->bld_id = bld->id;
-        tasks.push_back(new task("checkfurnish", r, f));
+        tasks.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
     return false;
@@ -2157,7 +2199,7 @@ bool Plan::try_furnish_trap(color_ostream &, room *r, furniture *f)
     item.push_back(mecha);
     Buildings::constructWithItems(bld, item);
     f->bld_id = bld->id;
-    tasks.push_back(new task("checkfurnish", r, f));
+    tasks.push_back(new task(task_type::check_furnish, r, f));
 
     return true;
 }
@@ -2183,7 +2225,7 @@ bool Plan::try_construct_tradedepot(color_ostream & out, room *r)
         Buildings::setSize(bld, r->size());
         Buildings::constructWithItems(bld, boulds);
         r->bld_id = bld->id;
-        tasks.push_back(new task("checkconstruct", r));
+        tasks.push_back(new task(task_type::check_construct, r));
         return true;
     }
     return false;
@@ -2208,7 +2250,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2228,7 +2270,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2246,7 +2288,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2260,7 +2302,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, mechas);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2278,7 +2320,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2294,7 +2336,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2312,7 +2354,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task("checkconstruct", r));
+            tasks.push_back(new task(task_type::check_construct, r));
             return true;
             // XXX else quarry?
         }
@@ -2335,7 +2377,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r)
         Buildings::constructWithItems(bld, item);
         r->bld_id = bld->id;
         init_managed_workshop(out, r, bld);
-        tasks.push_back(new task("checkconstruct", r));
+        tasks.push_back(new task(task_type::check_construct, r));
         return true;
     }
     return false;
@@ -2626,7 +2668,7 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
     {
         digroom(out, st);
     }
-    tasks.push_back(new task("setup_farmplot", r));
+    tasks.push_back(new task(task_type::setup_farmplot, r));
     return true;
 }
 
@@ -2756,7 +2798,7 @@ bool Plan::construct_cistern(color_ostream & out, room *r)
     // check smoothing progress, channel intermediate levels
     if (r->cistern_type == cistern_type::well)
     {
-        tasks.push_back(new task("dig_cistern", r));
+        tasks.push_back(new task(task_type::dig_cistern, r));
     }
 
     return true;
@@ -2993,7 +3035,7 @@ void Plan::dig_garbagedump(color_ostream &)
         {
             r->status = room_status::dig;
             r->dig(false, true);
-            tasks.push_back(new task("dig_garbage", r));
+            tasks.push_back(new task(task_type::dig_garbage, r));
         }
         return false;
     });
@@ -3222,7 +3264,7 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
             pull_lever(out, f);
             if (way == "in")
             {
-                tasks.push_back(new task("monitor_cistern"));
+                tasks.push_back(new task(task_type::monitor_cistern));
             }
 
             return true;
@@ -4217,12 +4259,12 @@ df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
 
 std::string Plan::status()
 {
-    std::map<std::string, size_t> task_count;
+    std::map<task_type::type, size_t> task_count;
     std::map<std::string, size_t> furnishing;
     for (auto t = tasks.begin(); t != tasks.end(); t++)
     {
         task_count[(*t)->type]++;
-        if ((*t)->type == "furnish" && !(*t)->f->item.empty())
+        if ((*t)->type == task_type::furnish && !(*t)->f->item.empty())
         {
             furnishing[(*t)->f->item]++;
         }
@@ -4755,7 +4797,7 @@ void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::cons
     if (f->construction != c)
     {
         ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->x, f->y, f->z));
-        tasks.push_back(new task("furnish", r, f));
+        tasks.push_back(new task(task_type::furnish, r, f));
     }
     f->construction = c;
 }
