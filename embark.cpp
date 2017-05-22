@@ -247,7 +247,7 @@ bool Embark::update(color_ostream & out)
             }
             AI::feed_key(view, interface_key::SELECT);
         }
-        else if (view->finder.finder_state == 0)
+        else if (view->finder.search_x != -1 || view->finder.search_y != 0)
         {
             ai->debug(out, stl_sprintf("searching for a site (%d/%d, %d/%d)",
                 view->finder.search_x,
