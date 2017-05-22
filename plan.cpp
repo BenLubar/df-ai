@@ -2174,8 +2174,18 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
     }
 
     df::item *mat = nullptr;
-    if (!find_item(items_other_id::BLOCKS, mat) && !find_item(items_other_id::BOULDER, mat, false, true))
-        return false;
+    if (!find_item(items_other_id::BLOCKS, mat))
+    {
+        if (find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->status == room_status::finished && r->dfbuilding() != nullptr; }) != nullptr)
+        {
+            // we don't have blocks but we can make them.
+            return false;
+        }
+        if (!find_item(items_other_id::BOULDER, mat, false, true))
+        {
+            return false;
+        }
+    }
 
     df::building *bld = Buildings::allocInstance(t, building_type::Construction, ctype);
     Buildings::setSize(bld, df::coord(1, 1, 1));
