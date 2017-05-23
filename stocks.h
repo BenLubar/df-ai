@@ -95,12 +95,12 @@ public:
     int32_t num_needed(const std::string & key);
     void act(color_ostream & out, std::string key);
     int32_t count_stocks(color_ostream & out, std::string k);
-    int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE);
+    int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE, bool training = false);
     int32_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
     int32_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
 
     void queue_need(color_ostream & out, std::string what, int32_t amount);
-    void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE);
+    void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
     void queue_need_armor(color_ostream & out, df::items_other_id oidx);
     void queue_need_anvil(color_ostream & out);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);

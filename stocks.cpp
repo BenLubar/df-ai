@@ -123,6 +123,7 @@ const static struct Watch
         Needed["thread_seeds"] = 10;
         Needed["dye_seeds"] = 10;
         Needed["dye"] = 10;
+        Needed["training_weapon"] = 5;
         Needed["weapon"] = 2;
         Needed["armor_torso"] = 2;
         Needed["clothes_torso"] = 2;
@@ -1313,6 +1314,10 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
         }
     }
+    else if (k == "training_weapon")
+    {
+        return count_stocks_weapon(out, job_skill::NONE, true);
+    }
     else if (k == "weapon")
     {
         return count_stocks_weapon(out);
@@ -1510,10 +1515,10 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
 
 // return the minimum of the number of free weapons for each subtype used by
 // current civ
-int32_t Stocks::count_stocks_weapon(color_ostream &, df::job_skill skill)
+int32_t Stocks::count_stocks_weapon(color_ostream &, df::job_skill skill, bool training)
 {
     int32_t min = -1;
-    auto search = [this, &min, skill](const std::vector<int16_t> & idefs)
+    auto search = [this, &min, skill, training](const std::vector<int16_t> & idefs)
     {
         for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
@@ -1522,7 +1527,7 @@ int32_t Stocks::count_stocks_weapon(color_ostream &, df::job_skill skill)
             {
                 continue;
             }
-            if (idef->flags.is_set(weapon_flags::TRAINING))
+            if (idef->flags.is_set(weapon_flags::TRAINING) != training)
             {
                 continue;
             }
@@ -1665,19 +1670,24 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     std::vector<std::string> input;
     std::string order;
 
-    if (what == "weapon")
+    if (what == "training_weapon")
     {
-        queue_need_weapon(out, Watch.Needed.at("weapon"));
+        queue_need_weapon(out, num_needed("training_weapon"), job_skill::NONE, true);
+        return;
+    }
+    else if (what == "weapon")
+    {
+        queue_need_weapon(out, num_needed("weapon"));
         return;
     }
     else if (what == "pick")
     {
-        queue_need_weapon(out, Watch.Needed.at("pick"), job_skill::MINING);
+        queue_need_weapon(out, num_needed("pick"), job_skill::MINING);
         return;
     }
     else if (what == "axe")
     {
-        queue_need_weapon(out, Watch.Needed.at("axe"), job_skill::AXE);
+        queue_need_weapon(out, num_needed("axe"), job_skill::AXE);
         return;
     }
     else if (what == "armor_torso")
@@ -1973,74 +1983,78 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 }
 
 // forge weapons
-void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill)
+void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill, bool training)
 {
-    if (skill == job_skill::NONE && (count.at("pick") == 0 || count.at("axe") == 0))
+    if (skill == job_skill::NONE && !training && (count.at("pick") == 0 || count.at("axe") == 0))
         return;
 
     std::map<int32_t, int32_t> bars;
     int32_t coal_bars = count.at("coal");
-    if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
-        coal_bars = 50000;
 
-    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
+    if (!training)
     {
-        df::item_actual *i = virtual_cast<df::item_actual>(*item);
-        if (i->getMaterial() == 0)
-        {
-            bars[i->getMaterialIndex()] += i->stack_size;
-        }
-    }
+        if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
+            coal_bars = 50000;
 
-    // rough account of already queued jobs consumption
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
-    {
-        if ((*mo)->mat_type == 0)
+        for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
         {
-            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
-            coal_bars -= (*mo)->amount_total;
-        }
-    }
-
-    if (metal_digger_pref.empty())
-    {
-        for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
-        {
-            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_DIGGER))
+            df::item_actual *i = virtual_cast<df::item_actual>(*item);
+            if (i->getMaterial() == 0)
             {
-                metal_digger_pref.push_back(mi);
+                bars[i->getMaterialIndex()] += i->stack_size;
             }
         }
-        std::sort(metal_digger_pref.begin(), metal_digger_pref.end(), [](int32_t a, int32_t b) -> bool
-        {
-            // should roughly order metals by effectiveness
-            return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
-        });
-    }
 
-    if (metal_weapon_pref.empty())
-    {
-        for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
+        // rough account of already queued jobs consumption
+        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
         {
-            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_WEAPON))
+            if ((*mo)->mat_type == 0)
             {
-                metal_weapon_pref.push_back(mi);
+                bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
+                coal_bars -= (*mo)->amount_total;
             }
         }
-        std::sort(metal_weapon_pref.begin(), metal_weapon_pref.end(), [](int32_t a, int32_t b) -> bool
+
+        if (metal_digger_pref.empty())
         {
-            return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
-        });
+            for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
+            {
+                if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_DIGGER))
+                {
+                    metal_digger_pref.push_back(mi);
+                }
+            }
+            std::sort(metal_digger_pref.begin(), metal_digger_pref.end(), [](int32_t a, int32_t b) -> bool
+            {
+                // should roughly order metals by effectiveness
+                return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
+            });
+        }
+
+        if (metal_weapon_pref.empty())
+        {
+            for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
+            {
+                if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_WEAPON))
+                {
+                    metal_weapon_pref.push_back(mi);
+                }
+            }
+            std::sort(metal_weapon_pref.begin(), metal_weapon_pref.end(), [](int32_t a, int32_t b) -> bool
+            {
+                return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
+            });
+        }
     }
 
-    auto search = [this, &out, needed, skill, &bars, &coal_bars](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
+    auto search = [this, &out, needed, skill, training, &bars, &coal_bars](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
     {
         for (auto id = idefs.begin(); id != idefs.end(); id++)
         {
             df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
             if (skill != job_skill::NONE && idef->skill_melee != skill)
                 continue;
-            if (idef->flags.is_set(weapon_flags::TRAINING))
+            if (idef->flags.is_set(weapon_flags::TRAINING) != training)
                 continue;
 
             int32_t cnt = needed;
@@ -2061,6 +2075,18 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
             }
             if (cnt <= 0)
                 continue;
+
+            if (training)
+            {
+                df::manager_order_template tmpl;
+                tmpl.job_type = job_type::MakeWeapon;
+                tmpl.item_type = item_type::NONE;
+                tmpl.item_subtype = idef->subtype;
+                tmpl.mat_index = -1;
+                tmpl.material_category.bits.wood = true;
+                add_manager_order(out, tmpl, cnt);
+                continue;
+            }
 
             int32_t need_bars = idef->material_size / 3; // need this many bars to forge one idef item
             if (need_bars < 1)

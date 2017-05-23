@@ -978,6 +978,7 @@ int32_t Population::military_find_free_squad()
     }
     else
     {
+#if 0
         // we don't want all the axes being used up by the military.
         std::vector<int32_t> weapons;
         for (auto it = ui->main.fortress_entity->entity_raw->equipment.weapon_id.begin(); it != ui->main.fortress_entity->entity_raw->equipment.weapon_id.end(); it++)
@@ -989,12 +990,14 @@ int32_t Population::military_find_free_squad()
             }
         }
         if (weapons.empty())
+#endif
         {
             for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
             {
                 (*pos)->uniform[uniform_category::weapon][0]->indiv_choice.bits.melee = 1;
             }
         }
+#if 0
         else
         {
             int32_t n = int32_t(ui->main.fortress_entity->squads.size());
@@ -1006,6 +1009,7 @@ int32_t Population::military_find_free_squad()
                 n++;
             }
         }
+#endif
     }
 
     return squad_id;
