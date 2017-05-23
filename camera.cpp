@@ -149,6 +149,10 @@ void Camera::update(color_ostream &)
         {
             return 0;
         }
+        if (u->job.current_job->job_type == job_type::Sleep)
+        {
+            return 100;
+        }
         switch (ENUM_ATTR(job_type, type, u->job.current_job->job_type))
         {
         case job_type_class::Misc:
