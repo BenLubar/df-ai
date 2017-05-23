@@ -79,7 +79,7 @@ const int32_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot ti
 const int32_t dwarves_per_farmtile_den = 2;
 const size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
 const int32_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
-const int32_t extra_farms = 7; // built after utilities are finished
+const int32_t extra_farms = 2; // built after utilities are finished
 
 farm_allowed_materials_t::farm_allowed_materials_t()
 {
@@ -1001,8 +1001,13 @@ void Plan::del_citizen(color_ostream & out, int32_t uid)
 
 bool Plan::checkidle(color_ostream & out)
 {
-    if (is_digging())
-        return false;
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    {
+        if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor)
+        {
+            return false;
+        }
+    }
 
     // if nothing better to do, order the miners to dig remaining
     // stockpiles, workshops, and a few bedrooms
@@ -1077,10 +1082,8 @@ bool Plan::checkidle(color_ostream & out)
         return r->status == room_status::plan &&
             r->level == 0;
     });
-    FIND_ROOM(true, room_type::location, [](room *r) -> bool { return r->status == room_status::plan && r->location_type == location_type::tavern; });
     if (r == nullptr && !fort_entrance->furnished)
         r = fort_entrance;
-    FIND_ROOM(true, room_type::location, ifplan);
     if (r == nullptr)
         past_initial_phase = true;
     int32_t need_food = extra_farms;
@@ -1122,10 +1125,12 @@ bool Plan::checkidle(color_ostream & out)
         }
         return false;
     }));
+    FIND_ROOM(true, room_type::location, [](room *r) -> bool { return r->status == room_status::plan && r->location_type == location_type::tavern; });
     FIND_ROOM(true, room_type::outpost, [](room *r) -> bool
     {
         return r->status == room_status::plan && r->outpost_type == outpost_type::cavern;
     });
+    FIND_ROOM(true, room_type::location, ifplan);
     FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
@@ -1177,15 +1182,22 @@ bool Plan::checkidle(color_ostream & out)
         return r->status == room_status::plan &&
             r->level <= 3;
     });
-    FIND_ROOM(true, room_type::workshop, [](room *r) -> bool
-    {
-        return r->status == room_status::plan;
-    });
-    FIND_ROOM(true, room_type::furnace, [](room *r) -> bool
-    {
-        return r->status == room_status::plan;
-    });
+    FIND_ROOM(true, room_type::workshop, ifplan);
+    FIND_ROOM(true, room_type::furnace, ifplan);
     FIND_ROOM(true, room_type::stockpile, ifplan);
+    FIND_ROOM(true, room_type::cemetary, ifplan);
+    FIND_ROOM(true, room_type::outpost, ifplan);
+    if (r == nullptr && setup_blueprint_caverns(out) == CR_OK)
+    {
+        ai->debug(out, "found next cavern");
+        categorize_all();
+        return false;
+    }
+    FIND_ROOM(true, room_type::dininghall, ifplan);
+    FIND_ROOM(true, room_type::barracks, ifplan);
+    FIND_ROOM(true, room_type::farmplot, ifplan);
+    FIND_ROOM(true, room_type::nobleroom, ifplan);
+    FIND_ROOM(true, room_type::bedroom, ifplan);
 #undef FIND_ROOM
 
     if (r)
@@ -1205,18 +1217,6 @@ bool Plan::checkidle(color_ostream & out)
         return false;
     }
 
-    if (is_idle())
-    {
-        if (setup_blueprint_caverns(out) == CR_OK)
-        {
-            ai->debug(out, "found next cavern");
-            categorize_all();
-            return false;
-        }
-        idleidle(out);
-        return true;
-    }
-
     if (last_idle_year != *cur_year)
     {
         last_idle_year = *cur_year;
@@ -1234,7 +1234,7 @@ void Plan::idleidle(color_ostream & out)
     for (auto it = rooms.begin(); it != rooms.end(); it++)
     {
         room *r = *it;
-        if (r->status != room_status::plan && r->status != room_status::dig &&
+        if (r->status != room_status::plan && r->status != room_status::dig && !r->temporary &&
             (r->type == room_type::nobleroom ||
                 r->type == room_type::bedroom ||
                 r->type == room_type::dininghall ||
