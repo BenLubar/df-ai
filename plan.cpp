@@ -3057,6 +3057,26 @@ bool Plan::is_smooth(df::coord t)
 // check smoothing progress, channel intermediate floors when done
 bool Plan::try_digcistern(color_ostream & out, room *r)
 {
+    auto dig_channel = [r](int32_t x, int32_t y, int32_t z)
+    {
+        if (std::find_if(r->layout.begin(), r->layout.end(), [r, x, y, z](furniture *f) -> bool
+        {
+            return f->dig == tile_dig_designation::Channel &&
+                f->x == x - r->min.x &&
+                f->y == y - r->min.y &&
+                f->z == z - r->min.z;
+        }) == r->layout.end())
+        {
+            furniture *f = new furniture();
+            f->dig = tile_dig_designation::Channel;
+            f->x = x - r->min.x;
+            f->y = y - r->min.y;
+            f->z = z - r->min.z;
+            r->layout.push_back(f);
+        }
+        dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
+    };
+
     // XXX hardcoded layout..
     int32_t cnt = 0;
     int16_t acc_y = r->accesspath[0]->min.y;
@@ -3084,7 +3104,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                             *Maps::getTileType(x - 1, y, z))) ==
                         tiletype_shape_basic::Floor)
                     {
-                        dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
+                        dig_channel(x, y, z);
                     }
                     else
                     {
@@ -3097,7 +3117,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                             is_smooth(nt12) && is_smooth(nt02) :
                             is_smooth(nt10) && is_smooth(nt00))
                         {
-                            dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
+                            dig_channel(x, y, z);
                         }
                     }
                     break;
