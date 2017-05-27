@@ -1467,35 +1467,20 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 
     // TODO check that 'channel' is easily channelable (eg river in a hole)
 
-    int16_t y_x = 0;
-    if (dst.x - 1 > output.x)
+    if (dst.x != output.x)
     {
-        room *cor = new room(corridor_type::aqueduct, df::coord(dst.x - 1, dst.y, dst.z), df::coord(output.x + 1, dst.y, dst.z));
+        room *cor = new room(corridor_type::aqueduct, df::coord(dst.x, dst.y, dst.z), df::coord(output.x, dst.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
         r = cor;
-        y_x = 1;
-    }
-    else if (output.x - 1 > dst.x)
-    {
-        room *cor = new room(corridor_type::aqueduct, df::coord(dst.x + 1, dst.y, dst.z), df::coord(output.x - 1, dst.y, dst.z));
-        corridors.push_back(cor);
-        r->accesspath.push_back(cor);
-        r = cor;
-        y_x = -1;
     }
 
-    if (dst.y - 1 > output.y)
+    if (dst.y != output.y)
     {
-        room *cor = new room(corridor_type::aqueduct, df::coord(output.x + y_x, dst.y + 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
+        room *cor = new room(corridor_type::aqueduct, df::coord(output.x, dst.y, dst.z), df::coord(output.x, output.y, dst.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
-    }
-    else if (output.y - 1 > dst.y)
-    {
-        room *cor = new room(corridor_type::aqueduct, df::coord(output.x + y_x, dst.y - 1, dst.z), df::coord(output.x + y_x, output.y, dst.z));
-        corridors.push_back(cor);
-        r->accesspath.push_back(cor);
+        r = cor;
     }
 
     up = find_corridor_tosurface(out, corridor_type::aqueduct, df::coord(output, dst.z));
@@ -1969,31 +1954,16 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
         cor->max.z--;
         out2.z--;
 
-        int16_t y_x = cor->max.x;
-        if (cor->max.x - 1 > out2.x)
+        if (cor->max.x != out2.x)
         {
-            cor = new room(type, df::coord(out2.x - 1, out2.y, out2.z), df::coord(cor->max.x + 1, out2.y, out2.z));
+            cor = new room(type, df::coord(out2.x, out2.y, out2.z), df::coord(cor->max.x, out2.y, out2.z));
             cors.back()->accesspath.push_back(cor);
             cors.push_back(cor);
-            y_x++;
-        }
-        else if (out2.x - 1 > cor->max.x)
-        {
-            cor = new room(type, df::coord(out2.x + 1, out2.y, out2.z), df::coord(cor->max.x - 1, out2.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-            y_x--;
         }
 
-        if (cor->max.y - 1 > out2.y)
+        if (cor->max.y != out2.y)
         {
-            cor = new room(type, df::coord(y_x, out2.y - 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
-            cors.back()->accesspath.push_back(cor);
-            cors.push_back(cor);
-        }
-        else if (out2.y - 1 > cor->max.y)
-        {
-            cor = new room(type, df::coord(y_x, out2.y + 1, out2.z), df::coord(y_x, cor->max.y, out2.z));
+            cor = new room(type, df::coord(cor->max.x, out2.y, out2.z), df::coord(cor->max.x, cor->max.y, out2.z));
             cors.back()->accesspath.push_back(cor);
             cors.push_back(cor);
         }
