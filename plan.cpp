@@ -1188,9 +1188,8 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::workshop, ifplan);
     FIND_ROOM(true, room_type::furnace, ifplan);
     FIND_ROOM(true, room_type::stockpile, ifplan);
-    FIND_ROOM(true, room_type::cemetary, ifplan);
     FIND_ROOM(true, room_type::outpost, ifplan);
-    if (r == nullptr && setup_blueprint_caverns(out) == CR_OK)
+    if (r == nullptr && !find_room(room_type::outpost, [](room *r) -> bool { return r->status == room_status::dig; }) && setup_blueprint_caverns(out) == CR_OK)
     {
         ai->debug(out, "found next cavern");
         categorize_all();
@@ -1201,6 +1200,7 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::farmplot, ifplan);
     FIND_ROOM(true, room_type::nobleroom, ifplan);
     FIND_ROOM(true, room_type::bedroom, ifplan);
+    FIND_ROOM(true, room_type::cemetary, ifplan);
 #undef FIND_ROOM
 
     if (r)
