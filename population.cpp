@@ -420,12 +420,13 @@ void Population::update_caged(color_ostream & out)
             if (virtual_cast<df::general_ref_contains_itemst>(*ref))
             {
                 df::item *i = (*ref)->getItem();
-                if (i->flags.bits.dump)
+                if (i->flags.bits.dump && !i->flags.bits.forbid)
                 {
                     continue;
                 }
                 count++;
                 i->flags.bits.dump = 1;
+                i->flags.bits.forbid = 0;
             }
             else if (virtual_cast<df::general_ref_contains_unitst>(*ref))
             {
@@ -438,12 +439,13 @@ void Population::update_caged(color_ostream & out)
                 {
                     for (auto ii = u->inventory.begin(); ii != u->inventory.end(); ii++)
                     {
-                        if ((*ii)->item->flags.bits.dump)
+                        if ((*ii)->item->flags.bits.dump && !(*ii)->item->flags.bits.forbid)
                         {
                             continue;
                         }
                         count++;
                         (*ii)->item->flags.bits.dump = 1;
+                        (*ii)->item->flags.bits.forbid = 0;
                     }
 
                     if (u->inventory.empty())
@@ -455,6 +457,10 @@ void Population::update_caged(color_ostream & out)
                             ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
                             military_random_squad_attack_unit(out, u);
                         }
+                    }
+                    else
+                    {
+                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), u->inventory.size()));
                     }
                 }
             }
