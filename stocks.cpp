@@ -123,7 +123,6 @@ const static struct Watch
         Needed["thread_seeds"] = 10;
         Needed["dye_seeds"] = 10;
         Needed["dye"] = 10;
-        Needed["training_weapon"] = 5;
         Needed["weapon"] = 2;
         Needed["armor_torso"] = 2;
         Needed["clothes_torso"] = 2;

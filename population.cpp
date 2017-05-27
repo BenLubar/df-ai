@@ -38,6 +38,7 @@
 #include "df/historical_figure.h"
 #include "df/history_event_hist_figure_diedst.h"
 #include "df/incident.h"
+#include "df/item_weaponst.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
 #include "df/manager_order.h"
@@ -524,7 +525,25 @@ void Population::update_military(color_ostream & out)
             maydraft.push_back(u);
         }
     }
-    while (military.size() < maydraft.size() / 5)
+    int32_t axes = 0, picks = 0;
+    for (auto it = world->items.other[items_other_id::WEAPON].begin(); it != world->items.other[items_other_id::WEAPON].end(); it++)
+    {
+        df::item_weaponst *weapon = virtual_cast<df::item_weaponst>(*it);
+        if (!weapon || !weapon->subtype || !weapon->subtype->flags.is_set(weapon_flags::HAS_EDGE_ATTACK))
+        {
+            continue;
+        }
+
+        if (weapon->getMeleeSkill() == job_skill::AXE)
+        {
+            axes++;
+        }
+        else if (weapon->getMeleeSkill() == job_skill::MINING)
+        {
+            picks++;
+        }
+    }
+    while (military.size() < maydraft.size() / 5 && military.size() < axes - 1 && military.size() < picks - 1)
     {
         df::unit *ns = military_find_new_soldier(out, maydraft);
         if (!ns)
