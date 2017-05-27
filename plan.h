@@ -97,6 +97,7 @@ private:
     int32_t last_idle_year;
     bool allow_ice;
 public:
+    bool should_search_for_metal;
     bool past_initial_phase;
 private:
     bool cistern_channel_requested;

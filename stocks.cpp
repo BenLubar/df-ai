@@ -1773,7 +1773,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "raw_coke")
     {
-        if (ai->plan->past_initial_phase)
+        if (ai->plan->should_search_for_metal)
         {
             for (auto vein = ai->plan->map_veins.begin(); vein != ai->plan->map_veins.end(); vein++)
             {
@@ -1788,7 +1788,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     }
     else if (what == "gypsum")
     {
-        if (ai->plan->past_initial_phase)
+        if (ai->plan->should_search_for_metal)
         {
             for (auto vein = ai->plan->map_veins.begin(); vein != ai->plan->map_veins.end(); vein++)
             {
@@ -2008,7 +2008,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
         // rough account of already queued jobs consumption
         for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
         {
-            if ((*mo)->mat_type == 0)
+            if ((*mo)->mat_type == 0 && (*mo)->mat_index != -1)
             {
                 bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
                 coal_bars -= (*mo)->amount_total;
@@ -3120,7 +3120,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
         }
     }
 
-    if (can_melt < Watch.WatchStock.at("metal_ore") && ai->plan->past_initial_phase)
+    if (can_melt < Watch.WatchStock.at("metal_ore") && ai->plan->should_search_for_metal)
     {
         for (auto k = ai->plan->map_veins.begin(); k != ai->plan->map_veins.end(); k++)
         {
@@ -3220,7 +3220,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     has++;
                 }
             }
-            if (has <= 0 && rri->item_type == item_type::BOULDER && rri->mat_type == 0 && rri->mat_index != -1 && ai->plan->past_initial_phase)
+            if (has <= 0 && rri->item_type == item_type::BOULDER && rri->mat_type == 0 && rri->mat_index != -1 && ai->plan->should_search_for_metal)
             {
                 has += ai->plan->dig_vein(out, rri->mat_index);
                 if (has > 0)

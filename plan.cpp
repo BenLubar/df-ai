@@ -165,6 +165,7 @@ Plan::Plan(AI *ai) :
     cavern_max_level(-1),
     last_idle_year(-1),
     allow_ice(false),
+    should_search_for_metal(false),
     past_initial_phase(false),
     cistern_channel_requested(false)
 {
@@ -1065,6 +1066,8 @@ bool Plan::checkidle(color_ostream & out)
         }
         return false;
     });
+    if (r == nullptr)
+        should_search_for_metal = true;
     FIND_ROOM(true, room_type::pitcage, ifplan);
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
