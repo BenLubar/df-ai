@@ -2356,6 +2356,28 @@ void Stocks::queue_need_anvil(color_ostream & out)
 template<typename D, typename I>
 static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, int32_t needed, int32_t div = 1)
 {
+    int32_t thread = 0, yarn = 0, silk = 0;
+
+    for (auto & item : world->items.other[items_other_id::CLOTH])
+    {
+        MaterialInfo mat(item);
+        if (mat.material)
+        {
+            if (mat.material->flags.is_set(material_flags::THREAD_PLANT))
+            {
+                thread++;
+            }
+            else if (mat.material->flags.is_set(material_flags::SILK))
+            {
+                silk++;
+            }
+            else if (mat.material->flags.is_set(material_flags::YARN))
+            {
+                yarn++;
+            }
+        }
+    }
+
     for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
         D *idef = D::find(*id);
@@ -2396,7 +2418,21 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         tmpl.item_subtype = idef->subtype;
         tmpl.mat_type = -1;
         tmpl.mat_index = -1;
-        tmpl.material_category.bits.cloth = 1;
+        if (thread >= yarn && thread >= silk)
+        {
+            tmpl.material_category.bits.cloth = 1;
+            thread -= cnt;
+        }
+        else if (yarn >= thread && yarn >= silk)
+        {
+            tmpl.material_category.bits.yarn = 1;
+            yarn -= cnt;
+        }
+        else if (silk >= thread && silk >= yarn)
+        {
+            tmpl.material_category.bits.silk = 1;
+            silk -= cnt;
+        }
         ai->stocks->add_manager_order(out, tmpl, cnt);
 
         available_cloth -= cnt;
