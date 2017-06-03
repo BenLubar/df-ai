@@ -525,7 +525,7 @@ void Population::update_military(color_ostream & out)
             maydraft.push_back(u);
         }
     }
-    int32_t axes = 0, picks = 0;
+    size_t axes = 0, picks = 0;
     for (auto it = world->items.other[items_other_id::WEAPON].begin(); it != world->items.other[items_other_id::WEAPON].end(); it++)
     {
         df::item_weaponst *weapon = virtual_cast<df::item_weaponst>(*it);
@@ -543,7 +543,7 @@ void Population::update_military(color_ostream & out)
             picks++;
         }
     }
-    while (military.size() < maydraft.size() / 5 && military.size() < axes - 1 && military.size() < picks - 1)
+    while (military.size() < maydraft.size() / 5 && military.size() + 1 < axes && military.size() + 1 < picks)
     {
         df::unit *ns = military_find_new_soldier(out, maydraft);
         if (!ns)
