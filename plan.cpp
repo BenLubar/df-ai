@@ -4449,7 +4449,14 @@ std::string Plan::status()
     }
     if (task *t = is_digging())
     {
-        s << ", digging: " << describe_room(t->r);
+        if (t->type == task_type::dig_room)
+        {
+            s << ", digging: " << describe_room(t->r);
+        }
+        else if (t->type == task_type::want_dig)
+        {
+            s << ", waiting to dig: " << describe_room(t->r);
+        }
     }
     first = true;
     for (auto f = furnishing.begin(); f != furnishing.end(); f++)
