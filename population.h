@@ -19,6 +19,7 @@ namespace df
     struct entity_position_assignment;
     struct squad;
     struct unit;
+    struct viewscreen_tradegoodsst;
 }
 
 class AI;
@@ -53,6 +54,7 @@ private:
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
+    bool did_trade;
 
 public:
     Population(AI *ai);
@@ -68,6 +70,7 @@ public:
     void new_citizen(color_ostream & out, int32_t id);
     void del_citizen(color_ostream & out, int32_t id);
 
+    void update_trading(color_ostream & out);
     void update_citizenlist(color_ostream & out);
     void update_jobs(color_ostream & out);
     void update_deads(color_ostream & out);
@@ -85,7 +88,9 @@ public:
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
 
-    void set_up_trading(bool should_be_trading);
+    bool set_up_trading(color_ostream & out, bool should_be_trading);
+    bool perform_trade(color_ostream & out);
+    bool perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade);
 
     bool unit_hasmilitaryduty(df::unit *u);
     int32_t unit_totalxp(df::unit *u);

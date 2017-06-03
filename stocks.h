@@ -140,4 +140,8 @@ public:
     void queue_slab(color_ostream & out, int32_t histfig_id);
 
     bool need_more(std::string type);
+
+    bool willing_to_trade_item(color_ostream & out, df::item *item);
+    bool want_trader_item(color_ostream & out, df::item *item);
+    bool want_trader_item_more(df::item *a, df::item *b);
 };

@@ -3847,3 +3847,81 @@ bool Stocks::need_more(std::string type)
 
     return (count.count(type) ? count.at(type) : 0) < want;
 }
+
+bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
+{
+    if (virtual_cast<df::item_foodst>(item))
+    {
+        return true;
+    }
+
+    if (item->isFoodStorage())
+    {
+        // TODO: don't try to give elves wood
+
+        bool any_contents = false;
+
+        for (auto it = item->general_refs.begin(); it != item->general_refs.end(); it++)
+        {
+            if ((*it)->getType() == general_ref_type::CONTAINS_ITEM)
+            {
+                any_contents = true;
+
+                if (!willing_to_trade_item(out, (*it)->getItem()))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return any_contents;
+    }
+
+    // TODO
+    return false;
+}
+
+bool Stocks::want_trader_item(color_ostream & out, df::item *item)
+{
+    if (item->hasSpecificImprovements(improvement_type::WRITING))
+    {
+        return true;
+    }
+
+    if (item->getType() == item_type::WOOD && count.at("wood") < 5)
+    {
+        return true;
+    }
+
+    if (item->getType() == item_type::CHEESE || item->getType() == item_type::EGG || item->getType() == item_type::FISH || item->getType() == item_type::FISH_RAW || item->getType() == item_type::MEAT || item->getType() == item_type::PLANT || item->getType() == item_type::PLANT_GROWTH)
+    {
+        return true;
+    }
+
+    // TODO
+    return false;
+}
+
+bool Stocks::want_trader_item_more(df::item *a, df::item *b)
+{
+    if (a->getType() == item_type::WOOD && b->getType() != item_type::WOOD)
+    {
+        return true;
+    }
+    else if (b->getType() == item_type::WOOD && a->getType() != item_type::WOOD)
+    {
+        return false;
+    }
+
+    if (a->hasSpecificImprovements(improvement_type::WRITING) && !b->hasSpecificImprovements(improvement_type::WRITING))
+    {
+        return true;
+    }
+    else if (b->hasSpecificImprovements(improvement_type::WRITING) && !a->hasSpecificImprovements(improvement_type::WRITING))
+    {
+        return false;
+    }
+
+    // TODO
+    return false;
+}

@@ -40,6 +40,7 @@ SET(PROJECT_SRCS
     camera.cpp
     embark.cpp
     room.cpp
+    trade.cpp
     event_manager.cpp
 )
 
@@ -53,6 +54,7 @@ SET(PROJECT_HDRS
     camera.h
     embark.h
     room.h
+    trade.h
     event_manager.h
     dfhack_shared.h
     df-ai-git-describe.h

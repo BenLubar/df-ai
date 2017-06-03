@@ -33,6 +33,7 @@ class Plan;
 class Stocks;
 class Camera;
 class Embark;
+class Trade;
 
 class AI
 {
@@ -45,6 +46,7 @@ public:
     Stocks *stocks;
     Camera *camera;
     Embark *embark;
+    Trade *trade;
 
     OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;

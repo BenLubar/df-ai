@@ -3,6 +3,7 @@
 #include "camera.h"
 #include "plan.h"
 #include "stocks.h"
+#include "trade.h"
 
 #include <sstream>
 
@@ -17,17 +18,21 @@
 #include "df/activity_entry.h"
 #include "df/activity_event.h"
 #include "df/activity_event_participants.h"
+#include "df/assign_trade_status.h"
 #include "df/building_civzonest.h"
 #include "df/building_farmplotst.h"
 #include "df/building_stockpilest.h"
 #include "df/building_tradedepotst.h"
 #include "df/building_workshopst.h"
+#include "df/caravan_state.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/entity_buy_prices.h"
 #include "df/entity_position.h"
 #include "df/entity_position_assignment.h"
 #include "df/entity_position_raw.h"
 #include "df/entity_raw.h"
+#include "df/entity_sell_prices.h"
 #include "df/general_ref_building_civzone_assignedst.h"
 #include "df/general_ref_building_holderst.h"
 #include "df/general_ref_contains_itemst.h"
@@ -59,8 +64,11 @@
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
+#include "df/viewscreen_layer_assigntradest.h"
 #include "df/viewscreen_layer_noblelistst.h"
 #include "df/viewscreen_locationsst.h"
+#include "df/viewscreen_tradelistst.h"
+#include "df/viewscreen_tradegoodsst.h"
 #include "df/world.h"
 #include "df/world_site.h"
 
@@ -219,6 +227,9 @@ void Population::update(color_ostream & out)
     update_counter++;
     switch (update_counter % 10)
     {
+    case 0:
+        update_trading(out);
+        break;
     case 1:
         update_citizenlist(out);
         break;
@@ -293,6 +304,136 @@ void Population::del_citizen(color_ostream & out, int32_t id)
     citizen.erase(id);
     military.erase(id);
     ai->plan->del_citizen(out, id);
+}
+
+void Population::update_trading(color_ostream & out)
+{
+    bool any_traders = ai->trade->can_move_goods();
+
+    if (any_traders && did_trade)
+    {
+        return;
+    }
+
+    if (!any_traders)
+    {
+        did_trade = false;
+    }
+
+    if (set_up_trading(out, any_traders))
+    {
+        if (any_traders)
+        {
+            ai->debug(out, "[trade] Requested broker at depot.");
+        }
+        else
+        {
+            ai->debug(out, "[trade] Dismissed broker from depot: no traders");
+        }
+        return;
+    }
+
+    if (!any_traders)
+    {
+        return;
+    }
+
+    df::entity_position *broker_pos = position_with_responsibility(entity_position_responsibility::TRADE);
+    if (!broker_pos)
+    {
+        ai->debug(out, "[trade] Could not find broker position!");
+        return;
+    }
+
+    auto broker_assignment = std::find_if(ui->main.fortress_entity->positions.assignments.begin(), ui->main.fortress_entity->positions.assignments.end(), [broker_pos](df::entity_position_assignment *asn) -> bool { return asn->position_id == broker_pos->id; });
+    if (broker_assignment == ui->main.fortress_entity->positions.assignments.end())
+    {
+        ai->debug(out, "[trade] Could not find broker assignment!");
+        return;
+    }
+
+    df::historical_figure *broker_hf = df::historical_figure::find((*broker_assignment)->histfig);
+    if (!broker_hf)
+    {
+        ai->debug(out, "[trade] Could not find broker!");
+        return;
+    }
+
+    df::unit *broker = df::unit::find(broker_hf->unit_id);
+    if (!broker)
+    {
+        ai->debug(out, "[trade] Could not find broker unit!");
+        return;
+    }
+
+    if (!broker->job.current_job)
+    {
+        ai->debug(out, "[trade] Waiting for the broker: " + AI::describe_unit(broker));
+        return;
+    }
+
+    if (broker->job.current_job->job_type != job_type::TradeAtDepot)
+    {
+        ai->debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_job(broker->job.current_job) + " - " + AI::describe_unit(broker));
+        return;
+    }
+
+    room *depot = ai->plan->find_room(room_type::tradedepot, [broker](room *r) -> bool { return r->include(broker->pos); });
+    if (!depot)
+    {
+        ai->debug(out, "[trade] Broker en route to depot. Currently at " + ai->plan->describe_room(ai->plan->find_room_at(broker->pos)));
+        return;
+    }
+
+    df::caravan_state *caravan = nullptr;
+    for (auto it = ui->caravans.begin(); it != ui->caravans.end(); it++)
+    {
+        if ((*it)->trade_state == df::caravan_state::AtDepot)
+        {
+            caravan = *it;
+        }
+        else if ((*it)->trade_state == df::caravan_state::Approaching)
+        {
+            ai->debug(out, "[trade] Waiting for the traders from " + AI::describe_name(df::historical_entity::find((*it)->entity)->name) + " to arrive at the depot...");
+        }
+    }
+
+    if (!caravan)
+    {
+        return;
+    }
+
+    int32_t waiting_for_items = 0;
+    for (auto j = world->job_list.next; j; j = j->next)
+    {
+        if (j->item->job_type == job_type::BringItemToDepot)
+        {
+            waiting_for_items++;
+        }
+    }
+
+    if (waiting_for_items)
+    {
+        if (caravan->time_remaining < 1000)
+        {
+            ai->debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot, but time is running out. Trading with what we have.", waiting_for_items));
+        }
+        else
+        {
+            ai->debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot.", waiting_for_items));
+            return;
+        }
+    }
+
+    if (perform_trade(out))
+    {
+        did_trade = true;
+
+        if (set_up_trading(out, false))
+        {
+            ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+        }
+    }
 }
 
 void Population::update_citizenlist(color_ostream & out)
@@ -1049,35 +1190,298 @@ int32_t Population::military_find_free_squad()
     return squad_id;
 }
 
-void Population::set_up_trading(bool should_be_trading)
+bool Population::set_up_trading(color_ostream & out, bool should_be_trading)
 {
     room *r = ai->plan->find_room(room_type::tradedepot);
     if (!r)
     {
-        return;
+        return false;
     }
     df::building_tradedepotst *bld = virtual_cast<df::building_tradedepotst>(r->dfbuilding());
     if (!bld || bld->getBuildStage() < bld->getMaxBuildStage())
     {
-        return;
+        return false;
     }
     if (bld->trade_flags.bits.trader_requested == should_be_trading)
     {
-        return;
+        return false;
     }
 
-    if (AI::is_dwarfmode_viewscreen())
+    if (!AI::is_dwarfmode_viewscreen())
     {
-        AI::feed_key(interface_key::D_BUILDJOB);
+        return false;
+    }
 
-        df::coord pos = r->pos();
-        Gui::revealInDwarfmodeMap(pos, true);
-        Gui::setCursorCoords(pos.x, pos.y, pos.z);
+    int32_t start_x, start_y, start_z;
+    Gui::getViewCoords(start_x, start_y, start_z);
 
-        AI::feed_key(interface_key::CURSOR_LEFT);
-        AI::feed_key(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+    AI::feed_key(interface_key::D_BUILDJOB);
+
+    df::coord pos = r->pos();
+    Gui::revealInDwarfmodeMap(pos, true);
+    Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+    AI::feed_key(interface_key::CURSOR_LEFT);
+    AI::feed_key(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+    if (should_be_trading)
+    {
+        AI::feed_key(interface_key::BUILDJOB_DEPOT_BRING);
+        if (auto bring = virtual_cast<df::viewscreen_layer_assigntradest>(Gui::getCurViewscreen(true)))
+        {
+            ai->debug(out, stl_sprintf("[trade] Checking %d possible trade items...", bring->lists[0].size()));
+            for (size_t i = 0; i < bring->lists[0].size(); i++)
+            {
+                auto info = bring->info.at(bring->lists[0].at(i));
+                if (info->unk) // TODO: determine if this field is really "banned by mandate".
+                {
+                    if (info->status == df::assign_trade_status::Pending)
+                    {
+                        info->status = df::assign_trade_status::RemovePending;
+                    }
+                    else if (info->status == df::assign_trade_status::Trading)
+                    {
+                        info->status = df::assign_trade_status::RemoveTrading;
+                    }
+                }
+                else if (info->status == df::assign_trade_status::None && ai->stocks->willing_to_trade_item(out, info->item))
+                {
+                    info->status = df::assign_trade_status::AddPending;
+                    ai->debug(out, "[trade] Bringing item to trade depot: " + AI::describe_item(info->item));
+                }
+            }
+            AI::feed_key(interface_key::LEAVESCREEN);
+        }
+    }
+    AI::feed_key(interface_key::LEAVESCREEN);
+
+    ai->camera->ignore_pause(start_x, start_y, start_z);
+
+    return true;
+}
+
+bool Population::perform_trade(color_ostream & out)
+{
+    room *r = ai->plan->find_room(room_type::tradedepot);
+    if (!r)
+    {
+        return false;
+    }
+    df::building_tradedepotst *bld = virtual_cast<df::building_tradedepotst>(r->dfbuilding());
+    if (!bld || bld->getBuildStage() < bld->getMaxBuildStage())
+    {
+        return false;
+    }
+
+    if (!AI::is_dwarfmode_viewscreen())
+    {
+        return false;
+    }
+
+    int32_t start_x, start_y, start_z;
+    Gui::getViewCoords(start_x, start_y, start_z);
+
+    AI::feed_key(interface_key::D_BUILDJOB);
+
+    df::coord pos = r->pos();
+    Gui::revealInDwarfmodeMap(pos, true);
+    Gui::setCursorCoords(pos.x, pos.y, pos.z);
+
+    AI::feed_key(interface_key::CURSOR_LEFT);
+    AI::feed_key(interface_key::BUILDJOB_DEPOT_TRADE);
+    if (auto wait = virtual_cast<df::viewscreen_tradelistst>(Gui::getCurViewscreen(true)))
+    {
+        if (wait->caravans.size() == 1)
+        {
+            wait->logic();
+        }
+        else
+        {
+            AI::feed_key(wait, interface_key::SELECT);
+        }
+    }
+    if (auto trade = virtual_cast<df::viewscreen_tradegoodsst>(Gui::getCurViewscreen(true)))
+    {
+        if (perform_trade(out, trade))
+        {
+            ai->camera->ignore_pause(start_x, start_y, start_z);
+
+            return true;
+        }
+    }
+    else
+    {
+        ai->debug(out, "[trade] Opening the trade screen failed. Trying again soon.");
         AI::feed_key(interface_key::LEAVESCREEN);
     }
+
+    ai->camera->ignore_pause(start_x, start_y, start_z);
+
+    return false;
+}
+
+bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade)
+{
+    trade->render(); // for some reason, this populates the item list.
+
+    if (trade->is_unloading)
+    {
+        ai->debug(out, "[trade] Waiting for caravan to unload. Trying again soon.");
+
+        AI::feed_key(trade, interface_key::LEAVESCREEN);
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        return false;
+    }
+
+    df::creature_raw *creature = df::creature_raw::find(trade->entity->race);
+
+    ai->debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
+
+    std::vector<size_t> want_items;
+
+    for (auto it = trade->trader_items.begin(); it != trade->trader_items.end(); it++)
+    {
+        if (ai->stocks->want_trader_item(out, *it))
+        {
+            want_items.push_back(it - trade->trader_items.begin());
+        }
+    }
+
+    std::sort(want_items.begin(), want_items.end(), [this, trade](size_t a, size_t b) -> bool { return ai->stocks->want_trader_item_more(trade->trader_items.at(a), trade->trader_items.at(b)); });
+
+    int32_t max_offer_value = 0;
+
+    for (auto it = trade->broker_items.begin(); it != trade->broker_items.end(); it++)
+    {
+        max_offer_value += ai->trade->item_or_container_price_for_caravan(*it, trade->caravan, trade->entity, creature, trade->caravan->buy_prices);
+    }
+
+    ai->debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", max_offer_value));
+
+    int32_t request_value = 0;
+    int32_t offer_value = 0;
+
+    for (auto it = want_items.begin(); it != want_items.end(); it++)
+    {
+        df::item *item = trade->trader_items.at(*it);
+
+        bool can_afford_any = false;
+
+        for (int32_t qty = item->getStackSize(); qty > 0; qty--)
+        {
+            int32_t item_value = ai->trade->item_or_container_price_for_caravan(trade->trader_items.at(*it), trade->caravan, trade->entity, creature, trade->caravan->buy_prices, qty); // sell_prices
+
+            if ((request_value + item_value) * 11 / 10 >= max_offer_value)
+            {
+                if (qty > 1)
+                {
+                    ai->debug(out, stl_sprintf("[trade] Cannot afford %d of item, trying again with fewer: ", qty) + AI::describe_item(item));
+                }
+                continue;
+            }
+
+            can_afford_any = true;
+            request_value += item_value;
+            trade->trader_selected.at(*it) = 1;
+            trade->trader_count.at(*it) = qty;
+            ai->debug(out, stl_sprintf("[trade] Requesting %d of item: ", qty) + AI::describe_item(item));
+            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+
+            for (size_t i = 0; request_value * 11 / 10 >= offer_value && i < trade->broker_items.size(); i++)
+            {
+                if (!trade->broker_selected.at(i) || trade->broker_count.at(i) != trade->broker_items.at(i)->getStackSize())
+                {
+                    auto offer_item = trade->broker_items.at(i);
+
+                    int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) : 0;
+                    int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, current_count) : 0;
+
+                    int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
+                    for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
+                    {
+                        int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, offer_qty);
+                        if (offer_value - existing_offer_value + new_offer_value > request_value * 11 / 10)
+                        {
+                            over_offer_qty = offer_qty;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, over_offer_qty);
+                    trade->broker_selected.at(i) = 1;
+                    trade->broker_count.at(i) = over_offer_qty;
+                    offer_value = offer_value - existing_offer_value + new_offer_value;
+                    ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: ", over_offer_qty - current_count, current_count ? " more" : "") + AI::describe_item(offer_item));
+                    ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+                }
+            }
+
+            break;
+        }
+
+        if (!can_afford_any)
+        {
+            ai->debug(out, "[trade] Cannot afford any of item, stopping: " + AI::describe_item(item));
+            break;
+        }
+    }
+
+    if (offer_value == 0)
+    {
+        ai->debug(out, "[trade] Cancelling trade.");
+
+        AI::feed_key(trade, interface_key::LEAVESCREEN);
+        AI::feed_key(interface_key::LEAVESCREEN);
+
+        return true;
+    }
+
+    ai->debug(out, "[trade] Making offer...");
+
+    AI::feed_key(trade, interface_key::TRADE_TRADE);
+    trade->logic();
+    trade->render();
+
+    std::string reply, mood;
+    ai->trade->read_trader_reply(reply, mood);
+
+    ai->debug(out, "[trade] Trader reply: " + reply);
+
+    if (!trade->counteroffer.empty())
+    {
+        for (auto it = trade->counteroffer.begin(); it != trade->counteroffer.end(); it++)
+        {
+            ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(*it));
+        }
+        ai->debug(out, "[trade] Accepting counter-offer.");
+
+        AI::feed_key(trade, interface_key::SELECT);
+
+        AI::feed_key(trade, interface_key::TRADE_TRADE);
+        trade->logic();
+        trade->render();
+
+        ai->trade->read_trader_reply(reply, mood);
+
+        ai->debug(out, "[trade] Trader reply: " + reply);
+    }
+
+    if (std::find(trade->broker_selected.begin(), trade->broker_selected.end(), 1) == trade->broker_selected.end())
+    {
+        ai->debug(out, "[trade] Offer was accepted.");
+    }
+    else
+    {
+        ai->debug(out, "[trade] Trader mood: " + mood);
+        ai->debug(out, "[trade] Offer was rejected. Giving up.");
+    }
+
+    AI::feed_key(trade, interface_key::LEAVESCREEN);
+    AI::feed_key(interface_key::LEAVESCREEN);
+
+    return true;
 }
 
 bool Population::unit_hasmilitaryduty(df::unit *u)

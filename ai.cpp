@@ -4,6 +4,7 @@
 #include "stocks.h"
 #include "camera.h"
 #include "embark.h"
+#include "trade.h"
 
 #include "modules/Gui.h"
 #include "modules/Maps.h"
@@ -51,6 +52,7 @@ AI::AI() :
     stocks(new Stocks(this)),
     camera(new Camera(this)),
     embark(new Embark(this)),
+    trade(new Trade(this)),
     status_onupdate(nullptr),
     pause_onupdate(nullptr),
     tag_enemies_onupdate(nullptr),
@@ -66,6 +68,7 @@ AI::AI() :
 
 AI::~AI()
 {
+    delete trade;
     delete embark;
     delete camera;
     delete stocks;
