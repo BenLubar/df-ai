@@ -3067,6 +3067,7 @@ bool Plan::is_smooth(df::coord t)
         mat == tiletype_material::GRASS_DARK ||
         mat == tiletype_material::PLANT ||
         mat == tiletype_material::ROOT ||
+        mat == tiletype_material::FROZEN_LIQUID ||
         sp == tiletype_special::TRACK ||
         sp == tiletype_special::SMOOTH ||
         s == tiletype_shape::FORTIFICATION ||
@@ -3601,7 +3602,7 @@ void Plan::monitor_cistern(color_ostream & out)
                         for (int16_t z = r->min.z; z <= r->max.z; z++)
                         {
                             df::coord t(x, y, z);
-                            if (!is_smooth(t) && (r->type != room_type::corridor || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
+                            if (!is_smooth(t) && Maps::getTileDesignation(t)->bits.flow_size < 3 && (r->type != room_type::corridor || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
                             {
                                 ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d) %s", x, y, z, describe_room(r).c_str()));
                                 empty = false;
