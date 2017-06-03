@@ -20,6 +20,7 @@
 #include "df/world_data.h"
 
 REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(standing_orders_gather_refuse_outside);
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
 
@@ -348,6 +349,7 @@ bool Embark::update(color_ostream & out)
             ai->debug(out, "disabling minimap.");
             AI::feed_key(interface_key::LEAVESCREEN);
             Gui::setMenuWidth(3, 3);
+            *standing_orders_gather_refuse_outside = 1;
             *standing_orders_job_cancel_announce = 0;
         });
         return true;
