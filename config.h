@@ -25,6 +25,7 @@ struct Config
     bool fps_meter;
     bool manage_labors;
     bool manage_nobles;
+    uint8_t cancel_announce;
 };
 
 extern Config config;

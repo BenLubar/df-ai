@@ -21,7 +21,8 @@ Config::Config() :
     camera(true),
     fps_meter(true),
     manage_labors(true),
-    manage_nobles(true)
+    manage_nobles(true),
+    cancel_announce(0)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -99,6 +100,10 @@ void Config::load(color_ostream & out)
             {
                 manage_nobles = v["manage_nobles"].asBool();
             }
+            if (v.isMember("cancel_announce"))
+            {
+                cancel_announce = v["cancel_announce"].asInt();
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -129,6 +134,7 @@ void Config::save(color_ostream & out)
     v["fps_meter"] = fps_meter;
     v["manage_labors"] = manage_labors;
     v["manage_nobles"] = manage_nobles;
+    v["cancel_announce"] = cancel_announce;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;

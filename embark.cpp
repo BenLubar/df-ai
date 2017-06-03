@@ -350,7 +350,7 @@ bool Embark::update(color_ostream & out)
             AI::feed_key(interface_key::LEAVESCREEN);
             Gui::setMenuWidth(3, 3);
             *standing_orders_gather_refuse_outside = 1;
-            *standing_orders_job_cancel_announce = 0;
+            *standing_orders_job_cancel_announce = config.cancel_announce;
         });
         return true;
     }
