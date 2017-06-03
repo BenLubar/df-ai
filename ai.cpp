@@ -28,6 +28,7 @@
 #include "df/viewscreen_optionst.h"
 #include "df/viewscreen_requestagreementst.h"
 #include "df/viewscreen_textviewerst.h"
+#include "df/viewscreen_topicmeeting_fill_land_holder_positionsst.h"
 #include "df/viewscreen_topicmeeting_takerequestsst.h"
 #include "df/viewscreen_topicmeetingst.h"
 #include "df/world.h"
@@ -522,6 +523,14 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
         {
             debug(out, "exit diplomat requestagreementst");
+            timeout_sameview([](color_ostream &)
+            {
+                AI::feed_key(interface_key::LEAVESCREEN);
+            });
+        }
+        else if (strict_virtual_cast<df::viewscreen_topicmeeting_fill_land_holder_positionsst>(curview))
+        {
+            debug(out, "exit diplomat viewscreen_topicmeeting_fill_land_holder_positionsst");
             timeout_sameview([](color_ostream &)
             {
                 AI::feed_key(interface_key::LEAVESCREEN);
