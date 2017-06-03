@@ -73,6 +73,7 @@ namespace corridor_type
         corridor,
         veinshaft,
         aqueduct,
+        outpost,
 
         _corridor_type_count
     };

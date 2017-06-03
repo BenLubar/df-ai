@@ -68,6 +68,7 @@
 #include "df/vehicle.h"
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
+#include "df/world_underground_region.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cursor);
@@ -344,7 +345,7 @@ void Plan::update(color_ostream &)
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
-        if (t->type != task_type::dig_room)
+        if (t->type != task_type::dig_room || (t->r->type == room_type::corridor && (t->r->corridor_type == corridor_type::veinshaft || t->r->corridor_type == corridor_type::outpost)))
             continue;
         df::coord size = t->r->size();
         if (t->r->type != room_type::corridor || size.z > 1)
@@ -1189,11 +1190,27 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::furnace, ifplan);
     FIND_ROOM(true, room_type::stockpile, ifplan);
     FIND_ROOM(true, room_type::outpost, ifplan);
-    if (r == nullptr && !find_room(room_type::outpost, [](room *r) -> bool { return r->status == room_status::dig; }) && setup_blueprint_caverns(out) == CR_OK)
+    if (r == nullptr)
     {
-        ai->debug(out, "found next cavern");
-        categorize_all();
-        return false;
+        bool any_outpost = false;
+        for (auto it = tasks.begin(); it != tasks.end(); it++)
+        {
+            if ((*it)->type != task_type::want_dig && (*it)->type != task_type::dig_room)
+            {
+                continue;
+            }
+            if ((*it)->r->type == room_type::outpost || ((*it)->r->type == room_type::corridor && (*it)->r->corridor_type == corridor_type::outpost))
+            {
+                any_outpost = true;
+                break;
+            }
+        }
+        if (!any_outpost && setup_blueprint_caverns(out) == CR_OK)
+        {
+            ai->debug(out, "found next cavern");
+            categorize_all();
+            return false;
+        }
     }
     FIND_ROOM(true, room_type::dininghall, ifplan);
     FIND_ROOM(true, room_type::barracks, ifplan);
@@ -4336,6 +4353,22 @@ bool Plan::map_tile_cavernfloor(df::coord t)
     if (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && tm != tiletype_material::GRASS_LIGHT && tm != tiletype_material::GRASS_DARK && tm != tiletype_material::PLANT && tm != tiletype_material::SOIL)
         return false;
     return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Floor;
+}
+
+bool Plan::map_tile_undiscovered_cavern(df::coord t)
+{
+    df::tile_designation *td = Maps::getTileDesignation(t);
+    if (!td->bits.feature_global)
+    {
+        return false;
+    }
+
+    auto region = df::world_underground_region::find(Maps::getTileBlock(t)->global_feature);
+    if (!region || !region->feature_init)
+    {
+        return false;
+    }
+    return !region->feature_init->flags.is_set(feature_init_flags::Discovered);
 }
 
 df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)

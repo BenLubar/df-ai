@@ -226,6 +226,7 @@ public:
     bool map_tile_in_rock(df::coord tile);
     bool map_tile_nocavern(df::coord tile);
     bool map_tile_cavernfloor(df::coord tile);
+    bool map_tile_undiscovered_cavern(df::coord tile);
 
     df::coord surface_tile_at(int16_t tx, int16_t ty, bool allow_trees = false);
 

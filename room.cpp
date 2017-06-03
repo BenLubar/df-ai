@@ -87,6 +87,8 @@ std::ostream & operator <<(std::ostream & stream, corridor_type::type type)
         return stream << "veinshaft";
     case corridor_type::aqueduct:
         return stream << "aqueduct";
+    case corridor_type::outpost:
+        return stream << "outpost";
 
     case corridor_type::_corridor_type_count:
         return stream << "???";

@@ -1829,7 +1829,7 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
                 // find a floor next to the wall
                 target = spiral_search(t, 2, 2, [this](df::coord _t) -> bool
                 {
-                    return map_tile_cavernfloor(_t);
+                    return map_tile_cavernfloor(_t) && map_tile_undiscovered_cavern(_t);
                 });
                 if (target.isValid())
                     wall = t;
@@ -1844,36 +1844,21 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
 
     room *r = new room(outpost_type::cavern, target, target);
 
-    int16_t y_x = 0;
-    if (wall.x - 1 > target.x)
+    if (wall.x != target.x)
     {
-        room *cor = new room(corridor_type::corridor, df::coord(wall.x + 1, wall.y, wall.z), df::coord(target.x - 1, wall.y, wall.z));
-        corridors.push_back(cor);
-        r->accesspath.push_back(cor);
-        y_x = 1;
-    }
-    else if (target.x - 1 > wall.x)
-    {
-        room *cor = new room(corridor_type::corridor, df::coord(wall.x - 1, wall.y, wall.z), df::coord(target.x + 1, wall.y, wall.z));
-        corridors.push_back(cor);
-        r->accesspath.push_back(cor);
-        y_x = -1;
-    }
-
-    if (wall.y - 1 > target.y)
-    {
-        room *cor = new room(corridor_type::corridor, df::coord(target.x + y_x, wall.y + 1, wall.z), df::coord(target.x + y_x, target.y, wall.z));
-        corridors.push_back(cor);
-        r->accesspath.push_back(cor);
-    }
-    else if (target.y - 1 > wall.y)
-    {
-        room *cor = new room(corridor_type::corridor, df::coord(target.x + y_x, wall.y - 1, wall.z), df::coord(target.x + y_x, target.y, wall.z));
+        room *cor = new room(corridor_type::outpost, df::coord(wall.x, wall.y, wall.z), df::coord(target.x, wall.y, wall.z));
         corridors.push_back(cor);
         r->accesspath.push_back(cor);
     }
 
-    std::vector<room *> up = find_corridor_tosurface(out, corridor_type::corridor, wall);
+    if (wall.y != target.y)
+    {
+        room *cor = new room(corridor_type::outpost, df::coord(target.x, wall.y, wall.z), df::coord(target.x, target.y, wall.z));
+        corridors.push_back(cor);
+        r->accesspath.push_back(cor);
+    }
+
+    std::vector<room *> up = find_corridor_tosurface(out, corridor_type::outpost, wall);
     r->accesspath.push_back(up.at(0));
 
     ai->debug(out, stl_sprintf("outpost: wall (%d, %d, %d)", wall.x, wall.y, wall.z));
