@@ -3881,7 +3881,7 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
     return false;
 }
 
-bool Stocks::want_trader_item(color_ostream & out, df::item *item)
+bool Stocks::want_trader_item(color_ostream &, df::item *item)
 {
     if (item->hasSpecificImprovements(improvement_type::WRITING))
     {
