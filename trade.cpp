@@ -220,7 +220,7 @@ void Trade::read_trader_reply(std::string & reply, std::string & mood)
         {
             for (j = j + 1; j < gps->dimy - 2; j++)
             {
-                char ch = gps->screen[(2 * gps->dimy + j) * 4];
+                uint8_t ch = gps->screen[(2 * gps->dimy + j) * 4];
 
                 if (ch != 0)
                 {
@@ -413,9 +413,10 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
     {
         int32_t divisor = 1;
         auto creature = df::creature_raw::find(mat_type);
-        if (creature && mat_subtype < creature->caste.size())
+        size_t caste(mat_subtype);
+        if (creature && caste < creature->caste.size())
         {
-            divisor = creature->caste.at(mat_subtype)->misc.petvalue_divisor;
+            divisor = creature->caste.at(caste)->misc.petvalue_divisor;
         }
         if (divisor > 1)
         {
