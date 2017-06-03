@@ -438,8 +438,16 @@ void Population::update_caged(color_ostream & out)
                 }
                 else
                 {
+                    size_t waiting_items = 0;
+
                     for (auto ii = u->inventory.begin(); ii != u->inventory.end(); ii++)
                     {
+                        if (auto owner = Items::getOwner((*ii)->item))
+                        {
+                            ai->debug(out, "pop: cannot strip item " + AI::describe_item((*ii)->item) + " owned by " + AI::describe_unit(owner));
+                            continue;
+                        }
+                        waiting_items++;
                         if ((*ii)->item->flags.bits.dump && !(*ii)->item->flags.bits.forbid)
                         {
                             continue;
@@ -447,9 +455,10 @@ void Population::update_caged(color_ostream & out)
                         count++;
                         (*ii)->item->flags.bits.dump = 1;
                         (*ii)->item->flags.bits.forbid = 0;
+                        ai->debug(out, "pop: marked item " + AI::describe_item((*ii)->item) + " for dumping");
                     }
 
-                    if (u->inventory.empty())
+                    if (!waiting_items)
                     {
                         room *r = ai->plan->find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
                         if (r && ai->plan->spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
@@ -461,7 +470,7 @@ void Population::update_caged(color_ostream & out)
                     }
                     else
                     {
-                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), u->inventory.size()));
+                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), waiting_items));
                     }
                 }
             }
