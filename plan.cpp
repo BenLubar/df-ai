@@ -357,6 +357,11 @@ void Plan::update(color_ostream &)
     want_reupdate = false;
     events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
     {
+        if (!Core::getInstance().isMapLoaded())
+        {
+            return true;
+        }
+
         if (bg_idx == tasks.end())
         {
             if (want_reupdate)
