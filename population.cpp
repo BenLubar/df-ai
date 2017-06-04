@@ -1353,7 +1353,7 @@ bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst 
 
     for (auto it = trade->broker_items.begin(); it != trade->broker_items.end(); it++)
     {
-        max_offer_value += ai->trade->item_or_container_price_for_caravan(*it, trade->caravan, trade->entity, creature, trade->caravan->buy_prices);
+        max_offer_value += ai->trade->item_or_container_price_for_caravan(*it, trade->caravan, trade->entity, creature, (*it)->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
     }
 
     ai->debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", max_offer_value));
@@ -1369,7 +1369,7 @@ bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst 
 
         for (int32_t qty = item->getStackSize(); qty > 0; qty--)
         {
-            int32_t item_value = ai->trade->item_or_container_price_for_caravan(trade->trader_items.at(*it), trade->caravan, trade->entity, creature, trade->caravan->buy_prices, qty); // sell_prices
+            int32_t item_value = ai->trade->item_or_container_price_for_caravan(trade->trader_items.at(*it), trade->caravan, trade->entity, creature, qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
 
             if ((request_value + item_value) * 11 / 10 >= max_offer_value)
             {
@@ -1394,12 +1394,12 @@ bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst 
                     auto offer_item = trade->broker_items.at(i);
 
                     int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) : 0;
-                    int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, current_count) : 0;
+                    int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
 
                     int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
                     for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
                     {
-                        int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, offer_qty);
+                        int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                         if (offer_value - existing_offer_value + new_offer_value > request_value * 11 / 10)
                         {
                             over_offer_qty = offer_qty;
@@ -1409,7 +1409,7 @@ bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst 
                             break;
                         }
                     }
-                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, trade->caravan->buy_prices, over_offer_qty);
+                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                     trade->broker_selected.at(i) = 1;
                     trade->broker_count.at(i) = over_offer_qty;
                     offer_value = offer_value - existing_offer_value + new_offer_value;

@@ -1,4 +1,4 @@
-// Converted from https://github.com/mifki/dfremote/blob/37ee700a40ca77e1b1327b5a50581173538f1dc5/lua/depot.lua
+// Converted from https://github.com/mifki/dfremote/blob/414809907133def8b4ad36f61ba0f2c991726b9f/lua/depot.lua
 // Used with permission.
 
 #include "ai.h"
@@ -15,12 +15,22 @@
 #include "df/entity_buy_prices.h"
 #include "df/entity_buy_requests.h"
 #include "df/entity_raw.h"
+#include "df/entity_sell_category.h"
+#include "df/entity_sell_prices.h"
+#include "df/entity_sell_requests.h"
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_contains_unitst.h"
 #include "df/general_ref_unit_workerst.h"
 #include "df/graphic.h"
 #include "df/historical_entity.h"
 #include "df/item.h"
+#include "df/item_armorst.h"
+#include "df/item_glovesst.h"
+#include "df/item_helmst.h"
+#include "df/item_pantsst.h"
+#include "df/item_shieldst.h"
+#include "df/item_shoesst.h"
+#include "df/item_weaponst.h"
 #include "df/itemdef_armorst.h"
 #include "df/itemdef_glovesst.h"
 #include "df/itemdef_helmst.h"
@@ -85,97 +95,6 @@ bool Trade::can_move_goods()
 
     return false;
 }
-
-/*
---luacheck: in=
-function depot_movegoods_get()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_dwarfmodest then
-        error('wrong screen '..tostring(ws._type))
-    end
-
-    if df.global.ui.main.mode ~= 17 or df.global.world.selected_building == nil then
-        error('no selected building')
-    end
-
-    local bld = df.global.world.selected_building
-    if bld:getType() ~= df.building_type.TradeDepot then
-        error('not a depot')
-    end
-
-    gui.simulateInput(ws, K'BUILDJOB_DEPOT_BRING')
-
-    local movegoodsws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_layer_assigntradest
-    if movegoodsws._type ~= df.viewscreen_layer_assigntradest then
-        error('can not switch to move goods screen')
-    end
-
-    gui.simulateInput(movegoodsws, K'ASSIGNTRADE_SORT')
-
-    local ret = {}
-    
-    for i,info in ipairs(movegoodsws.info) do
-        local title = itemname(info.item, 0, true)
-        table.insert(ret, { title, info.distance, info.status })
-    end
-
-    return ret
-end
-*/
-
-/*
---luacheck: in=
-function depot_movegoods_get2()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_dwarfmodest then
-        error('wrong screen '..tostring(ws._type))
-    end
-
-    if df.global.ui.main.mode ~= 17 or df.global.world.selected_building == nil then
-        error('no selected building')
-    end
-
-    local bld = df.global.world.selected_building
-    if bld:getType() ~= df.building_type.TradeDepot then
-        error('not a depot')
-    end
-
-    gui.simulateInput(ws, K'BUILDJOB_DEPOT_BRING')
-
-    local movegoodsws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_layer_assigntradest
-    if movegoodsws._type ~= df.viewscreen_layer_assigntradest then
-        error('can not switch to move goods screen')
-    end
-
-    gui.simulateInput(movegoodsws, K'ASSIGNTRADE_SORT')
-
-    local ret = {}
-    
-    for i,info in ipairs(movegoodsws.info) do
-        local title = itemname(info.item, 0, true)
-        table.insert(ret, { title, info.item.id, info.status, info.status }) -- .distance
-    end
-
-    return ret
-end
-*/
-
-/*
---luacheck: in=number,number
-function depot_movegoods_set(idx, status)
-    local ws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_layer_assigntradest
-
-    if ws._type ~= df.viewscreen_layer_assigntradest then
-        return
-    end
-        
-    if type(status) == 'boolean' then
-        status = status and 1 or 0
-    end
-
-    ws.info[idx].status = status
-end
-*/
 
 void Trade::read_trader_reply(std::string & reply, std::string & mood)
 {
@@ -248,13 +167,409 @@ void Trade::read_trader_reply(std::string & reply, std::string & mood)
     }
 }
 
-// exact copy of Item::getValue() but also accepts caravan_state, race and quantity
-int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, int32_t qty)
+static bool match_mat_vec(const df::material_vec_ref & mat_vec, size_t idx, int16_t mat_type, int32_t mat_index)
+{
+    return mat_type == mat_vec.mat_type.at(idx) && mat_index == mat_vec.mat_index.at(idx);
+}
+static bool match_inorganic_mat(const std::vector<int32_t> & mat_indices, size_t idx, int16_t mat_type, int32_t mat_index)
+{
+    return mat_type == 0 && mat_index == mat_indices.at(idx);
+}
+static bool match_item_type_subtype(const std::vector<int16_t> & subtypes, size_t idx, int16_t item_subtype)
+{
+    return item_subtype == subtypes.at(idx);
+}
+static bool match_race_caste(const std::vector<int32_t> & races, const std::vector<int16_t> & castes, size_t idx, int16_t race, int32_t caste)
+{
+    return int32_t(race) == races.at(idx) && caste == int32_t(castes.at(idx));
+}
+
+const static struct item_type_to_sell_category_t
+{
+    std::map<df::item_type, std::vector<df::entity_sell_category>> map;
+
+    const std::vector<df::entity_sell_category> & operator[](df::item_type item_type) const
+    {
+        auto it = map.find(item_type);
+        if (it == map.end())
+        {
+            const static std::vector<df::entity_sell_category> empty;
+            return empty;
+        }
+        return it->second;
+    }
+
+    item_type_to_sell_category_t()
+    {
+        map[item_type::BAR].push_back(entity_sell_category::MetalBars);
+        map[item_type::BAR].push_back(entity_sell_category::Miscellaneous);
+        map[item_type::SMALLGEM].push_back(entity_sell_category::SmallCutGems);
+        map[item_type::BLOCKS].push_back(entity_sell_category::StoneBlocks);
+        map[item_type::ROUGH].push_back(entity_sell_category::Glass);
+        map[item_type::BOULDER].push_back(entity_sell_category::Stone);
+        map[item_type::BOULDER].push_back(entity_sell_category::Clay);
+        map[item_type::WOOD].push_back(entity_sell_category::Wood);
+        map[item_type::CHAIN].push_back(entity_sell_category::RopesPlant);
+        map[item_type::CHAIN].push_back(entity_sell_category::RopesSilk);
+        map[item_type::CHAIN].push_back(entity_sell_category::RopesYarn);
+        map[item_type::FLASK].push_back(entity_sell_category::FlasksWaterskins);
+        map[item_type::GOBLET].push_back(entity_sell_category::CupsMugsGoblets);
+        map[item_type::INSTRUMENT].push_back(entity_sell_category::Instruments);
+        map[item_type::TOY].push_back(entity_sell_category::Toys);
+        map[item_type::CAGE].push_back(entity_sell_category::Cages);
+        map[item_type::BARREL].push_back(entity_sell_category::Barrels);
+        map[item_type::BUCKET].push_back(entity_sell_category::Buckets);
+        map[item_type::WEAPON].push_back(entity_sell_category::Weapons);
+        map[item_type::WEAPON].push_back(entity_sell_category::TrainingWeapons);
+        map[item_type::WEAPON].push_back(entity_sell_category::DiggingImplements);
+        map[item_type::ARMOR].push_back(entity_sell_category::Bodywear);
+        map[item_type::SHOES].push_back(entity_sell_category::Footwear);
+        map[item_type::SHIELD].push_back(entity_sell_category::Shields);
+        map[item_type::HELM].push_back(entity_sell_category::Headwear);
+        map[item_type::GLOVES].push_back(entity_sell_category::Handwear);
+        map[item_type::BOX].push_back(entity_sell_category::BagsYarn);
+        map[item_type::BOX].push_back(entity_sell_category::BagsLeather);
+        map[item_type::BOX].push_back(entity_sell_category::BagsPlant);
+        map[item_type::BOX].push_back(entity_sell_category::BagsSilk);
+        map[item_type::FIGURINE].push_back(entity_sell_category::Crafts);
+        map[item_type::AMULET].push_back(entity_sell_category::Crafts);
+        map[item_type::SCEPTER].push_back(entity_sell_category::Crafts);
+        map[item_type::AMMO].push_back(entity_sell_category::Ammo);
+        map[item_type::CROWN].push_back(entity_sell_category::Crafts);
+        map[item_type::RING].push_back(entity_sell_category::Crafts);
+        map[item_type::EARRING].push_back(entity_sell_category::Crafts);
+        map[item_type::BRACELET].push_back(entity_sell_category::Crafts);
+        map[item_type::GEM].push_back(entity_sell_category::LargeCutGems);
+        map[item_type::ANVIL].push_back(entity_sell_category::Anvils);
+        map[item_type::MEAT].push_back(entity_sell_category::Meat);
+        map[item_type::FISH].push_back(entity_sell_category::Fish);
+        map[item_type::FISH_RAW].push_back(entity_sell_category::Fish);
+        map[item_type::PET].push_back(entity_sell_category::Pets);
+        map[item_type::SEEDS].push_back(entity_sell_category::Seeds);
+        map[item_type::PLANT].push_back(entity_sell_category::Plants);
+        map[item_type::SKIN_TANNED].push_back(entity_sell_category::Leather);
+        map[item_type::PLANT_GROWTH].push_back(entity_sell_category::FruitsNuts);
+        map[item_type::PLANT_GROWTH].push_back(entity_sell_category::GardenVegetables);
+        map[item_type::THREAD].push_back(entity_sell_category::ThreadPlant);
+        map[item_type::THREAD].push_back(entity_sell_category::ThreadSilk);
+        map[item_type::THREAD].push_back(entity_sell_category::ThreadYarn);
+        map[item_type::CLOTH].push_back(entity_sell_category::ClothPlant);
+        map[item_type::CLOTH].push_back(entity_sell_category::ClothSilk);
+        map[item_type::CLOTH].push_back(entity_sell_category::ClothYarn);
+        map[item_type::PANTS].push_back(entity_sell_category::Legwear);
+        map[item_type::BACKPACK].push_back(entity_sell_category::Backpacks);
+        map[item_type::QUIVER].push_back(entity_sell_category::Quivers);
+        map[item_type::TRAPCOMP].push_back(entity_sell_category::TrapComponents);
+        map[item_type::DRINK].push_back(entity_sell_category::Drinks);
+        map[item_type::POWDER_MISC].push_back(entity_sell_category::Powders);
+        map[item_type::POWDER_MISC].push_back(entity_sell_category::Sand);
+        map[item_type::CHEESE].push_back(entity_sell_category::Cheese);
+        map[item_type::LIQUID_MISC].push_back(entity_sell_category::Extracts);
+        map[item_type::LIQUID_MISC].push_back(entity_sell_category::Miscellaneous);
+        map[item_type::SPLINT].push_back(entity_sell_category::Splints);
+        map[item_type::CRUTCH].push_back(entity_sell_category::Crutches);
+        map[item_type::TOOL].push_back(entity_sell_category::Tools);
+        map[item_type::EGG].push_back(entity_sell_category::Eggs);
+        map[item_type::SHEET].push_back(entity_sell_category::Parchment);
+    }
+} item_type_to_sell_category;
+
+const static struct sell_category_matchers_t
+{
+    std::map<df::entity_sell_category, std::function<bool(df::historical_entity *, size_t, df::item_type, int16_t, int16_t, int32_t)>> map;
+
+    bool operator()(df::entity_sell_category category, df::historical_entity *entity, size_t idx, df::item_type item_type, int16_t item_subtype, int16_t mat_type, int32_t mat_index) const
+    {
+        auto it = map.find(category);
+        if (it == map.end())
+        {
+            return false;
+        }
+        return it->second(entity, idx, item_type, item_subtype, mat_type, mat_index);
+    }
+
+    sell_category_matchers_t()
+    {
+        map[entity_sell_category::Leather] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.leather, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::ClothPlant] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.fiber, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::ClothSilk] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.silk, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Crafts] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.crafts, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Wood] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.wood, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::MetalBars] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_inorganic_mat(entity->resources.metals, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::SmallCutGems] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_inorganic_mat(entity->resources.gems, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::LargeCutGems] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_inorganic_mat(entity->resources.gems, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::StoneBlocks] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_inorganic_mat(entity->resources.stones, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Seeds] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.seeds, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Anvils] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.metal.anvil, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Weapons] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.weapon_type, idx, item_subtype);
+        };
+        map[entity_sell_category::TrainingWeapons] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.training_weapon_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Ammo] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.ammo_type, idx, item_subtype);
+        };
+        map[entity_sell_category::TrapComponents] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.trapcomp_type, idx, item_subtype);
+        };
+        map[entity_sell_category::DiggingImplements] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.digger_type, idx, item_subtype);
+        };
+
+        map[entity_sell_category::Bodywear] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.armor_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Headwear] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.helm_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Handwear] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.gloves_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Footwear] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.shoes_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Legwear] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.pants_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Shields] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.shield_type, idx, item_subtype);
+        };
+
+        map[entity_sell_category::Toys] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.toy_type, idx, item_subtype);
+        };
+        map[entity_sell_category::Instruments] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.instrument_type, idx, item_subtype);
+        };
+
+        map[entity_sell_category::Pets] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_race_caste(entity->resources.animals.pet_races, entity->resources.animals.pet_castes, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Drinks] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.booze, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Cheese] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.cheese, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Powders] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.powders, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Extracts] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.extracts, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Meat] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.meat, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Fish] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_race_caste(entity->resources.fish_races, entity->resources.fish_castes, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Plants] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.plants, idx, mat_type, mat_index);
+        };
+
+        // TODO: FruitsNuts, GardenVegetables, MeatFishRecipes, OtherRecipes,
+
+        map[entity_sell_category::Stone] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_inorganic_mat(entity->resources.stones, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Cages] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.cages, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::BagsLeather] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.leather, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::BagsPlant] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.fiber, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::BagsSilk] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.silk, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::ThreadPlant] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.fiber, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::ThreadSilk] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.silk, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::RopesPlant] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.fiber, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::RopesSilk] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.silk, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Barrels] = [](df::historical_entity *entity, size_t idx, df::item_type item_type, int32_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.barrels, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::FlasksWaterskins] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.flasks, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Quivers] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.quivers, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Backpacks] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.backpacks, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Sand] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.sand, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Glass] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.glass, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Miscellaneous] = [](df::historical_entity *entity, size_t idx, df::item_type item_type, int16_t item_subtype, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return item_type == entity->resources.wood_products.item_type.at(idx) &&
+                item_subtype == entity->resources.wood_products.item_subtype.at(idx) &&
+                mat_type == entity->resources.wood_products.material.mat_type.at(idx) &&
+                mat_index == entity->resources.wood_products.material.mat_index.at(idx);
+        };
+
+        map[entity_sell_category::Buckets] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.barrels, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Splints] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.barrels, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::Crutches] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.barrels, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Eggs] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_race_caste(entity->resources.egg_races, entity->resources.egg_castes, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::BagsYarn] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.wool, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::RopesYarn] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.wool, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::ClothYarn] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.wool, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::ThreadYarn] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.wool, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Tools] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t item_subtype, int16_t, int32_t) -> bool
+        {
+            return match_item_type_subtype(entity->resources.tool_type, idx, item_subtype);
+        };
+
+        map[entity_sell_category::Clay] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.clay, idx, mat_type, mat_index);
+        };
+
+        map[entity_sell_category::Parchment] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.organic.parchment, idx, mat_type, mat_index);
+        };
+        map[entity_sell_category::CupsMugsGoblets] = [](df::historical_entity *entity, size_t idx, df::item_type, int16_t, int16_t mat_type, int32_t mat_index) -> bool
+        {
+            return match_mat_vec(entity->resources.misc_mat.crafts, idx, mat_type, mat_index);
+        };
+    }
+} sell_category_matchers;
+
+// copy of Item::getValue() but also applies entity, race and caravan modifications, agreements adjustment, and custom qty
+int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, int32_t adjustment, int32_t qty)
 {
     auto item_type = item->getType();
     auto item_subtype = item->getSubtype();
     auto mat_type = item->getMaterial();
-    auto mat_subtype = item->getMaterialIndex();
+    auto mat_index = item->getMaterialIndex();
 
     // Get base value for item type, subtype, and material
     int32_t value;
@@ -265,7 +580,7 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
     }
     else
     {
-        value = Items::getItemBaseValue(item_type, item_subtype, mat_type, mat_subtype);
+        value = Items::getItemBaseValue(item_type, item_subtype, mat_type, mat_index);
     }
 
     // Apply entity value modifications
@@ -282,44 +597,44 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
         }
 
         // armor gloves shoes helms pants
-        // TODO: why 7 ?
+        //TODO: why 7 ?
         if (creature->adultsize >= 7)
         {
-            if (item_type == item_type::ARMOR)
+            if (auto armor = virtual_cast<df::item_armorst>(item))
             {
-                auto def = df::itemdef_armorst::find(item_subtype);
+                auto def = armor->subtype;
                 if (def->armorlevel > 0 || def->flags.is_set(armor_flags::METAL_ARMOR_LEVELS))
                 {
                     value = value * 2;
                 }
             }
-            else if (item_type == item_type::GLOVES)
+            else if (auto gloves = virtual_cast<df::item_glovesst>(item))
             {
-                auto def = df::itemdef_glovesst::find(item_subtype);
+                auto def = gloves->subtype;
                 if (def->armorlevel > 0 || def->flags.is_set(gloves_flags::METAL_ARMOR_LEVELS))
                 {
                     value = value * 2;
                 }
             }
-            else if (item_type == item_type::SHOES)
+            else if (auto shoes = virtual_cast<df::item_shoesst>(item))
             {
-                auto def = df::itemdef_shoesst::find(item_subtype);
+                auto def = shoes->subtype;
                 if (def->armorlevel > 0 || def->flags.is_set(shoes_flags::METAL_ARMOR_LEVELS))
                 {
                     value = value * 2;
                 }
             }
-            else if (item_type == item_type::HELM)
+            else if (auto helm = virtual_cast<df::item_helmst>(item))
             {
-                auto def = df::itemdef_helmst::find(item_subtype);
+                auto def = helm->subtype;
                 if (def->armorlevel > 0 || def->flags.is_set(helm_flags::METAL_ARMOR_LEVELS))
                 {
                     value = value * 2;
                 }
             }
-            else if (item_type == item_type::PANTS)
+            else if (auto pants = virtual_cast<df::item_pantsst>(item))
             {
-                auto def = df::itemdef_pantsst::find(item_subtype);
+                auto def = pants->subtype;
                 if (def->armorlevel > 0 || def->flags.is_set(pants_flags::METAL_ARMOR_LEVELS))
                 {
                     value = value * 2;
@@ -328,9 +643,9 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
         }
 
         // shields
-        if (item_type == item_type::SHIELD)
+        if (auto shield = virtual_cast<df::item_shieldst>(item))
         {
-            auto def = df::itemdef_shieldst::find(item_subtype);
+            auto def = shield->subtype;
             if (def->armorlevel > 0)
             {
                 value = value * 2;
@@ -389,6 +704,8 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
         value = value * 10;
     }
 
+    value = value * adjustment / 128;
+
     // Boost value from stack size or the supplied quantity
     if (qty > 0)
     {
@@ -412,11 +729,10 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
     if (item_type == item_type::VERMIN || item_type == item_type::PET)
     {
         int32_t divisor = 1;
-        auto creature = df::creature_raw::find(mat_type);
-        size_t caste(mat_subtype);
-        if (creature && caste < creature->caste.size())
+        auto pet = df::creature_raw::find(mat_type);
+        if (pet && size_t(mat_index) < pet->caste.size())
         {
-            divisor = creature->caste.at(caste)->misc.petvalue_divisor;
+            divisor = pet->caste.at(size_t(mat_index))->misc.petvalue_divisor;
         }
         if (divisor > 1)
         {
@@ -427,355 +743,90 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
     return value;
 }
 
-template<typename Prices>
-static int32_t item_price_for_caravan(Trade *trade, df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, Prices *pricetable, int32_t qty)
+int32_t Trade::item_price_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, int32_t qty, df::entity_buy_prices *pricetable_buy, df::entity_sell_prices *pricetable_sell)
 {
-    auto value = trade->item_value_for_caravan(item, caravan, entity, creature, qty);
+    auto item_type = item->getType();
+    auto item_subtype = item->getSubtype();
+    auto mat_type = item->getMaterial();
+    auto mat_index = item->getMaterialIndex();
 
-    if (!pricetable)
+    int32_t adjustment_buy = 128;
+    int32_t adjustment_sell = 128;
+
+    if (pricetable_buy)
     {
-        return value;
-    }
-
-    MaterialInfo mat(item);
-
-    auto & reqs = pricetable->items;
-    for (size_t i = 0; i < reqs->item_type.size(); i++)
-    {
-        if (item->getType() == reqs->item_type.at(i) && (reqs->item_subtype.at(i) == -1 || item->getSubtype() == reqs->item_subtype.at(i)))
+        auto reqs = pricetable_buy->items;
+        bool matched = false;
+        for (size_t i = 0; i < reqs->item_type.size(); i++)
         {
-            if (reqs->mat_cats.at(i).whole == 0 || mat.matches(reqs->mat_cats.at(i)))
+            if (item_type == reqs->item_type.at(i) && (reqs->item_subtype.at(i) == -1 || item_subtype == reqs->item_subtype.at(i)))
             {
-                return value * pricetable->price.at(i) / 128;
+                if (reqs->mat_types.at(i) != -1)
+                {
+                    matched = (mat_type == reqs->mat_types.at(i) && mat_index == reqs->mat_indices.at(i));
+                }
+                else
+                {
+                    bool any_cat = reqs->mat_cats.at(i).whole == 0;
+
+                    matched = any_cat || MaterialInfo(mat_type, mat_index).matches(reqs->mat_cats.at(i));
+                }
+
+                if (matched)
+                {
+                    adjustment_buy = pricetable_buy->price.at(i);
+                    break;
+                }
             }
         }
     }
 
-    return value;
+    if (pricetable_sell)
+    {
+        auto & sell_cats = item_type_to_sell_category[item_type];
+        for (auto cat : sell_cats)
+        {
+            bool matched = false;
+
+            for (size_t i = 0; i < pricetable_sell->price[cat].size(); i++)
+            {
+                if (pricetable_sell->price[cat].at(i) != 128 && sell_category_matchers(cat, entity, i, item_type, item_subtype, mat_type, mat_index))
+                {
+                    matched = true;
+                    adjustment_sell = pricetable_sell->price[cat].at(i);
+                    break;
+                }
+            }
+
+            if (matched)
+            {
+                break;
+            }
+        }
+    }
+
+    return item_value_for_caravan(item, caravan, entity, creature, std::max(adjustment_buy, adjustment_sell), qty);
 }
 
-int32_t Trade::item_price_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, df::entity_buy_prices *pricetable, int32_t qty)
+int32_t Trade::item_or_container_price_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, int32_t qty, df::entity_buy_prices *pricetable_buy, df::entity_sell_prices *pricetable_sell)
 {
-    return ::item_price_for_caravan(this, item, caravan, entity, creature, pricetable, qty);
-}
-
-template<typename Prices>
-static int32_t item_or_container_price_for_caravan(Trade *trade, df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, Prices *pricetable, int32_t qty)
-{
-    auto value = item_price_for_caravan(trade, item, caravan, entity, creature, pricetable, qty);
+    auto value = item_price_for_caravan(item, caravan, entity, creature, qty, pricetable_buy, pricetable_sell);
 
     for (auto & ref : item->general_refs)
     {
         if (auto contains_item = virtual_cast<df::general_ref_contains_itemst>(ref))
         {
             auto item2 = df::item::find(contains_item->item_id);
-            value += item_price_for_caravan(trade, item2, caravan, entity, creature, pricetable, 0);
+            value = value + item_or_container_price_for_caravan(item2, caravan, entity, creature, item2->getStackSize(), pricetable_buy, pricetable_sell);
         }
         else if (auto contains_unit = virtual_cast<df::general_ref_contains_unitst>(ref))
         {
             auto unit2 = df::unit::find(contains_unit->unit_id);
-            auto creature2 = df::creature_raw::find(unit2->race);
-            auto caste = creature2->caste.at(unit2->caste);
-            value += caste->misc.petvalue;
+            auto creature_raw = df::creature_raw::find(unit2->race);
+            auto caste_raw = creature_raw->caste.at(unit2->caste);
+            value = value + caste_raw->misc.petvalue;
         }
     }
 
     return value;
 }
-
-int32_t Trade::item_or_container_price_for_caravan(df::item *item, df::caravan_state *caravan, df::historical_entity *entity, df::creature_raw *creature, df::entity_buy_prices *pricetable, int32_t qty)
-{
-    return ::item_or_container_price_for_caravan(this, item, caravan, entity, creature, pricetable, qty);
-}
-
-int32_t Trade::depot_calculate_profit(df::viewscreen_tradegoodsst *ws)
-{
-    auto creature = df::creature_raw::find(ws->entity->race);
-
-    int32_t trader_profit = 0;
-    for (size_t i = 0; i < ws->trader_selected.size(); i++)
-    {
-        if (ws->trader_selected.at(i))
-        {
-            trader_profit -= item_or_container_price_for_caravan(ws->trader_items.at(i), ws->caravan, ws->entity, creature, ws->caravan->buy_prices, ws->trader_count.at(i)); // sell_prices
-        }
-    }
-    for (size_t i = 0; i < ws->broker_selected.size(); i++)
-    {
-        if (ws->broker_selected.at(i))
-        {
-            trader_profit += item_or_container_price_for_caravan(ws->broker_items.at(i), ws->caravan, ws->entity, creature, ws->caravan->buy_prices, ws->broker_count.at(i));
-        }
-    }
-
-    return trader_profit;
-}
-
-/*
-local counteroffer
-
---luacheck: in=
-function depot_trade_overview()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        if df.global.ui.main.mode ~= df.ui_sidebar_mode.QueryBuilding or df.global.world.selected_building == nil then
-            error('no selected building')
-        end
-
-        local bld = df.global.world.selected_building
-        if bld:getType() ~= df.building_type.TradeDepot then
-            error('not a depot')
-        end
-    
-        gui.simulateInput(ws, K'BUILDJOB_DEPOT_TRADE')
-
-        ws = dfhack.gui.getCurViewscreen()
-        ws:logic()
-        ws = dfhack.gui.getCurViewscreen()
-        ws:logic() --probably not required
-        ws:render() --to populate item lists
-
-        if ws._type ~= df.viewscreen_tradegoodsst then
-            error('can not switch to trade screen')
-        end        
-    end
-
-    local tradews = ws --as:df.viewscreen_tradegoodsst
-
-    --todo: include whether can seize/offer
-    local trader_profit = depot_calculate_profit()
-    local reply, mood = read_trader_reply()
-    
-    local can_seize = (tradews.caravan.entity ~= df.global.ui.civ_id)
-    local can_trade = not tradews.is_unloading and not tradews.caravan.flags.offended
-
-    local have_appraisal = false
-    for i,v in ipairs(tradews.broker.status.current_soul.skills) do
-        if v.id == df.job_skill.APPRAISAL then
-            have_appraisal = true
-            break
-        end
-    end    
-
-    local flags = packbits(can_trade, can_seize, have_appraisal)
-
-    --local counteroffer = mp.NIL
-    if #tradews.counteroffer > 0 then
-        counteroffer = {}
-        for i,item in ipairs(tradews.counteroffer) do
-            local title = itemname(item, 0, true)
-            table.insert(counteroffer, { title })
-        end
-
-        gui.simulateInput(tradews, K'SELECT')
-    elseif not istrue(tradews.has_offer) then
-        counteroffer = mp.NIL
-    end
-
-    local ret = { dfhack.df2utf(tradews.merchant_name), dfhack.df2utf(tradews.merchant_entity), reply, mood, trader_profit, flags, counteroffer }
-
-    return ret
-end
-*/
-
-/*
-function is_contained(item)
-    for i,ref in ipairs(item.general_refs) do
-        if ref:getType() == df.general_ref_type.CONTAINED_IN_ITEM then
-            return true
-        end
-    end
-
-    return false
-end
-*/
-
-/*
---luacheck: in=bool
-function depot_trade_get_items(their)
-    local ws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_tradegoodsst
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        error('wrong screen '..tostring(ws._type))
-    end
-
-    their = istrue(their)
-
-    local items = their and ws.trader_items or ws.broker_items --as:df.item_actual[]
-    local sel = their and ws.trader_selected or ws.broker_selected
-    local counts = their and ws.trader_count or ws.broker_count
-    local prices = ws.caravan.buy_prices --their and nil or ws.caravan.buy_prices --ws.caravan.sell_prices
-    local creature = df.global.world.raws.creatures.all[ws.entity.race]
-
-    local ret = {}
-
-    for i,item in ipairs(items) do
-        local title = itemname(item, 0, true)
-        local value = item_or_container_price_for_caravan(item, ws.caravan, ws.entity, creature, nil, prices)
-
-        local inner = is_contained(item)
-        local entity_stolen = dfhack.items.getGeneralRef(item, df.general_ref_type.ENTITY_STOLEN) --as:df.general_ref_entity_stolenst
-        local stolen = entity_stolen and (df.historical_entity.find(entity_stolen.entity_id) ~= nil)
-        local flags = packbits(inner, stolen, item.flags.foreign)
-
-        --todo: use getStackSize() ?
-        table.insert(ret, { title, value, item.weight, sel[i], flags, item.stack_size, counts[i] })
-    end
-
-    return ret
-end
-*/
-
-/*
---luacheck: in=bool
-function depot_trade_get_items2(their)
-    local ws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_tradegoodsst
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        error('wrong screen '..tostring(ws._type))
-    end
-
-    their = istrue(their)
-
-    local items = their and ws.trader_items or ws.broker_items --as:df.item_actual[]
-    local sel = their and ws.trader_selected or ws.broker_selected
-    local counts = their and ws.trader_count or ws.broker_count
-    local prices = ws.caravan.buy_prices --their and nil or ws.caravan.buy_prices --ws.caravan.sell_prices
-    local creature = df.global.world.raws.creatures.all[ws.entity.race]
-
-    local ret = {}
-
-    for i,item in ipairs(items) do
-        local title = itemname(item, 0, true)
-        local value = item_or_container_price_for_caravan(item, ws.caravan, ws.entity, creature, nil, prices)
-
-        local inner = is_contained(item)
-        local entity_stolen = dfhack.items.getGeneralRef(item, df.general_ref_type.ENTITY_STOLEN) --as:df.general_ref_entity_stolenst
-        local stolen = entity_stolen and (df.historical_entity.find(entity_stolen.entity_id) ~= nil)
-        local flags = packbits(inner, stolen, item.flags.foreign)
-
-        --todo: use getStackSize() ?
-        table.insert(ret, { title, item.id, value, item.weight, sel[i], flags, item.stack_size, counts[i] })
-    end
-
-    return ret
-end
-*/
-
-/*
---todo: support passing many items at once
---luacheck: in=bool,number,bool,number
-function depot_trade_set(their, idx, trade, qty)
-    local ws = dfhack.gui.getCurViewscreen() --as:df.viewscreen_tradegoodsst
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        return
-    end
-
-    their = istrue(their)
-
-    local items = their and ws.trader_items or ws.broker_items --as:df.item_actual[]
-    local sel = their and ws.trader_selected or ws.broker_selected    
-    local counts = their and ws.trader_count or ws.broker_count
-
-    if istrue(trade) then
-        if is_contained(items[idx]) then
-            -- Go up find the container and deselect it
-            for i=idx-1,0,-1 do
-                if not is_contained(items[i]) then
-                    sel[i] = 0
-                    break
-                end
-            end
-        else
-            -- If selecting a container, deselect all individual items in it
-            for i=idx+1,#items-1 do
-                if is_contained(items[i]) then
-                    sel[i] = 0
-                    counts[i] = 0
-                else
-                    break
-                end
-            end            
-        end
-
-        sel[idx] = 1
-        counts[idx] = items[idx].stack_size > qty and qty or 0
-    else
-        sel[idx] = 0
-        counts[idx] = 0
-    end
-
-    return depot_calculate_profit()
-end
-*/
-
-/*
---luacheck: in=
-function depot_trade_dotrade()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        return
-    end
-
-    gui.simulateInput(ws, K'TRADE_TRADE')
-
-    --not sure these are needed
-    ws:logic()
-    ws:render()
-
-    --todo: return the new depot_trade_overview info here?
-    return true
-end
-*/
-
-/*
---luacheck: in=
-function depot_trade_seize()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        return
-    end
-
-    gui.simulateInput(ws, K'TRADE_SEIZE')
-
-    --not sure these are needed
-    ws:logic()
-    ws:render()
-
-    --todo: return the new depot_trade_overview info here?
-    return true    
-end
-*/
-
-/*
---luacheck: in=
-function depot_trade_offer()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_tradegoodsst then
-        return
-    end
-
-    gui.simulateInput(ws, K'TRADE_OFFER')
-
-    --not sure these are needed
-    ws:logic()
-    ws:render()
-
-    --todo: return the new depot_trade_overview info here?
-    return true    
-end
-*/
-
-/*
---luacheck: in=
-function depot_access()
-    local ws = dfhack.gui.getCurViewscreen()
-    if ws._type ~= df.viewscreen_dwarfmodest then
-        error('wrong screen '..tostring(ws._type))
-    end
-
-    reset_main()
-
-    gui.simulateInput(ws, K'D_DEPOT')
-
-    return df.global.ui.main.mode == df.ui_sidebar_mode.DepotAccess
-end
-*/
