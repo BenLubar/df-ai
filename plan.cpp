@@ -3067,6 +3067,7 @@ bool Plan::is_smooth(df::coord t)
         mat == tiletype_material::GRASS_DARK ||
         mat == tiletype_material::PLANT ||
         mat == tiletype_material::ROOT ||
+        mat == tiletype_material::TREE ||
         mat == tiletype_material::FROZEN_LIQUID ||
         sp == tiletype_special::TRACK ||
         sp == tiletype_special::SMOOTH ||
