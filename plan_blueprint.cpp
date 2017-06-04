@@ -775,9 +775,9 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
     {
         room *r = new room(room_type::tradedepot, depot_center - df::coord(2, 2, 0), depot_center + df::coord(2, 2, 0));
         r->level = 0;
-        r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 1));
-        r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 2));
-        r->layout.push_back(new_dig(tile_dig_designation::Ramp, -1, 3));
+        r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 1));
+        r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 2));
+        r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 3));
         rooms.push_back(r);
     }
     else
