@@ -89,6 +89,8 @@ std::ostream & operator <<(std::ostream & stream, corridor_type::type type)
         return stream << "aqueduct";
     case corridor_type::outpost:
         return stream << "outpost";
+    case corridor_type::walkable:
+        return stream << "walkable";
 
     case corridor_type::_corridor_type_count:
         return stream << "???";
@@ -348,7 +350,10 @@ void room::dig(bool plan, bool channel)
                     if (((dm == tile_dig_designation::DownStair || dm == tile_dig_designation::Channel) && ENUM_ATTR(tiletype, shape, *tt) != tiletype_shape::STAIR_DOWN && ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Open) || ENUM_ATTR(tiletype, shape, *tt) == tiletype_shape::WALL)
                     {
                         Plan::dig_tile(t, dm);
-                        Maps::getTileOccupancy(t)->bits.dig_marked = plan ? 1 : 0;
+                        if (plan)
+                        {
+                            Maps::getTileOccupancy(t)->bits.dig_marked = 1;
+                        }
                     }
                 }
             }

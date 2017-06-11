@@ -74,6 +74,7 @@ namespace corridor_type
         veinshaft,
         aqueduct,
         outpost,
+        walkable,
 
         _corridor_type_count
     };

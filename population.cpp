@@ -1905,14 +1905,14 @@ void Population::update_pets(color_ostream & out)
 
     for (auto cst = forSlaughter.begin(); cst != forSlaughter.end(); cst++)
     {
-        // we have reproductively viable animals, but there are more than 5 of
+        // we have reproductively viable animals, but there are more than 3 of
         // this sex (full-grown). kill the oldest ones for meat/leather/bones.
 
         if (cst->second.size() > 5)
         {
             // remove the youngest 5
             auto it = cst->second.begin();
-            std::advance(it, 5);
+            std::advance(it, 3);
             cst->second.erase(cst->second.begin(), it);
 
             for (auto it = cst->second.begin(); it != cst->second.end(); it++)
