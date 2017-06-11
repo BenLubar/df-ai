@@ -22,4 +22,5 @@ public:
     inline bool is_embarking() { return embarking; }
 
     bool update(color_ostream & out);
+    void found_site_step(color_ostream & out);
 };

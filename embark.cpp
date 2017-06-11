@@ -326,12 +326,9 @@ bool Embark::update(color_ostream & out)
 
             selected_embark = true;
 
-            ai->timeout_sameview(15, [](color_ostream &)
+            ai->timeout_sameview(5, [this](color_ostream & out)
             {
-                df::viewscreen *view = Gui::getCurViewscreen(true);
-                AI::feed_key(view, interface_key::SETUP_EMBARK);
-                // dismiss warnings
-                AI::feed_key(view, interface_key::SELECT);
+                found_site_step(out);
             });
         }
     }
@@ -361,4 +358,41 @@ bool Embark::update(color_ostream & out)
         return true;
     }
     return false;
+}
+
+void Embark::found_site_step(color_ostream &)
+{
+    df::viewscreen_choose_start_sitest *view = strict_virtual_cast<df::viewscreen_choose_start_sitest>(Gui::getCurViewscreen(true));
+    if (view->biome_highlighted)
+    {
+        int32_t biome_idx = view->biome_idx + 1;
+        AI::feed_key(view, static_cast<df::interface_key>(interface_key::SETUP_BIOME_1 + biome_idx));
+        if (!view->biome_highlighted || biome_idx != view->biome_idx)
+        {
+            AI::feed_key(view, interface_key::SETUP_EMBARK);
+            // dismiss warnings
+            AI::feed_key(view, interface_key::SELECT);
+            return;
+        }
+    }
+    else
+    {
+        AI::feed_key(view, interface_key::CHANGETAB);
+        if (view->page == df::viewscreen_choose_start_sitest::T_page::Biome)
+        {
+            AI::feed_key(view, interface_key::SETUP_BIOME_1);
+            if (!view->biome_highlighted)
+            {
+                AI::feed_key(view, interface_key::SETUP_EMBARK);
+                // dismiss warnings
+                AI::feed_key(view, interface_key::SELECT);
+                return;
+            }
+        }
+    }
+
+    ai->timeout_sameview(5, [this](color_ostream & out)
+    {
+        found_site_step(out);
+    });
 }
