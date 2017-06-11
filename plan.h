@@ -174,16 +174,16 @@ public:
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
 
-    void smooth_room(color_ostream & out, room *r);
+    bool smooth_room(color_ostream & out, room *r, bool engrave = false);
     void smooth_room_access(color_ostream & out, room *r);
     void smooth_cistern(color_ostream & out, room *r);
     void smooth_cistern_access(color_ostream & out, room *r);
     bool construct_cistern(color_ostream & out, room *r);
     bool dump_items_access(color_ostream & out, room *r);
     void room_items(color_ostream & out, room *r, std::function<void(df::item *)> f);
-    void smooth_xyz(df::coord min, df::coord max);
-    void smooth(std::set<df::coord> tiles);
-    bool is_smooth(df::coord t);
+    bool smooth_xyz(df::coord min, df::coord max, bool engrave = false);
+    bool smooth(std::set<df::coord> tiles, bool engrave = false);
+    bool is_smooth(df::coord t, bool engrave = false);
 
     bool try_digcistern(color_ostream & out, room *r);
     void dig_garbagedump(color_ostream & out);

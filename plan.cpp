@@ -43,6 +43,7 @@
 #include "df/builtin_mats.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/engraving.h"
 #include "df/entity_position.h"
 #include "df/feature_init_outdoor_riverst.h"
 #include "df/feature_outdoor_riverst.h"
@@ -1008,6 +1009,15 @@ void Plan::del_citizen(color_ostream & out, int32_t uid)
 
 bool Plan::checkidle(color_ostream & out)
 {
+    if (last_idle_year != *cur_year)
+    {
+        if (last_idle_year != -1)
+        {
+            idleidle(out);
+        }
+        last_idle_year = *cur_year;
+    }
+
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor)
@@ -1242,19 +1252,19 @@ bool Plan::checkidle(color_ostream & out)
         return false;
     }
 
-    if (last_idle_year != *cur_year)
-    {
-        last_idle_year = *cur_year;
-        idleidle(out);
-    }
     return false;
 }
 
+static bool last_idleidle_nothing = false;
 static std::vector<room *> idleidle_tab;
 
 void Plan::idleidle(color_ostream & out)
 {
-    ai->debug(out, "smooth fort");
+    if (!idleidle_tab.empty())
+    {
+        return;
+    }
+
     idleidle_tab.clear();
     for (auto it = rooms.begin(); it != rooms.end(); it++)
     {
@@ -1266,23 +1276,49 @@ void Plan::idleidle(color_ostream & out)
                 r->type == room_type::cemetary ||
                 r->type == room_type::infirmary ||
                 r->type == room_type::barracks ||
-                r->type == room_type::location))
+                r->type == room_type::location ||
+                r->type == room_type::stockpile))
             idleidle_tab.push_back(r);
     }
     for (auto it = corridors.begin(); it != corridors.end(); it++)
     {
         room *r = *it;
-        if (r->status != room_status::plan && r->status != room_status::dig)
+        if (r->status != room_status::plan && r->status != room_status::dig && r->corridor_type == corridor_type::corridor)
             idleidle_tab.push_back(r);
     }
-
-    events.onupdate_register_once("df-ai plan idleidle", 4, [this](color_ostream & out) -> bool
+    if (idleidle_tab.empty())
     {
+        last_idleidle_nothing = false;
+        return;
+    }
+
+    bool engrave = last_idleidle_nothing;
+    last_idleidle_nothing = true;
+
+    if (engrave)
+    {
+        ai->debug(out, "engrave fort");
+    }
+    else
+    {
+        ai->debug(out, "smooth fort");
+    }
+
+    events.onupdate_register_once("df-ai plan idleidle", 4, [this, engrave](color_ostream & out) -> bool
+    {
+        if (!Core::getInstance().isMapLoaded())
+        {
+            idleidle_tab.clear();
+            last_idleidle_nothing = false;
+        }
         if (idleidle_tab.empty())
         {
             return true;
         }
-        smooth_room(out, idleidle_tab.back());
+        if (smooth_room(out, idleidle_tab.back(), engrave))
+        {
+            last_idleidle_nothing = false;
+        }
         idleidle_tab.pop_back();
         return false;
     });
@@ -2842,9 +2878,9 @@ void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
     categorize_all();
 }
 
-void Plan::smooth_room(color_ostream &, room *r)
+bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
 {
-    smooth_xyz(r->min - df::coord(1, 1, 0), r->max + df::coord(1, 1, 0));
+    return smooth_xyz(r->min - df::coord(1, 1, 0), r->max + df::coord(1, 1, 0), engrave);
 }
 
 // smooth a room and its accesspath corridors (recursive)
@@ -2974,7 +3010,7 @@ void Plan::room_items(color_ostream &, room *r, std::function<void(df::item *)> 
     }
 }
 
-void Plan::smooth_xyz(df::coord min, df::coord max)
+bool Plan::smooth_xyz(df::coord min, df::coord max, bool engrave)
 {
     std::set<df::coord> tiles;
     for (int16_t x = min.x; x <= max.x; x++)
@@ -2987,11 +3023,13 @@ void Plan::smooth_xyz(df::coord min, df::coord max)
             }
         }
     }
-    smooth(tiles);
+    return smooth(tiles, engrave);
 }
 
-void Plan::smooth(std::set<df::coord> tiles)
+bool Plan::smooth(std::set<df::coord> tiles, bool engrave)
 {
+    bool all_already_smooth = true;
+
     // remove tiles that are not smoothable
     for (auto it = tiles.begin(); it != tiles.end(); )
     {
@@ -3011,12 +3049,13 @@ void Plan::smooth(std::set<df::coord> tiles)
             des.bits.smooth != 0 ||
             des.bits.hidden)
         {
+            all_already_smooth = false;
             tiles.erase(it++);
             continue;
         }
 
         // already smooth
-        if (is_smooth(*it))
+        if (is_smooth(*it, engrave))
         {
             tiles.erase(it++);
             continue;
@@ -3041,6 +3080,7 @@ void Plan::smooth(std::set<df::coord> tiles)
         if (j->item->job_type == job_type::DetailWall ||
             j->item->job_type == job_type::DetailFloor)
         {
+            all_already_smooth = false;
             tiles.erase(j->item->pos);
         }
     }
@@ -3048,12 +3088,15 @@ void Plan::smooth(std::set<df::coord> tiles)
     // mark the tiles to be smoothed!
     for (auto it = tiles.begin(); it != tiles.end(); it++)
     {
-        Maps::getTileDesignation(*it)->bits.smooth = 1;
+        Maps::getTileDesignation(*it)->bits.smooth = engrave ? 2 : 1;
+        Maps::getTileOccupancy(*it)->bits.dig_marked = 0;
         Maps::getTileBlock(*it)->flags.bits.designated = 1;
     }
+
+    return all_already_smooth;
 }
 
-bool Plan::is_smooth(df::coord t)
+bool Plan::is_smooth(df::coord t, bool engrave)
 {
     df::tiletype tt = *Maps::getTileType(t);
     df::tiletype_material mat = ENUM_ATTR(tiletype, material, tt);
@@ -3070,7 +3113,7 @@ bool Plan::is_smooth(df::coord t)
         mat == tiletype_material::TREE ||
         mat == tiletype_material::FROZEN_LIQUID ||
         sp == tiletype_special::TRACK ||
-        sp == tiletype_special::SMOOTH ||
+        (sp == tiletype_special::SMOOTH && (!engrave || std::find_if(world->engravings.begin(), world->engravings.end(), [t](df::engraving *e) -> bool { return e->pos == t; }) != world->engravings.end())) ||
         s == tiletype_shape::FORTIFICATION ||
         sb == tiletype_shape_basic::Open ||
         sb == tiletype_shape_basic::Stair ||
