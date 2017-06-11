@@ -18,6 +18,7 @@
 #include "df/activity_event_participants.h"
 #include "df/announcements.h"
 #include "df/creature_raw.h"
+#include "df/enabler.h"
 #include "df/history_event.h"
 #include "df/history_event_context.h"
 #include "df/interface_button_building_new_jobst.h"
@@ -42,6 +43,7 @@
 REQUIRE_GLOBAL(announcements);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
+REQUIRE_GLOBAL(enabler);
 REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
@@ -633,12 +635,12 @@ bool AI::tag_enemies(color_ostream & out)
     return found;
 }
 
-void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb)
+void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)
 {
     virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen(true));
-    std::time_t timeoff = std::time(nullptr) + delay;
+    int32_t *counter = new int32_t(enabler->fps * seconds);
 
-    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [this, curscreen, timeoff, cb](color_ostream & out) -> bool
+    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [this, curscreen, counter, cb](color_ostream & out) -> bool
     {
         if (virtual_identity::get(Gui::getCurViewscreen(true)) != curscreen)
         {
@@ -646,13 +648,17 @@ void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)
             {
                 Screen::dismiss(view);
                 camera->check_record_status();
-                return false;
             }
-            return true;
+            else
+            {
+                delete counter;
+                return true;
+            }
         }
 
-        if (std::time(nullptr) >= timeoff)
+        if (--*counter <= 0)
         {
+            delete counter;
             cb(out);
             return true;
         }
@@ -660,7 +666,7 @@ void AI::timeout_sameview(std::time_t delay, std::function<void(color_ostream &)
     });
 }
 
-static std::time_t last_unpause;
+static int32_t time_paused = 0;
 
 command_result AI::onupdate_register(color_ostream & out)
 {
@@ -678,22 +684,24 @@ command_result AI::onupdate_register(color_ostream & out)
     if (res == CR_OK)
     {
         status_onupdate = events.onupdate_register("df-ai status", 3 * 28 * 1200, 3 * 28 * 1200, [this](color_ostream & out) { debug(out, status()); });
-        last_unpause = std::time(nullptr);
+        time_paused = 0;
         pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream &) -> bool
         {
             if (!*pause_state && world->status.popups.empty())
             {
                 Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
+                time_paused = 0;
                 return false;
             }
 
-            if (std::time(nullptr) < last_unpause + 11)
+            time_paused++;
+
+            if (time_paused == enabler->fps * 10)
             {
-                return false;
+                timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
+                time_paused = -enabler->fps;
             }
 
-            timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
-            last_unpause = std::time(nullptr);
             return false;
         });
         tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7 * 1200, 7 * 1200, [this](color_ostream & out) { tag_enemies(out); });

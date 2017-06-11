@@ -92,7 +92,7 @@ public:
     static void abandon(color_ostream & out);
     bool tag_enemies(color_ostream & out);
 
-    void timeout_sameview(std::time_t delay, std::function<void(color_ostream &)> cb);
+    void timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb);
     void timeout_sameview(std::function<void(color_ostream &)> cb)
     {
         timeout_sameview(5, cb);
