@@ -1807,6 +1807,10 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
     {
         z = world->map.z_count - 1;
     }
+    if (z == 0)
+    {
+        return CR_FAILURE;
+    }
     df::coord target;
     for (; !wall.isValid() && z > 0; z--)
     {
