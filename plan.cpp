@@ -4076,28 +4076,28 @@ command_result Plan::make_map_walkable(color_ostream &)
 
         // make the corridors
         std::vector<room *> cor;
-        cor.push_back(new room(corridor_type::corridor, t1, df::coord(t1, z)));
-        cor.push_back(new room(corridor_type::corridor, t2, df::coord(t2, z)));
+        cor.push_back(new room(corridor_type::walkable, t1, df::coord(t1, z)));
+        cor.push_back(new room(corridor_type::walkable, t2, df::coord(t2, z)));
 
         int16_t dx = t1.x - t2.x;
         if (-1 > dx)
-            cor.push_back(new room(corridor_type::corridor, df::coord(t1.x + 1, t1.y, z), df::coord(t2.x - 1, t1.y, z)));
+            cor.push_back(new room(corridor_type::walkable, df::coord(t1.x + 1, t1.y, z), df::coord(t2.x - 1, t1.y, z)));
         else if (dx > 1)
-            cor.push_back(new room(corridor_type::corridor, df::coord(t1.x - 1, t1.y, z), df::coord(t2.x + 1, t1.y, z)));
+            cor.push_back(new room(corridor_type::walkable, df::coord(t1.x - 1, t1.y, z), df::coord(t2.x + 1, t1.y, z)));
 
         int16_t dy = t1.y - t2.y;
         if (-1 > dy)
-            cor.push_back(new room(corridor_type::corridor, df::coord(t2.x, t1.y + 1, z), df::coord(t2.x, t2.y - 1, z)));
+            cor.push_back(new room(corridor_type::walkable, df::coord(t2.x, t1.y + 1, z), df::coord(t2.x, t2.y - 1, z)));
         else if (dy > 1)
-            cor.push_back(new room(corridor_type::corridor, df::coord(t2.x, t1.y - 1, z), df::coord(t2.x, t2.y + 1, z)));
+            cor.push_back(new room(corridor_type::walkable, df::coord(t2.x, t1.y - 1, z), df::coord(t2.x, t2.y + 1, z)));
 
         if ((-1 > dx || dx > 1) && (-1 > dy || dy > 1))
-            cor.push_back(new room(corridor_type::corridor, df::coord(t2.x, t1.y, z), df::coord(t2.x, t1.y, z)));
+            cor.push_back(new room(corridor_type::walkable, df::coord(t2.x, t1.y, z), df::coord(t2.x, t1.y, z)));
 
         for (auto c = cor.begin(); c != cor.end(); c++)
         {
             corridors.push_back(*c);
-            wantdig(out, *c);
+            digroom(out, *c); // skip the queue
         }
         return true;
     });
