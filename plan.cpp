@@ -141,7 +141,7 @@ std::ostream & operator <<(std::ostream & stream, task_type::type type)
 Plan::Plan(AI *ai) :
     ai(ai),
     onupdate_handle(nullptr),
-    nrdig(0),
+    nrdig(),
     tasks(),
     bg_idx(tasks.end()),
     rooms(),
@@ -342,7 +342,7 @@ void Plan::update(color_ostream &)
 
     cache_nofurnish.clear();
 
-    nrdig = 0;
+    nrdig.clear();
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         task *t = *it;
@@ -350,9 +350,9 @@ void Plan::update(color_ostream &)
             continue;
         df::coord size = t->r->size();
         if (t->r->type != room_type::corridor || size.z > 1)
-            nrdig++;
+            nrdig[t->r->queue]++;
         if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
-            nrdig++;
+            nrdig[t->r->queue]++;
     }
 
     want_reupdate = false;
@@ -632,6 +632,7 @@ void Plan::save(std::ostream & out)
         r["squad_id"] = Json::Int((*it)->squad_id);
         r["level"] = Json::Int((*it)->level);
         r["noblesuite"] = Json::Int((*it)->noblesuite);
+        r["queue"] = (*it)->queue;
         if ((*it)->workshop)
         {
             r["workshop"] = Json::Int(room_index.at((*it)->workshop));
@@ -888,6 +889,10 @@ void Plan::load(std::istream & in)
         (*it)->squad_id = r["squad_id"].asInt();
         (*it)->level = r["level"].asInt();
         (*it)->noblesuite = r["noblesuite"].asInt();
+        if (r.isMember("queue"))
+        {
+            (*it)->queue = r["queue"].asInt();
+        }
         if (r.isMember("workshop"))
         {
             (*it)->workshop = all_rooms.at(r["workshop"].asInt());
@@ -1020,7 +1025,7 @@ bool Plan::checkidle(color_ostream & out)
 
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
-        if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor)
+        if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor && (*it)->r->queue == 0)
         {
             return false;
         }
@@ -1400,6 +1405,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
         r = find_room(room_type::bedroom, [](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig; });
     if (r)
     {
+        r->queue = 1;
         wantdig(out, r);
         set_owner(out, r, id);
         ai->debug(out, "assign " + describe_room(r), r->pos());
@@ -1538,7 +1544,10 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
             set_owner(out, r, *it);
 #define DIG_ROOM_IF(type, req) \
             if (r->nobleroom_type == nobleroom_type::type && std::find_if(entpos.begin(), entpos.end(), [](Units::NoblePosition np) -> bool { return np.position->required_ ## req > 0; }) != entpos.end()) \
-                wantdig(out, r)
+            { \
+                r->queue = 2; \
+                wantdig(out, r); \
+            }
             DIG_ROOM_IF(tomb, tomb);
             DIG_ROOM_IF(dining, dining);
             DIG_ROOM_IF(bedroom, bedroom);
@@ -1897,9 +1906,9 @@ void Plan::digroom(color_ostream & out, room *r)
     df::coord size = r->size();
     if (r->type != room_type::corridor || size.z > 1)
     {
-        nrdig++;
+        nrdig[r->queue]++;
         if (size.x * size.y * size.z >= 10)
-            nrdig++;
+            nrdig[r->queue]++;
     }
 }
 
