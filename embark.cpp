@@ -223,6 +223,7 @@ bool Embark::update(color_ostream & out)
         {
             ai->debug(out, "choosing \"Generate World\"");
             view->world_size = config.world_size;
+            view->mineral_occurence = 3;
             AI::feed_key(view, interface_key::MENU_CONFIRM);
         }
         else if (world->worldgen_status.state == 10 && view->simple_mode == 0)
