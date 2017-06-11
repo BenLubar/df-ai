@@ -1921,41 +1921,10 @@ std::string Population::report()
             s << "  " << ai->plan->describe_room(r) << "\n";
         }
 
-        if (u->job.current_job != nullptr)
+        std::string job = AI::describe_job(u);
+        if (!job.empty())
         {
-            s << "  " << AI::describe_job(u->job.current_job) << "\n";
-        }
-        else
-        {
-            bool any = false;
-            for (auto it = world->activities.all.begin(); it != world->activities.all.end(); it++)
-            {
-                for (auto e = (*it)->events.begin(); e != (*it)->events.end(); e++)
-                {
-                    if (auto p = (*e)->getParticipantInfo())
-                    {
-                        if (std::find(p->units.begin(), p->units.end(), u->id) != p->units.end())
-                        {
-                            std::string name;
-                            (*e)->getName(u->id, &name);
-                            if (any)
-                            {
-                                s << " / ";
-                            }
-                            else
-                            {
-                                s << "  ";
-                                any = true;
-                            }
-                            s << name;
-                        }
-                    }
-                }
-            }
-            if (any)
-            {
-                s << "\n";
-            }
+            s << "  " << job << "\n";
         }
     };
 

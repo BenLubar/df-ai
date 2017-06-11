@@ -13,6 +13,9 @@
 #include "modules/Units.h"
 #include "modules/World.h"
 
+#include "df/activity_entry.h"
+#include "df/activity_event.h"
+#include "df/activity_event_participants.h"
 #include "df/announcements.h"
 #include "df/creature_raw.h"
 #include "df/history_event.h"
@@ -173,6 +176,36 @@ std::string AI::describe_job(df::manager_order *job)
 std::string AI::describe_job(df::manager_order_template *job)
 {
     return do_describe_job(job);
+}
+
+std::string AI::describe_job(df::unit *u)
+{
+    if (u->job.current_job != nullptr)
+    {
+        return do_describe_job(u->job.current_job);
+    }
+
+    std::string s;
+    for (auto act : world->activities.all)
+    {
+        for (auto e : act->events)
+        {
+            if (auto p = e->getParticipantInfo())
+            {
+                if (std::find(p->units.begin(), p->units.end(), u->id) != p->units.end())
+                {
+                    std::string name;
+                    e->getName(u->id, &name);
+                    if (!s.empty())
+                    {
+                        s += " / ";
+                    }
+                    s += name;
+                }
+            }
+        }
+    }
+    return s;
 }
 
 std::string AI::describe_event(df::history_event *event)
