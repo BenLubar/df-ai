@@ -5077,6 +5077,11 @@ df::coord Plan::find_tree_base(df::coord t)
 
 void Plan::fixup_open(color_ostream & out, room *r)
 {
+    if (r->type == room_type::pasture)
+    {
+        return;
+    }
+
     for (int16_t x = r->min.x; x <= r->max.x; x++)
     {
         for (int16_t y = r->min.y; y <= r->max.y; y++)

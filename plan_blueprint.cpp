@@ -1518,14 +1518,6 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
                     ok = false;
                     continue;
                 }
-                if (Maps::getTileDesignation(t)->bits.flow_size != 0)
-                {
-                    continue;
-                }
-                if (ENUM_ATTR(tiletype, material, *tt) == tiletype_material::FROZEN_LIQUID)
-                {
-                    continue;
-                }
                 floortile++;
                 auto & events = Maps::getTileBlock(t)->block_events;
                 for (auto be = events.begin(); be != events.end(); be++)
