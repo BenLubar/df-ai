@@ -397,6 +397,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     case announcement_type::NOBLE_ARRIVAL:
     case announcement_type::FORT_POSITION_SUCCESSION:
         debug(out, "pause: more minions");
+        plan->make_map_walkable(out); // just in case we missed a frozen river or something during setup
         break;
     case announcement_type::DIPLOMAT_ARRIVAL:
     case announcement_type::LIAISON_ARRIVAL:
