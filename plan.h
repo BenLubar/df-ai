@@ -69,8 +69,10 @@ class Plan
     AI *ai;
     OnupdateCallback *onupdate_handle;
     std::map<int32_t, size_t> nrdig;
-    std::list<task *> tasks;
-    std::list<task *>::iterator bg_idx;
+    std::list<task *> tasks_generic;
+    std::list<task *> tasks_furniture;
+    std::list<task *>::iterator bg_idx_generic;
+    std::list<task *>::iterator bg_idx_furniture;
     std::vector<room *> rooms;
     std::map<room_type::type, std::vector<room *>> room_category;
     std::map<int32_t, std::set<room *>> room_by_z;

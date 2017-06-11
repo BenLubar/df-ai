@@ -243,6 +243,7 @@ room::room(room_type::type type, df::coord mins, df::coord maxs, std::string com
     squad_id(-1),
     level(-1),
     noblesuite(-1),
+    queue(0),
     workshop(nullptr),
     users(),
     channel_enable(),

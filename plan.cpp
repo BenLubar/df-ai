@@ -142,8 +142,10 @@ Plan::Plan(AI *ai) :
     ai(ai),
     onupdate_handle(nullptr),
     nrdig(),
-    tasks(),
-    bg_idx(tasks.end()),
+    tasks_generic(),
+    tasks_furniture(),
+    bg_idx_generic(tasks_generic.end()),
+    bg_idx_furniture(tasks_furniture.end()),
     rooms(),
     room_category(),
     room_by_z(),
@@ -171,7 +173,7 @@ Plan::Plan(AI *ai) :
     past_initial_phase(false),
     cistern_channel_requested(false)
 {
-    tasks.push_back(new task(task_type::check_rooms));
+    tasks_generic.push_back(new task(task_type::check_rooms));
 
     important_workshops.push_back(workshop_type::Butchers);
     important_workshops.push_back(workshop_type::Quern);
@@ -192,7 +194,11 @@ Plan::Plan(AI *ai) :
 
 Plan::~Plan()
 {
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
+    {
+        delete *it;
+    }
+    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
     {
         delete *it;
     }
@@ -335,121 +341,166 @@ static bool want_reupdate = false;
 
 void Plan::update(color_ostream &)
 {
-    if (bg_idx != tasks.end())
-        return;
-
-    bg_idx = tasks.begin();
-
-    cache_nofurnish.clear();
-
-    nrdig.clear();
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    if (bg_idx_generic == tasks_generic.end())
     {
-        task *t = *it;
-        if (t->type != task_type::dig_room || (t->r->type == room_type::corridor && (t->r->corridor_type == corridor_type::veinshaft || t->r->corridor_type == corridor_type::outpost)))
-            continue;
-        df::coord size = t->r->size();
-        if (t->r->type != room_type::corridor || size.z > 1)
-            nrdig[t->r->queue]++;
-        if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
-            nrdig[t->r->queue]++;
+        bg_idx_generic = tasks_generic.begin();
+
+        nrdig.clear();
+        for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
+        {
+            task *t = *it;
+            if (t->type != task_type::dig_room || (t->r->type == room_type::corridor && (t->r->corridor_type == corridor_type::veinshaft || t->r->corridor_type == corridor_type::outpost)))
+                continue;
+            df::coord size = t->r->size();
+            if (t->r->type != room_type::corridor || size.z > 1)
+                nrdig[t->r->queue]++;
+            if (t->r->type != room_type::corridor && size.x * size.y * size.z >= 10)
+                nrdig[t->r->queue]++;
+        }
+
+        want_reupdate = false;
+        events.onupdate_register_once("df-ai plan bg generic", [this](color_ostream & out) -> bool
+        {
+            if (!Core::getInstance().isMapLoaded())
+            {
+                return true;
+            }
+
+            if (bg_idx_generic == tasks_generic.end())
+            {
+                if (want_reupdate)
+                {
+                    update(out);
+                }
+                return true;
+            }
+            task & t = **bg_idx_generic;
+
+            bool del = false;
+            switch (t.type)
+            {
+            case task_type::want_dig:
+                if (t.r->is_dug() || nrdig[t.r->queue] < wantdig_max)
+                {
+                    digroom(out, t.r);
+                    del = true;
+                }
+                break;
+            case task_type::dig_room:
+                fixup_open(out, t.r);
+                if (t.r->is_dug())
+                {
+                    t.r->status = room_status::dug;
+                    construct_room(out, t.r);
+                    want_reupdate = true; // wantdig asap
+                    del = true;
+                }
+                break;
+            case task_type::construct_tradedepot:
+                del = try_construct_tradedepot(out, t.r);
+                break;
+            case task_type::construct_workshop:
+                del = try_construct_workshop(out, t.r);
+                break;
+            case task_type::construct_furnace:
+                del = try_construct_furnace(out, t.r);
+                break;
+            case task_type::construct_stockpile:
+                del = try_construct_stockpile(out, t.r);
+                break;
+            case task_type::construct_activityzone:
+                del = try_construct_activityzone(out, t.r);
+                break;
+            case task_type::setup_farmplot:
+                del = try_setup_farmplot(out, t.r);
+                break;
+            case task_type::furnish:
+                break;
+            case task_type::check_furnish:
+                break;
+            case task_type::check_construct:
+                del = try_endconstruct(out, t.r);
+                break;
+            case task_type::dig_cistern:
+                del = try_digcistern(out, t.r);
+                break;
+            case task_type::dig_garbage:
+                del = try_diggarbage(out, t.r);
+                break;
+            case task_type::check_idle:
+                del = checkidle(out);
+                break;
+            case task_type::check_rooms:
+                checkrooms(out);
+                break;
+            case task_type::monitor_cistern:
+                monitor_cistern(out);
+                break;
+            case task_type::_task_type_count:
+                break;
+            }
+
+            if (del)
+            {
+                delete *bg_idx_generic;
+                tasks_generic.erase(bg_idx_generic++);
+            }
+            else
+            {
+                bg_idx_generic++;
+            }
+            return false;
+        });
     }
-
-    want_reupdate = false;
-    events.onupdate_register_once("df-ai plan bg", [this](color_ostream & out) -> bool
+    if (bg_idx_furniture == tasks_furniture.end())
     {
-        if (!Core::getInstance().isMapLoaded())
-        {
-            return true;
-        }
+        bg_idx_furniture = tasks_furniture.begin();
 
-        if (bg_idx == tasks.end())
-        {
-            if (want_reupdate)
-            {
-                update(out);
-            }
-            return true;
-        }
-        task & t = **bg_idx;
+        cache_nofurnish.clear();
 
-        bool del = false;
-        switch (t.type)
+        events.onupdate_register_once("df-ai plan bg furniture", [this](color_ostream & out) -> bool
         {
-        case task_type::want_dig:
-            if (t.r->is_dug() || nrdig < wantdig_max)
+            if (!Core::getInstance().isMapLoaded())
             {
-                digroom(out, t.r);
-                del = true;
+                return true;
             }
-            break;
-        case task_type::dig_room:
-            fixup_open(out, t.r);
-            if (t.r->is_dug())
-            {
-                t.r->status = room_status::dug;
-                construct_room(out, t.r);
-                want_reupdate = true; // wantdig asap
-                del = true;
-            }
-            break;
-        case task_type::construct_tradedepot:
-            del = try_construct_tradedepot(out, t.r);
-            break;
-        case task_type::construct_workshop:
-            del = try_construct_workshop(out, t.r);
-            break;
-        case task_type::construct_furnace:
-            del = try_construct_furnace(out, t.r);
-            break;
-        case task_type::construct_stockpile:
-            del = try_construct_stockpile(out, t.r);
-            break;
-        case task_type::construct_activityzone:
-            del = try_construct_activityzone(out, t.r);
-            break;
-        case task_type::setup_farmplot:
-            del = try_setup_farmplot(out, t.r);
-            break;
-        case task_type::furnish:
-            del = try_furnish(out, t.r, t.f);
-            break;
-        case task_type::check_furnish:
-            del = try_endfurnish(out, t.r, t.f);
-            break;
-        case task_type::check_construct:
-            del = try_endconstruct(out, t.r);
-            break;
-        case task_type::dig_cistern:
-            del = try_digcistern(out, t.r);
-            break;
-        case task_type::dig_garbage:
-            del = try_diggarbage(out, t.r);
-            break;
-        case task_type::check_idle:
-            del = checkidle(out);
-            break;
-        case task_type::check_rooms:
-            checkrooms(out);
-            break;
-        case task_type::monitor_cistern:
-            monitor_cistern(out);
-            break;
-        case task_type::_task_type_count:
-            break;
-        }
 
-        if (del)
-        {
-            delete *bg_idx;
-            tasks.erase(bg_idx++);
-        }
-        else
-        {
-            bg_idx++;
-        }
-        return false;
-    });
+            while (bg_idx_furniture != tasks_furniture.end() && (*bg_idx_furniture)->type != task_type::furnish)
+            {
+                bg_idx_furniture++;
+            }
+
+            if (bg_idx_furniture == tasks_furniture.end())
+            {
+                return true;
+            }
+            task & t = **bg_idx_furniture;
+
+            bool del = false;
+            switch (t.type)
+            {
+            case task_type::furnish:
+                del = try_furnish(out, t.r, t.f);
+                break;
+            case task_type::check_furnish:
+                del = try_endfurnish(out, t.r, t.f);
+                break;
+            default:
+                break;
+            }
+
+            if (del)
+            {
+                delete *bg_idx_furniture;
+                tasks_furniture.erase(bg_idx_furniture++);
+            }
+            else
+            {
+                bg_idx_furniture++;
+            }
+            return false;
+        });
+    }
 }
 
 command_result Plan::persist(color_ostream &)
@@ -511,7 +562,24 @@ void Plan::save(std::ostream & out)
     std::ostringstream stringify;
 
     Json::Value converted_tasks(Json::arrayValue);
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
+    {
+        Json::Value t(Json::objectValue);
+        stringify.str(std::string());
+        stringify.clear();
+        stringify << (*it)->type;
+        t["t"] = stringify.str();
+        if ((*it)->r)
+        {
+            t["r"] = Json::Int(room_index.at((*it)->r));
+        }
+        if ((*it)->f)
+        {
+            t["f"] = Json::Int(furniture_index.at((*it)->f));
+        }
+        converted_tasks.append(t);
+    }
+    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
     {
         Json::Value t(Json::objectValue);
         stringify.str(std::string());
@@ -706,11 +774,16 @@ void Plan::save(std::ostream & out)
 
 void Plan::load(std::istream & in)
 {
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
         delete *it;
     }
-    tasks.clear();
+    tasks_generic.clear();
+    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
+    {
+        delete *it;
+    }
+    tasks_furniture.clear();
     for (auto it = rooms.begin(); it != rooms.end(); it++)
     {
         delete *it;
@@ -768,7 +841,14 @@ void Plan::load(std::istream & in)
         {
             t->f = all_furniture.at((*it)["f"].asInt());
         }
-        tasks.push_back(t);
+        if (t->type == task_type::furnish || t->type == task_type::check_furnish)
+        {
+            tasks_furniture.push_back(t);
+        }
+        else
+        {
+            tasks_generic.push_back(t);
+        }
     }
 
     ENUM_NAMES(room_status, status);
@@ -976,7 +1056,7 @@ uint16_t Plan::getTileWalkable(df::coord t)
 
 task *Plan::is_digging()
 {
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
         task *t = *it;
         if ((t->type == task_type::want_dig || t->type == task_type::dig_room) && t->r->type != room_type::corridor)
@@ -987,7 +1067,11 @@ task *Plan::is_digging()
 
 bool Plan::is_idle()
 {
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    if (!tasks_furniture.empty())
+    {
+        return false;
+    }
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
         task *t = *it;
         if (t->type != task_type::monitor_cistern && t->type != task_type::check_rooms && t->type != task_type::check_idle)
@@ -998,9 +1082,9 @@ bool Plan::is_idle()
 
 void Plan::new_citizen(color_ostream & out, int32_t uid)
 {
-    if (std::find_if(tasks.begin(), tasks.end(), [](task *t) -> bool { return t->type == task_type::check_idle; }) == tasks.end())
+    if (std::find_if(tasks_generic.begin(), tasks_generic.end(), [](task *t) -> bool { return t->type == task_type::check_idle; }) == tasks_generic.end())
     {
-        tasks.push_back(new task(task_type::check_idle));
+        tasks_generic.push_back(new task(task_type::check_idle));
     }
     getdiningroom(out, uid);
     getbedroom(out, uid);
@@ -1023,7 +1107,7 @@ bool Plan::checkidle(color_ostream & out)
         last_idle_year = *cur_year;
     }
 
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
         if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor && (*it)->r->queue == 0)
         {
@@ -1213,7 +1297,7 @@ bool Plan::checkidle(color_ostream & out)
     if (r == nullptr)
     {
         bool any_outpost = false;
-        for (auto it = tasks.begin(); it != tasks.end(); it++)
+        for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
         {
             if ((*it)->type != task_type::want_dig && (*it)->type != task_type::dig_room)
             {
@@ -1379,7 +1463,7 @@ void Plan::checkroom(color_ostream & out, room *r)
                 ai->debug(out, "fix furniture " + f->item + " in " + describe_room(r), t);
                 f->bld_id = -1;
 
-                tasks.push_back(new task(task_type::furnish, r, f));
+                tasks_furniture.push_back(new task(task_type::furnish, r, f));
             }
             if (f->construction != construction_type::NONE)
             {
@@ -1856,7 +1940,7 @@ void Plan::wantdig(color_ostream & out, room *r)
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
     r->dig(true);
-    tasks.push_back(new task(task_type::want_dig, r));
+    tasks_generic.push_back(new task(task_type::want_dig, r));
 }
 
 void Plan::digroom(color_ostream & out, room *r)
@@ -1869,7 +1953,7 @@ void Plan::digroom(color_ostream & out, room *r)
     fixup_open(out, r);
     r->dig();
 
-    tasks.push_back(new task(task_type::dig_room, r));
+    tasks_generic.push_back(new task(task_type::dig_room, r));
 
     for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
     {
@@ -1883,7 +1967,7 @@ void Plan::digroom(color_ostream & out, room *r)
             continue;
         if (f->dig != tile_dig_designation::Default)
             continue;
-        tasks.push_back(new task(task_type::furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::furnish, r, f));
     }
 
     if (r->type == room_type::workshop)
@@ -1924,25 +2008,25 @@ bool Plan::construct_room(color_ostream & out, room *r)
     if (r->type == room_type::stockpile)
     {
         furnish_room(out, r);
-        tasks.push_back(new task(task_type::construct_stockpile, r));
+        tasks_generic.push_back(new task(task_type::construct_stockpile, r));
         return true;
     }
 
     if (r->type == room_type::tradedepot)
     {
-        tasks.push_back(new task(task_type::construct_tradedepot, r));
+        tasks_generic.push_back(new task(task_type::construct_tradedepot, r));
         return true;
     }
 
     if (r->type == room_type::workshop)
     {
-        tasks.push_back(new task(task_type::construct_workshop, r));
+        tasks_generic.push_back(new task(task_type::construct_workshop, r));
         return true;
     }
 
     if (r->type == room_type::furnace)
     {
-        tasks.push_back(new task(task_type::construct_furnace, r));
+        tasks_generic.push_back(new task(task_type::construct_furnace, r));
         return true;
     }
 
@@ -1966,7 +2050,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
             return true;
-        tasks.push_back(new task(task_type::construct_activityzone, r));
+        tasks_generic.push_back(new task(task_type::construct_activityzone, r));
         return true;
     }
 
@@ -1990,7 +2074,7 @@ bool Plan::furnish_room(color_ostream &, room *r)
     for (auto it = r->layout.begin(); it != r->layout.end(); it++)
     {
         furniture *f = *it;
-        tasks.push_back(new task(task_type::furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::furnish, r, f));
     }
     r->status = room_status::finished;
     return true;
@@ -2128,7 +2212,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
             r->bld_id = bld->id;
         }
         f->bld_id = bld->id;
-        tasks.push_back(new task(task_type::check_furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
 
@@ -2153,7 +2237,7 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t)
         items.push_back(chain);
         Buildings::constructWithItems(bld, items);
         f->bld_id = bld->id;
-        tasks.push_back(new task(task_type::check_furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
     return false;
@@ -2172,7 +2256,7 @@ bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df:
     item.push_back(bould);
     Buildings::constructWithItems(bld, item);
     f->bld_id = bld->id;
-    tasks.push_back(new task(task_type::check_furnish, r, f));
+    tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
     return true;
 }
 
@@ -2278,7 +2362,7 @@ bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coor
     Buildings::setSize(bld, df::coord(3, 3, 1));
     Buildings::constructWithItems(bld, mat);
     f->bld_id = bld->id;
-    tasks.push_back(new task(task_type::check_furnish, r, f));
+    tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
     return true;
 }
 
@@ -2296,7 +2380,7 @@ bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord 
         Buildings::constructWithItems(bld, items);
         r->bld_id = bld->id;
         f->bld_id = bld->id;
-        tasks.push_back(new task(task_type::check_furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
         return true;
     }
     return false;
@@ -2346,7 +2430,7 @@ bool Plan::try_furnish_trap(color_ostream &, room *r, furniture *f)
     item.push_back(mecha);
     Buildings::constructWithItems(bld, item);
     f->bld_id = bld->id;
-    tasks.push_back(new task(task_type::check_furnish, r, f));
+    tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
 
     return true;
 }
@@ -2360,7 +2444,7 @@ bool Plan::try_construct_tradedepot(color_ostream &, room *r)
         Buildings::setSize(bld, r->size());
         Buildings::constructWithItems(bld, boulds);
         r->bld_id = bld->id;
-        tasks.push_back(new task(task_type::check_construct, r));
+        tasks_generic.push_back(new task(task_type::check_construct, r));
         return true;
     }
     return false;
@@ -2385,7 +2469,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2405,7 +2489,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2423,7 +2507,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, items);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2439,7 +2523,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
         }
     }
@@ -2471,7 +2555,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
         Buildings::constructWithFilters(bld, filters);
         r->bld_id = bld->id;
         init_managed_workshop(out, r, bld);
-        tasks.push_back(new task(task_type::check_construct, r));
+        tasks_generic.push_back(new task(task_type::check_construct, r));
         return true;
     }
     else
@@ -2488,7 +2572,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
             // XXX else quarry?
         }
@@ -2529,7 +2613,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r)
         Buildings::constructWithFilters(bld, filters);
         r->bld_id = bld->id;
         init_managed_workshop(out, r, bld);
-        tasks.push_back(new task(task_type::check_construct, r));
+        tasks_generic.push_back(new task(task_type::check_construct, r));
         return true;
     }
     else
@@ -2544,7 +2628,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r)
             Buildings::constructWithItems(bld, item);
             r->bld_id = bld->id;
             init_managed_workshop(out, r, bld);
-            tasks.push_back(new task(task_type::check_construct, r));
+            tasks_generic.push_back(new task(task_type::check_construct, r));
             return true;
         }
         return false;
@@ -2836,7 +2920,7 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
     {
         digroom(out, st);
     }
-    tasks.push_back(new task(task_type::setup_farmplot, r));
+    tasks_generic.push_back(new task(task_type::setup_farmplot, r));
     return true;
 }
 
@@ -2867,16 +2951,32 @@ void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
         }
     }
     rooms.erase(std::remove(rooms.begin(), rooms.end(), t), rooms.end());
-    for (auto it = tasks.begin(); it != tasks.end(); )
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); )
     {
         if ((*it)->r == t)
         {
             delete *it;
-            if (bg_idx == it)
+            if (bg_idx_generic == it)
             {
-                bg_idx++;
+                bg_idx_generic++;
             }
-            tasks.erase(it++);
+            tasks_generic.erase(it++);
+        }
+        else
+        {
+            it++;
+        }
+    }
+    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); )
+    {
+        if ((*it)->r == t)
+        {
+            delete *it;
+            if (bg_idx_furniture == it)
+            {
+                bg_idx_furniture++;
+            }
+            tasks_furniture.erase(it++);
         }
         else
         {
@@ -2970,7 +3070,7 @@ bool Plan::construct_cistern(color_ostream & out, room *r)
     // check smoothing progress, channel intermediate levels
     if (r->cistern_type == cistern_type::well)
     {
-        tasks.push_back(new task(task_type::dig_cistern, r));
+        tasks_generic.push_back(new task(task_type::dig_cistern, r));
     }
 
     return true;
@@ -3236,7 +3336,7 @@ void Plan::dig_garbagedump(color_ostream &)
         {
             r->status = room_status::dig;
             r->dig(false, true);
-            tasks.push_back(new task(task_type::dig_garbage, r));
+            tasks_generic.push_back(new task(task_type::dig_garbage, r));
         }
         return false;
     });
@@ -3465,7 +3565,7 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
             pull_lever(out, f);
             if (way == "in")
             {
-                tasks.push_back(new task(task_type::monitor_cistern));
+                tasks_generic.push_back(new task(task_type::monitor_cistern));
             }
 
             return true;
@@ -4478,10 +4578,14 @@ std::string Plan::status()
 {
     std::map<task_type::type, size_t> task_count;
     std::map<std::string, size_t> furnishing;
-    for (auto t = tasks.begin(); t != tasks.end(); t++)
+    for (auto t = tasks_generic.begin(); t != tasks_generic.end(); t++)
     {
         task_count[(*t)->type]++;
-        if ((*t)->type == task_type::furnish && !(*t)->f->item.empty())
+    }
+    for (auto t = tasks_furniture.begin(); t != tasks_furniture.end(); t++)
+    {
+        task_count[(*t)->type]++;
+        if (!(*t)->f->item.empty())
         {
             furnishing[(*t)->f->item]++;
         }
@@ -4533,11 +4637,11 @@ std::string Plan::report()
     std::ostringstream s;
 
     s << "## Tasks\n";
-    for (auto it = tasks.begin(); it != tasks.end(); it++)
+    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
-        if (bg_idx == it)
+        if (bg_idx_generic == it)
         {
-            s << "--- current position ---\n";
+            s << "--- current position (generic) ---\n";
         }
 
         task *t = *it;
@@ -4551,9 +4655,32 @@ std::string Plan::report()
             s << "  " << describe_furniture(t->f) << "\n";
         }
     }
-    if (bg_idx == tasks.end())
+    if (bg_idx_generic == tasks_generic.end())
     {
-        s << "--- current position ---\n";
+        s << "--- current position (generic) ---\n";
+    }
+    s << "\n";
+    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
+    {
+        if (bg_idx_furniture == it)
+        {
+            s << "--- current position (furniture) ---\n";
+        }
+
+        task *t = *it;
+        s << "- " << t->type << "\n";
+        if (t->r != nullptr)
+        {
+            s << "  " << describe_room(t->r) << "\n";
+        }
+        if (t->f != nullptr)
+        {
+            s << "  " << describe_furniture(t->f) << "\n";
+        }
+    }
+    if (bg_idx_furniture == tasks_furniture.end())
+    {
+        s << "--- current position (furniture) ---\n";
     }
     s << "\n";
 
@@ -5021,7 +5148,7 @@ void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::cons
     if (f->construction != c)
     {
         ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->x, f->y, f->z));
-        tasks.push_back(new task(task_type::furnish, r, f));
+        tasks_furniture.push_back(new task(task_type::furnish, r, f));
     }
     f->construction = c;
 }

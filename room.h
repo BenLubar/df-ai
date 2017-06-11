@@ -199,6 +199,7 @@ struct room
     int32_t squad_id;
     int32_t level;
     int32_t noblesuite;
+    int32_t queue;
     room *workshop;
     std::set<int32_t> users;
     df::coord channel_enable;
