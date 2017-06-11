@@ -1282,6 +1282,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     // barracks
     // 8 dwarf per squad, 20% pop => 40 soldiers for 200 dwarves => 5 barracks
+    char barracksLetter = 'A';
     old_cor = corridor_center2;
     int16_t oldcx = old_cor->max.x + 2; // door
     for (int16_t rx = 0; rx < 4; rx++)
@@ -1297,7 +1298,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             if (ry == -1 && rx < 3) // infirmary/cemetary
                 continue;
 
-            room *barracks = new room(room_type::barracks, df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z), stl_sprintf("barracks %c", ry == 1 ? 'B' + rx : 'A'));
+            room *barracks = new room(room_type::barracks, df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z), stl_sprintf("barracks %c", barracksLetter++));
             barracks->layout.push_back(new_door(3, ry > 0 ? -1 : 8));
             for (int16_t dy_ = 0; dy_ < 8; dy_++)
             {
