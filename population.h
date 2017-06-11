@@ -88,7 +88,7 @@ public:
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
 
-    bool set_up_trading(color_ostream & out, bool should_be_trading);
+    bool set_up_trading(color_ostream & out, bool should_be_trading, bool allow_any_dwarf = false);
     bool perform_trade(color_ostream & out);
     bool perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade);
 
