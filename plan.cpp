@@ -1928,8 +1928,11 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
     }
 
     des->bits.dig = dig;
+    Maps::getTileOccupancy(t)->bits.dig_marked = 0;
     if (dig != tile_dig_designation::No)
+    {
         Maps::getTileBlock(t)->flags.bits.designated = 1;
+    }
 }
 
 // queue a room for digging when other dig jobs are finished
@@ -3672,7 +3675,7 @@ void Plan::monitor_cistern(color_ostream & out)
         m_c_reserve = find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::reserve; });
         if (m_c_reserve->channel_enable.isValid())
         {
-            m_c_testgate_delay = 2;
+            m_c_testgate_delay = m_c_cistern->channeled ? -1 : 2;
         }
     }
 
@@ -3687,8 +3690,17 @@ void Plan::monitor_cistern(color_ostream & out)
     if (m_c_lever_out->target && m_c_lever_out->target->bld_id != -1)
         f_out = virtual_cast<df::building_floodgatest>(df::building::find(m_c_lever_out->target->bld_id));
 
-    if (l_in && !f_out && !l_in->linked_mechanisms.empty())
+    if (l_in && f_in && !f_out && !l_in->linked_mechanisms.empty())
     {
+        if (!f_in->gate_flags.bits.closing && !f_in->gate_flags.bits.closed)
+        {
+            if (!f_in->gate_flags.bits.opening)
+            {
+                pull_lever(out, m_c_lever_out);
+            }
+            return;
+        }
+
         // f_in is linked, can furnish f_out now without risking walling
         // workers in the reserve
         for (auto l = m_c_reserve->layout.begin(); l != m_c_reserve->layout.end(); l++)
@@ -3757,7 +3769,7 @@ void Plan::monitor_cistern(color_ostream & out)
                             df::coord t(x, y, z);
                             if (!is_smooth(t) && Maps::getTileDesignation(t)->bits.flow_size < 3 && (r->type != room_type::corridor || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
                             {
-                                ai->debug(out, stl_sprintf("cistern: unsmoothed (%d, %d, %d) %s", x, y, z, describe_room(r).c_str()));
+                                ai->debug(out, stl_sprintf("cistern: unsmoothed %s (%d, %d, %d) %s", enum_item_key_str(*Maps::getTileType(t)), x, y, z, describe_room(r).c_str()));
                                 empty = false;
                                 break;
                             }
@@ -3869,6 +3881,9 @@ void Plan::monitor_cistern(color_ostream & out)
     uint32_t cistlvl = Maps::getTileDesignation(m_c_cistern->pos() + df::coord(0, 0, 1))->bits.flow_size;
     uint32_t resvlvl = Maps::getTileDesignation(m_c_reserve->pos())->bits.flow_size;
 
+    df::coord river = spiral_search(m_c_reserve->channel_enable, 0, 2, [](df::coord t) -> bool { df::tile_designation *td = Maps::getTileDesignation(t); return td && td->bits.feature_local; });
+    bool river_is_frozen_or_dry = river.isValid() && (ENUM_ATTR(tiletype, material, *Maps::getTileType(river)) == tiletype_material::FROZEN_LIQUID || Maps::getTileDesignation(river)->bits.flow_size == 0);
+
     if (resvlvl <= 1)
     {
         // reserve empty, fill it
@@ -3881,7 +3896,7 @@ void Plan::monitor_cistern(color_ostream & out)
             pull_lever(out, m_c_lever_in);
         }
     }
-    else if (resvlvl == 7)
+    else if (resvlvl == 7 || river_is_frozen_or_dry)
     {
         // reserve full, empty into cistern if needed
         if (!f_in_closed)
@@ -3980,6 +3995,16 @@ command_result Plan::make_map_walkable(color_ostream &)
 {
     events.onupdate_register_once("df-ai plan make_map_walkable", [this](color_ostream & out) -> bool
     {
+        if (!Core::getInstance().isMapLoaded())
+        {
+            return true;
+        }
+
+        if (find_room(room_type::corridor, [](room *r) -> bool { return r->corridor_type == corridor_type::walkable && r->status == room_status::dig; }))
+        {
+            return false;
+        }
+
         // if we don't have a river, we're fine
         df::coord river = scan_river(out);
         if (!river.isValid())
