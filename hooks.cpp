@@ -2,6 +2,8 @@
 #include "hooks.h"
 #include "tinythread.h"
 
+#include "MemAccess.h"
+
 #include "df/enabler.h"
 #include "df/init.h"
 #include "df/renderer.h"
@@ -145,13 +147,10 @@ static void Fake_SDL_Delay(uint32_t ms)
 
 static void Add_Hook(void *target, char(&real)[6], const void *fake)
 {
+    MemoryPatcher patcher;
+    patcher.verifyAccess(target, 6, true);
+
     int32_t jump_offset((char*)fake - (char*)target - 4 - 1);
-#if _WIN32
-    DWORD oldProtect;
-    VirtualProtect((char *)target, 6, PAGE_EXECUTE_READWRITE, &oldProtect);
-#else
-    mprotect(target, 6, PROT_READ | PROT_WRITE | PROT_EXEC);
-#endif
     real[0] = *((char *)target + 0);
     real[1] = *((char *)target + 1);
     real[2] = *((char *)target + 2);
@@ -164,32 +163,19 @@ static void Add_Hook(void *target, char(&real)[6], const void *fake)
     *((char *)target + 3) = *((char *)&jump_offset + 2);
     *((char *)target + 4) = *((char *)&jump_offset + 3);
     *((char *)target + 5) = 0x90;
-#if _WIN32
-    VirtualProtect((char *)target, 6, oldProtect, &oldProtect);
-#else
-    mprotect(target, 6, PROT_READ | PROT_EXEC);
-#endif
 }
 
 static void Remove_Hook(void *target, char(&real)[6], const void *)
 {
-#if _WIN32
-    DWORD oldProtect;
-    VirtualProtect((char *)target, 6, PAGE_EXECUTE_READWRITE, &oldProtect);
-#else
-    mprotect(target, 6, PROT_READ | PROT_WRITE | PROT_EXEC);
-#endif
+    MemoryPatcher patcher;
+    patcher.verifyAccess(target, 6, true);
+
     *((char *)target + 0) = real[0];
     *((char *)target + 1) = real[1];
     *((char *)target + 2) = real[2];
     *((char *)target + 3) = real[3];
     *((char *)target + 4) = real[4];
     *((char *)target + 5) = real[5];
-#if _WIN32
-    VirtualProtect((char *)target, 6, oldProtect, &oldProtect);
-#else
-    mprotect(target, 6, PROT_READ | PROT_EXEC);
-#endif
 }
 
 static bool lockstep_hooked = false;
