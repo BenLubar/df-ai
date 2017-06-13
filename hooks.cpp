@@ -5,8 +5,11 @@
 #include "MemAccess.h"
 
 #include "df/enabler.h"
+#include "df/graphic.h"
 #include "df/init.h"
+#include "df/interfacest.h"
 #include "df/renderer.h"
+#include "df/viewscreen.h"
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -16,14 +19,16 @@
 #endif
 
 REQUIRE_GLOBAL(enabler);
+REQUIRE_GLOBAL(gps);
+REQUIRE_GLOBAL(gview);
 REQUIRE_GLOBAL(init);
 
 DFhackCExport uint32_t SDL_GetTicks(void);
 DFhackCExport void SDL_Delay(uint32_t ms);
+DFhackCExport int SDL_SemTryWait(void *sem);
 
-static tthread::mutex lockstep_mutex;
-static volatile uint32_t lockstep_frames = 0;
-static volatile uint32_t lockstep_sim = 1;
+// Defined in Dwarf Fortress
+char mainloop();
 
 static volatile uint32_t lockstep_tick_count = 0;
 
@@ -53,96 +58,11 @@ static char Real_SDL_Delay[6];
 static void Fake_SDL_Delay(uint32_t ms)
 {
     (void)ms;
-    lockstep_tick_count += 20;
 
-    tthread::lock_guard<tthread::mutex> lock(lockstep_mutex);
-    while (lockstep_frames != 0 || lockstep_sim == 0)
+    while (config.lockstep)
     {
-        if (enabler)
-        {
-            SDL_SemWait(enabler->async_frombox.sem);
-            if (!enabler->async_frombox.queue.empty())
-            {
-                auto & r = enabler->async_frombox.queue.front();
-                bool complete = true;
-                using async_msg = df::enabler::T_async_frombox::T_queue::T_msg;
-                switch (r.msg)
-                {
-                case async_msg::set_fps:
-                {
-                    if (r.fps == 0)
-                        enabler->fps = 1048576;
-                    else
-                        enabler->fps = r.fps;
-                    enabler->fps_per_gfps = enabler->fps / enabler->gfps;
-
-                    df::enabler::T_async_tobox::T_queue cmd;
-                    cmd.cmd = df::enabler::T_async_tobox::T_queue::T_cmd::set_fps;
-                    cmd.val = enabler->fps;
-                    SDL_SemWait(enabler->async_tobox.sem);
-                    enabler->async_tobox.queue.push_back(cmd);
-                    SDL_SemPost(enabler->async_tobox.sem);
-                    SDL_SemPost(enabler->async_tobox.sem_fill);
-
-                    df::enabler::T_async_tobox::T_queue cmd2;
-                    cmd2.cmd = df::enabler::T_async_tobox::T_queue::T_cmd::start;
-                    SDL_SemWait(enabler->async_tobox.sem);
-                    enabler->async_tobox.queue.push_back(cmd2);
-                    SDL_SemPost(enabler->async_tobox.sem);
-                    SDL_SemPost(enabler->async_tobox.sem_fill);
-                    break;
-                }
-                case async_msg::set_gfps:
-                {
-                    if (r.fps == 0)
-                        enabler->gfps = 50;
-                    else
-                        enabler->gfps = r.fps;
-                    enabler->fps_per_gfps = enabler->fps / enabler->gfps;
-                    break;
-                }
-                case async_msg::push_resize:
-                {
-                    df::enabler::T_overridden_grid_sizes sizes;
-                    sizes.anon_1 = init->display.grid_x;
-                    sizes.anon_2 = init->display.grid_y;
-                    enabler->overridden_grid_sizes.push_back(sizes);
-                    enabler->renderer->grid_resize(r.x, r.y);
-                    break;
-                }
-                case async_msg::pop_resize:
-                {
-                    if (!enabler->overridden_grid_sizes.empty())
-                    {
-                        enabler->overridden_grid_sizes.clear();
-
-                        SDL_SemWait(enabler->async_zoom.sem);
-                        enabler->async_zoom.queue.push_back(zoom_commands::zoom_resetgrid);
-                        SDL_SemPost(enabler->async_zoom.sem);
-                        SDL_SemPost(enabler->async_zoom.sem_fill);
-                    }
-                    break;
-                }
-                default:
-                {
-                    complete = false;
-                    break;
-                }
-                }
-                if (complete)
-                {
-                    SDL_SemWait(enabler->async_frombox.sem_fill);
-                    enabler->async_frombox.queue.pop_front();
-                    SDL_SemPost(enabler->async_fromcomplete);
-                }
-            }
-            SDL_SemPost(enabler->async_frombox.sem);
-        }
-        lockstep_mutex.unlock();
         tthread::this_thread::yield();
-        lockstep_mutex.lock();
     }
-    lockstep_sim--;
 }
 
 static void Add_Hook(void *target, char(&real)[6], const void *fake)
@@ -178,48 +98,100 @@ static void Remove_Hook(void *target, char(&real)[6], const void *)
     *((char *)target + 5) = real[5];
 }
 
+template<typename T>
+inline static void swap3(T & a, T & b, T & c)
+{
+    a = b;
+    b = c;
+    c = a;
+}
+
+static void lockstep_swap_arrays() {
+    auto & r = enabler->renderer;
+    swap3(r->screen, r->screen_old, gps->screen);
+    swap3(r->screentexpos, r->screentexpos_old, reinterpret_cast<int32_t * &>(gps->screentexpos));
+    swap3(r->screentexpos_addcolor, r->screentexpos_addcolor_old, gps->screentexpos_addcolor);
+    swap3(r->screentexpos_grayscale, r->screentexpos_grayscale_old, gps->screentexpos_grayscale);
+    swap3(r->screentexpos_cf, r->screentexpos_cf_old, gps->screentexpos_cf);
+    swap3(r->screentexpos_cbr, r->screentexpos_cbr_old, gps->screentexpos_cbr);
+    gps->screen_limit = gps->screen + gps->dimx * gps->dimy * 4;
+}
+
+static void lockstep_render_things()
+{
+    //GRAB CURRENT SCREEN AT THE END OF THE LIST
+    df::viewscreen *currentscreen = &gview->view;
+    while (currentscreen->child != nullptr)
+    {
+        currentscreen = currentscreen->child;
+    }
+
+    //NO INTERFACE LEFT, LEAVE
+    if (currentscreen == &gview->view)
+    {
+        return;
+    }
+  
+    if (currentscreen->breakdown_level == interface_breakdown_types::NONE)
+    {
+	    currentscreen->render();
+	}
+    else
+    {
+    	memset(gps->screen, 0, gps->dimx * gps->dimy * 4);
+	    memset(gps->screentexpos, 0, gps->dimx * gps->dimy * sizeof(long));
+    }
+
+    // don't render REC/PLAY/FPS indicators
+}
+
+static void lockstep_loop()
+{
+    while (config.lockstep)
+    {
+        mainloop();
+        SDL_NumJoysticks();
+        if (!config.lockstep)
+        {
+            break;
+        }
+        lockstep_tick_count += 10;
+        if (!enabler->flag.bits.maxfps)
+        {
+            mainloop();
+            SDL_NumJoysticks();
+            if (!config.lockstep)
+            {
+                break;
+            }
+        }
+        lockstep_tick_count += 10;
+        enabler->last_tick = lockstep_tick_count;
+        enabler->clock = lockstep_tick_count;
+        lockstep_swap_arrays();
+        lockstep_render_things();
+        enabler->renderer->update_all();
+        enabler->renderer->render();
+    }
+}
+
 static bool lockstep_hooked = false;
 
 void Hook_Update()
 {
-    if (lockstep_hooked != config.lockstep)
+    if (!lockstep_hooked && config.lockstep)
     {
-        if (config.lockstep)
-        {
 #ifdef _WIN32
-            Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
+        Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
-            Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
+        Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
-            Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
-            Add_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
-            lockstep_hooked = true;
-        }
-        else
-        {
-            Hook_Shutdown();
-        }
-    }
+        Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
+        Add_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
+        lockstep_hooked = true;
 
-    if (config.lockstep)
-    {
-        tthread::lock_guard<tthread::mutex> lock(lockstep_mutex);
-        if (enabler)
-        {
-            if (enabler->flag.bits.maxfps)
-            {
-                lockstep_sim++;
-                lockstep_frames = 0;
-            }
-            else
-            {
-                if (lockstep_frames && !enabler->async_frames)
-                {
-                    lockstep_sim++;
-                }
-                lockstep_frames = enabler->async_frames;
-            }
-        }
+        lockstep_loop();
+        Hook_Shutdown();
     }
 }
 
