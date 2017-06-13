@@ -474,7 +474,7 @@ const static struct sell_category_matchers_t
             return match_mat_vec(entity->resources.organic.silk, idx, mat_type, mat_index);
         };
 
-        map[entity_sell_category::Barrels] = [](df::historical_entity *entity, size_t idx, df::item_type item_type, int32_t, int16_t mat_type, int32_t mat_index) -> bool
+        map[entity_sell_category::Barrels] = [](df::historical_entity *entity, size_t idx, df::item_type, int32_t, int16_t mat_type, int32_t mat_index) -> bool
         {
             return match_mat_vec(entity->resources.misc_mat.barrels, idx, mat_type, mat_index);
         };

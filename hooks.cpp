@@ -33,7 +33,7 @@ static DWORD WINAPI Fake_GetTickCount(void)
 }
 #else
 static char Real_gettimeofday[6];
-static int Fake_gettimeofday(struct timeval *tv, struct timezone *tz)
+static int Fake_gettimeofday(struct timeval *tv, struct timezone *) throw()
 {
     tv->tv_sec = lockstep_tick_count / 1000;
     tv->tv_usec = (lockstep_tick_count % 1000) * 1000;
@@ -201,12 +201,12 @@ void Hook_Update()
         if (config.lockstep)
         {
 #ifdef _WIN32
-            Add_Hook(GetTickCount, Real_GetTickCount, Fake_GetTickCount);
+            Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
-            Add_Hook(gettimeofday, Real_gettimeofday, Fake_gettimeofday);
+            Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
-            Add_Hook(SDL_GetTicks, Real_SDL_GetTicks, Fake_SDL_GetTicks);
-            Add_Hook(SDL_Delay, Real_SDL_Delay, Fake_SDL_Delay);
+            Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
+            Add_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
             lockstep_hooked = true;
         }
         else
@@ -245,12 +245,12 @@ void Hook_Shutdown()
     }
 
 #ifdef _WIN32
-    Remove_Hook(GetTickCount, Real_GetTickCount, Fake_GetTickCount);
+    Remove_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
-    Remove_Hook(gettimeofday, Real_gettimeofday, Fake_gettimeofday);
+    Remove_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
-    Remove_Hook(SDL_GetTicks, Real_SDL_GetTicks, Fake_SDL_GetTicks);
-    Remove_Hook(SDL_Delay, Real_SDL_Delay, Fake_SDL_Delay);
+    Remove_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
+    Remove_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
 
     lockstep_hooked = false;
 }
