@@ -22,7 +22,8 @@ Config::Config() :
     fps_meter(true),
     manage_labors(true),
     manage_nobles(true),
-    cancel_announce(0)
+    cancel_announce(0),
+    lockstep(false)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -104,6 +105,10 @@ void Config::load(color_ostream & out)
             {
                 cancel_announce = v["cancel_announce"].asInt();
             }
+            if (v.isMember("lockstep"))
+            {
+                lockstep = v["lockstep"].asBool();
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -142,14 +147,4 @@ void Config::save(color_ostream & out)
     {
         out << "failed to write " << config_name << std::endl;
     }
-}
-
-void Config::set_random_embark_world(color_ostream & out, const std::string & value)
-{
-    if (random_embark_world == value)
-    {
-        return;
-    }
-    random_embark_world = value;
-    save(out);
 }

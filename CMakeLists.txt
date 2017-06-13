@@ -33,6 +33,7 @@ SET(PROJECT_SRCS
     df-ai.cpp
     ai.cpp
     config.cpp
+    hooks.cpp
     population.cpp
     plan.cpp
     plan_blueprint.cpp
@@ -47,6 +48,7 @@ SET(PROJECT_SRCS
 SET(PROJECT_HDRS
     ai.h
     config.h
+    hooks.h
     population.h
     plan.h
     plan_blueprint.h

@@ -149,7 +149,7 @@ bool Embark::update(color_ostream & out)
             else
             {
                 ai->debug(out, "could not find save named " + config.random_embark_world);
-                config.set_random_embark_world(out, "");
+                config.set(out, config.random_embark_world, std::string());
                 AI::feed_key(view, interface_key::LEAVESCREEN);
             }
             break;
@@ -166,7 +166,7 @@ bool Embark::update(color_ostream & out)
             else
             {
                 ai->debug(out, "leaving \"Select Mode\" (no fortress mode available)");
-                config.set_random_embark_world(out, "");
+                config.set(out, config.random_embark_world, std::string());
                 AI::feed_key(view, interface_key::LEAVESCREEN);
             }
             break;
@@ -206,13 +206,13 @@ bool Embark::update(color_ostream & out)
         else
         {
             ai->debug(out, "could not find save named " + config.random_embark_world);
-            config.set_random_embark_world(out, "");
+            config.set(out, config.random_embark_world, std::string());
             AI::feed_key(view, interface_key::LEAVESCREEN);
         }
     }
     else if (df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview))
     {
-        config.set_random_embark_world(out, "");
+        config.set(out, config.random_embark_world, std::string());
 
         if (!view->welcome_msg.empty())
         {
@@ -229,7 +229,7 @@ bool Embark::update(color_ostream & out)
         else if (world->worldgen_status.state == 10 && view->simple_mode == 0)
         {
             ai->debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
-            config.set_random_embark_world(out, world->cur_savegame.save_dir);
+            config.set(out, config.random_embark_world, world->cur_savegame.save_dir);
             AI::feed_key(view, interface_key::SELECT);
         }
     }
@@ -281,7 +281,7 @@ bool Embark::update(color_ostream & out)
             if (sites.empty())
             {
                 ai->debug(out, "leaving embark selector (no good embarks)");
-                config.set_random_embark_world(out, "");
+                config.set(out, config.random_embark_world, std::string());
                 AI::abandon(out);
                 return false;
             }

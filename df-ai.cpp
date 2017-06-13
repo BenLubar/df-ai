@@ -2,6 +2,7 @@
 
 #include "ai.h"
 #include "event_manager.h"
+#include "hooks.h"
 
 #include <fstream>
 
@@ -74,6 +75,7 @@ bool check_enabled(color_ostream & out)
         out << "AI: removed onupdate" << std::endl;
         delete dwarfAI;
         dwarfAI = nullptr;
+        Hook_Shutdown();
     }
     return false;
 }
@@ -99,6 +101,14 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         "  Write events in JSON format to df-ai-events.json\n"
         "ai disable events\n"
         "  Stop writing events to df-ai-events.json\n"
+        "ai enable lockstep\n"
+        "  Runs Dwarf Fortress as fast as possible, locking animations to the frame rate instead of real time. May cause crashes; use at your own risk.\n"
+        "ai disable lockstep\n"
+        "  Undoes \"ai enable lockstep\".\n"
+        "ai enable camera\n"
+        "  Enables AI control of the camera.\n"
+        "ai disable camera\n"
+        "  Undoes \"ai enable camera\".\n"
     ));
     return CR_OK;
 }
@@ -198,6 +208,20 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
             }
             return CR_OK;
         }
+#define MODE(name) \
+        else if (args[1] == #name) \
+        { \
+            if (enable == config.name) \
+            { \
+                out << #name " mode is already " << (enable ? "enabled" : "disabled") << std::endl; \
+                return CR_OK; \
+            } \
+\
+            config.set(out, config.name, enable); \
+            return CR_OK; \
+        }
+        MODE(lockstep)
+        MODE(camera)
     }
 
     return CR_WRONG_USAGE;
@@ -223,6 +247,8 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
 {
     if (!check_enabled(out))
         return CR_OK;
+
+    Hook_Update();
 
     if (ui->main.autosave_request)
     {
