@@ -140,6 +140,7 @@ void Config::save(color_ostream & out)
     v["manage_labors"] = manage_labors;
     v["manage_nobles"] = manage_nobles;
     v["cancel_announce"] = cancel_announce;
+    v["lockstep"] = lockstep;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
