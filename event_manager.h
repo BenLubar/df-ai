@@ -41,12 +41,17 @@ public:
     OnstatechangeCallback *onstatechange_register_once(std::function<bool(color_ostream &, state_change_event)> b);
     void onstatechange_unregister(OnstatechangeCallback *&b);
 
+    bool register_exclusive(std::function<bool(color_ostream &)> b, int32_t ticks = 1);
+
     void onstatechange(color_ostream & out, state_change_event event);
     void onupdate(color_ostream & out);
 protected:
     friend class AI;
     void clear();
 private:
+    std::function<bool(color_ostream &)> exclusive;
+    int32_t exclusive_cur;
+    int32_t exclusive_ticks;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
 };

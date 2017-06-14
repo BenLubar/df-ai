@@ -1,4 +1,11 @@
 #include "event_manager.h"
+#include "ai.h"
+#include "camera.h"
+
+#include "df/viewscreen_movieplayerst.h"
+
+#include "modules/Gui.h"
+#include "modules/Screen.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -59,7 +66,10 @@ OnstatechangeCallback::OnstatechangeCallback(std::function<bool(color_ostream &,
 
 EventManager::EventManager() :
     onupdate_list(),
-    onstatechange_list()
+    onstatechange_list(),
+    exclusive(),
+    exclusive_cur(0),
+    exclusive_ticks(0)
 {
 }
 
@@ -150,8 +160,35 @@ void EventManager::onstatechange_unregister(OnstatechangeCallback *&b)
     b = nullptr;
 }
 
+bool EventManager::register_exclusive(std::function<bool(color_ostream &)> b, int32_t ticks)
+{
+    if (exclusive)
+    {
+        return false;
+    }
+    exclusive = b;
+    exclusive_ticks = ticks;
+    return true;
+}
+
 void EventManager::onupdate(color_ostream & out)
 {
+    if (exclusive)
+    {
+        exclusive_cur++;
+        if (exclusive_cur >= exclusive_ticks)
+        {
+            if (exclusive(out))
+            {
+                exclusive = nullptr;
+                exclusive_cur = 0;
+                exclusive_ticks = 0;
+            }
+            exclusive_cur = 0;
+        }
+        return;
+    }
+
     // make a copy
     std::vector<OnupdateCallback *> list = onupdate_list;
 
@@ -167,6 +204,21 @@ void EventManager::onupdate(color_ostream & out)
 }
 void EventManager::onstatechange(color_ostream & out, state_change_event event)
 {
+    if (exclusive)
+    {
+        if (event == SC_VIEWSCREEN_CHANGED)
+        {
+            df::viewscreen *curview = Gui::getCurViewscreen(true);
+            if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+            {
+                Screen::dismiss(curview);
+                extern AI *dwarfAI;
+                dwarfAI->camera->check_record_status();
+            }
+        }
+        return;
+    }
+
     // make a copy
     std::vector<OnstatechangeCallback *> list = onstatechange_list;
 

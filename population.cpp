@@ -1283,8 +1283,7 @@ bool Population::perform_trade(color_ostream & out)
         return false;
     }
 
-    int32_t start_x, start_y, start_z;
-    Gui::getViewCoords(start_x, start_y, start_z);
+    Gui::getViewCoords(trade_start_x, trade_start_y, trade_start_z);
 
     AI::feed_key(interface_key::D_BUILDJOB);
 
@@ -1309,9 +1308,7 @@ bool Population::perform_trade(color_ostream & out)
     {
         if (perform_trade(out, trade))
         {
-            ai->camera->ignore_pause(start_x, start_y, start_z);
-
-            return true;
+return false;
         }
     }
     else
@@ -1320,7 +1317,7 @@ bool Population::perform_trade(color_ostream & out)
         AI::feed_key(interface_key::LEAVESCREEN);
     }
 
-    ai->camera->ignore_pause(start_x, start_y, start_z);
+    ai->camera->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
 
     return false;
 }
@@ -1334,224 +1331,296 @@ static bool represents_plant_murder(df::item *item)
 
 bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade)
 {
-    trade->render(); // for some reason, this populates the item list.
-
-    if (trade->is_unloading)
+    if (!events.register_exclusive([this](color_ostream & s) -> bool
     {
-        ai->debug(out, "[trade] Waiting for caravan to unload. Trying again soon.");
+        return perform_trade_step(s);
+    }, 2))
+    {
+        ai->debug(out, "[trade] Could not register exclusive context.");
 
         AI::feed_key(trade, interface_key::LEAVESCREEN);
         AI::feed_key(interface_key::LEAVESCREEN);
 
         return false;
     }
+    trade_step = 0;
+    return true;
+}
 
-    df::creature_raw *creature = df::creature_raw::find(trade->entity->race);
-
-    ai->debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
-
-    std::vector<size_t> want_items;
-
-    for (auto it = trade->trader_items.begin(); it != trade->trader_items.end(); it++)
+bool Population::perform_trade_step(color_ostream & out)
+{
+    df::viewscreen_tradegoodsst *trade = strict_virtual_cast<df::viewscreen_tradegoodsst>(Gui::getCurViewscreen(true));
+    if (!trade)
     {
-        if (ai->stocks->want_trader_item(out, *it))
-        {
-            want_items.push_back(it - trade->trader_items.begin());
-        }
-    }
-
-    std::sort(want_items.begin(), want_items.end(), [this, trade](size_t a, size_t b) -> bool { return ai->stocks->want_trader_item_more(trade->trader_items.at(a), trade->trader_items.at(b)); });
-
-    int32_t max_offer_value = 0;
-
-    for (auto it = trade->broker_items.begin(); it != trade->broker_items.end(); it++)
-    {
-        max_offer_value += ai->trade->item_or_container_price_for_caravan(*it, trade->caravan, trade->entity, creature, (*it)->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
-    }
-
-    ai->debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", max_offer_value));
-
-    int32_t request_value = 0;
-    int32_t offer_value = 0;
-
-    for (auto it = want_items.begin(); it != want_items.end(); it++)
-    {
-        df::item *item = trade->trader_items.at(*it);
-
-        bool can_afford_any = false;
-
-        for (int32_t qty = item->getStackSize(); qty > 0; qty--)
-        {
-            int32_t item_value = ai->trade->item_or_container_price_for_caravan(trade->trader_items.at(*it), trade->caravan, trade->entity, creature, qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
-
-            if ((request_value + item_value) * 11 / 10 >= max_offer_value)
-            {
-                if (qty > 1)
-                {
-                    ai->debug(out, stl_sprintf("[trade] Cannot afford %d of item, trying again with fewer: ", qty) + AI::describe_item(item));
-                }
-                continue;
-            }
-
-            can_afford_any = true;
-            request_value += item_value;
-            trade->trader_selected.at(*it) = 1;
-            trade->trader_count.at(*it) = qty;
-            ai->debug(out, stl_sprintf("[trade] Requesting %d of item: ", qty) + AI::describe_item(item));
-            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
-
-            for (size_t i = 0; request_value * 11 / 10 >= offer_value && i < trade->broker_items.size(); i++)
-            {
-                if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(trade->broker_items.at(i)))
-                {
-                    continue;
-                }
-                if (trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] <= ethic_response::UNTHINKABLE && trade->broker_items.at(i)->isAnimalProduct())
-                {
-                    continue;
-                }
-                if (!trade->broker_selected.at(i) || trade->broker_count.at(i) != trade->broker_items.at(i)->getStackSize())
-                {
-                    auto offer_item = trade->broker_items.at(i);
-
-                    int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) : 0;
-                    int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
-
-                    int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
-                    for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
-                    {
-                        int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
-                        if (offer_value - existing_offer_value + new_offer_value > request_value * 11 / 10)
-                        {
-                            over_offer_qty = offer_qty;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
-                    trade->broker_selected.at(i) = 1;
-                    trade->broker_count.at(i) = over_offer_qty;
-                    offer_value = offer_value - existing_offer_value + new_offer_value;
-                    ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: ", over_offer_qty - current_count, current_count ? " more" : "") + AI::describe_item(offer_item));
-                    ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
-                }
-            }
-
-            break;
-        }
-
-        if (!can_afford_any)
-        {
-            ai->debug(out, "[trade] Cannot afford any of item, stopping: " + AI::describe_item(item));
-            want_items.erase(it, want_items.end());
-            break;
-        }
-    }
-
-    if (offer_value == 0)
-    {
-        ai->debug(out, "[trade] Cancelling trade.");
-
-        AI::feed_key(trade, interface_key::LEAVESCREEN);
-        AI::feed_key(interface_key::LEAVESCREEN);
-
+        ai->debug(out, "[trade] Unexpected viewscreen. Bailing.");
         return true;
     }
 
-    ai->debug(out, "[trade] Making offer...");
+    trade->render(); // make sure the item list is populated.
 
-    AI::feed_key(trade, interface_key::TRADE_TRADE);
-    trade->logic();
-    trade->render();
+    df::creature_raw *creature = trade->entity ? df::creature_raw::find(trade->entity->race) : nullptr;
 
-    std::string reply, mood;
-    ai->trade->read_trader_reply(reply, mood);
-
-    ai->debug(out, "[trade] Trader reply: " + reply);
-    if (!mood.empty())
+    switch (trade_step)
     {
-        ai->debug(out, "[trade] Trader mood: " + mood);
-    }
-
-    for (;;)
+    case 0:
     {
-        if (!trade->counteroffer.empty())
+        if (trade->is_unloading)
         {
-            for (auto it = trade->counteroffer.begin(); it != trade->counteroffer.end(); it++)
+            ai->debug(out, "[trade] Waiting for caravan to unload. Trying again soon.");
+
+            AI::feed_key(trade, interface_key::LEAVESCREEN);
+            AI::feed_key(interface_key::LEAVESCREEN);
+
+            return true;
+        }
+
+        ai->debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
+
+        trade_want_items.clear();
+
+        for (auto it = trade->trader_items.begin(); it != trade->trader_items.end(); it++)
+        {
+            if (ai->stocks->want_trader_item(out, *it))
             {
-                ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(*it));
-            }
-            ai->debug(out, "[trade] Accepting counter-offer.");
-
-            AI::feed_key(trade, interface_key::SELECT);
-
-            AI::feed_key(trade, interface_key::TRADE_TRADE);
-            trade->logic();
-            trade->render();
-
-            ai->trade->read_trader_reply(reply, mood);
-
-            ai->debug(out, "[trade] Trader reply: " + reply);
-            if (!mood.empty())
-            {
-                ai->debug(out, "[trade] Trader mood: " + mood);
+                trade_want_items.push_back(it - trade->trader_items.begin());
             }
         }
 
-        if (std::find(trade->broker_selected.begin(), trade->broker_selected.end(), 1) == trade->broker_selected.end())
+        std::sort(trade_want_items.begin(), trade_want_items.end(), [this, trade](size_t a, size_t b) -> bool { return ai->stocks->want_trader_item_more(trade->trader_items.at(a), trade->trader_items.at(b)); });
+
+        trade_max_offer_value = 0;
+
+        for (auto it = trade->broker_items.begin(); it != trade->broker_items.end(); it++)
         {
-            ai->debug(out, "[trade] Offer was accepted.");
-            break;
-        }
-
-        if (!trade->has_traders)
-        {
-            ai->debug(out, "[trade] Trader no longer wants to trade. Giving up.");
-            break;
-        }
-
-        int32_t ten_percent = request_value / 10;
-        ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", ten_percent));
-
-        for (auto it = want_items.rbegin(); it != want_items.rend() && ten_percent > 0; it++)
-        {
-            df::item *item = trade->trader_items.at(*it);
-
-            if (!trade->trader_selected.at(*it))
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(*it))
             {
                 continue;
             }
-
-            int32_t max_count = trade->trader_count.at(*it);
-            int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
-            int32_t remove_count = max_count;
-            int32_t remove_value = max_value;
-            int32_t less_count = 0;
-            int32_t less_value = 0;
-            while (max_value - less_value > ten_percent && less_count < max_count)
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] <= ethic_response::UNTHINKABLE && (*it)->isAnimalProduct())
             {
-                remove_count = max_count - less_count;
-                remove_value = max_value - less_value;
-                less_count++;
-                less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                continue;
             }
-
-            trade->trader_count.at(*it) -= remove_count;
-            trade->trader_selected.at(*it) = trade->trader_count.at(*it) == 0 ? 0 : 1;
-            request_value -= remove_value;
-            ten_percent -= remove_value;
-            ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), ten_percent));
+            trade_max_offer_value += ai->trade->item_or_container_price_for_caravan(*it, trade->caravan, trade->entity, creature, (*it)->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
         }
 
-        ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+        ai->debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", trade_max_offer_value));
 
-        if (request_value <= 0)
+        trade_request_value = 0;
+        trade_offer_value = 0;
+
+        trade_want_items_it = trade_want_items.begin();
+
+        trade_step = 1;
+        break;
+    }
+    case 1:
+    {
+        if (trade_want_items_it == trade_want_items.end())
+        {
+            trade_step = 9;
+            break;
+        }
+
+        df::item *item = trade->trader_items.at(*trade_want_items_it);
+
+        bool can_afford_any = (trade_request_value + ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, 1, trade->caravan->buy_prices, trade->caravan->sell_prices)) * 11 / 10 < trade_max_offer_value;
+        if (!can_afford_any)
+        {
+            ai->debug(out, "[trade] Cannot afford any of item, stopping: " + AI::describe_item(item));
+            trade_want_items.erase(trade_want_items_it, trade_want_items.end());
+            trade_want_items_it = trade_want_items.end();
+            break;
+        }
+
+        if (trade->in_right_pane)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_LEFT);
+        }
+
+        trade_step = 2;
+        break;
+    }
+    case 2:
+    {
+        if (trade->trader_cursor > int32_t(*trade_want_items_it))
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_UP);
+        }
+        else if (trade->trader_cursor < int32_t(*trade_want_items_it))
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        }
+        else
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = trade->in_edit_count ? 3 : 5;
+        }
+        break;
+    }
+    case 3:
+    {
+        if (trade->edit_count.empty())
+        {
+            df::item *item = trade->trader_items.at(*trade_want_items_it);
+
+            for (int32_t qty = item->getStackSize(); qty > 0; qty--)
+            {
+                int32_t item_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+
+                if ((trade_request_value + item_value) * 11 / 10 >= trade_max_offer_value)
+                {
+                    if (qty > 1)
+                    {
+                        ai->debug(out, stl_sprintf("[trade] Cannot afford %d of item, trying again with fewer: ", qty) + AI::describe_item(item));
+                    }
+                    continue;
+                }
+
+                trade_want_qty = stl_sprintf("%d", qty);
+                trade_request_value += item_value;
+                ai->debug(out, stl_sprintf("[trade] Requesting %d of item: ", qty) + AI::describe_item(item));
+                ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
+                break;
+            }
+            trade_step = 4;
+        }
+        else
+        {
+            AI::feed_key(interface_key::STRING_A000);
+        }
+        break;
+    }
+    case 4:
+    {
+        if (trade->edit_count.size() >= trade_want_qty.size())
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = 5;
+        }
+        else
+        {
+            AI::feed_char(trade_want_qty.at(trade->edit_count.size()));
+        }
+        break;
+    }
+    case 5:
+    {
+        if (trade_request_value * 11 / 10 >= trade_offer_value)
+        {
+            trade_want_items_it++;
+            trade_step = 1;
+            break;
+        }
+
+        for (size_t i = 0; i < trade->broker_items.size(); i++)
+        {
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(trade->broker_items.at(i)))
+            {
+                continue;
+            }
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] <= ethic_response::UNTHINKABLE && trade->broker_items.at(i)->isAnimalProduct())
+            {
+                continue;
+            }
+            if (!trade->broker_selected.at(i) || trade->broker_count.at(i) != trade->broker_items.at(i)->getStackSize())
+            {
+                auto offer_item = trade->broker_items.at(i);
+
+                int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) : 0;
+                int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
+
+                int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
+                for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
+                {
+                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                    if (trade_offer_value - existing_offer_value + new_offer_value > trade_request_value * 11 / 10)
+                    {
+                        over_offer_qty = offer_qty;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                trade_offer_value = trade_offer_value - existing_offer_value + new_offer_value;
+                ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: ", over_offer_qty - current_count, current_count ? " more" : "") + AI::describe_item(offer_item));
+                ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
+
+                trade_broker_item = int32_t(i);
+                trade_broker_qty = stl_sprintf("%d", over_offer_qty);
+                if (!trade->in_right_pane)
+                {
+                    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+                }
+                trade_step = 6;
+
+                break;
+            }
+        }
+
+        break;
+    }
+    case 6:
+    {
+        if (trade->broker_cursor > trade_broker_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_UP);
+        }
+        else if (trade->broker_cursor < trade_broker_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        }
+        else
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = trade->in_edit_count ? 7 : 5;
+        }
+        break;
+    }
+    case 7:
+    {
+        if (trade->edit_count.empty())
+        {
+            trade_step = 8;
+        }
+        else
+        {
+            AI::feed_key(interface_key::STRING_A000);
+        }
+        break;
+    }
+    case 8:
+    {
+        if (trade->edit_count.size() >= trade_broker_qty.size())
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = 5;
+        }
+        else
+        {
+            AI::feed_char(trade_broker_qty.at(trade->edit_count.size()));
+        }
+        break;
+    }
+    case 9:
+    {
+        if (trade_request_value <= 0 || trade_offer_value <= 0)
         {
             ai->debug(out, "[trade] Cancelling trade.");
 
-            break;
+            AI::feed_key(trade, interface_key::LEAVESCREEN);
+            AI::feed_key(interface_key::LEAVESCREEN);
+
+            ai->camera->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
+            did_trade = true;
+
+            if (set_up_trading(out, false))
+            {
+                ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+            }
+            return true;
         }
 
         ai->debug(out, "[trade] Making offer...");
@@ -1568,12 +1637,173 @@ bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst 
         {
             ai->debug(out, "[trade] Trader mood: " + mood);
         }
+
+        trade_step = trade->counteroffer.empty() ? 11 : 10;
+        break;
+    }
+    case 10:
+    {
+        for (auto it = trade->counteroffer.begin(); it != trade->counteroffer.end(); it++)
+        {
+            ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(*it));
+        }
+        ai->debug(out, "[trade] Accepting counter-offer.");
+
+        AI::feed_key(trade, interface_key::SELECT);
+
+        AI::feed_key(trade, interface_key::TRADE_TRADE);
+        trade->logic();
+        trade->render();
+
+        std::string reply, mood;
+        ai->trade->read_trader_reply(reply, mood);
+
+        ai->debug(out, "[trade] Trader reply: " + reply);
+        if (!mood.empty())
+        {
+            ai->debug(out, "[trade] Trader mood: " + mood);
+        }
+
+        trade_step = 11;
+        break;
+    }
+    case 11:
+    {
+        if (std::find(trade->broker_selected.begin(), trade->broker_selected.end(), 1) == trade->broker_selected.end())
+        {
+            ai->debug(out, "[trade] Offer was accepted.");
+
+            AI::feed_key(trade, interface_key::LEAVESCREEN);
+            AI::feed_key(interface_key::LEAVESCREEN);
+
+            ai->camera->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
+            did_trade = true;
+
+            if (set_up_trading(out, false))
+            {
+                ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+            }
+            return true;
+        }
+
+        if (!trade->has_traders)
+        {
+            ai->debug(out, "[trade] Trader no longer wants to trade. Giving up.");
+
+            AI::feed_key(trade, interface_key::LEAVESCREEN);
+            AI::feed_key(interface_key::LEAVESCREEN);
+
+            ai->camera->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
+            did_trade = true;
+
+            if (set_up_trading(out, false))
+            {
+                ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+            }
+            return true;
+        }
+
+        trade_ten_percent = trade_request_value / 10;
+        ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", trade_ten_percent));
+
+        trade_step = 12;
+        break;
+    }
+    case 12:
+    {
+        if (trade_ten_percent <= 0)
+        {
+            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
+
+            trade_step = 9;
+
+            break;
+        }
+
+        for (auto it = trade_want_items.rbegin(); it != trade_want_items.rend() && trade_ten_percent > 0; it++)
+        {
+            df::item *item = trade->trader_items.at(*it);
+
+            if (!trade->trader_selected.at(*it))
+            {
+                continue;
+            }
+
+            int32_t max_count = trade->trader_count.at(*it);
+            int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+            int32_t remove_count = max_count;
+            int32_t remove_value = max_value;
+            int32_t less_count = 0;
+            int32_t less_value = 0;
+            while (max_value - less_value > trade_ten_percent && less_count < max_count)
+            {
+                remove_count = max_count - less_count;
+                remove_value = max_value - less_value;
+                less_count++;
+                less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+            }
+
+            trade_remove_item = *it;
+            trade_remove_qty = stl_sprintf("%d", trade->trader_count.at(*it) - remove_count);
+            trade_request_value -= remove_value;
+            trade_ten_percent -= remove_value;
+            ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), trade_ten_percent));
+
+            trade_step = 13;
+            if (trade->in_right_pane)
+            {
+                AI::feed_key(interface_key::STANDARDSCROLL_LEFT);
+            }
+
+            break;
+        }
+        break;
+    }
+    case 13:
+    {
+        if (trade->trader_cursor > trade_remove_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_UP);
+        }
+        else if (trade->trader_cursor < trade_remove_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        }
+        else
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = trade->in_edit_count ? 14 : 12;
+        }
+        break;
+    }
+    case 14:
+    {
+        if (trade->edit_count.empty())
+        {
+            trade_step = 15;
+        }
+        else
+        {
+            AI::feed_key(interface_key::STRING_A000);
+        }
+        break;
+    }
+    case 15:
+    {
+        if (trade->edit_count.size() >= trade_remove_qty.size())
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = 12;
+        }
+        else
+        {
+            AI::feed_char(trade_remove_qty.at(trade->edit_count.size()));
+        }
+        break;
+    }
     }
 
-    AI::feed_key(trade, interface_key::LEAVESCREEN);
-    AI::feed_key(interface_key::LEAVESCREEN);
-
-    return true;
+    return false;
 }
 
 bool Population::unit_hasmilitaryduty(df::unit *u)
