@@ -298,14 +298,14 @@ void AI::write_lockstep(std::string str)
         size_t end = str.find('\n', pos);
         if (end == std::string::npos)
         {
-            while (pos <= str.size() - 80)
+            while (pos + 80 <= str.size())
             {
                 lines++;
                 pos += 80;
             }
             break;
         }
-        while (pos <= end - 80)
+        while (pos + 80 <= end)
         {
             lines++;
             pos += 80;
