@@ -25,4 +25,6 @@ public:
     void update(color_ostream & out);
     void ignore_pause(int32_t x, int32_t y, int32_t z);
     std::string status();
+
+    bool movie_started_in_lockstep;
 };

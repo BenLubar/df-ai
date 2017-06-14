@@ -31,7 +31,8 @@ Camera::Camera(AI *ai) :
     onupdate_handle(nullptr),
     onstatechange_handle(nullptr),
     following(-1),
-    following_prev()
+    following_prev(),
+    movie_started_in_lockstep(false)
 {
 }
 
@@ -68,6 +69,7 @@ void Camera::check_record_status()
 {
     if (config.record_movie && gview->supermovie_on == 0)
     {
+        movie_started_in_lockstep = config.lockstep;
         gview->supermovie_on = 1;
         gview->currentblocksize = 0;
         gview->nextfilepos = 0;

@@ -69,6 +69,14 @@ AI::AI() :
 {
     seen_cvname.insert("viewscreen_dwarfmodest");
     Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
+
+    for (int32_t y = 0; y < 25; y++)
+    {
+        for (int32_t x = 0; x < 80; x++)
+        {
+            lockstep_log_buffer[y][x] = ' ';
+        }
+    }
 }
 
 AI::~AI()
@@ -266,7 +274,7 @@ bool AI::is_dwarfmode_viewscreen()
 void AI::write_df(std::ostream & out, const std::string & str, const std::string & newline, const std::string & suffix, std::function<std::string(const std::string &)> translate)
 {
     size_t pos = 0;
-    while (true)
+    for (;;)
     {
         size_t end = str.find('\n', pos);
         if (end == std::string::npos)
@@ -280,6 +288,69 @@ void AI::write_df(std::ostream & out, const std::string & str, const std::string
     out.flush();
 }
 
+void AI::write_lockstep(std::string str)
+{
+    int32_t lines = 1;
+    size_t pos = 0;
+
+    for (;;)
+    {
+        size_t end = str.find('\n', pos);
+        if (end == std::string::npos)
+        {
+            while (pos <= str.size() - 80)
+            {
+                lines++;
+                pos += 80;
+            }
+            break;
+        }
+        while (pos <= end - 80)
+        {
+            lines++;
+            pos += 80;
+        }
+        lines++;
+        pos = end + 1;
+    }
+
+    while (lines > 25)
+    {
+        pos = str.find('\n');
+        if (pos >= 80)
+        {
+            pos = 79;
+        }
+        str = str.substr(0, pos + 1);
+        lines--;
+    }
+
+    for (size_t src = lines, dst = 0; src < 25; src++, dst++)
+    {
+        memcpy(lockstep_log_buffer[dst], lockstep_log_buffer[src], 80);
+    }
+
+    for (size_t i = 0, y = 25 - lines; y < 25; y++)
+    {
+        for (size_t x = 0; x < 80; x++)
+        {
+            if (i >= str.size() || str.at(i) == '\n')
+            {
+                lockstep_log_buffer[y][x] = ' ';
+            }
+            else
+            {
+                lockstep_log_buffer[y][x] = str.at(i);
+                i++;
+            }
+        }
+        if (i < str.size() && str.at(i) == '\n')
+        {
+            i++;
+        }
+    }
+}
+
 void AI::debug(color_ostream & out, const std::string & str, df::coord announce)
 {
     Gui::showZoomAnnouncement(df::announcement_type(0), announce, "AI: " + str, 7, false);
@@ -290,6 +361,10 @@ void AI::debug(color_ostream & out, const std::string & str)
 {
     std::string ts = timestamp();
 
+    if (config.lockstep)
+    {
+        write_lockstep("AI: " + ts + " " + str);
+    }
     if (config.debug)
     {
         write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);

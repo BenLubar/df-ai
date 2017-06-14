@@ -54,6 +54,7 @@ public:
     std::set<std::string> seen_cvname;
     int32_t last_good_x, last_good_y, last_good_z;
     bool skip_persist;
+    char lockstep_log_buffer[25][80];
 
     AI();
     ~AI();
@@ -78,6 +79,7 @@ public:
     static bool is_dwarfmode_viewscreen();
 
     static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);
+    void write_lockstep(std::string str);
 
     void debug(color_ostream & out, const std::string & str, df::coord announce);
     void debug(color_ostream & out, const std::string & str);
