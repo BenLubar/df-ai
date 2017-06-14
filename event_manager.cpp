@@ -65,11 +65,11 @@ OnstatechangeCallback::OnstatechangeCallback(std::function<bool(color_ostream &,
 }
 
 EventManager::EventManager() :
-    onupdate_list(),
-    onstatechange_list(),
     exclusive(),
     exclusive_cur(0),
-    exclusive_ticks(0)
+    exclusive_ticks(0),
+    onupdate_list(),
+    onstatechange_list()
 {
 }
 

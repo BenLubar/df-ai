@@ -232,7 +232,7 @@ static int32_t lockstep_write_movie_chunk()
     c_stream.next_in = (Bytef*)gview->supermoviebuffer;
     c_stream.avail_in = inputsize;
 
-    while (c_stream.total_in != inputsize && c_stream.total_out < COMPMOVIEBUFFSIZE)
+    while (int32_t(c_stream.total_in) != inputsize && c_stream.total_out < COMPMOVIEBUFFSIZE)
     {
         //c_stream.avail_in = c_stream.avail_out = 1; // force small buffers
         err = deflate(&c_stream, Z_NO_FLUSH);
@@ -292,13 +292,13 @@ static int32_t lockstep_write_movie_chunk()
                 {
                     header[1] *= 2;
                 }
-                header[3] = gview->supermovie_delayrate;
+                header[2] = gview->supermovie_delayrate;
                 f.write((const char *)&header, sizeof(header));
 
                 int32_t s = gview->supermovie_sound.size();
                 f.write((const char *)&s, sizeof(int32_t));
                 char buf[50];
-                for (s = 0; s < gview->supermovie_sound.size(); s++)
+                for (s = 0; s < int32_t(gview->supermovie_sound.size()); s++)
                 {
                     strcpy(buf, gview->supermovie_sound.at(s)->c_str());
                     f.write(buf, sizeof(buf));
