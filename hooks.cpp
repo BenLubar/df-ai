@@ -192,7 +192,6 @@ static void lockstep_remove_to_first()
 
 static constexpr int32_t MOVIEBUFFSIZE = sizeof(df::interfacest::supermoviebuffer) / sizeof(df::interfacest::supermoviebuffer[0]);
 static constexpr int32_t COMPMOVIEBUFFSIZE = sizeof(df::interfacest::supermoviebuffer_comp) / sizeof(df::interfacest::supermoviebuffer_comp[0]);
-static constexpr int32_t SOUND_CHANNELNUM = sizeof(df::interfacest::supermovie_sound_time) / sizeof(df::interfacest::supermovie_sound_time[0]);
 
 static bool CHECK_ERR(int err, const char* msg)
 {
@@ -304,15 +303,7 @@ static int32_t lockstep_write_movie_chunk()
                     f.write(buf, sizeof(buf));
                 }
 
-                int i1, i2;
-                for (i1 = 0; i1 < 200; i1++)
-                {
-                    for (i2 = 0; i2 < SOUND_CHANNELNUM; i2++)
-                    {
-                        int32_t sound_time = gview->supermovie_sound_time[i1][i2];
-                        f.write((const char *)&sound_time, sizeof(int32_t));
-                    }
-                }
+                f.write((const char *)gview->supermovie_sound_time, sizeof(gview->supermovie_sound_time));
             }
 
             //WRITE IT
@@ -364,6 +355,7 @@ static void lockstep_handlemovie(bool flushall)
 
             if (!flushall || gview->supermovie_delaystep == 0)
             {
+                extern AI *dwarfAI;
                 //SAVING CHARACTERS, THEN COLORS
                 short x2, y2;
                 for (x2 = 0; x2 < init->display.grid_x; x2++)
@@ -374,11 +366,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                }
-                extern AI *dwarfAI;
-                if (dwarfAI->camera->movie_started_in_lockstep)
-                {
-                    for (x2 = 0; x2 < init->display.grid_x; x2++)
+                    if (dwarfAI->camera->movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -403,10 +391,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                }
-                if (dwarfAI->camera->movie_started_in_lockstep)
-                {
-                    for (x2 = 0; x2 < init->display.grid_x; x2++)
+                    if (dwarfAI->camera->movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
