@@ -1743,7 +1743,7 @@ bool Population::perform_trade_step(color_ostream & out)
                 less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
             }
 
-            trade_remove_item = *it;
+            trade_remove_item = int32_t(*it);
             trade_remove_qty = stl_sprintf("%d", trade->trader_count.at(*it) - remove_count);
             trade_request_value -= remove_value;
             trade_ten_percent -= remove_value;
@@ -1953,7 +1953,7 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
         for (auto it = view->assignments.begin(); it != view->assignments.end(); it++)
         {
             auto assign = *it;
-            if (assign != nullptr && assign->position_id == pos->id && assign->histfig == -1 && assign->squad_id == squad_id)
+            if (assign != nullptr && assign->position_id == pos->id && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && assign->squad_id == squad_id)
             {
                 AI::feed_key(interface_key::SELECT);
                 for (auto c = view->candidates.begin(); c != view->candidates.end(); c++)

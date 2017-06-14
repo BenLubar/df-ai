@@ -65,7 +65,7 @@ private:
     int32_t trade_broker_item;
     std::string trade_broker_qty;
     int32_t trade_ten_percent;
-    size_t trade_remove_item;
+    int32_t trade_remove_item;
     std::string trade_remove_qty;
 
 public:
