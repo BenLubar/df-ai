@@ -1452,15 +1452,6 @@ bool Population::perform_trade_step(color_ostream & out)
         }
         else
         {
-            AI::feed_key(interface_key::SELECT);
-            trade_step = trade->in_edit_count ? 3 : 5;
-        }
-        break;
-    }
-    case 3:
-    {
-        if (trade->edit_count.empty())
-        {
             df::item *item = trade->trader_items.at(*trade_want_items_it);
 
             for (int32_t qty = item->getStackSize(); qty > 0; qty--)
@@ -1482,6 +1473,16 @@ bool Population::perform_trade_step(color_ostream & out)
                 ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
                 break;
             }
+
+            AI::feed_key(interface_key::SELECT);
+            trade_step = trade->in_edit_count ? 3 : 5;
+        }
+        break;
+    }
+    case 3:
+    {
+        if (trade->edit_count.size() <= trade_want_qty.size() && trade->edit_count == trade_want_qty.substr(0, trade->edit_count.size()))
+        {
             trade_step = 4;
         }
         else
@@ -1505,7 +1506,7 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 5:
     {
-        if (trade_request_value * 11 / 10 >= trade_offer_value)
+        if (trade_request_value * 11 / 10 < trade_offer_value)
         {
             trade_want_items_it++;
             trade_step = 1;
@@ -1522,11 +1523,11 @@ bool Population::perform_trade_step(color_ostream & out)
             {
                 continue;
             }
-            if (!trade->broker_selected.at(i) || trade->broker_count.at(i) != trade->broker_items.at(i)->getStackSize())
+            int32_t current_count = trade->broker_count.at(i) == 0 && trade->broker_selected.at(i) ? trade->broker_items.at(i)->getStackSize() : trade->broker_count.at(i);
+            if (!current_count || current_count != trade->broker_items.at(i)->getStackSize())
             {
                 auto offer_item = trade->broker_items.at(i);
 
-                int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) : 0;
                 int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
 
                 int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
@@ -1581,7 +1582,7 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 7:
     {
-        if (trade->edit_count.empty())
+        if (trade->edit_count.size() <= trade_broker_qty.size() && trade->edit_count == trade_broker_qty.substr(0, trade->edit_count.size()))
         {
             trade_step = 8;
         }
@@ -1669,7 +1670,7 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 11:
     {
-        if (std::find(trade->broker_selected.begin(), trade->broker_selected.end(), 1) == trade->broker_selected.end())
+        if (std::find_if(trade->broker_count.begin(), trade->broker_count.end(), [](int32_t count) -> bool { return count != 0; }) == trade->broker_count.end() && std::find_if(trade->broker_selected.begin(), trade->broker_selected.end(), [](char selected) -> bool { return selected != 0; }) == trade->broker_selected.end())
         {
             ai->debug(out, "[trade] Offer was accepted.");
 
@@ -1724,12 +1725,14 @@ bool Population::perform_trade_step(color_ostream & out)
         {
             df::item *item = trade->trader_items.at(*it);
 
-            if (!trade->trader_selected.at(*it))
+            int32_t current_count = trade->trader_count.at(*it) == 0 && trade->trader_selected.at(*it) ? trade->trader_items.at(*it)->getStackSize() : trade->trader_count.at(*it);
+
+            if (current_count == 0)
             {
                 continue;
             }
 
-            int32_t max_count = trade->trader_count.at(*it);
+            int32_t max_count = current_count;
             int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
             int32_t remove_count = max_count;
             int32_t remove_value = max_value;
@@ -1744,7 +1747,7 @@ bool Population::perform_trade_step(color_ostream & out)
             }
 
             trade_remove_item = int32_t(*it);
-            trade_remove_qty = stl_sprintf("%d", trade->trader_count.at(*it) - remove_count);
+            trade_remove_qty = stl_sprintf("%d", current_count - remove_count);
             trade_request_value -= remove_value;
             trade_ten_percent -= remove_value;
             ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), trade_ten_percent));
@@ -1778,7 +1781,7 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 14:
     {
-        if (trade->edit_count.empty())
+        if (trade->edit_count.size() <= trade_remove_qty.size() && trade->edit_count == trade_remove_qty.substr(0, trade->edit_count.size()))
         {
             trade_step = 15;
         }
