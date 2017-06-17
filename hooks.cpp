@@ -4,6 +4,7 @@
 #include "tinythread.h"
 
 #include "MemAccess.h"
+#include "SDL_events.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
@@ -22,6 +23,7 @@
 #else
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <asm/cachectl.h>
 #endif
 
 REQUIRE_GLOBAL(enabler);
@@ -30,10 +32,12 @@ REQUIRE_GLOBAL(gview);
 REQUIRE_GLOBAL(init);
 
 DFhackCExport uint32_t SDL_GetTicks(void);
-DFhackCExport void SDL_Delay(uint32_t ms);
 DFhackCExport int SDL_SemTryWait(void *sem);
+DFhackCExport uint32_t SDL_ThreadID(void);
 
 static volatile uint32_t lockstep_tick_count = 0;
+static volatile bool lockstep_hooked = false;
+static volatile bool lockstep_want_shutdown = false;
 
 #ifdef _WIN32
 static char Real_GetTickCount[6];
@@ -57,17 +61,6 @@ static uint32_t Fake_SDL_GetTicks()
     return lockstep_tick_count;
 }
 
-static char Real_SDL_Delay[6];
-static void Fake_SDL_Delay(uint32_t ms)
-{
-    (void)ms;
-
-    while (config.lockstep)
-    {
-        tthread::this_thread::yield();
-    }
-}
-
 static void Add_Hook(void *target, char(&real)[6], const void *fake)
 {
     MemoryPatcher patcher;
@@ -86,6 +79,12 @@ static void Add_Hook(void *target, char(&real)[6], const void *fake)
     *((char *)target + 3) = *((char *)&jump_offset + 2);
     *((char *)target + 4) = *((char *)&jump_offset + 3);
     *((char *)target + 5) = 0x90;
+
+#if defined(_WIN32)
+    FlushInstructionCache(GetCurrentProcess(), target, 6);
+#else
+    cacheflush((char *)target, 6, BCACHE);
+#endif
 }
 
 static void Remove_Hook(void *target, char(&real)[6], const void *)
@@ -99,6 +98,12 @@ static void Remove_Hook(void *target, char(&real)[6], const void *)
     *((char *)target + 3) = real[3];
     *((char *)target + 4) = real[4];
     *((char *)target + 5) = real[5];
+
+#if defined(_WIN32)
+    FlushInstructionCache(GetCurrentProcess(), target, 6);
+#else
+    cacheflush((char *)target, 6, BCACHE);
+#endif
 }
 
 template<typename T>
@@ -482,6 +487,34 @@ static bool lockstep_mainloop()
     return 0;
 }
 
+static void lockstep_drain_sdl()
+{
+    SDL::Event event;
+
+    while (SDL_PollEvent(&event))
+    {
+        // Handle SDL events
+        switch ((SDL::EventType)event.type) {
+        case SDL::ET_KEYDOWN:
+        case SDL::ET_KEYUP:
+            break;
+        case SDL::ET_QUIT:
+            break;
+        case SDL::ET_MOUSEBUTTONDOWN:
+        case SDL::ET_MOUSEBUTTONUP:
+        case SDL::ET_MOUSEMOTION:
+            break;
+        case SDL::ET_ACTIVEEVENT:
+        case SDL::ET_VIDEOEXPOSE:
+            break;
+        case SDL::ET_VIDEORESIZE:
+            enabler->renderer->resize(event.resize.w, event.resize.h);
+            break;
+        default:
+            break;
+        }
+    }
+}
 
 static void lockstep_loop()
 {
@@ -506,6 +539,7 @@ static void lockstep_loop()
         lockstep_tick_count += 10;
         enabler->last_tick = lockstep_tick_count;
         enabler->clock = lockstep_tick_count;
+        lockstep_drain_sdl();
         lockstep_swap_arrays();
         lockstep_render_things();
         enabler->renderer->update_all();
@@ -513,23 +547,165 @@ static void lockstep_loop()
     }
 }
 
-static bool lockstep_hooked = false;
+static struct df_ai_renderer : public df::renderer
+{
+    df_ai_renderer(df::renderer *real) : real_renderer(real)
+    {
+        copy_fields(real_renderer, this);
+    }
+
+    df::renderer *real_renderer;
+
+    static void copy_fields(df::renderer *from, df::renderer *to)
+    {
+        to->screen = from->screen;
+        to->screentexpos = from->screentexpos;
+        to->screentexpos_addcolor = from->screentexpos_addcolor;
+        to->screentexpos_grayscale = from->screentexpos_grayscale;
+        to->screentexpos_cf = from->screentexpos_cf;
+        to->screentexpos_cbr = from->screentexpos_cbr;
+        to->screen_old = from->screen_old;
+        to->screentexpos_old = from->screentexpos_old;
+        to->screentexpos_addcolor_old = from->screentexpos_addcolor_old;
+        to->screentexpos_grayscale_old = from->screentexpos_grayscale_old;
+        to->screentexpos_cf_old = from->screentexpos_cf_old;
+        to->screentexpos_cbr_old = from->screentexpos_cbr_old;
+    }
+
+    virtual void update_tile(int32_t x, int32_t y)
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->update_tile(x, y);
+        copy_fields(real_renderer, this);
+    }
+    virtual void update_all()
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->update_all();
+        copy_fields(real_renderer, this);
+    }
+    virtual void render()
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->render();
+        copy_fields(real_renderer, this);
+    }
+    virtual void set_fullscreen()
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->set_fullscreen();
+        copy_fields(real_renderer, this);
+    }
+    virtual void zoom(df::zoom_commands cmd)
+    {
+        copy_fields(this, real_renderer);
+
+        enabler->renderer = real_renderer;
+
+        lockstep_loop();
+
+        lockstep_want_shutdown = true;
+    }
+    virtual void resize(int32_t w, int32_t h)
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->resize(w, h);
+        copy_fields(real_renderer, this);
+    }
+    virtual void grid_resize(int32_t w, int32_t h)
+    {
+        copy_fields(this, real_renderer);
+        real_renderer->grid_resize(w, h);
+        copy_fields(real_renderer, this);
+    }
+    virtual bool get_mouse_coords(int32_t *x, int32_t *y)
+    {
+        copy_fields(this, real_renderer);
+        bool res = real_renderer->get_mouse_coords(x, y);
+        copy_fields(real_renderer, this);
+        return res;
+    };
+    virtual bool uses_opengl()
+    {
+        copy_fields(this, real_renderer);
+        bool res = real_renderer->uses_opengl();
+        copy_fields(real_renderer, this);
+        return res;
+    }
+} *lockstep_renderer = nullptr;
 
 void Hook_Update()
 {
-    if (!lockstep_hooked && config.lockstep)
+    if (SDL_ThreadID() == enabler->renderer_threadid)
     {
+        return;
+    }
+
+    if (lockstep_want_shutdown)
+    {
+        lockstep_want_shutdown = false;
+        Hook_Shutdown();
+    }
+    else if (!lockstep_hooked && config.lockstep)
+    {
+        if (init->display.flag.is_set(init_display_flags::TEXT))
+        {
+            auto & out = Core::getInstance().getConsole();
+            out << COLOR_LIGHTRED << "[df-ai] lockstep mode does not work with PRINT_MODE:TEXT. Disabling lockstep in the df-ai config.";
+            out << COLOR_RESET << std::endl;
+            config.set(out, config.lockstep, false);
+            return;
+        }
+
+        lockstep_hooked = true;
+
 #ifdef _WIN32
         Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
         Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
         Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
-        Add_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
-        lockstep_hooked = true;
+        enabler->outstanding_gframes = 0;
+        enabler->outstanding_frames = 0;
 
-        lockstep_loop();
-        Hook_Shutdown();
+        lockstep_renderer = new df_ai_renderer(enabler->renderer);
+        enabler->renderer = lockstep_renderer;
+
+        SDL_SemWait(enabler->async_zoom.sem);
+        enabler->async_zoom.queue.push_back(zoom_commands::zoom_reset);
+        SDL_SemPost(enabler->async_zoom.sem);
+        SDL_SemPost(enabler->async_zoom.sem_fill);
+
+        while (lockstep_hooked && !lockstep_want_shutdown)
+        {
+            while (SDL_SemTryWait(enabler->async_tobox.sem_fill) == 0)
+            {
+                SDL_SemWait(enabler->async_tobox.sem);
+                auto msg = enabler->async_tobox.queue.front();
+                enabler->async_tobox.queue.pop_front();
+                switch (msg.cmd)
+                {
+                case df::enabler::T_async_tobox::T_queue::pause:
+                case df::enabler::T_async_tobox::T_queue::render:
+                {
+                    df::enabler::T_async_frombox::T_queue complete;
+                    complete.msg = df::enabler::T_async_frombox::T_queue::complete;
+                    SDL_SemWait(enabler->async_frombox.sem);
+                    enabler->async_frombox.queue.push_back(complete);
+                    SDL_SemPost(enabler->async_frombox.sem);
+                    SDL_SemPost(enabler->async_frombox.sem_fill);
+                    break;
+                }
+                case df::enabler::T_async_tobox::T_queue::start:
+                case df::enabler::T_async_tobox::T_queue::inc:
+                case df::enabler::T_async_tobox::T_queue::set_fps:
+                    break;
+                }
+                SDL_SemPost(enabler->async_tobox.sem);
+            }
+
+            tthread::this_thread::sleep_for(tthread::chrono::seconds(1));
+        }
     }
 }
 
@@ -546,7 +722,13 @@ void Hook_Shutdown()
     Remove_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
     Remove_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
-    Remove_Hook((void *)SDL_Delay, Real_SDL_Delay, (void *)Fake_SDL_Delay);
+
+    if (lockstep_renderer == enabler->renderer)
+    {
+        enabler->renderer = lockstep_renderer->real_renderer;
+    }
+    delete lockstep_renderer;
+    lockstep_renderer = nullptr;
 
     lockstep_hooked = false;
 }

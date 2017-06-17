@@ -21,6 +21,11 @@ struct Config
         saved = value;
         save(out);
     }
+    template<typename T>
+    void set(color_ostream & out, volatile T & saved, const T & value)
+    {
+        set(out, saved, (const volatile T &)value);
+    }
 
     bool random_embark;
     std::string random_embark_world;
@@ -35,7 +40,7 @@ struct Config
     bool manage_labors;
     bool manage_nobles;
     uint8_t cancel_announce;
-    bool lockstep;
+    volatile bool lockstep;
 };
 
 extern Config config;
