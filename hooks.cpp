@@ -23,7 +23,6 @@
 #else
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <asm/cachectl.h>
 #endif
 
 REQUIRE_GLOBAL(enabler);
@@ -82,8 +81,6 @@ static void Add_Hook(void *target, char(&real)[6], const void *fake)
 
 #if defined(_WIN32)
     FlushInstructionCache(GetCurrentProcess(), target, 6);
-#else
-    cacheflush((char *)target, 6, BCACHE);
 #endif
 }
 
@@ -101,8 +98,6 @@ static void Remove_Hook(void *target, char(&real)[6], const void *)
 
 #if defined(_WIN32)
     FlushInstructionCache(GetCurrentProcess(), target, 6);
-#else
-    cacheflush((char *)target, 6, BCACHE);
 #endif
 }
 
