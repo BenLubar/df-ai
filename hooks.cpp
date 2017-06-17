@@ -591,7 +591,7 @@ static struct df_ai_renderer : public df::renderer
         real_renderer->set_fullscreen();
         copy_fields(real_renderer, this);
     }
-    virtual void zoom(df::zoom_commands cmd)
+    virtual void zoom(df::zoom_commands)
     {
         copy_fields(this, real_renderer);
 
