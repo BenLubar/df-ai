@@ -419,6 +419,7 @@ void AI::unpause()
     {
         feed_key(interface_key::D_PAUSE);
     }
+    camera->ignore_pause(last_good_x, last_good_y, last_good_z);
 }
 
 void AI::handle_pause_event(color_ostream & out, df::report *announce)
@@ -515,7 +516,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
 
     if (announcements->flags[announce->type].bits.DO_MEGA)
     {
-        timeout_sameview([](color_ostream &) { unpause(); });
+        timeout_sameview([this](color_ostream &) { unpause(); });
     }
     else
     {
@@ -583,7 +584,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
             {
                 debug(out, "exit siege textviewerst:" + text.str());
-                timeout_sameview([](color_ostream &)
+                timeout_sameview([this](color_ostream &)
                 {
                     AI::feed_key(interface_key::LEAVESCREEN);
                     unpause();
@@ -775,7 +776,7 @@ command_result AI::onupdate_register(color_ostream & out)
 
             if (time_paused == enabler->fps * 10)
             {
-                timeout_sameview(10, [](color_ostream &) { AI::unpause(); });
+                timeout_sameview(10, [this](color_ostream &) { unpause(); });
                 time_paused = -enabler->fps;
             }
 

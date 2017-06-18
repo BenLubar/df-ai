@@ -88,7 +88,7 @@ public:
 
     command_result startup(color_ostream & out);
 
-    static void unpause();
+    void unpause();
     void handle_pause_event(color_ostream & out, df::report *announce);
     void statechanged(color_ostream & out, state_change_event event);
     static void abandon(color_ostream & out);
