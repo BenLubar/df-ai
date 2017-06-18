@@ -90,6 +90,8 @@ farm_allowed_materials_t::farm_allowed_materials_t()
     set.insert(tiletype_material::GRASS_DRY);
     set.insert(tiletype_material::GRASS_DEAD);
     set.insert(tiletype_material::SOIL);
+    set.insert(tiletype_material::PLANT);
+    set.insert(tiletype_material::TREE);
 }
 
 farm_allowed_materials_t farm_allowed_materials;

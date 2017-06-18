@@ -1326,8 +1326,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     res = setup_blueprint_outdoor_farms(out, nrfarms * 2);
     if (res != CR_OK)
         return res;
-    return CR_OK;
     ai->debug(out, "finished outdoor farms");
+    return CR_OK;
 }
 
 command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern)
@@ -1549,7 +1549,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
 {
     spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 9, 3, [this, &out, &want](df::coord _t) -> bool
     {
-        df::coord sf = surface_tile_at(_t.x, _t.y);
+        df::coord sf = surface_tile_at(_t.x, _t.y, true);
         if (!sf.isValid())
             return false;
         df::tile_designation sd = *Maps::getTileDesignation(sf);
@@ -1590,6 +1590,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
         room *r = new room(want % 2 == 0 ? farm_type::food : farm_type::cloth, sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
         r->has_users = true;
         r->outdoor = true;
+        rooms.push_back(r);
         want--;
         return want == 0;
     });
