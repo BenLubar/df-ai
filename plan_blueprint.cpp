@@ -121,7 +121,7 @@ command_result Plan::setup_ready(color_ostream & out)
     find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->temporary && r->level == 2; })->temporary = false;
     wantdig(out, find_room(room_type::stockpile, [](room *r) -> bool { return r->stockpile_type == stockpile_type::food && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }));
 
-    dig_garbagedump(out);
+    digroom(out, find_room(room_type::garbagepit));
 
     return CR_OK;
 }
@@ -889,8 +889,8 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
 
 command_result Plan::setup_blueprint_pitcage(color_ostream &)
 {
-    room *gpit = find_room(room_type::garbagepit);
-    if (!gpit)
+    room *gdump = find_room(room_type::garbagedump);
+    if (!gdump)
         return CR_OK;
     auto layout = [](room *r)
     {
@@ -898,6 +898,17 @@ command_result Plan::setup_blueprint_pitcage(color_ostream &)
         for (int16_t z = -9; z <= -1; z++)
         {
             r->layout.push_back(new_construction(construction_type::UpDownStair, -1, 1, z));
+            for (int16_t x = -5; x <= 5; x++)
+            {
+                for (int16_t y = -5; y <= 5; y++)
+                {
+                    if (x == -1 && y == 1)
+                    {
+                        continue;
+                    }
+                    r->layout.push_back(new_dig(tile_dig_designation::Channel, x, y, z));
+                }
+            }
         }
         r->layout.push_back(new_construction(construction_type::DownStair, -1, 1, 0));
         std::vector<int16_t> dxs;
@@ -924,7 +935,7 @@ command_result Plan::setup_blueprint_pitcage(color_ostream &)
         }
     };
 
-    room *r = new room(room_type::pitcage, gpit->min + df::coord(-1, -1, 10), gpit->min + df::coord(1, 1, 10));
+    room *r = new room(room_type::pitcage, gdump->min + df::coord(-1, -1, 10), gdump->min + df::coord(1, 1, 10));
     layout(r);
     r->layout.push_back(new_hive_floor(3, 1));
     rooms.push_back(r);
@@ -1177,7 +1188,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // garbage dump
     // TODO ensure flat space, no pools/tree, ...
     df::coord tile(cx + 5, cy, cz);
-    r = new room(room_type::garbagedump, tile, tile);
+    room *garbagedump = r = new room(room_type::garbagedump, tile, tile);
     tile = spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
     {
         t = surface_tile_at(t.x, t.y);
@@ -1189,24 +1200,20 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             return false;
         if (!map_tile_in_rock(t + df::coord(2, 0, -1)))
             return false;
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Floor)
-            return false;
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 0, 0)))) != tiletype_shape_basic::Floor)
-            return false;
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(2, 0, 0)))) != tiletype_shape_basic::Floor)
-            return false;
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, 1, 0)))) == tiletype_shape_basic::Floor)
-            return true;
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t + df::coord(1, -1, 0)))) == tiletype_shape_basic::Floor)
-            return true;
-        return false;
+        return !spiral_search(t + df::coord(1, 0, 0), 5, [](df::coord tt) -> bool
+        {
+            return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(tt))) != tiletype_shape_basic::Floor;
+        }).isValid();
     });
     tile = surface_tile_at(tile.x, tile.y);
     r->min = r->max = tile;
+    garbagedump->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
     rooms.push_back(r);
-    r = new room(room_type::garbagepit, tile + df::coord(1, 0, 0), tile + df::coord(2, 0, 0));
-    r->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
-    r->layout.push_back(new_dig(tile_dig_designation::Channel, 1, 0));
+    r = new room(room_type::garbagepit, tile + df::coord(-4, -5, 0), tile + df::coord(6, 5, 0));
+    r->layout.push_back(new_dig(tile_dig_designation::Channel, 5, 5));
+    r->layout.push_back(new_dig(tile_dig_designation::Channel, 6, 5));
+    r->layout.push_back(new_construction(construction_type::Floor, 5, 5, -1));
+    r->accesspath.push_back(garbagedump);
     rooms.push_back(r);
 
     // infirmary

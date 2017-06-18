@@ -427,7 +427,7 @@ void Plan::update(color_ostream &)
                 del = try_digcistern(out, t.r);
                 break;
             case task_type::dig_garbage:
-                del = try_diggarbage(out, t.r);
+                del = true;
                 break;
             case task_type::check_idle:
                 del = checkidle(out);
@@ -2050,7 +2050,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return furnish_room(out, r);
     }
 
-    if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::location)
+    if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::location || r->type == room_type::garbagedump)
     {
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
@@ -2305,7 +2305,7 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
         {
             return true;
         }
-        if (sb == tiletype_shape_basic::Ramp)
+        if (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Wall)
         {
             dig_tile(t);
             return true;
@@ -3330,47 +3330,6 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
         r->channeled = true;
         return true;
     }
-    return false;
-}
-
-void Plan::dig_garbagedump(color_ostream &)
-{
-    find_room(room_type::garbagepit, [this](room *r) -> bool
-    {
-        if (r->status == room_status::plan)
-        {
-            r->status = room_status::dig;
-            r->dig(false, true);
-            tasks_generic.push_back(new task(task_type::dig_garbage, r));
-        }
-        return false;
-    });
-}
-
-bool Plan::try_diggarbage(color_ostream & out, room *r)
-{
-    if (r->is_dug(tiletype_shape_basic::Open))
-    {
-        r->status = room_status::dug;
-        // XXX ugly as usual
-        df::coord t(r->min.x, r->min.y, r->min.z - 1);
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape,
-            *Maps::getTileType(t))) == tiletype_shape_basic::Ramp)
-        {
-            dig_tile(t, tile_dig_designation::Default);
-        }
-        find_room(room_type::garbagedump, [this, &out](room *r) -> bool
-        {
-            if (r->status == room_status::plan)
-            {
-                try_construct_activityzone(out, r);
-            }
-            return false;
-        });
-        return true;
-    }
-    // tree ?
-    r->dig(false, true);
     return false;
 }
 
