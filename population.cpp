@@ -9,6 +9,7 @@
 
 #include "modules/Buildings.h"
 #include "modules/Gui.h"
+#include "modules/Job.h"
 #include "modules/Translation.h"
 #include "modules/Units.h"
 
@@ -38,6 +39,7 @@
 #include "df/general_ref_building_holderst.h"
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_contains_unitst.h"
+#include "df/general_ref_unit_infantst.h"
 #include "df/general_ref_unit_workerst.h"
 #include "df/histfig_entity_link_positionst.h"
 #include "df/historical_entity.h"
@@ -500,6 +502,26 @@ void Population::update_citizenlist(color_ostream & out)
                     payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
                     ai->event("new citizen", payload);
                 }
+            }
+        }
+        else if (Units::isCitizen(u) && Units::isBaby(u))
+        {
+            auto mother = df::unit::find(u->relationship_ids[unit_relationship_type::Mother]);
+            if (mother && Units::isAlive(mother) && Units::isSane(mother) && u->relationship_ids[unit_relationship_type::RiderMount] == -1 && mother->job.current_job == nullptr)
+            {
+                // http://www.bay12games.com/dwarves/mantisbt/view.php?id=5551
+                ai->debug(out, "[DF Bug 5551] reuniting mother (" + AI::describe_unit(mother) + ") with infant (" + AI::describe_unit(u) + ")");
+                auto seek_infant = df::allocate<df::job>();
+                seek_infant->job_type = job_type::SeekInfant;
+                seek_infant->flags.bits.special = 1;
+                auto unit_infant = df::allocate<df::general_ref_unit_infantst>();
+                unit_infant->unit_id = u->id;
+                seek_infant->general_refs.push_back(unit_infant);
+                auto unit_worker = df::allocate<df::general_ref_unit_workerst>();
+                unit_worker->unit_id = mother->id;
+                seek_infant->general_refs.push_back(unit_worker);
+                Job::linkIntoWorld(seek_infant);
+                mother->job.current_job = seek_infant;
             }
         }
         else if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.slaughter)
