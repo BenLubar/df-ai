@@ -3898,12 +3898,22 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::WOOD && count.at("wood") < 5)
+    if (item->getType() == item_type::WOOD)
+    {
+        return true;
+    }
+
+    if (item->getType() == item_type::CLOTH || item->getType() == item_type::SKIN_TANNED || item->getType() == item_type::THREAD)
     {
         return true;
     }
 
     if (item->getType() == item_type::CHEESE || item->getType() == item_type::EGG || item->getType() == item_type::FISH || item->getType() == item_type::FISH_RAW || item->getType() == item_type::MEAT || item->getType() == item_type::PLANT || item->getType() == item_type::PLANT_GROWTH)
+    {
+        return true;
+    }
+
+    if (item->getType() == item_type::INSTRUMENT)
     {
         return true;
     }
