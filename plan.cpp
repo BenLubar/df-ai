@@ -1100,15 +1100,6 @@ void Plan::del_citizen(color_ostream & out, int32_t uid)
 
 bool Plan::checkidle(color_ostream & out)
 {
-    if (last_idle_year != *cur_year)
-    {
-        if (last_idle_year != -1)
-        {
-            idleidle(out);
-        }
-        last_idle_year = *cur_year;
-    }
-
     for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
         if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor && (*it)->r->queue == 0)
@@ -1193,9 +1184,13 @@ bool Plan::checkidle(color_ostream & out)
             r->level == 0;
     });
     if (r == nullptr && !fort_entrance->furnished)
+    {
         r = fort_entrance;
-    if (r == nullptr)
-        past_initial_phase = true;
+        for (auto wagon : world->buildings.other[buildings_other_id::WAGON])
+        {
+            Buildings::deconstruct(wagon);
+        }
+    }
     int32_t need_food = extra_farms;
     int32_t need_cloth = extra_farms;
     FIND_ROOM(true, room_type::farmplot, ([&need_food, &need_cloth](room *r) -> bool
@@ -1269,6 +1264,7 @@ bool Plan::checkidle(color_ostream & out)
     {
         return r->status == room_status::finished && !r->furnished;
     };
+    FIND_ROOM(true, room_type::location, finished_nofurnished);
     FIND_ROOM(true, room_type::nobleroom, finished_nofurnished);
     FIND_ROOM(true, room_type::bedroom, finished_nofurnished);
     auto nousers_noplan = [](room *r) -> bool
@@ -1298,6 +1294,28 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::outpost, ifplan);
     if (r == nullptr)
     {
+        if (!past_initial_phase)
+        {
+            past_initial_phase = true;
+            std::function<bool(room *)> unignore_all_furniture = [this, &out](room *r) -> bool
+            {
+                for (auto f : r->layout)
+                {
+                    f->ignore = false;
+                }
+                if (r->status == room_status::dug || r->status == room_status::finished)
+                {
+                    furnish_room(out, r);
+                }
+                return false;
+            };
+            find_room(room_type::dininghall, unignore_all_furniture);
+            find_room(room_type::barracks, unignore_all_furniture);
+            find_room(room_type::nobleroom, unignore_all_furniture);
+            find_room(room_type::bedroom, unignore_all_furniture);
+            find_room(room_type::cemetary, unignore_all_furniture);
+        }
+
         bool any_outpost = false;
         for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
         {
@@ -1324,6 +1342,15 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::nobleroom, ifplan);
     FIND_ROOM(true, room_type::bedroom, ifplan);
     FIND_ROOM(true, room_type::cemetary, ifplan);
+
+    if (r == nullptr && last_idle_year != *cur_year)
+    {
+        if (last_idle_year != -1)
+        {
+            idleidle(out);
+        }
+        last_idle_year = *cur_year;
+    }
 #undef FIND_ROOM
 
     if (r)
@@ -1815,7 +1842,7 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, room_type::type subt
                     continue;
                 if (f->ignore)
                     continue;
-                if (f->users.erase(id) && f->users.empty())
+                if (f->users.erase(id) && f->users.empty() && !past_initial_phase)
                 {
                     // delete the specific table/chair/bed/etc for the dwarf
                     if (f->bld_id != -1 && f->bld_id != r->bld_id)
