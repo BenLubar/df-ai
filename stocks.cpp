@@ -171,6 +171,7 @@ const static struct Watch
         Needed["paper"] = 5;
         Needed["quire"] = 5;
         Needed["rock_pot"] = 4;
+        Needed["toy"] = 2;
 
         NeededPerDwarf["food"] = 100;
         NeededPerDwarf["drink"] = 200;
@@ -189,6 +190,7 @@ const static struct Watch
         NeededPerDwarf["armor_feet"] = 3;
         NeededPerDwarf["armor_hands"] = 3;
         NeededPerDwarf["armor_head"] = 3;
+        NeededPerDwarf["toy"] = 5;
 
         WatchStock["roughgem"] = 6;
         WatchStock["thread_plant"] = 10;
@@ -1504,6 +1506,10 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
     {
         add_all(items_other_id::SHEET, yes_i_mean_all);
     }
+    else if (k == "toy")
+    {
+        add_all(items_other_id::TOY, yes_i_mean_all);
+    }
     else
     {
         return find_furniture_itemcount(k);
@@ -1933,6 +1939,10 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
     {
         order = "MakeQuire";
         input.push_back("paper");
+    }
+    else if (what == "toy")
+    {
+        order = "MakeToy";
     }
 
     if (order.empty())
