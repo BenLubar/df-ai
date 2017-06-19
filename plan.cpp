@@ -3021,7 +3021,33 @@ void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
 
 bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
 {
-    return smooth_xyz(r->min - df::coord(1, 1, 0), r->max + df::coord(1, 1, 0), engrave);
+    std::set<df::coord> tiles;
+    for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
+    {
+        for (int16_t y = r->min.y - 1; y <= r->max.y + 1; y++)
+        {
+            for (int16_t z = r->min.z; z <= r->max.z; z++)
+            {
+                df::coord t(x, y, z);
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Wall ||
+                    std::find_if(room_by_z.at(z).begin(), room_by_z.at(z).end(), [t](room *o) -> bool
+                {
+                    return o->include(t) || std::find_if(o->layout.begin(), o->layout.end(), [o, t](furniture *f) -> bool
+                    {
+                        return f->x == t.x - o->min.x &&
+                            f->y == t.y - o->min.y &&
+                            f->z == t.z - o->min.z &&
+                            f->dig != tile_dig_designation::No &&
+                            f->construction != construction_type::Wall;
+                    }) != o->layout.end();
+                }) == room_by_z.at(z).end())
+                {
+                    tiles.insert(t);
+                }
+            }
+        }
+    }
+    return smooth(tiles, engrave);
 }
 
 // smooth a room and its accesspath corridors (recursive)
