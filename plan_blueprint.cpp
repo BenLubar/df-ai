@@ -1131,13 +1131,13 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     cor->accesspath.push_back(farm_stairs);
     corridors.push_back(cor);
     room *first_farm = nullptr;
-    auto make_farms = [this, cor, cx, cy, cz2, &first_farm](int16_t dy, farm_type::type st)
+    for (int16_t dx = 0; dx < nrfarms / 3; dx++)
     {
-        for (int16_t dx = 0; dx < nrfarms / 3; dx++)
+        for (int16_t ddy = 0; ddy < 3; ddy++)
         {
-            for (int16_t ddy = 0; ddy < 3; ddy++)
+            for (int16_t dy = -1; dy <= 1; dy += 2)
             {
-                room *r = new room(st, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
+                room *r = new room(dy > 0 ? farm_type::cloth : farm_type::food, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
                 r->has_users = true;
                 if (dx == 0 && ddy == 0)
                 {
@@ -1155,9 +1155,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                 }
             }
         }
-    };
-    make_farms(-1, farm_type::food);
-    make_farms(1, farm_type::cloth);
+    }
 
     // seeds stockpile
     room *r = new room(stockpile_type::food, df::coord(cx + 2, cy, cz2), df::coord(cx + 4, cy, cz2), "farm seeds stockpile");
