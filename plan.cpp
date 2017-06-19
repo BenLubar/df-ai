@@ -4611,7 +4611,7 @@ df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
 std::string Plan::status()
 {
     std::map<task_type::type, size_t> task_count;
-    std::map<std::string, size_t> furnishing;
+    std::map<std::string, std::set<df::coord>> furnishing;
     for (auto t = tasks_generic.begin(); t != tasks_generic.end(); t++)
     {
         task_count[(*t)->type]++;
@@ -4621,7 +4621,7 @@ std::string Plan::status()
         task_count[(*t)->type]++;
         if (!(*t)->f->item.empty())
         {
-            furnishing[(*t)->f->item]++;
+            furnishing[(*t)->f->item].insert((*t)->r->min + df::coord((*t)->f->x, (*t)->f->y, (*t)->f->z));
         }
     }
     std::ostringstream s;
@@ -4661,7 +4661,7 @@ std::string Plan::status()
         {
             s << ", ";
         }
-        s << f->first << ": " << f->second;
+        s << f->first << ": " << f->second.size();
     }
     return s.str();
 }
