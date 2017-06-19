@@ -3867,8 +3867,6 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
 
     if (item->isFoodStorage())
     {
-        // TODO: don't try to give elves wood
-
         bool any_contents = false;
 
         for (auto it = item->general_refs.begin(); it != item->general_refs.end(); it++)
@@ -3887,18 +3885,17 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
         return any_contents;
     }
 
-    // TODO
     return false;
 }
 
 bool Stocks::want_trader_item(color_ostream &, df::item *item)
 {
-    if (item->hasSpecificImprovements(improvement_type::WRITING))
+    if (item->hasSpecificImprovements(improvement_type::WRITING) || item->getType() == item_type::BOOK)
     {
         return true;
     }
 
-    if (item->getType() == item_type::WOOD)
+    if (item->getType() == item_type::WOOD || item->getType() == item_type::BAR)
     {
         return true;
     }
@@ -3918,7 +3915,6 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    // TODO
     return false;
 }
 
@@ -3933,15 +3929,14 @@ bool Stocks::want_trader_item_more(df::item *a, df::item *b)
         return false;
     }
 
-    if (a->hasSpecificImprovements(improvement_type::WRITING) && !b->hasSpecificImprovements(improvement_type::WRITING))
+    if ((a->hasSpecificImprovements(improvement_type::WRITING) || a->getType() == item_type::BOOK) && !(b->hasSpecificImprovements(improvement_type::WRITING) || b->getType() == item_type::BOOK))
     {
         return true;
     }
-    else if (b->hasSpecificImprovements(improvement_type::WRITING) && !a->hasSpecificImprovements(improvement_type::WRITING))
+    else if ((b->hasSpecificImprovements(improvement_type::WRITING) || b->getType() == item_type::BOOK) && !(a->hasSpecificImprovements(improvement_type::WRITING) || a->getType() == item_type::BOOK))
     {
         return false;
     }
 
-    // TODO
     return false;
 }
