@@ -1448,9 +1448,10 @@ bool Population::perform_trade_step(color_ostream & out)
         bool can_afford_any = (trade_request_value + ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, 1, trade->caravan->buy_prices, trade->caravan->sell_prices)) * 11 / 10 < trade_max_offer_value;
         if (!can_afford_any)
         {
-            ai->debug(out, "[trade] Cannot afford any of item, stopping: " + AI::describe_item(item));
-            trade_want_items.erase(trade_want_items_it, trade_want_items.end());
-            trade_want_items_it = trade_want_items.end();
+            ai->debug(out, "[trade] Cannot afford any of item, skipping: " + AI::describe_item(item));
+            auto index = trade_want_items_it - trade_want_items.begin();
+            trade_want_items.erase(trade_want_items_it);
+            trade_want_items_it = index < trade_want_items.size() ? trade_want_items.begin() + index : trade_want_items.end();
             break;
         }
 
@@ -1726,7 +1727,7 @@ bool Population::perform_trade_step(color_ostream & out)
             return true;
         }
 
-        trade_ten_percent = trade_request_value / 10;
+        trade_ten_percent = std::max(trade_request_value / 10, 1);
         ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", trade_ten_percent));
 
         trade_step = 12;
