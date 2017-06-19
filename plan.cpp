@@ -467,11 +467,6 @@ void Plan::update(color_ostream &)
                 return true;
             }
 
-            while (bg_idx_furniture != tasks_furniture.end() && (*bg_idx_furniture)->type != task_type::furnish)
-            {
-                bg_idx_furniture++;
-            }
-
             if (bg_idx_furniture == tasks_furniture.end())
             {
                 return true;
