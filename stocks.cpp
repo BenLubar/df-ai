@@ -3930,7 +3930,7 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::WOOD || item->getType() == item_type::BAR)
+    if (item->getType() == item_type::WOOD || item->getType() == item_type::BOULDER || item->getType() == item_type::BAR)
     {
         return true;
     }
@@ -3950,6 +3950,11 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
+    if (item->getType() == item_type::ANVIL && count["anvil"] == 0 && ai->plan->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding(); }))
+    {
+        return true;
+    }
+
     return false;
 }
 
@@ -3964,11 +3969,29 @@ bool Stocks::want_trader_item_more(df::item *a, df::item *b)
         return false;
     }
 
+    if (a->getType() == item_type::ANVIL && b->getType() != item_type::ANVIL)
+    {
+        return true;
+    }
+    else if (b->getType() == item_type::ANVIL && a->getType() != item_type::ANVIL)
+    {
+        return false;
+    }
+
     if ((a->hasSpecificImprovements(improvement_type::WRITING) || a->getType() == item_type::BOOK) && !(b->hasSpecificImprovements(improvement_type::WRITING) || b->getType() == item_type::BOOK))
     {
         return true;
     }
     else if ((b->hasSpecificImprovements(improvement_type::WRITING) || b->getType() == item_type::BOOK) && !(a->hasSpecificImprovements(improvement_type::WRITING) || a->getType() == item_type::BOOK))
+    {
+        return false;
+    }
+
+    if (a->getType() == item_type::INSTRUMENT && b->getType() != item_type::INSTRUMENT)
+    {
+        return true;
+    }
+    else if (b->getType() == item_type::INSTRUMENT && a->getType() != item_type::INSTRUMENT)
     {
         return false;
     }
