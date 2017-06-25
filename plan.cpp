@@ -22,6 +22,7 @@
 #include "modules/Units.h"
 #include "modules/World.h"
 
+#include "df/abstract_building.h"
 #include "df/block_square_event_material_spatterst.h"
 #include "df/block_square_event_mineralst.h"
 #include "df/building_archerytargetst.h"
@@ -69,6 +70,7 @@
 #include "df/vehicle.h"
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
+#include "df/world_site.h"
 #include "df/world_underground_region.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -4803,6 +4805,19 @@ std::string Plan::describe_room(room *r)
         break;
     case room_type::location:
         s << " (" << r->location_type << ")";
+        if (auto civzone = virtual_cast<df::building_civzonest>(r->dfbuilding()))
+        {
+            if (auto site = df::world_site::find(civzone->site_id))
+            {
+                if (auto loc = binsearch_in_vector(site->buildings, civzone->location_id))
+                {
+                    if (auto name = loc->getName())
+                    {
+                        s << " (" << AI::describe_name(*name, false) << " \"" << AI::describe_name(*name, true) << "\")";
+                    }
+                }
+            }
+        }
         break;
     case room_type::nobleroom:
         s << " (" << r->nobleroom_type << ")";
