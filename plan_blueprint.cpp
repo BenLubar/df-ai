@@ -1993,7 +1993,7 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
 
         df::coord out2 = spiral_search(cor->max, [this](df::coord t) -> bool
         {
-            while (map_tile_in_rock(t))
+            while (map_tile_in_rock(t) && !map_tile_intersects_room(t + df::coord(0, 0, 1)))
             {
                 t.z++;
             }
