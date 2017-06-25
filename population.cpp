@@ -1546,7 +1546,7 @@ bool Population::perform_trade_step(color_ostream & out)
             {
                 continue;
             }
-            int32_t current_count = trade->broker_count.at(i) == 0 && trade->broker_selected.at(i) ? trade->broker_items.at(i)->getStackSize() : trade->broker_count.at(i);
+            int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) == 0 ? trade->broker_items.at(i)->getStackSize() : trade->broker_count.at(i) : 0;
             if (!current_count || current_count != trade->broker_items.at(i)->getStackSize())
             {
                 auto offer_item = trade->broker_items.at(i);
@@ -1693,7 +1693,7 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 11:
     {
-        if (std::find_if(trade->broker_count.begin(), trade->broker_count.end(), [](int32_t count) -> bool { return count != 0; }) == trade->broker_count.end() && std::find_if(trade->broker_selected.begin(), trade->broker_selected.end(), [](char selected) -> bool { return selected != 0; }) == trade->broker_selected.end())
+        if (std::find_if(trade->broker_selected.begin(), trade->broker_selected.end(), [](int32_t count) -> bool { return count != 0; }) == trade->broker_selected.end())
         {
             ai->debug(out, "[trade] Offer was accepted.");
 
@@ -1727,10 +1727,19 @@ bool Population::perform_trade_step(color_ostream & out)
             return true;
         }
 
-        trade_ten_percent = std::max(trade_request_value / 10, 1);
-        ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", trade_ten_percent));
+        if (trade_max_offer_value > trade_offer_value * 6 / 5)
+        {
+            trade_ten_percent = std::max(trade_offer_value * 6 / 5 - trade_offer_value, 1);
+            ai->debug(out, stl_sprintf("[trade] Attempting to add %d dorfbux of offered goods...", trade_ten_percent));
+            trade_step = 16;
+        }
+        else
+        {
+            trade_ten_percent = std::max(trade_request_value / 10, 1);
+            ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", trade_ten_percent));
+            trade_step = 12;
+        }
 
-        trade_step = 12;
         break;
     }
     case 12:
@@ -1748,7 +1757,7 @@ bool Population::perform_trade_step(color_ostream & out)
         {
             df::item *item = trade->trader_items.at(*it);
 
-            int32_t current_count = trade->trader_count.at(*it) == 0 && trade->trader_selected.at(*it) ? trade->trader_items.at(*it)->getStackSize() : trade->trader_count.at(*it);
+            int32_t current_count = trade->trader_selected.at(*it) ? trade->trader_count.at(*it) == 0 ? trade->trader_items.at(*it)->getStackSize() : trade->trader_count.at(*it) : 0;
 
             if (current_count == 0)
             {
@@ -1824,6 +1833,109 @@ bool Population::perform_trade_step(color_ostream & out)
         else
         {
             AI::feed_char(trade_remove_qty.at(trade->edit_count.size()));
+        }
+        break;
+    }
+    case 16:
+    {
+        if (trade_ten_percent <= 0)
+        {
+            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
+
+            trade_step = 9;
+
+            break;
+        }
+
+        for (size_t i = 0; i < trade->broker_items.size(); i++)
+        {
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(trade->broker_items.at(i)))
+            {
+                continue;
+            }
+            if (trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_ANIMAL] <= ethic_response::UNTHINKABLE && trade->broker_items.at(i)->isAnimalProduct())
+            {
+                continue;
+            }
+            int32_t current_count = trade->broker_selected.at(i) ? trade->broker_count.at(i) == 0 ? trade->broker_items.at(i)->getStackSize() : trade->broker_count.at(i) : 0;
+            if (!current_count || current_count != trade->broker_items.at(i)->getStackSize())
+            {
+                auto offer_item = trade->broker_items.at(i);
+
+                int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
+
+                int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
+                for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
+                {
+                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                    if (new_offer_value - existing_offer_value >= trade_ten_percent)
+                    {
+                        over_offer_qty = offer_qty;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                trade_offer_value = trade_offer_value - existing_offer_value + new_offer_value;
+                trade_ten_percent = trade_ten_percent + existing_offer_value - new_offer_value;
+                ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: %s. %d dorfbux remain.", over_offer_qty - current_count, current_count ? " more" : "", AI::describe_item(offer_item).c_str(), trade_ten_percent));
+
+                trade_broker_item = int32_t(i);
+                trade_broker_qty = stl_sprintf("%d", over_offer_qty);
+                if (!trade->in_right_pane)
+                {
+                    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+                }
+                trade_step = 17;
+
+                break;
+            }
+        }
+
+        break;
+    }
+    case 17:
+    {
+        if (trade->broker_cursor > trade_broker_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_UP);
+        }
+        else if (trade->broker_cursor < trade_broker_item)
+        {
+            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        }
+        else
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = trade->in_edit_count ? 18 : 16;
+        }
+        break;
+    }
+    case 18:
+    {
+        if (trade->edit_count.size() <= trade_broker_qty.size() && trade->edit_count == trade_broker_qty.substr(0, trade->edit_count.size()))
+        {
+            trade_step = 19;
+        }
+        else
+        {
+            AI::feed_key(interface_key::STRING_A000);
+        }
+        break;
+    }
+    case 19:
+    {
+        if (trade->edit_count.size() >= trade_broker_qty.size())
+        {
+            AI::feed_key(interface_key::SELECT);
+            trade_step = 16;
+        }
+        else
+        {
+            AI::feed_char(trade_broker_qty.at(trade->edit_count.size()));
         }
         break;
     }
