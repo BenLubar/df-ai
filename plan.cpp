@@ -2782,7 +2782,19 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     find_room(room_type::stockpile, [r, bld](room *o) -> bool
     {
         int32_t diff = o->level - r->level;
-        if (o->stockpile_type == r->stockpile_type && (diff == -1 || diff == 1))
+        if (o->workshop && r->workshop)
+        {
+            return false;
+        }
+        if (o->workshop)
+        {
+            diff = -1;
+        }
+        else if (r->workshop)
+        {
+            diff = 1;
+        }
+        if (o->stockpile_type == r->stockpile_type && diff != 0)
         {
             if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
             {
