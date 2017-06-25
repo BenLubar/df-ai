@@ -1214,7 +1214,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     r->min = r->max = tile;
     garbagedump->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
     rooms.push_back(r);
-    r = new room(room_type::garbagepit, tile + df::coord(-4, -5, 0), tile + df::coord(6, 5, 0));
+    r = new room(room_type::garbagepit, tile + df::coord(-5, -5, 0), tile + df::coord(5, 5, 0));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 5, 5));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 6, 5));
     r->layout.push_back(new_construction(construction_type::Floor, 5, 5, -1));
