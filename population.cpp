@@ -1451,7 +1451,7 @@ bool Population::perform_trade_step(color_ostream & out)
             ai->debug(out, "[trade] Cannot afford any of item, skipping: " + AI::describe_item(item));
             auto index = trade_want_items_it - trade_want_items.begin();
             trade_want_items.erase(trade_want_items_it);
-            trade_want_items_it = index < trade_want_items.size() ? trade_want_items.begin() + index : trade_want_items.end();
+            trade_want_items_it = size_t(index) < trade_want_items.size() ? trade_want_items.begin() + index : trade_want_items.end();
             break;
         }
 
