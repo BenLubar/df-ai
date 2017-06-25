@@ -1,4 +1,4 @@
-// Converted from https://github.com/mifki/dfremote/blob/414809907133def8b4ad36f61ba0f2c991726b9f/lua/depot.lua
+// Converted from https://github.com/mifki/dfremote/blob/d111850c8aaf85daed7a87a9cc5177150684131c/lua/depot.lua
 // Used with permission.
 
 #include "ai.h"
@@ -34,6 +34,7 @@
 #include "df/itemdef_armorst.h"
 #include "df/itemdef_glovesst.h"
 #include "df/itemdef_helmst.h"
+#include "df/itemdef_instrumentst.h"
 #include "df/itemdef_pantsst.h"
 #include "df/itemdef_shieldst.h"
 #include "df/itemdef_shoesst.h"
@@ -577,6 +578,24 @@ int32_t Trade::item_value_for_caravan(df::item *item, df::caravan_state *caravan
     {
         // TODO: seems to be wrong in dfhack's getItemBaseValue() ?
         value = 10;
+    }
+    else if (item_type == item_type::SHEET)
+    {
+        value = 5;
+        MaterialInfo mi(mat_type, mat_index);
+        if (mi.material)
+        {
+            value = value * mi.material->material_value;
+        }
+    }
+    else if (auto subtype = item_type == item_type::INSTRUMENT ? df::itemdef_instrumentst::find(item_subtype) : nullptr)
+    {
+        value = subtype->value;
+        MaterialInfo mi(mat_type, mat_index);
+        if (mi.material)
+        {
+            value = value * mi.material->material_value;
+        }
     }
     else
     {
