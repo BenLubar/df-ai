@@ -674,7 +674,6 @@ void Population::update_caged(color_ostream & out)
 void Population::update_military(color_ostream & out)
 {
     // check for new soldiers, allocate barracks
-    std::vector<int32_t> newsoldiers;
 
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
@@ -693,7 +692,7 @@ void Population::update_military(color_ostream & out)
                 if (!military.count(u->id))
                 {
                     military[u->id] = u->military.squad_id;
-                    newsoldiers.push_back(u->id);
+                    ai->plan->getsoldierbarrack(out, u->id);
                 }
             }
         }
@@ -741,7 +740,7 @@ void Population::update_military(color_ostream & out)
             picks++;
         }
     }
-    while (military.size() < maydraft.size() / 5 && military.size() + 1 < axes && military.size() + 1 < picks)
+    while (military.size() < citizen.size() / 4 && military.size() + 1 < axes && military.size() + 1 < picks)
     {
         df::unit *ns = military_find_new_soldier(out, maydraft);
         if (!ns)
@@ -749,12 +748,7 @@ void Population::update_military(color_ostream & out)
             break;
         }
         military[ns->id] = ns->military.squad_id;
-        newsoldiers.push_back(ns->id);
-    }
-
-    for (auto it = newsoldiers.begin(); it != newsoldiers.end(); it++)
-    {
-        ai->plan->getsoldierbarrack(out, *it);
+        ai->plan->getsoldierbarrack(out, ns->id);
     }
 }
 
@@ -1079,6 +1073,10 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
 
     int32_t squad_id = military_find_free_squad();
     df::squad *squad = df::squad::find(squad_id);
+    if (!squad)
+    {
+        return nullptr;
+    }
     auto pos = std::find_if(squad->positions.begin(), squad->positions.end(), [](df::squad_position *p) -> bool { return p->occupant == -1; });
     if (pos == squad->positions.end())
     {
@@ -1112,7 +1110,9 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
 // return a squad index with an empty slot
 int32_t Population::military_find_free_squad()
 {
-    int32_t squad_sz = 8;
+    int32_t squad_sz = 10;
+    if (military.size() < 4 * 8)
+        squad_sz = 8;
     if (military.size() < 4 * 6)
         squad_sz = 6;
     if (military.size() < 3 * 4)
@@ -1132,6 +1132,18 @@ int32_t Population::military_find_free_squad()
         {
             return *sqid;
         }
+    }
+
+    size_t barracks_count = 0;
+    ai->plan->find_room(room_type::barracks, [&barracks_count](room *) -> bool
+    {
+        barracks_count++;
+        return false;
+    });
+
+    if (ui->main.fortress_entity->squads.size() >= barracks_count)
+    {
+        return -1;
     }
 
     // create a new squad using the UI
