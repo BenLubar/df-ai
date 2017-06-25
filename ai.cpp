@@ -570,7 +570,8 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 stripped.find("You" "have" "disrespected" "the" "trees" "in" "this" "area," "but" "this" "is" "what" "we" "have" "come" "to" "expect" "from" "your" "stunted" "kind." "Further" "abuse" "cannot" "be" "tolerated." "Let" "this" "be" "a" "warning" "to" "you.") != std::string::npos ||
                 stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
                 stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos ||
-                stripped.find("Greetings," "noble" "dwarf." "There" "is" "much" "to" "discuss.") != std::string::npos)
+                stripped.find("Greetings," "noble" "dwarf." "There" "is" "much" "to" "discuss.") != std::string::npos ||
+                (stripped.find("It" "has" "been" "an" "honor," "noble") != std::string::npos && stripped.find("." "I" "bid" "you" "farewell.") != std::string::npos))
             {
                 debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream &)
