@@ -399,6 +399,10 @@ void Plan::update(color_ostream &)
                     want_reupdate = true; // wantdig asap
                     del = true;
                 }
+                else
+                {
+                    t.r->dig();
+                }
                 break;
             case task_type::construct_tradedepot:
                 del = try_construct_tradedepot(out, t.r);
