@@ -629,6 +629,20 @@ static struct df_ai_renderer : public df::renderer
     }
 } *lockstep_renderer = nullptr;
 
+// We need to access Core private methods and the egg_* set of functions aren't usually compiled in DFHack, so we steal their names:
+
+int egg_init(void)
+{
+    Core::getInstance().DisclaimSuspend(1000000);
+    return 0;
+}
+
+int egg_shutdown(void)
+{
+    Core::getInstance().ClaimSuspend(true);
+    return 0;
+}
+
 void Hook_Update()
 {
     if (SDL_ThreadID() == enabler->renderer_threadid)
@@ -666,6 +680,8 @@ void Hook_Update()
         lockstep_renderer = new df_ai_renderer(enabler->renderer);
         enabler->renderer = lockstep_renderer;
 
+        egg_init();
+
         SDL_SemWait(enabler->async_zoom.sem);
         enabler->async_zoom.queue.push_back(zoom_commands::zoom_reset);
         SDL_SemPost(enabler->async_zoom.sem);
@@ -701,6 +717,8 @@ void Hook_Update()
 
             tthread::this_thread::sleep_for(tthread::chrono::seconds(1));
         }
+
+        egg_shutdown();
     }
 }
 
