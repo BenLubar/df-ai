@@ -62,11 +62,14 @@ SET(PROJECT_HDRS
     df-ai-git-describe.h
 )
 
+ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)
+TARGET_LINK_LIBRARIES(df-ai-biome dfhack)
+
 SET_SOURCE_FILES_PROPERTIES( ${PROJECT_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 LIST(APPEND PROJECT_SRCS ${PROJECT_HDRS})
 
-LIST(APPEND PROJECT_LIBS jsoncpp ${ZLIB_LIBRARIES})
+LIST(APPEND PROJECT_LIBS jsoncpp ${ZLIB_LIBRARIES} df-ai-biome)
 
 IF(APPLE)
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")

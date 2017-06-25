@@ -3732,12 +3732,21 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         return;
 
     bool subterranean = Maps::getTileDesignation(r->pos())->bits.subterranean;
+    df::coord2d region(Maps::getTileBiomeRgn(r->pos()));
+    extern int get_biome_type(int world_coord_x, int world_coord_y);
+    df::biome_type biome = subterranean ? biome_type::SUBTERRANEAN_WATER : static_cast<df::biome_type>(get_biome_type(region.x, region.y));
+    df::plant_raw_flags plant_biome;
+    if (!find_enum_item(&plant_biome, "BIOME_" + enum_item_key(biome)))
+    {
+        ai->debug(out, "[ERROR] stocks: could not find plant raw flag for biome: " + enum_item_key(biome));
+        return;
+    }
 
     std::vector<int32_t> may;
     for (int32_t i = 0; i < int32_t(world->raws.plants.all.size()); i++)
     {
         df::plant_raw *p = world->raws.plants.all[i];
-        if (p->flags.is_set(plant_raw_flags::BIOME_SUBTERRANEAN_WATER) != subterranean)
+        if (!p->flags.is_set(plant_biome))
             continue;
         if (p->flags.is_set(plant_raw_flags::TREE) || !p->flags.is_set(plant_raw_flags::SEED))
             continue;
@@ -3846,9 +3855,9 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         {
             std::ostringstream str;
             str << r->farm_type;
-            if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->farm_type, subterranean, season)).second)
+            if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->farm_type, biome, season)).second)
             {
-                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", str.str().c_str(), subterranean ? "underground" : "outdoor", season));
+                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", str.str().c_str(), enum_item_key_str(biome), season));
             }
         }
         else

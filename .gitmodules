@@ -1,0 +1,3 @@
+[submodule "thirdparty/exportmaps"]
+	path = thirdparty/exportmaps
+	url = ../../ragundo/exportmaps.git

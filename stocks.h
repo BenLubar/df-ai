@@ -7,6 +7,7 @@
 #include <set>
 #include <tuple>
 
+#include "df/biome_type.h"
 #include "df/items_other_id.h"
 #include "df/job_material_category.h"
 #include "df/job_skill.h"
@@ -70,7 +71,7 @@ private:
 
     std::vector<std::set<int32_t>> simple_metal_ores;
 
-    std::set<std::tuple<farm_type::type, bool, int8_t>> complained_about_no_plants;
+    std::set<std::tuple<farm_type::type, df::biome_type, int8_t>> complained_about_no_plants;
 
 public:
     Stocks(AI *ai);
