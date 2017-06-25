@@ -15,7 +15,7 @@
 
 REQUIRE_GLOBAL(world);
 
-const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -5;
+const int16_t Plan::MinX = -48, Plan::MinY = -22, Plan::MinZ = -6;
 const int16_t Plan::MaxX = 48, Plan::MaxY = 22, Plan::MaxZ = 1;
 
 const static int16_t farm_w = 3;
@@ -399,6 +399,13 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
             return res;
         ai->debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
     }
+
+    fort_entrance->min.z--;
+    f.z--;
+    res = setup_blueprint_stockpiles_overflow(out, f, fe);
+    if (res != CR_OK)
+        return res;
+    ai->debug(out, "stockpile overflow floor ready");
 
     return CR_OK;
 }
@@ -1721,6 +1728,84 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             rooms.push_back(r);
         }
     }
+    return CR_OK;
+}
+
+command_result Plan::setup_blueprint_stockpiles_overflow(color_ostream &, df::coord f, const std::vector<room *> & entr)
+{
+    room *access_west = new room(corridor_type::corridor, f + df::coord(-1, -1, 0), f + df::coord(-1, 1, 0), "main staircase - west stockpile overflow");
+    access_west->layout.push_back(new_door(-1, 0));
+    access_west->layout.push_back(new_door(-1, 2));
+    access_west->accesspath = entr;
+    corridors.push_back(access_west);
+
+    room *access_east = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east stockpile overflow");
+    access_east->layout.push_back(new_door(1, 0));
+    access_east->layout.push_back(new_door(1, 2));
+    access_east->accesspath = entr;
+    corridors.push_back(access_east);
+
+    for (int32_t dx = 0; dx < 4; dx++)
+    {
+        room *r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, -2, 0), f + df::coord(-dx * 10 - 3, 2, 0), stl_sprintf("stockpile overflow - west %d", dx + 1));
+        r->level = 4 + dx * 3;
+        r->accesspath.push_back(access_west);
+        rooms.push_back(r);
+        access_west = r;
+        room *access_northwest = access_west;
+        room *access_southwest = access_west;
+
+        r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, -2, 0), f + df::coord(dx * 10 + 12, 2, 0), stl_sprintf("stockpile overflow - east %d", dx + 1));
+        r->level = 4 + dx * 3;
+        r->accesspath.push_back(access_east);
+        rooms.push_back(r);
+        access_east = r;
+        room *access_northeast = access_east;
+        room *access_southeast = access_east;
+
+        for (int32_t dy = 0; dy < 2; dy++)
+        {
+            r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, -dy * 10 - 12, 0), f + df::coord(-dx * 10 - 3, -dy * 10 - 3, 0), stl_sprintf("stockpile overflow - north %d west %d", dy + 1, dx + 1));
+            r->level = 4 + dx * 3 + 1 + dy;
+            r->accesspath.push_back(access_northwest);
+            rooms.push_back(r);
+            access_northwest = r;
+
+            r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, dy * 10 + 3, 0), f + df::coord(-dx * 10 - 3, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d west %d", dy + 1, dx + 1));
+            r->level = 4 + dx * 3 + 1 + dy;
+            r->accesspath.push_back(access_southwest);
+            rooms.push_back(r);
+            access_southwest = r;
+
+            r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, -dy * 10 - 12, 0), f + df::coord(dx * 10 + 12, -dy * 10 - 3, 0), stl_sprintf("stockpile overflow - north %d east %d", dy + 1, dx + 1));
+            r->level = 4 + dx * 3 + 1 + dy;
+            r->accesspath.push_back(access_northeast);
+            rooms.push_back(r);
+            access_northeast = r;
+
+            r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, dy * 10 + 3, 0), f + df::coord(dx * 10 + 12, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d east %d", dy + 1, dx + 1));
+            r->level = 4 + dx * 3 + 1 + dy;
+            r->accesspath.push_back(access_southeast);
+            rooms.push_back(r);
+            access_southeast = r;
+
+            if (dx == 0)
+            {
+                r = new room(stockpile_type::food, f + df::coord(-2, -dy * 10 - 12, 0), f + df::coord(2, -dy * 10 - 3, 0), stl_sprintf("stockpile overflow - north %d", dy + 1));
+                r->level = 4 + 2 + dy;
+                r->accesspath.push_back(access_northwest);
+                r->accesspath.push_back(access_northeast);
+                rooms.push_back(r);
+
+                r = new room(stockpile_type::food, f + df::coord(-2, dy * 10 + 3, 0), f + df::coord(2, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d", dy + 1));
+                r->level = 4 + 2 + dy;
+                r->accesspath.push_back(access_southwest);
+                r->accesspath.push_back(access_southeast);
+                rooms.push_back(r);
+            }
+        }
+    }
+
     return CR_OK;
 }
 

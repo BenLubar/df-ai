@@ -17,5 +17,6 @@ command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
 command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const std::vector<room *> & entr, int level);
 command_result setup_outdoor_gathering_zones(color_ostream & out);
 command_result setup_blueprint_caverns(color_ostream & out);
+command_result setup_blueprint_stockpiles_overflow(color_ostream & out, df::coord f, const std::vector<room *> & entr);
 
 std::vector<room *> find_corridor_tosurface(color_ostream & out, corridor_type::type type, df::coord origin);
