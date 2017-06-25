@@ -3043,17 +3043,9 @@ bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
             {
                 df::coord t(x, y, z);
                 if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Wall ||
-                    std::find_if(room_by_z.at(z).begin(), room_by_z.at(z).end(), [t](room *o) -> bool
-                {
-                    return o->include(t) || std::find_if(o->layout.begin(), o->layout.end(), [o, t](furniture *f) -> bool
-                    {
-                        return f->x == t.x - o->min.x &&
-                            f->y == t.y - o->min.y &&
-                            f->z == t.z - o->min.z &&
-                            f->dig != tile_dig_designation::No &&
-                            f->construction != construction_type::Wall;
-                    }) != o->layout.end();
-                }) == room_by_z.at(z).end())
+                    std::find_if(room_by_z.at(z).begin(), room_by_z.at(z).end(), [t](room *o) -> bool { return o->include(t) && o->dig_mode(t) != tile_dig_designation::No &&
+                        std::find_if(o->layout.begin(), o->layout.end(), [t, o](furniture *f) -> bool { return t.x - o->min.x == f->x && t.y - o->min.y == f->y && t.z - o->min.z == f->z &&
+                            f->dig == tile_dig_designation::No && f->construction == construction_type::Wall; }) == o->layout.end(); }) == room_by_z.at(z).end())
                 {
                     tiles.insert(t);
                 }
