@@ -222,6 +222,66 @@ std::ostream & operator <<(std::ostream & stream, cistern_type::type type)
     return stream << "???";
 }
 
+std::ostream & operator <<(std::ostream & stream, layout_type::type type)
+{
+    switch (type)
+    {
+    case layout_type::none:
+        return stream << "none";
+
+    case layout_type::archery_target:
+        return stream << "archery_target";
+    case layout_type::armor_stand:
+        return stream << "armor_stand";
+    case layout_type::bed:
+        return stream << "bed";
+    case layout_type::bookcase:
+        return stream << "bookcase";
+    case layout_type::cabinet:
+        return stream << "cabinet";
+    case layout_type::cage_trap:
+        return stream << "cage_trap";
+    case layout_type::chair:
+        return stream << "chair";
+    case layout_type::chest:
+        return stream << "chest";
+    case layout_type::coffin:
+        return stream << "coffin";
+    case layout_type::door:
+        return stream << "door";
+    case layout_type::floodgate:
+        return stream << "floodgate";
+    case layout_type::gear_assembly:
+        return stream << "gear_assembly";
+    case layout_type::hive:
+        return stream << "hive";
+    case layout_type::lever:
+        return stream << "lever";
+    case layout_type::nest_box:
+        return stream << "nest_box";
+    case layout_type::roller:
+        return stream << "roller";
+    case layout_type::table:
+        return stream << "table";
+    case layout_type::track_stop:
+        return stream << "track_stop";
+    case layout_type::traction_bench:
+        return stream << "traction_bench";
+    case layout_type::vertical_axle:
+        return stream << "vertical_axle";
+    case layout_type::weapon_rack:
+        return stream << "weapon_rack";
+    case layout_type::well:
+        return stream << "well";
+    case layout_type::windmill:
+        return stream << "windmill";
+
+    case layout_type::_layout_type_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
 room::room(room_type::type type, df::coord mins, df::coord maxs, std::string comment) :
     status(room_status::plan),
     type(type),
@@ -366,7 +426,7 @@ void room::dig(bool plan, bool channel)
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         furniture *f = *it;
-        df::coord t = min + df::coord(f->x, f->y, f->z);
+        df::coord t = min + f->pos;
         df::tiletype *tt = Maps::getTileType(t);
         if (tt)
         {
@@ -405,7 +465,7 @@ bool room::safe_include(df::coord t) const
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         furniture *f = *it;
-        df::coord ft = min + df::coord(f->x, f->y, f->z);
+        df::coord ft = min + f->pos;
         if (ft.x - 1 <= t.x && ft.x + 1 >= t.x && ft.y - 1 <= t.y && ft.y + 1 >= t.y && ft.z == t.z)
             return true;
     }
@@ -442,7 +502,7 @@ bool room::is_dug(df::tiletype_shape_basic want) const
         if (f->ignore)
             continue;
 
-        df::coord ft = min + df::coord(f->x, f->y, f->z);
+        df::coord ft = min + f->pos;
 
         if (f->dig == tile_dig_designation::No)
         {
@@ -498,7 +558,7 @@ bool room::constructions_done() const
         furniture *f = *it;
         if (f->construction == construction_type::NONE)
             continue;
-        df::coord ft = min + df::coord(f->x, f->y, f->z);
+        df::coord ft = min + f->pos;
         // TODO check actual tile shape vs construction type
         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft))) == tiletype_shape_basic::Open)
             return false;

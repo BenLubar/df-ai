@@ -164,7 +164,6 @@ public:
     bool try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t);
     bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t);
     bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_trap(color_ostream & out, room *r, furniture *f);
 
     bool try_construct_tradedepot(color_ostream & out, room *r);
     bool try_construct_workshop(color_ostream & out, room *r);

@@ -23,18 +23,18 @@ const static int16_t farm_h = 3;
 const static int32_t dpf = farm_w * farm_h * dwarves_per_farmtile_num / dwarves_per_farmtile_den;
 const static int32_t nrfarms = (220 + dpf - 1) / dpf + extra_farms;
 
-static furniture *new_furniture(const std::string & item, int16_t x, int16_t y)
+static furniture *new_furniture(layout_type::type type, int16_t x, int16_t y)
 {
     furniture *f = new furniture();
-    f->item = item;
-    f->x = x;
-    f->y = y;
+    f->type = type;
+    f->pos.x = x;
+    f->pos.y = y;
     return f;
 }
 
-static furniture *new_furniture_with_users(const std::string & item, int16_t x, int16_t y, bool ignore = false)
+static furniture *new_furniture_with_users(layout_type::type type, int16_t x, int16_t y, bool ignore = false)
 {
-    furniture *f = new_furniture(item, x, y);
+    furniture *f = new_furniture(type, x, y);
     f->has_users = true;
     f->ignore = ignore;
     return f;
@@ -42,15 +42,14 @@ static furniture *new_furniture_with_users(const std::string & item, int16_t x, 
 
 static furniture *new_cage_trap(int16_t x, int16_t y)
 {
-    furniture *f = new_furniture("trap", x, y);
-    f->subtype = "cage";
+    furniture *f = new_furniture(layout_type::cage_trap, x, y);
     f->ignore = true;
     return f;
 }
 
 static furniture *new_door(int16_t x, int16_t y, bool internal = false)
 {
-    furniture *f = new_furniture("door", x, y);
+    furniture *f = new_furniture(layout_type::door, x, y);
     f->internal = internal;
     return f;
 }
@@ -59,15 +58,15 @@ static furniture *new_dig(df::tile_dig_designation d, int16_t x, int16_t y, int1
 {
     furniture *f = new furniture();
     f->dig = d;
-    f->x = x;
-    f->y = y;
-    f->z = z;
+    f->pos.x = x;
+    f->pos.y = y;
+    f->pos.z = z;
     return f;
 }
 
 static furniture *new_hive_floor(int16_t x, int16_t y)
 {
-    furniture *f = new_furniture("hive", x, y);
+    furniture *f = new_furniture(layout_type::hive, x, y);
     f->construction = construction_type::Floor;
     return f;
 }
@@ -76,9 +75,9 @@ static furniture *new_construction(df::construction_type c, int16_t x, int16_t y
 {
     furniture *f = new furniture();
     f->construction = c;
-    f->x = x;
-    f->y = y;
-    f->z = z;
+    f->pos.x = x;
+    f->pos.y = y;
+    f->pos.z = z;
     return f;
 }
 
@@ -91,22 +90,21 @@ static furniture *new_wall(int16_t x, int16_t y, int16_t z = 0)
 
 static furniture *new_well(int16_t x, int16_t y)
 {
-    furniture *f = new_furniture("well", x, y);
+    furniture *f = new_furniture(layout_type::well, x, y);
     f->dig = tile_dig_designation::Channel;
     return f;
 }
 
 static furniture *new_cistern_lever(int16_t x, int16_t y, const std::string & way)
 {
-    furniture *f = new_furniture("trap", x, y);
-    f->subtype = "lever";
+    furniture *f = new_furniture(layout_type::lever, x, y);
     f->way = way;
     return f;
 }
 
 static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string & way, bool ignore = false)
 {
-    furniture *f = new_furniture("floodgate", x, y);
+    furniture *f = new_furniture(layout_type::floodgate, x, y);
     f->way = way;
     f->ignore = ignore;
     return f;
@@ -146,13 +144,13 @@ command_result Plan::setup_blueprint(color_ostream & out)
         return res;
     ai->debug(out, "blueprint found rooms");
     // ensure traps are on the surface
-    for (auto i = fort_entrance->layout.begin(); i != fort_entrance->layout.end(); i++)
+    for (auto i : fort_entrance->layout)
     {
-        (*i)->z = surface_tile_at(fort_entrance->min.x + (*i)->x, fort_entrance->min.y + (*i)->y, true).z - fort_entrance->min.z;
+        i->pos.z = surface_tile_at(fort_entrance->min.x + i->pos.x, fort_entrance->min.y + i->pos.y, true).z - fort_entrance->min.z;
     }
     fort_entrance->layout.erase(std::remove_if(fort_entrance->layout.begin(), fort_entrance->layout.end(), [this](furniture *i) -> bool
     {
-        df::coord t = fort_entrance->min + df::coord(i->x, i->y, i->z - 1);
+        df::coord t = fort_entrance->min + i->pos + df::coord(0, 0, -1);
         df::tiletype *tt = Maps::getTileType(t);
         if (!tt)
         {
@@ -657,16 +655,16 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             {
                 room *r = new room(location_type::library, df::coord(cx - 12, f.y - 5, f.z), df::coord(cx - 3, f.y - 1, f.z));
                 r->layout.push_back(new_door(10, 4));
-                r->layout.push_back(new_furniture("chest", 9, 3));
-                r->layout.push_back(new_furniture("chest", 9, 2));
-                r->layout.push_back(new_furniture("table", 9, 1));
-                r->layout.push_back(new_furniture("chair", 8, 1));
-                r->layout.push_back(new_furniture("table", 9, 0));
-                r->layout.push_back(new_furniture("chair", 8, 0));
+                r->layout.push_back(new_furniture(layout_type::chest, 9, 3));
+                r->layout.push_back(new_furniture(layout_type::chest, 9, 2));
+                r->layout.push_back(new_furniture(layout_type::table, 9, 1));
+                r->layout.push_back(new_furniture(layout_type::chair, 8, 1));
+                r->layout.push_back(new_furniture(layout_type::table, 9, 0));
+                r->layout.push_back(new_furniture(layout_type::chair, 8, 0));
                 for (int16_t i = 0; i < 6; i++)
                 {
-                    r->layout.push_back(new_furniture("bookcase", i + 1, 1));
-                    r->layout.push_back(new_furniture("bookcase", i + 1, 3));
+                    r->layout.push_back(new_furniture(layout_type::bookcase, i + 1, 1));
+                    r->layout.push_back(new_furniture(layout_type::bookcase, i + 1, 3));
                 }
                 r->accesspath.push_back(cor_x);
                 rooms.push_back(r);
@@ -685,7 +683,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             r->level = 0;
             if (dirx == -1 && dx == 1)
             {
-                r->layout.push_back(new_furniture("nestbox", -1, 4));
+                r->layout.push_back(new_furniture(layout_type::nest_box, -1, 4));
             }
             rooms.push_back(r);
 
@@ -718,7 +716,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             r->level = 0;
             if (dirx == -1 && dx == 1)
             {
-                r->layout.push_back(new_furniture("nestbox", -1, -2));
+                r->layout.push_back(new_furniture(layout_type::nest_box, -1, -2));
             }
             rooms.push_back(r);
 
@@ -980,8 +978,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tmp->temporary = true;
     for (int16_t dy = 0; dy <= 2; dy++)
     {
-        tmp->layout.push_back(new_furniture_with_users("table", 0, dy));
-        tmp->layout.push_back(new_furniture_with_users("chair", 1, dy));
+        tmp->layout.push_back(new_furniture_with_users(layout_type::table, 0, dy));
+        tmp->layout.push_back(new_furniture_with_users(layout_type::chair, 1, dy));
     }
     tmp->layout[0]->makeroom = true;
     tmp->accesspath.push_back(old_cor);
@@ -1016,13 +1014,13 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             {
                 for (int16_t sy = -1; sy <= 1; sy += 2)
                 {
-                    dinner->layout.push_back(new_furniture_with_users("table", *dx, 3 + dy * sy * 1, true));
-                    dinner->layout.push_back(new_furniture_with_users("chair", *dx, 3 + dy * sy * 2, true));
+                    dinner->layout.push_back(new_furniture_with_users(layout_type::table, *dx, 3 + dy * sy * 1, true));
+                    dinner->layout.push_back(new_furniture_with_users(layout_type::chair, *dx, 3 + dy * sy * 2, true));
                 }
             }
             for (auto f = dinner->layout.begin(); f != dinner->layout.end(); f++)
             {
-                if ((*f)->item == "table")
+                if ((*f)->type == layout_type::table)
                 {
                     (*f)->makeroom = true;
                     break;
@@ -1042,7 +1040,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     room *tavern = new room(location_type::tavern, tavern_center - df::coord(4, 4, 0), tavern_center + df::coord(4, 4, 0));
     tavern->layout.push_back(new_door(9, 3));
     tavern->layout.push_back(new_door(9, 5));
-    tavern->layout.push_back(new_furniture("chest", 8, 0));
+    tavern->layout.push_back(new_furniture(layout_type::chest, 8, 0));
     tavern->accesspath.push_back(cor);
     rooms.push_back(tavern);
 
@@ -1230,17 +1228,17 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     room *infirmary = new room(room_type::infirmary, f + df::coord(2, -3, 0), f + df::coord(6, -7, 0));
     infirmary->layout.push_back(new_door(3, 5));
-    infirmary->layout.push_back(new_furniture("bed", 0, 1));
-    infirmary->layout.push_back(new_furniture("table", 1, 1));
-    infirmary->layout.push_back(new_furniture("bed", 2, 1));
-    infirmary->layout.push_back(new_furniture("traction_bench", 0, 2));
-    infirmary->layout.push_back(new_furniture("traction_bench", 2, 2));
-    infirmary->layout.push_back(new_furniture("bed", 0, 3));
-    infirmary->layout.push_back(new_furniture("table", 1, 3));
-    infirmary->layout.push_back(new_furniture("bed", 2, 3));
-    infirmary->layout.push_back(new_furniture("chest", 4, 1));
-    infirmary->layout.push_back(new_furniture("chest", 4, 2));
-    infirmary->layout.push_back(new_furniture("chest", 4, 3));
+    infirmary->layout.push_back(new_furniture(layout_type::bed, 0, 1));
+    infirmary->layout.push_back(new_furniture(layout_type::table, 1, 1));
+    infirmary->layout.push_back(new_furniture(layout_type::bed, 2, 1));
+    infirmary->layout.push_back(new_furniture(layout_type::traction_bench, 0, 2));
+    infirmary->layout.push_back(new_furniture(layout_type::traction_bench, 2, 2));
+    infirmary->layout.push_back(new_furniture(layout_type::bed, 0, 3));
+    infirmary->layout.push_back(new_furniture(layout_type::table, 1, 3));
+    infirmary->layout.push_back(new_furniture(layout_type::bed, 2, 3));
+    infirmary->layout.push_back(new_furniture(layout_type::chest, 4, 1));
+    infirmary->layout.push_back(new_furniture(layout_type::chest, 4, 2));
+    infirmary->layout.push_back(new_furniture(layout_type::chest, 4, 3));
     infirmary->accesspath.push_back(cor);
     rooms.push_back(infirmary);
 
@@ -1279,7 +1277,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                 {
                     for (int16_t dy = 0; dy < 2; dy++)
                     {
-                        cemetary->layout.push_back(new_furniture_with_users("coffin", dx + 1 - rx, dy + 1, true));
+                        cemetary->layout.push_back(new_furniture_with_users(layout_type::coffin, dx + 1 - rx, dy + 1, true));
                     }
                 }
                 if (rx == 0 && ry == 0 && rrx == 0)
@@ -1315,15 +1313,15 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t dy_ = 0; dy_ < 8; dy_++)
             {
                 int16_t dy = ry < 0 ? 7 - dy_ : dy_;
-                barracks->layout.push_back(new_furniture_with_users("armorstand", 5, dy, true));
-                barracks->layout.push_back(new_furniture_with_users("bed", 6, dy, true));
-                barracks->layout.push_back(new_furniture_with_users("cabinet", 0, dy, true));
-                barracks->layout.push_back(new_furniture_with_users("chest", 1, dy, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::armor_stand, 5, dy, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::bed, 6, dy, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::cabinet, 0, dy, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::chest, 1, dy, true));
             }
-            barracks->layout.push_back(new_furniture_with_users("weaponrack", 4, ry > 0 ? 7 : 0, false));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 4, ry > 0 ? 7 : 0, false));
             barracks->layout.back()->makeroom = true;
-            barracks->layout.push_back(new_furniture_with_users("weaponrack", 2, ry > 0 ? 7 : 0, true));
-            barracks->layout.push_back(new_furniture_with_users("archerytarget", 3, ry > 0 ? 7 : 0, true));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 2, ry > 0 ? 7 : 0, true));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::archery_target, 3, ry > 0 ? 7 : 0, true));
             barracks->accesspath.push_back(cor);
             rooms.push_back(barracks);
         }
@@ -1653,11 +1651,11 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                     auto bedroom = [this, cx, diry, cor_y](room *r)
                     {
                         r->accesspath.push_back(cor_y);
-                        r->layout.push_back(new_furniture("bed", r->min.x < cx ? 0 : 1, diry < 0 ? 1 : 0));
+                        r->layout.push_back(new_furniture(layout_type::bed, r->min.x < cx ? 0 : 1, diry < 0 ? 1 : 0));
                         r->layout.back()->makeroom = true;
-                        r->layout.push_back(new_furniture("cabinet", r->min.x < cx ? 0 : 1, diry < 0 ? 0 : 1));
+                        r->layout.push_back(new_furniture(layout_type::cabinet, r->min.x < cx ? 0 : 1, diry < 0 ? 0 : 1));
                         r->layout.back()->ignore = true;
-                        r->layout.push_back(new_furniture("chest", r->min.x < cx ? 1 : 0, diry < 0 ? 0 : 1));
+                        r->layout.push_back(new_furniture(layout_type::chest, r->min.x < cx ? 1 : 0, diry < 0 ? 0 : 1));
                         r->layout.back()->ignore = true;
                         r->layout.push_back(new_door(r->min.x < cx ? 2 : -1, diry < 0 ? 1 : 0));
                         rooms.push_back(r);
@@ -1684,23 +1682,23 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             room *r = new room(nobleroom_type::office, df::coord(cx - 1, f.y + diry * 3, f.z), df::coord(cx + 1, f.y + diry * 5, f.z));
             r->noblesuite = noblesuite;
             r->accesspath.push_back(cor_x);
-            r->layout.push_back(new_furniture("chair", 1, 1));
+            r->layout.push_back(new_furniture(layout_type::chair, 1, 1));
             r->layout.back()->makeroom = true;
-            r->layout.push_back(new_furniture("table", 1 - dirx, 1));
-            r->layout.push_back(new_furniture("chest", 1 + dirx, 0));
+            r->layout.push_back(new_furniture(layout_type::table, 1 - dirx, 1));
+            r->layout.push_back(new_furniture(layout_type::chest, 1 + dirx, 0));
             r->layout.back()->ignore = true;
-            r->layout.push_back(new_furniture("cabinet", 1 + dirx, 2));
+            r->layout.push_back(new_furniture(layout_type::cabinet, 1 + dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry));
             rooms.push_back(r);
 
             r = new room(nobleroom_type::bedroom, df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
             r->noblesuite = noblesuite;
-            r->layout.push_back(new_furniture("bed", 1, 1));
+            r->layout.push_back(new_furniture(layout_type::bed, 1, 1));
             r->layout.back()->makeroom = true;
-            r->layout.push_back(new_furniture("armorstand", 1 - dirx, 0));
+            r->layout.push_back(new_furniture(layout_type::armor_stand, 1 - dirx, 0));
             r->layout.back()->ignore = true;
-            r->layout.push_back(new_furniture("weaponrack", 1 - dirx, 2));
+            r->layout.push_back(new_furniture(layout_type::weapon_rack, 1 - dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
             r->accesspath.push_back(rooms.back());
@@ -1708,12 +1706,12 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
 
             r = new room(nobleroom_type::dining, df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
             r->noblesuite = noblesuite;
-            r->layout.push_back(new_furniture("table", 1, 1));
+            r->layout.push_back(new_furniture(layout_type::table, 1, 1));
             r->layout.back()->makeroom = true;
-            r->layout.push_back(new_furniture("chair", 1 + dirx, 1));
-            r->layout.push_back(new_furniture("cabinet", 1 - dirx, 0));
+            r->layout.push_back(new_furniture(layout_type::chair, 1 + dirx, 1));
+            r->layout.push_back(new_furniture(layout_type::cabinet, 1 - dirx, 0));
             r->layout.back()->ignore = true;
-            r->layout.push_back(new_furniture("chest", 1 - dirx, 2));
+            r->layout.push_back(new_furniture(layout_type::chest, 1 - dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
             r->accesspath.push_back(rooms.back());
@@ -1721,7 +1719,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
 
             r = new room(nobleroom_type::tomb, df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
             r->noblesuite = noblesuite;
-            r->layout.push_back(new_furniture("coffin", 1, 1));
+            r->layout.push_back(new_furniture(layout_type::coffin, 1, 1));
             r->layout.back()->makeroom = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
             r->accesspath.push_back(rooms.back());

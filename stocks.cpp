@@ -893,10 +893,11 @@ void Stocks::update_slabs(color_ostream & out)
                     {
                         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(x, y, r->min.z))) == tiletype_shape_basic::Floor && Maps::getTileOccupancy(x, y, r->min.z)->bits.building == tile_building_occ::None)
                         {
+                            df::coord t(x, y, r->min.z);
                             bool any = false;
-                            for (auto f = r->layout.begin(); f != r->layout.end(); f++)
+                            for (auto f : r->layout)
                             {
-                                if ((*f)->x == x - r->min.x && (*f)->y == y - r->min.y)
+                                if (r->min + f->pos == t)
                                 {
                                     any = true;
                                     break;
@@ -904,7 +905,7 @@ void Stocks::update_slabs(color_ostream & out)
                             }
                             if (!any)
                             {
-                                pos = df::coord(x, y, r->min.z);
+                                pos = t;
                                 return true;
                             }
                         }
@@ -2513,9 +2514,9 @@ void Stocks::queue_need_coffin_bld(color_ostream & out, int32_t amount)
     // count actually allocated (plan wise) coffin buildings
     if (ai->plan->find_room(room_type::cemetary, [&amount](room *r) -> bool
     {
-        for (auto f = r->layout.begin(); f != r->layout.end(); f++)
+        for (auto f : r->layout)
         {
-            if ((*f)->item == "coffin" && (*f)->bld_id == -1 && !(*f)->ignore)
+            if (f->type == layout_type::coffin && f->bld_id == -1 && !f->ignore)
                 amount--;
         }
         return amount <= 0;

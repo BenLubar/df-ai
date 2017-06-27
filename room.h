@@ -177,6 +177,42 @@ namespace cistern_type
 
 std::ostream & operator <<(std::ostream & stream, cistern_type::type type);
 
+namespace layout_type
+{
+    enum type
+    {
+        none,
+
+        archery_target,
+        armor_stand,
+        bed,
+        bookcase,
+        cabinet,
+        cage_trap,
+        chair,
+        chest,
+        coffin,
+        door,
+        floodgate,
+        gear_assembly,
+        hive,
+        lever,
+        nest_box,
+        roller,
+        table,
+        track_stop,
+        traction_bench,
+        vertical_axle,
+        weapon_rack,
+        well,
+        windmill,
+
+        _layout_type_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, layout_type::type type);
+
 struct room
 {
     room_status::status status;
@@ -245,16 +281,15 @@ struct room
 
 struct furniture
 {
-    std::string item;
-    std::string subtype;
+    layout_type::type type;
+    std::string item_;
+    std::string subtype_;
     df::construction_type construction;
     df::tile_dig_designation dig;
     std::string direction;
     std::string way;
     int32_t bld_id;
-    int16_t x;
-    int16_t y;
-    int16_t z;
+    df::coord pos;
     furniture *target;
     std::set<int32_t> users;
     bool has_users;
@@ -263,16 +298,14 @@ struct furniture
     bool internal;
 
     furniture() :
-        item(),
-        subtype(),
+        item_(),
+        subtype_(),
         construction(construction_type::NONE),
         dig(tile_dig_designation::Default),
         direction(),
         way(),
         bld_id(-1),
-        x(0),
-        y(0),
-        z(0),
+        pos(0, 0, 0),
         target(nullptr),
         users(),
         has_users(false),

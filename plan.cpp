@@ -740,16 +740,18 @@ void Plan::save(std::ostream & out)
     for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
     {
         Json::Value f(Json::objectValue);
-        f["item"] = (*it)->item;
-        f["subtype"] = (*it)->subtype;
+        stringify.str(std::string());
+        stringify.clear();
+        stringify << (*it)->type;
+        f["type"] = stringify.str();
         f["construction"] = ENUM_KEY_STR(construction_type, (*it)->construction);
         f["dig"] = ENUM_KEY_STR(tile_dig_designation, (*it)->dig);
         f["direction"] = (*it)->direction;
         f["way"] = (*it)->way;
         f["bld_id"] = Json::Int((*it)->bld_id);
-        f["x"] = Json::Int((*it)->x);
-        f["y"] = Json::Int((*it)->y);
-        f["z"] = Json::Int((*it)->z);
+        f["x"] = Json::Int((*it)->pos.x);
+        f["y"] = Json::Int((*it)->pos.y);
+        f["z"] = Json::Int((*it)->pos.z);
         if ((*it)->target)
         {
             f["target"] = Json::Int(furniture_index.at((*it)->target));
@@ -865,6 +867,7 @@ void Plan::load(std::istream & in)
     ENUM_NAMES(outpost_type, type);
     ENUM_NAMES(location_type, type);
     ENUM_NAMES(cistern_type, type);
+    ENUM_NAMES(layout_type, type);
 
     for (auto it = all_rooms.begin(); it != all_rooms.end(); it++)
     {
@@ -1021,16 +1024,120 @@ void Plan::load(std::istream & in)
     for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
     {
         const Json::Value & f = all["f"][Json::ArrayIndex(it - all_furniture.begin())];
-        (*it)->item = f["item"].asString();
-        (*it)->subtype = f["subtype"].asString();
+        if (f.isMember("type"))
+        {
+            (*it)->type = layout_type_names.at(f["type"].asString());
+        }
+        else
+        {
+            if (f["item"].asString() == "")
+            {
+                (*it)->type = layout_type::none;
+            }
+            else if (f["item"].asString() == "archerytarget")
+            {
+                (*it)->type = layout_type::archery_target;
+            }
+            else if (f["item"].asString() == "armorstand")
+            {
+                (*it)->type = layout_type::armor_stand;
+            }
+            else if (f["item"].asString() == "bed")
+            {
+                (*it)->type = layout_type::bed;
+            }
+            else if (f["item"].asString() == "bookcase")
+            {
+                (*it)->type = layout_type::bookcase;
+            }
+            else if (f["item"].asString() == "cabinet")
+            {
+                (*it)->type = layout_type::cabinet;
+            }
+            else if (f["item"].asString() == "chair")
+            {
+                (*it)->type = layout_type::chair;
+            }
+            else if (f["item"].asString() == "chest")
+            {
+                (*it)->type = layout_type::chest;
+            }
+            else if (f["item"].asString() == "coffin")
+            {
+                (*it)->type = layout_type::coffin;
+            }
+            else if (f["item"].asString() == "door")
+            {
+                (*it)->type = layout_type::door;
+            }
+            else if (f["item"].asString() == "floodgate")
+            {
+                (*it)->type = layout_type::floodgate;
+            }
+            else if (f["item"].asString() == "gear_assembly")
+            {
+                (*it)->type = layout_type::gear_assembly;
+            }
+            else if (f["item"].asString() == "hive")
+            {
+                (*it)->type = layout_type::hive;
+            }
+            else if (f["item"].asString() == "nestbox")
+            {
+                (*it)->type = layout_type::nest_box;
+            }
+            else if (f["item"].asString() == "roller")
+            {
+                (*it)->type = layout_type::roller;
+            }
+            else if (f["item"].asString() == "table")
+            {
+                (*it)->type = layout_type::table;
+            }
+            else if (f["item"].asString() == "tractionbench")
+            {
+                (*it)->type = layout_type::traction_bench;
+            }
+            else if (f["item"].asString() == "trap")
+            {
+                if (f["subtype"].asString() == "cage")
+                {
+                    (*it)->type = layout_type::cage_trap;
+                }
+                else if (f["subtype"].asString() == "lever")
+                {
+                    (*it)->type = layout_type::lever;
+                }
+                else if (f["subtype"].asString() == "trackstop")
+                {
+                    (*it)->type = layout_type::track_stop;
+                }
+            }
+            else if (f["item"].asString() == "vertical_axle")
+            {
+                (*it)->type = layout_type::vertical_axle;
+            }
+            else if (f["item"].asString() == "weaponrack")
+            {
+                (*it)->type = layout_type::weapon_rack;
+            }
+            else if (f["item"].asString() == "well")
+            {
+                (*it)->type = layout_type::well;
+            }
+            else if (f["item"].asString() == "windmill")
+            {
+                (*it)->type = layout_type::windmill;
+            }
+        }
         find_enum_item(&(*it)->construction, f["construction"].asString());
         find_enum_item(&(*it)->dig, f["dig"].asString());
         (*it)->direction = f["direction"].asString();
         (*it)->way = f["way"].asString();
         (*it)->bld_id = f["bld_id"].asInt();
-        (*it)->x = f["x"].asInt();
-        (*it)->y = f["y"].asInt();
-        (*it)->z = f["z"].asInt();
+        (*it)->pos.x = f["x"].asInt();
+        (*it)->pos.y = f["y"].asInt();
+        (*it)->pos.z = f["z"].asInt();
         if (f.isMember("target"))
         {
             (*it)->target = all_furniture.at(f["target"].asInt());
@@ -1487,10 +1594,12 @@ void Plan::checkroom(color_ostream & out, room *r)
             furniture *f = *it;
             if (f->ignore)
                 continue;
-            df::coord t = r->min + df::coord(f->x, f->y, f->z);
+            df::coord t = r->min + f->pos;
             if (f->bld_id != -1 && !df::building::find(f->bld_id))
             {
-                ai->debug(out, "fix furniture " + f->item + " in " + describe_room(r), t);
+                std::ostringstream str;
+                str << "fix furniture " << f->type << " in " << describe_room(r);
+                ai->debug(out, str.str(), t);
                 f->bld_id = -1;
 
                 tasks_furniture.push_back(new task(task_type::furnish, r, f));
@@ -1612,7 +1721,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->item == "table" && f->users.size() < dwarves_per_table)
+            if (f->type == layout_type::table && f->users.size() < dwarves_per_table)
             {
                 f->ignore = false;
                 f->users.insert(id);
@@ -1622,7 +1731,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->item == "chair" && f->users.size() < dwarves_per_table)
+            if (f->type == layout_type::chair && f->users.size() < dwarves_per_table)
             {
                 f->ignore = false;
                 f->users.insert(id);
@@ -1699,21 +1808,19 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         }
     }
 
-    auto find_furniture = [id, r](const std::string & type)
+    auto find_furniture = [id, r](layout_type::type type)
     {
-        for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+        for (auto f : r->layout)
         {
-            furniture *f = *it;
-            if (f->item == type && f->users.count(id))
+            if (f->type == type && f->users.count(id))
             {
                 f->ignore = false;
                 return;
             }
         }
-        for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+        for (auto f : r->layout)
         {
-            furniture *f = *it;
-            if (f->item == type && (type == "archerytarget" || f->users.size() < (type == "weaponrack" ? 4 : 1)))
+            if (f->type == type && (type == layout_type::archery_target || f->users.size() < (type == layout_type::weapon_rack ? 4 : 1)))
             {
                 f->users.insert(id);
                 f->ignore = false;
@@ -1721,12 +1828,12 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
             }
         }
     };
-    find_furniture("weaponrack");
-    find_furniture("armorstand");
-    find_furniture("bed");
-    find_furniture("cabinet");
-    find_furniture("chest");
-    find_furniture("archerytarget");
+    find_furniture(layout_type::weapon_rack);
+    find_furniture(layout_type::armor_stand);
+    find_furniture(layout_type::bed);
+    find_furniture(layout_type::cabinet);
+    find_furniture(layout_type::chest);
+    find_furniture(layout_type::archery_target);
 
     if (r->status == room_status::finished)
     {
@@ -1774,7 +1881,7 @@ void Plan::getcoffin(color_ostream & out)
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->item == "coffin" && f->users.empty())
+            if (f->type == layout_type::coffin && f->users.empty())
             {
                 f->users.insert(0);
                 f->ignore = false;
@@ -1800,7 +1907,7 @@ void Plan::freebedroom(color_ostream & out, int32_t id)
             furniture *f = *it;
             if (f->ignore)
                 continue;
-            if (f->item == "door")
+            if (f->type == layout_type::door)
                 continue;
             if (df::building *bld = df::building::find(f->bld_id))
             {
@@ -1996,7 +2103,7 @@ void Plan::digroom(color_ostream & out, room *r)
     for (auto it = r->layout.begin(); it != r->layout.end(); it++)
     {
         furniture *f = *it;
-        if (f->item.empty() || f->item == "floodgate")
+        if (f->type == layout_type::none || f->type == layout_type::floodgate)
             continue;
         if (f->dig != tile_dig_designation::Default)
             continue;
@@ -2113,25 +2220,6 @@ bool Plan::furnish_room(color_ostream &, room *r)
     return true;
 }
 
-static df::building_type FurnitureBuilding(std::string k)
-{
-    if (k == "chest")
-        return building_type::Box;
-    if (k == "gear_assembly")
-        return building_type::GearAssembly;
-    if (k == "vertical_axle")
-        return building_type::AxleVertical;
-    if (k == "traction_bench")
-        return building_type::TractionBench;
-    if (k == "nestbox")
-        return building_type::NestBox;
-
-    k[0] += 'A' - 'a';
-    df::building_type bt = building_type::NONE;
-    find_enum_item(&bt, k);
-    return bt;
-}
-
 const static struct traptypes
 {
     std::map<std::string, df::trap_type> map;
@@ -2149,13 +2237,13 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return true;
     if (f->ignore)
         return true;
-    df::coord tgtile = r->min + df::coord(f->x, f->y, f->z);
+    df::coord tgtile = r->min + f->pos;
     df::tiletype tt = *Maps::getTileType(tgtile);
     if (f->construction != construction_type::NONE)
     {
         if (try_furnish_construction(out, f->construction, tgtile))
         {
-            if (f->item.empty())
+            if (f->type == layout_type::none)
                 return true;
         }
         else
@@ -2164,34 +2252,127 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         }
     }
 
-    df::item *itm = nullptr;
-
     if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall)
         return false;
 
-    if (f->item.empty())
+    df::building_type building_type = building_type::NONE;
+    int building_subtype = -1;
+    std::string stocks_furniture_type;
+
+    switch (f->type)
+    {
+    case layout_type::none:
         return true;
 
-    if (f->item == "well")
-        return try_furnish_well(out, r, f, tgtile);
-
-    if (f->item == "archerytarget")
+    case layout_type::archery_target:
         return try_furnish_archerytarget(out, r, f, tgtile);
-
-    if (f->item == "gear_assembly" && !find_item(items_other_id::TRAPPARTS, itm))
-        return false;
-
-    if (f->item == "vertical_axle" && !find_item(items_other_id::WOOD, itm))
-        return false;
-
-    if (f->item == "windmill")
+    case layout_type::armor_stand:
+        building_type = building_type::Armorstand;
+        stocks_furniture_type = "armorstand";
+        break;
+    case layout_type::bed:
+        building_type = building_type::Bed;
+        stocks_furniture_type = "bed";
+        break;
+    case layout_type::bookcase:
+        building_type = building_type::Bookcase;
+        stocks_furniture_type = "bookcase";
+        break;
+    case layout_type::cabinet:
+        building_type = building_type::Cabinet;
+        stocks_furniture_type = "cabinet";
+        break;
+    case layout_type::cage_trap:
+        if (ai->stocks->count["cage"] < 1)
+        {
+            // avoid too much spam
+            return false;
+        }
+        building_type = building_type::Trap;
+        building_subtype = trap_type::CageTrap;
+        stocks_furniture_type = "mechanism";
+        break;
+    case layout_type::chair:
+        building_type = building_type::Chair;
+        stocks_furniture_type = "chair";
+        break;
+    case layout_type::chest:
+        building_type = building_type::Box;
+        stocks_furniture_type = "chest";
+        break;
+    case layout_type::coffin:
+        building_type = building_type::Coffin;
+        stocks_furniture_type = "coffin";
+        break;
+    case layout_type::door:
+        building_type = building_type::Door;
+        stocks_furniture_type = "door";
+        break;
+    case layout_type::floodgate:
+        // require the floor to be smooth before we build a floodgate on it
+        // because we can't smooth a floor under an open floodgate.
+        if (!is_smooth(tgtile))
+        {
+            std::set<df::coord> tiles;
+            tiles.insert(tgtile);
+            smooth(tiles);
+            return false;
+        }
+        building_type = building_type::Floodgate;
+        stocks_furniture_type = "floodgate";
+        break;
+    case layout_type::gear_assembly:
+        building_type = building_type::GearAssembly;
+        stocks_furniture_type = "mechanism";
+        break;
+    case layout_type::hive:
+        building_type = building_type::Hive;
+        stocks_furniture_type = "hive";
+        break;
+    case layout_type::lever:
+        building_type = building_type::Trap;
+        building_subtype = trap_type::Lever;
+        stocks_furniture_type = "mechanism";
+        break;
+    case layout_type::nest_box:
+        building_type = building_type::NestBox;
+        stocks_furniture_type = "nestbox";
+        break;
+    case layout_type::roller:
+        return try_furnish_roller(out, r, f, tgtile);
+    case layout_type::table:
+        building_type = building_type::Table;
+        stocks_furniture_type = "table";
+        break;
+    case layout_type::track_stop:
+        building_type = building_type::Trap;
+        building_subtype = trap_type::TrackStop;
+        stocks_furniture_type = "mechanism";
+    case layout_type::traction_bench:
+        building_type = building_type::TractionBench;
+        stocks_furniture_type = "traction_bench";
+        break;
+    case layout_type::vertical_axle:
+        building_type = building_type::AxleVertical;
+        stocks_furniture_type = "wood";
+        break;
+    case layout_type::weapon_rack:
+        building_type = building_type::Weaponrack;
+        stocks_furniture_type = "weaponrack";
+        break;
+    case layout_type::well:
+        return try_furnish_well(out, r, f, tgtile);
+    case layout_type::windmill:
         return try_furnish_windmill(out, r, f, tgtile);
 
-    if (f->item == "roller")
-        return try_furnish_windmill(out, r, f, tgtile);
+    case layout_type::_layout_type_count:
+        return true;
+    }
 
-    if (cache_nofurnish.count(f->item))
+    if (cache_nofurnish.count(stocks_furniture_type))
+    {
         return false;
+    }
 
     if (Maps::getTileOccupancy(tgtile)->bits.building != tile_building_occ::None)
     {
@@ -2207,35 +2388,12 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return false;
     }
 
-    if (f->item == "floodgate")
+    if (df::item *itm = ai->stocks->find_furniture_item(stocks_furniture_type))
     {
-        // require the floor to be smooth before we build a floodgate on it
-        // because we can't smooth a floor under an open floodgate.
-        if (!is_smooth(tgtile))
-        {
-            std::set<df::coord> tiles;
-            tiles.insert(tgtile);
-            smooth(tiles);
-            return false;
-        }
-    }
-
-    if (itm == nullptr)
-    {
-        itm = ai->stocks->find_furniture_item(f->item);
-    }
-
-    if (itm != nullptr)
-    {
-        if (f->subtype == "cage" && ai->stocks->count["cage"] < 1)
-        {
-            // avoid too much spam
-            return false;
-        }
-        ai->debug(out, "furnish " + f->item + " in " + describe_room(r));
-        df::building_type bldn = FurnitureBuilding(f->item);
-        int subtype = f->subtype.empty() ? -1 : traptypes.map.at(f->subtype);
-        df::building *bld = Buildings::allocInstance(tgtile, bldn, subtype);
+        std::ostringstream str;
+        str << "furnish " << f->type << " in " << describe_room(r);
+        ai->debug(out, str.str());
+        df::building *bld = Buildings::allocInstance(tgtile, building_type, building_subtype);
         Buildings::setSize(bld, df::coord(1, 1, 1));
         std::vector<df::item *> item;
         item.push_back(itm);
@@ -2249,7 +2407,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return true;
     }
 
-    cache_nofurnish.insert(f->item);
+    cache_nofurnish.insert(stocks_furniture_type);
     return false;
 }
 
@@ -2284,7 +2442,7 @@ bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df:
 
     df::building *bld = Buildings::allocInstance(t, building_type::ArcheryTarget);
     Buildings::setSize(bld, df::coord(1, 1, 1));
-    virtual_cast<df::building_archerytargetst>(bld)->archery_direction = f->y > 2 ? df::building_archerytargetst::TopToBottom : df::building_archerytargetst::BottomToTop;
+    virtual_cast<df::building_archerytargetst>(bld)->archery_direction = f->pos.y > 2 ? df::building_archerytargetst::TopToBottom : df::building_archerytargetst::BottomToTop;
     std::vector<df::item *> item;
     item.push_back(bould);
     Buildings::constructWithItems(bld, item);
@@ -2433,39 +2591,6 @@ static void init_managed_workshop(color_ostream &, room *, df::building *bld)
     {
         t->profile.max_general_orders = 10;
     }
-}
-
-bool Plan::try_furnish_trap(color_ostream &, room *r, furniture *f)
-{
-    df::coord t = r->min + df::coord(f->x, f->y, f->z);
-
-    if (Maps::getTileOccupancy(t)->bits.building != tile_building_occ::None)
-        return false;
-
-    df::tiletype tt = *Maps::getTileType(t);
-    if (ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::RAMP ||
-        ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE ||
-        ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
-    {
-        // XXX dont remove last access ramp ?
-        dig_tile(t, tile_dig_designation::Default);
-        return false;
-    }
-
-    df::item *mecha;
-    if (find_item(items_other_id::TRAPPARTS, mecha))
-        return false;
-
-    df::trap_type subtype = traptypes.map.at(f->subtype);
-    df::building *bld = Buildings::allocInstance(t, building_type::Trap, subtype);
-    Buildings::setSize(bld, df::coord(1, 1, 1));
-    std::vector<df::item *> item;
-    item.push_back(mecha);
-    Buildings::constructWithItems(bld, item);
-    f->bld_id = bld->id;
-    tasks_furniture.push_back(new task(task_type::check_furnish, r, f));
-
-    return true;
 }
 
 bool Plan::try_construct_tradedepot(color_ostream &, room *r)
@@ -2972,22 +3097,22 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
 void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
 {
     // if we dug a real hall, get rid of the temporary one
-    for (auto f = t->layout.begin(); f != t->layout.end(); f++)
+    for (auto f : t->layout)
     {
-        if ((*f)->item.empty() || !(*f)->has_users)
+        if (f->type == layout_type::none || !f->has_users)
         {
             continue;
         }
-        for (auto of = r->layout.begin(); of != r->layout.end(); of++)
+        for (auto of : r->layout)
         {
-            if ((*of)->item == (*f)->item && (*of)->has_users && (*of)->users.empty())
+            if (of->type == f->type && of->has_users && of->users.empty())
             {
-                (*of)->users = (*f)->users;
-                if (!(*f)->ignore)
+                of->users = f->users;
+                if (!f->ignore)
                 {
-                    (*of)->ignore = false;
+                    of->ignore = false;
                 }
-                if (df::building *bld = df::building::find((*f)->bld_id))
+                if (df::building *bld = df::building::find(f->bld_id))
                 {
                     Buildings::deconstruct(bld);
                 }
@@ -3044,7 +3169,7 @@ bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
                 df::coord t(x, y, z);
                 if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Wall ||
                     std::find_if(room_by_z.at(z).begin(), room_by_z.at(z).end(), [t](room *o) -> bool { return o->include(t) && o->dig_mode(t) != tile_dig_designation::No &&
-                        std::find_if(o->layout.begin(), o->layout.end(), [t, o](furniture *f) -> bool { return t.x - o->min.x == f->x && t.y - o->min.y == f->y && t.z - o->min.z == f->z &&
+                        std::find_if(o->layout.begin(), o->layout.end(), [t, o](furniture *f) -> bool { return o->min + f->pos == t &&
                             f->dig == tile_dig_designation::No && f->construction == construction_type::Wall; }) == o->layout.end(); }) == room_by_z.at(z).end())
                 {
                     tiles.insert(t);
@@ -3296,24 +3421,20 @@ bool Plan::is_smooth(df::coord t, bool engrave)
 // check smoothing progress, channel intermediate floors when done
 bool Plan::try_digcistern(color_ostream & out, room *r)
 {
-    auto dig_channel = [r](int32_t x, int32_t y, int32_t z)
+    auto dig_channel = [r](df::coord t)
     {
-        if (std::find_if(r->layout.begin(), r->layout.end(), [r, x, y, z](furniture *f) -> bool
+        if (std::find_if(r->layout.begin(), r->layout.end(), [r, t](furniture *f) -> bool
         {
             return f->dig == tile_dig_designation::Channel &&
-                f->x == x - r->min.x &&
-                f->y == y - r->min.y &&
-                f->z == z - r->min.z;
+                f->pos == t - r->min;
         }) == r->layout.end())
         {
             furniture *f = new furniture();
             f->dig = tile_dig_designation::Channel;
-            f->x = x - r->min.x;
-            f->y = y - r->min.y;
-            f->z = z - r->min.z;
+            f->pos = t - r->min;
             r->layout.push_back(f);
         }
-        dig_tile(df::coord(x, y, z), tile_dig_designation::Channel);
+        dig_tile(t, tile_dig_designation::Channel);
     };
 
     // XXX hardcoded layout..
@@ -3343,7 +3464,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                             *Maps::getTileType(x - 1, y, z))) ==
                         tiletype_shape_basic::Floor)
                     {
-                        dig_channel(x, y, z);
+                        dig_channel(df::coord(x, y, z));
                     }
                     else
                     {
@@ -3356,7 +3477,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
                             is_smooth(nt12) && is_smooth(nt02) :
                             is_smooth(nt10) && is_smooth(nt00))
                         {
-                            dig_channel(x, y, z);
+                            dig_channel(df::coord(x, y, z));
                         }
                     }
                     break;
@@ -3421,47 +3542,42 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     if (bld->getBuildStage() < bld->getMaxBuildStage())
         return false;
 
-    if (f->item == "coffin")
+    if (f->type == layout_type::coffin)
     {
         df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
         coffin->burial_mode.bits.allow_burial = 1;
         coffin->burial_mode.bits.no_citizens = 0;
         coffin->burial_mode.bits.no_pets = 1;
     }
-    else if (f->item == "door")
+    else if (f->type == layout_type::door)
     {
         df::building_doorst *door = virtual_cast<df::building_doorst>(bld);
         door->door_flags.bits.pet_passable = 1;
         door->door_flags.bits.internal = f->internal ? 1 : 0;
     }
-    else if (f->item == "trap")
+    else if (f->type == layout_type::lever)
     {
-        if (f->subtype == "lever")
-        {
-            return setup_lever(out, r, f);
-        }
+        return setup_lever(out, r, f);
     }
-    else if (f->item == "floodgate")
+    else if (f->type == layout_type::floodgate)
     {
         if (!f->way.empty())
         {
-            for (auto rr = rooms.begin(); rr != rooms.end(); rr++)
+            for (auto rr : rooms)
             {
-                if ((*rr)->status == room_status::plan)
+                if (rr->status == room_status::plan)
                     continue;
-                for (auto ff = (*rr)->layout.begin(); ff != (*rr)->layout.end(); ff++)
+                for (auto ff : rr->layout)
                 {
-                    if ((*ff)->item == "trap" &&
-                        (*ff)->subtype == "lever" &&
-                        (*ff)->target == f)
+                    if (ff->type == layout_type::lever && ff->target == f)
                     {
-                        link_lever(out, *ff, f);
+                        link_lever(out, ff, f);
                     }
                 }
             }
         }
     }
-    else if (f->item == "archerytarget")
+    else if (f->type == layout_type::archery_target)
     {
         f->makeroom = true;
     }
@@ -3522,22 +3638,21 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
             }
         }
     }
-    for (auto f_ = r->layout.begin(); f_ != r->layout.end(); f_++)
+    for (auto f_ : r->layout)
     {
-        if ((*f_)->item != "door")
+        if (f_->type != layout_type::door)
             continue;
-        int16_t x = r->min.x + (*f_)->x;
-        int16_t y = r->min.y + (*f_)->y;
-        set_ext(x, y, 0);
+        df::coord t = r->min + f_->pos;
+        set_ext(t.x, t.y, 0);
         // tile in front of the door tile is 4 (TODO door in corner...)
-        if (x < r->min.x)
-            set_ext(x + 1, y, 4);
-        if (x > r->max.x)
-            set_ext(x - 1, y, 4);
-        if (y < r->min.y)
-            set_ext(x, y + 1, 4);
-        if (y > r->max.y)
-            set_ext(x, y - 1, 4);
+        if (t.x < r->min.x)
+            set_ext(t.x + 1, t.y, 4);
+        if (t.x > r->max.x)
+            set_ext(t.x - 1, t.y, 4);
+        if (t.y < r->min.y)
+            set_ext(t.x, t.y + 1, 4);
+        if (t.y > r->max.y)
+            set_ext(t.x, t.y - 1, 4);
     }
     bld->is_room = true;
 
@@ -3551,7 +3666,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     else if (r->type == room_type::barracks)
     {
         df::building *bld = r->dfbuilding();
-        if (f->item == "archerytarget")
+        if (f->type == layout_type::archery_target)
         {
             bld = df::building::find(f->bld_id);
         }
@@ -3572,11 +3687,11 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
         if (!f->target)
         {
             room *cistern = find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::reserve; });
-            for (auto gate = cistern->layout.begin(); gate != cistern->layout.end(); gate++)
+            for (auto gate : cistern->layout)
             {
-                if ((*gate)->item == "floodgate" && (*gate)->way == way)
+                if (gate->type == layout_type::floodgate && gate->way == way)
                 {
-                    f->target = *gate;
+                    f->target = gate;
                     break;
                 }
             }
@@ -3680,14 +3795,14 @@ void Plan::monitor_cistern(color_ostream & out)
     if (!m_c_lever_in)
     {
         room *well = find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern; });
-        for (auto f = well->layout.begin(); f != well->layout.end(); f++)
+        for (auto f : well->layout)
         {
-            if ((*f)->item == "trap" && (*f)->subtype == "lever")
+            if (f->type == layout_type::lever)
             {
-                if ((*f)->way == "in")
-                    m_c_lever_in = *f;
-                else if ((*f)->way == "out")
-                    m_c_lever_out = *f;
+                if (f->way == "in")
+                    m_c_lever_in = f;
+                else if (f->way == "out")
+                    m_c_lever_out = f;
             }
         }
         m_c_cistern = find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::well; });
@@ -4621,17 +4736,17 @@ df::coord Plan::surface_tile_at(int16_t tx, int16_t ty, bool allow_trees)
 std::string Plan::status()
 {
     std::map<task_type::type, size_t> task_count;
-    std::map<std::string, std::set<df::coord>> furnishing;
-    for (auto t = tasks_generic.begin(); t != tasks_generic.end(); t++)
+    std::map<layout_type::type, std::set<df::coord>> furnishing;
+    for (auto t : tasks_generic)
     {
-        task_count[(*t)->type]++;
+        task_count[t->type]++;
     }
-    for (auto t = tasks_furniture.begin(); t != tasks_furniture.end(); t++)
+    for (auto t : tasks_furniture)
     {
-        task_count[(*t)->type]++;
-        if (!(*t)->f->item.empty())
+        task_count[t->type]++;
+        if (!t->f->type == layout_type::none)
         {
-            furnishing[(*t)->f->item].insert((*t)->r->min + df::coord((*t)->f->x, (*t)->f->y, (*t)->f->z));
+            furnishing[t->f->type].insert(t->r->min + t->f->pos);
         }
     }
     std::ostringstream s;
@@ -4735,27 +4850,27 @@ void Plan::categorize_all()
 {
     room_category.clear();
     room_by_z.clear();
-    for (auto r = rooms.begin(); r != rooms.end(); r++)
+    for (auto r : rooms)
     {
-        room_category[(*r)->type].push_back(*r);
-        for (int32_t z = (*r)->min.z; z <= (*r)->max.z; z++)
+        room_category[r->type].push_back(r);
+        for (int32_t z = r->min.z; z <= r->max.z; z++)
         {
-            room_by_z[z].insert(*r);
+            room_by_z[z].insert(r);
         }
-        for (auto f = (*r)->layout.begin(); f != (*r)->layout.end(); f++)
+        for (auto f : r->layout)
         {
-            room_by_z[(*r)->min.z + (*f)->z].insert(*r);
+            room_by_z[r->min.z + f->pos.z].insert(r);
         }
     }
-    for (auto r = corridors.begin(); r != corridors.end(); r++)
+    for (auto r : corridors)
     {
-        for (int32_t z = (*r)->min.z; z <= (*r)->max.z; z++)
+        for (int32_t z = r->min.z; z <= r->max.z; z++)
         {
-            room_by_z[z].insert(*r);
+            room_by_z[z].insert(r);
         }
-        for (auto f = (*r)->layout.begin(); f != (*r)->layout.end(); f++)
+        for (auto f : r->layout)
         {
-            room_by_z[(*r)->min.z + (*f)->z].insert(*r);
+            room_by_z[r->min.z + f->pos.z].insert(r);
         }
     }
 
@@ -4899,14 +5014,9 @@ std::string Plan::describe_furniture(furniture *f)
 
     std::ostringstream s;
 
-    if (!f->item.empty())
+    if (f->type != layout_type::none)
     {
-        s << f->item;
-
-        if (!f->subtype.empty())
-        {
-            s << " (" << f->subtype << ")";
-        }
+        s << f->type;
     }
     else
     {
@@ -4953,7 +5063,7 @@ std::string Plan::describe_furniture(furniture *f)
         s << " (internal)";
     }
 
-    s << " (" << f->x << ", " << f->y << ", " << f->z << ")";
+    s << " (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ")";
 
     if (f->target != nullptr)
     {
@@ -5124,7 +5234,7 @@ void Plan::fixup_open(color_ostream & out, room *r)
                 for (auto it = r->layout.begin(); it != r->layout.end(); it++)
                 {
                     furniture *f = *it;
-                    df::coord ft = r->min + df::coord(f->x, f->y, f->z);
+                    df::coord ft = r->min + f->pos;
                     if (t == ft)
                     {
                         if (f->construction == construction_type::NONE)
@@ -5202,14 +5312,12 @@ void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::cons
     if (!f)
     {
         f = new furniture();
-        f->x = t.x - r->min.x;
-        f->y = t.y - r->min.y;
-        f->z = t.z - r->min.z;
+        f->pos = t - r->min;
         r->layout.push_back(f);
     }
     if (f->construction != c)
     {
-        ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->x, f->y, f->z));
+        ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->pos.x, f->pos.y, f->pos.z));
         tasks_furniture.push_back(new task(task_type::furnish, r, f));
     }
     f->construction = c;
