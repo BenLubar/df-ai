@@ -282,8 +282,6 @@ struct room
 struct furniture
 {
     layout_type::type type;
-    std::string item_;
-    std::string subtype_;
     df::construction_type construction;
     df::tile_dig_designation dig;
     std::string direction;
@@ -298,8 +296,7 @@ struct furniture
     bool internal;
 
     furniture() :
-        item_(),
-        subtype_(),
+        type(layout_type::none),
         construction(construction_type::NONE),
         dig(tile_dig_designation::Default),
         direction(),
