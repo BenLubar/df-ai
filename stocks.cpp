@@ -3652,7 +3652,7 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && i->subtype->subtype == subtype;
         };
     }
-    if (k == "trap")
+    if (k == "trap" || k == "mechanism")
     {
         return [](df::item *i) -> bool
         {
