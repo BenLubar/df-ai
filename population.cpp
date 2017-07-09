@@ -1342,7 +1342,7 @@ bool Population::perform_trade(color_ostream & out)
     {
         if (perform_trade(out, trade))
         {
-return false;
+            return false;
         }
     }
     else
@@ -1679,9 +1679,11 @@ bool Population::perform_trade_step(color_ostream & out)
     }
     case 10:
     {
-        for (auto it = trade->counteroffer.begin(); it != trade->counteroffer.end(); it++)
+        for (auto it : trade->counteroffer)
         {
-            ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(*it));
+            ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(it));
+            trade_offer_value += ai->trade->item_or_container_price_for_caravan(it, trade->caravan, trade->entity, creature, it->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
+            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", trade_request_value, trade_offer_value));
         }
         ai->debug(out, "[trade] Accepting counter-offer.");
 
