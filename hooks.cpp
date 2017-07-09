@@ -39,13 +39,13 @@ static volatile bool lockstep_hooked = false;
 static volatile bool lockstep_want_shutdown = false;
 
 #ifdef _WIN32
-static char Real_GetTickCount[6];
+static uint8_t Real_GetTickCount[6];
 static DWORD WINAPI Fake_GetTickCount(void)
 {
     return lockstep_tick_count;
 }
 #else
-static char Real_gettimeofday[6];
+static uint8_t Real_gettimeofday[6];
 static int Fake_gettimeofday(struct timeval *tv, struct timezone *) throw()
 {
     tv->tv_sec = lockstep_tick_count / 1000;
@@ -54,47 +54,47 @@ static int Fake_gettimeofday(struct timeval *tv, struct timezone *) throw()
 }
 #endif
 
-static char Real_SDL_GetTicks[6];
+static uint8_t Real_SDL_GetTicks[6];
 static uint32_t Fake_SDL_GetTicks()
 {
     return lockstep_tick_count;
 }
 
-static void Add_Hook(void *target, char(&real)[6], const void *fake)
+static void Add_Hook(void *target, uint8_t(&real)[6], const void *fake)
 {
     MemoryPatcher patcher;
     patcher.verifyAccess(target, 6, true);
 
-    int32_t jump_offset((char*)fake - (char*)target - 4 - 1);
-    real[0] = *((char *)target + 0);
-    real[1] = *((char *)target + 1);
-    real[2] = *((char *)target + 2);
-    real[3] = *((char *)target + 3);
-    real[4] = *((char *)target + 4);
-    real[5] = *((char *)target + 5);
-    *((char *)target + 0) = 0xE9;
-    *((char *)target + 1) = *((char *)&jump_offset + 0);
-    *((char *)target + 2) = *((char *)&jump_offset + 1);
-    *((char *)target + 3) = *((char *)&jump_offset + 2);
-    *((char *)target + 4) = *((char *)&jump_offset + 3);
-    *((char *)target + 5) = 0x90;
+    int32_t jump_offset((uint8_t *)fake - (uint8_t *)target - 4 - 1);
+    real[0] = *((uint8_t *)target + 0);
+    real[1] = *((uint8_t *)target + 1);
+    real[2] = *((uint8_t *)target + 2);
+    real[3] = *((uint8_t *)target + 3);
+    real[4] = *((uint8_t *)target + 4);
+    real[5] = *((uint8_t *)target + 5);
+    *((uint8_t *)target + 0) = 0xE9;
+    *((uint8_t *)target + 1) = *((uint8_t *)&jump_offset + 0);
+    *((uint8_t *)target + 2) = *((uint8_t *)&jump_offset + 1);
+    *((uint8_t *)target + 3) = *((uint8_t *)&jump_offset + 2);
+    *((uint8_t *)target + 4) = *((uint8_t *)&jump_offset + 3);
+    *((uint8_t *)target + 5) = 0x90;
 
 #if defined(_WIN32)
     FlushInstructionCache(GetCurrentProcess(), target, 6);
 #endif
 }
 
-static void Remove_Hook(void *target, char(&real)[6], const void *)
+static void Remove_Hook(void *target, uint8_t(&real)[6], const void *)
 {
     MemoryPatcher patcher;
     patcher.verifyAccess(target, 6, true);
 
-    *((char *)target + 0) = real[0];
-    *((char *)target + 1) = real[1];
-    *((char *)target + 2) = real[2];
-    *((char *)target + 3) = real[3];
-    *((char *)target + 4) = real[4];
-    *((char *)target + 5) = real[5];
+    *((uint8_t *)target + 0) = real[0];
+    *((uint8_t *)target + 1) = real[1];
+    *((uint8_t *)target + 2) = real[2];
+    *((uint8_t *)target + 3) = real[3];
+    *((uint8_t *)target + 4) = real[4];
+    *((uint8_t *)target + 5) = real[5];
 
 #if defined(_WIN32)
     FlushInstructionCache(GetCurrentProcess(), target, 6);
@@ -294,11 +294,12 @@ static int32_t lockstep_write_movie_chunk()
                 header[2] = gview->supermovie_delayrate;
                 f.write((const char *)&header, sizeof(header));
 
-                int32_t s = gview->supermovie_sound.size();
+                int32_t s = int32_t(gview->supermovie_sound.size());
                 f.write((const char *)&s, sizeof(int32_t));
                 char buf[50];
                 for (s = 0; s < int32_t(gview->supermovie_sound.size()); s++)
                 {
+                    memset(buf, 0, sizeof(buf));
                     strcpy(buf, gview->supermovie_sound.at(s)->c_str());
                     f.write(buf, sizeof(buf));
                 }

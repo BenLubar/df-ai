@@ -22,15 +22,129 @@ namespace df
 class AI;
 struct room;
 
+namespace stock_item
+{
+    enum item
+    {
+        anvil,
+        armor_feet,
+        armor_hands,
+        armor_head,
+        armor_legs,
+        armor_shield,
+        armor_stand,
+        armor_torso,
+        ash,
+        axe,
+        backpack,
+        bag,
+        bag_plant,
+        barrel,
+        bed,
+        bin,
+        block,
+        bone,
+        bone_bolts,
+        book_binding,
+        bookcase,
+        bucket,
+        cabinet,
+        cage,
+        chair,
+        chest,
+        clay,
+        cloth,
+        cloth_nodye,
+        clothes_feet,
+        clothes_hands,
+        clothes_head,
+        clothes_legs,
+        clothes_torso,
+        coal,
+        coffin,
+        coffin_bld,
+        coffin_bld_pet,
+        crossbow,
+        crutch,
+        dead_dwarf,
+        door,
+        drink,
+        drink_fruit,
+        drink_plant,
+        dye,
+        dye_plant,
+        dye_seeds,
+        flask,
+        floodgate,
+        food_ingredients,
+        giant_corkscrew,
+        goblet,
+        gypsum,
+        hive,
+        honey,
+        honeycomb,
+        jug,
+        leather,
+        lye,
+        meal,
+        mechanism,
+        metal_ore,
+        milk,
+        mill_plant,
+        minecart,
+        nest_box,
+        paper,
+        pick,
+        pipe_section,
+        plaster_powder,
+        quern,
+        quire,
+        quiver,
+        raw_adamantine,
+        raw_coke,
+        raw_fish,
+        rock_pot,
+        rope,
+        rough_gem,
+        shell,
+        skull,
+        slab,
+        slurry,
+        slurry_plant,
+        soap,
+        splint,
+        stepladder,
+        stone,
+        table,
+        tallow,
+        thread,
+        thread_plant,
+        thread_seeds,
+        toy,
+        traction_bench,
+        training_weapon,
+        weapon,
+        weapon_rack,
+        wheelbarrow,
+        wood,
+        wool,
+        written_on_quire,
+
+        _stock_item_count
+    };
+}
+
+std::ostream & operator <<(std::ostream & stream, stock_item::item item);
+
 class Stocks
 {
     AI *ai;
 public:
-    std::map<std::string, int32_t> count;
+    std::map<stock_item::item, int32_t> count;
 private:
     OnupdateCallback *onupdate_handle;
-    std::vector<std::string> updating;
-    std::vector<std::string> updating_count;
+    std::vector<stock_item::item> updating;
+    std::vector<stock_item::item> updating_count;
     size_t lastupdating;
     std::map<std::pair<uint8_t, int32_t>, size_t> farmplots;
     std::map<int32_t, size_t> seeds;
@@ -49,7 +163,7 @@ public:
 private:
     std::set<df::coord, std::function<bool(df::coord, df::coord)>> last_treelist;
     df::coord last_cutpos;
-    std::time_t last_warn_food;
+    int32_t last_warn_food_year;
 
     std::map<int32_t, int16_t> drink_plants;
     std::map<int32_t, int16_t> drink_fruits;
@@ -93,20 +207,20 @@ public:
     void update_corpses(color_ostream & out);
     void update_slabs(color_ostream & out);
 
-    int32_t num_needed(const std::string & key);
-    void act(color_ostream & out, std::string key);
-    int32_t count_stocks(color_ostream & out, std::string k);
+    int32_t num_needed(stock_item::item key);
+    void act(color_ostream & out, stock_item::item key);
+    int32_t count_stocks(color_ostream & out, stock_item::item k);
     int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE, bool training = false);
     int32_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
     int32_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
 
-    void queue_need(color_ostream & out, std::string what, int32_t amount);
+    void queue_need(color_ostream & out, stock_item::item what, int32_t amount);
     void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
     void queue_need_armor(color_ostream & out, df::items_other_id oidx);
     void queue_need_anvil(color_ostream & out);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
     void queue_need_coffin_bld(color_ostream & out, int32_t amount);
-    void queue_use(color_ostream & out, std::string what, int32_t amount);
+    void queue_use(color_ostream & out, stock_item::item what, int32_t amount);
     void queue_use_gems(color_ostream & out, int32_t amount);
     void queue_use_metal_ore(color_ostream & out, int32_t amount);
     void queue_use_raw_coke(color_ostream & out, int32_t amount);
@@ -132,15 +246,15 @@ public:
     int32_t count_manager_orders(color_ostream & out, const df::manager_order_template & tmpl);
     void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount = 1);
 
-    std::string furniture_order(std::string k);
-    std::function<bool(df::item *)> furniture_find(std::string k);
-    df::item *find_furniture_item(std::string itm);
-    int32_t find_furniture_itemcount(std::string itm);
+    std::string furniture_order(stock_item::item k);
+    std::function<bool(df::item *)> furniture_find(stock_item::item k);
+    df::item *find_furniture_item(stock_item::item itm);
+    int32_t find_furniture_itemcount(stock_item::item itm);
 
     void farmplot(color_ostream & out, room *r, bool initial = true);
     void queue_slab(color_ostream & out, int32_t histfig_id);
 
-    bool need_more(std::string type);
+    bool need_more(stock_item::item type);
 
     bool willing_to_trade_item(color_ostream & out, df::item *item);
     bool want_trader_item(color_ostream & out, df::item *item);

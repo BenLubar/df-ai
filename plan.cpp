@@ -2257,7 +2257,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
 
     df::building_type building_type = building_type::NONE;
     int building_subtype = -1;
-    std::string stocks_furniture_type;
+    stock_item::item stocks_furniture_type;
 
     switch (f->type)
     {
@@ -2268,45 +2268,45 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return try_furnish_archerytarget(out, r, f, tgtile);
     case layout_type::armor_stand:
         building_type = building_type::Armorstand;
-        stocks_furniture_type = "armorstand";
+        stocks_furniture_type = stock_item::armor_stand;
         break;
     case layout_type::bed:
         building_type = building_type::Bed;
-        stocks_furniture_type = "bed";
+        stocks_furniture_type = stock_item::bed;
         break;
     case layout_type::bookcase:
         building_type = building_type::Bookcase;
-        stocks_furniture_type = "bookcase";
+        stocks_furniture_type = stock_item::bookcase;
         break;
     case layout_type::cabinet:
         building_type = building_type::Cabinet;
-        stocks_furniture_type = "cabinet";
+        stocks_furniture_type = stock_item::cabinet;
         break;
     case layout_type::cage_trap:
-        if (ai->stocks->count["cage"] < 1)
+        if (ai->stocks->count[stock_item::cage] < 1)
         {
             // avoid too much spam
             return false;
         }
         building_type = building_type::Trap;
         building_subtype = trap_type::CageTrap;
-        stocks_furniture_type = "mechanism";
+        stocks_furniture_type = stock_item::mechanism;
         break;
     case layout_type::chair:
         building_type = building_type::Chair;
-        stocks_furniture_type = "chair";
+        stocks_furniture_type = stock_item::chair;
         break;
     case layout_type::chest:
         building_type = building_type::Box;
-        stocks_furniture_type = "chest";
+        stocks_furniture_type = stock_item::chest;
         break;
     case layout_type::coffin:
         building_type = building_type::Coffin;
-        stocks_furniture_type = "coffin";
+        stocks_furniture_type = stock_item::coffin;
         break;
     case layout_type::door:
         building_type = building_type::Door;
-        stocks_furniture_type = "door";
+        stocks_furniture_type = stock_item::door;
         break;
     case layout_type::floodgate:
         // require the floor to be smooth before we build a floodgate on it
@@ -2319,46 +2319,46 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
             return false;
         }
         building_type = building_type::Floodgate;
-        stocks_furniture_type = "floodgate";
+        stocks_furniture_type = stock_item::floodgate;
         break;
     case layout_type::gear_assembly:
         building_type = building_type::GearAssembly;
-        stocks_furniture_type = "mechanism";
+        stocks_furniture_type = stock_item::mechanism;
         break;
     case layout_type::hive:
         building_type = building_type::Hive;
-        stocks_furniture_type = "hive";
+        stocks_furniture_type = stock_item::hive;
         break;
     case layout_type::lever:
         building_type = building_type::Trap;
         building_subtype = trap_type::Lever;
-        stocks_furniture_type = "mechanism";
+        stocks_furniture_type = stock_item::mechanism;
         break;
     case layout_type::nest_box:
         building_type = building_type::NestBox;
-        stocks_furniture_type = "nestbox";
+        stocks_furniture_type = stock_item::nest_box;
         break;
     case layout_type::roller:
         return try_furnish_roller(out, r, f, tgtile);
     case layout_type::table:
         building_type = building_type::Table;
-        stocks_furniture_type = "table";
+        stocks_furniture_type = stock_item::table;
         break;
     case layout_type::track_stop:
         building_type = building_type::Trap;
         building_subtype = trap_type::TrackStop;
-        stocks_furniture_type = "mechanism";
+        stocks_furniture_type = stock_item::mechanism;
     case layout_type::traction_bench:
         building_type = building_type::TractionBench;
-        stocks_furniture_type = "traction_bench";
+        stocks_furniture_type = stock_item::traction_bench;
         break;
     case layout_type::vertical_axle:
         building_type = building_type::AxleVertical;
-        stocks_furniture_type = "wood";
+        stocks_furniture_type = stock_item::wood;
         break;
     case layout_type::weapon_rack:
         building_type = building_type::Weaponrack;
-        stocks_furniture_type = "weaponrack";
+        stocks_furniture_type = stock_item::weapon_rack;
         break;
     case layout_type::well:
         return try_furnish_well(out, r, f, tgtile);

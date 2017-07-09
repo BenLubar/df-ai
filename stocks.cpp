@@ -29,6 +29,7 @@
 #include "df/item_ammost.h"
 #include "df/item_animaltrapst.h"
 #include "df/item_armorst.h"
+#include "df/item_armorstandst.h"
 #include "df/item_barrelst.h"
 #include "df/item_barst.h"
 #include "df/item_binst.h"
@@ -52,8 +53,10 @@
 #include "df/item_slabst.h"
 #include "df/item_threadst.h"
 #include "df/item_toolst.h"
+#include "df/item_traction_benchst.h"
 #include "df/item_trapcompst.h"
 #include "df/item_trappartsst.h"
+#include "df/item_weaponrackst.h"
 #include "df/item_weaponst.h"
 #include "df/itemdef_ammost.h"
 #include "df/itemdef_armorst.h"
@@ -93,139 +96,356 @@ REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
+std::ostream & operator <<(std::ostream & stream, stock_item::item item)
+{
+    switch (item)
+    {
+    case stock_item::anvil:
+        return stream << "anvil";
+    case stock_item::armor_feet:
+        return stream << "armor_feet";
+    case stock_item::armor_hands:
+        return stream << "armor_hands";
+    case stock_item::armor_head:
+        return stream << "armor_head";
+    case stock_item::armor_legs:
+        return stream << "armor_legs";
+    case stock_item::armor_shield:
+        return stream << "armor_shield";
+    case stock_item::armor_stand:
+        return stream << "armor_stand";
+    case stock_item::armor_torso:
+        return stream << "armor_torso";
+    case stock_item::ash:
+        return stream << "ash";
+    case stock_item::axe:
+        return stream << "axe";
+    case stock_item::backpack:
+        return stream << "backpack";
+    case stock_item::bag:
+        return stream << "bag";
+    case stock_item::bag_plant:
+        return stream << "bag_plant";
+    case stock_item::barrel:
+        return stream << "barrel";
+    case stock_item::bed:
+        return stream << "bed";
+    case stock_item::bin:
+        return stream << "bin";
+    case stock_item::block:
+        return stream << "block";
+    case stock_item::bone:
+        return stream << "bone";
+    case stock_item::bone_bolts:
+        return stream << "bone_bolts";
+    case stock_item::book_binding:
+        return stream << "book_binding";
+    case stock_item::bookcase:
+        return stream << "bookcase";
+    case stock_item::bucket:
+        return stream << "bucket";
+    case stock_item::cabinet:
+        return stream << "cabinet";
+    case stock_item::cage:
+        return stream << "cage";
+    case stock_item::chair:
+        return stream << "chair";
+    case stock_item::chest:
+        return stream << "chest";
+    case stock_item::clay:
+        return stream << "clay";
+    case stock_item::cloth:
+        return stream << "cloth";
+    case stock_item::cloth_nodye:
+        return stream << "cloth_nodye";
+    case stock_item::clothes_feet:
+        return stream << "clothes_feet";
+    case stock_item::clothes_hands:
+        return stream << "clothes_hands";
+    case stock_item::clothes_head:
+        return stream << "clothes_head";
+    case stock_item::clothes_legs:
+        return stream << "clothes_legs";
+    case stock_item::clothes_torso:
+        return stream << "clothes_torso";
+    case stock_item::coal:
+        return stream << "coal";
+    case stock_item::coffin:
+        return stream << "coffin";
+    case stock_item::coffin_bld:
+        return stream << "coffin_bld";
+    case stock_item::coffin_bld_pet:
+        return stream << "coffin_bld_pet";
+    case stock_item::crossbow:
+        return stream << "crossbow";
+    case stock_item::crutch:
+        return stream << "crutch";
+    case stock_item::dead_dwarf:
+        return stream << "dead_dwarf";
+    case stock_item::door:
+        return stream << "door";
+    case stock_item::drink:
+        return stream << "drink";
+    case stock_item::drink_fruit:
+        return stream << "drink_fruit";
+    case stock_item::drink_plant:
+        return stream << "drink_plant";
+    case stock_item::dye:
+        return stream << "dye";
+    case stock_item::dye_plant:
+        return stream << "dye_plant";
+    case stock_item::dye_seeds:
+        return stream << "dye_seeds";
+    case stock_item::flask:
+        return stream << "flask";
+    case stock_item::floodgate:
+        return stream << "floodgate";
+    case stock_item::food_ingredients:
+        return stream << "food_ingredients";
+    case stock_item::giant_corkscrew:
+        return stream << "giant_corkscrew";
+    case stock_item::goblet:
+        return stream << "goblet";
+    case stock_item::gypsum:
+        return stream << "gypsum";
+    case stock_item::hive:
+        return stream << "hive";
+    case stock_item::honey:
+        return stream << "honey";
+    case stock_item::honeycomb:
+        return stream << "honeycomb";
+    case stock_item::jug:
+        return stream << "jug";
+    case stock_item::leather:
+        return stream << "leather";
+    case stock_item::lye:
+        return stream << "lye";
+    case stock_item::meal:
+        return stream << "meal";
+    case stock_item::mechanism:
+        return stream << "mechanism";
+    case stock_item::metal_ore:
+        return stream << "metal_ore";
+    case stock_item::milk:
+        return stream << "milk";
+    case stock_item::mill_plant:
+        return stream << "mill_plant";
+    case stock_item::minecart:
+        return stream << "minecart";
+    case stock_item::nest_box:
+        return stream << "nest_box";
+    case stock_item::paper:
+        return stream << "paper";
+    case stock_item::pick:
+        return stream << "pick";
+    case stock_item::pipe_section:
+        return stream << "pipe_section";
+    case stock_item::plaster_powder:
+        return stream << "plaster_powder";
+    case stock_item::quern:
+        return stream << "quern";
+    case stock_item::quire:
+        return stream << "quire";
+    case stock_item::quiver:
+        return stream << "quiver";
+    case stock_item::raw_adamantine:
+        return stream << "raw_adamantine";
+    case stock_item::raw_coke:
+        return stream << "raw_coke";
+    case stock_item::raw_fish:
+        return stream << "raw_fish";
+    case stock_item::rock_pot:
+        return stream << "rock_pot";
+    case stock_item::rope:
+        return stream << "rope";
+    case stock_item::rough_gem:
+        return stream << "rough_gem";
+    case stock_item::shell:
+        return stream << "shell";
+    case stock_item::skull:
+        return stream << "skull";
+    case stock_item::slab:
+        return stream << "slab";
+    case stock_item::slurry:
+        return stream << "slurry";
+    case stock_item::slurry_plant:
+        return stream << "slurry_plant";
+    case stock_item::soap:
+        return stream << "soap";
+    case stock_item::splint:
+        return stream << "splint";
+    case stock_item::stepladder:
+        return stream << "stepladder";
+    case stock_item::stone:
+        return stream << "stone";
+    case stock_item::table:
+        return stream << "table";
+    case stock_item::tallow:
+        return stream << "tallow";
+    case stock_item::thread:
+        return stream << "thread";
+    case stock_item::thread_plant:
+        return stream << "thread_plant";
+    case stock_item::thread_seeds:
+        return stream << "thread_seeds";
+    case stock_item::toy:
+        return stream << "toy";
+    case stock_item::traction_bench:
+        return stream << "traction_bench";
+    case stock_item::training_weapon:
+        return stream << "training_weapon";
+    case stock_item::weapon:
+        return stream << "weapon";
+    case stock_item::weapon_rack:
+        return stream << "weapon_rack";
+    case stock_item::wheelbarrow:
+        return stream << "wheelbarrow";
+    case stock_item::wood:
+        return stream << "wood";
+    case stock_item::wool:
+        return stream << "wool";
+    case stock_item::written_on_quire:
+        return stream << "written_on_quire";
+
+    case stock_item::_stock_item_count:
+        return stream << "???";
+    }
+    return stream << "???";
+}
+
 const static struct Watch
 {
-    std::map<std::string, int32_t> Needed;
-    std::map<std::string, int32_t> NeededPerDwarf; // per 100 dwarves, actually
-    std::map<std::string, int32_t> WatchStock;
-    std::set<std::string> AlsoCount;
+    std::map<stock_item::item, int32_t> Needed;
+    std::map<stock_item::item, int32_t> NeededPerDwarf; // per 100 dwarves, actually
+    std::map<stock_item::item, int32_t> WatchStock;
+    std::set<stock_item::item> AlsoCount;
 
     Watch()
     {
-        Needed["door"] = 4;
-        Needed["bed"] = 4;
-        Needed["bin"] = 4;
-        Needed["barrel"] = 4;
-        Needed["cabinet"] = 4;
-        Needed["chest"] = 4;
-        Needed["mechanism"] = 4;
-        Needed["bag"] = 3;
-        Needed["table"] = 3;
-        Needed["chair"] = 3;
-        Needed["cage"] = 3;
-        Needed["coffin"] = 2;
-        Needed["coffin_bld"] = 3;
-        Needed["coffin_bld_pet"] = 1;
-        Needed["food"] = 20;
-        Needed["drink"] = 20;
-        Needed["goblet"] = 10;
-        Needed["wood"] = 16;
-        Needed["bucket"] = 2;
-        Needed["thread_seeds"] = 10;
-        Needed["dye_seeds"] = 10;
-        Needed["dye"] = 10;
-        Needed["weapon"] = 2;
-        Needed["armor_torso"] = 2;
-        Needed["clothes_torso"] = 2;
-        Needed["block"] = 6;
-        Needed["quiver"] = 2;
-        Needed["flask"] = 2;
-        Needed["backpack"] = 2;
-        Needed["wheelbarrow"] = 1;
-        Needed["splint"] = 1;
-        Needed["crutch"] = 1;
-        Needed["rope"] = 1;
-        Needed["weaponrack"] = 1;
-        Needed["armorstand"] = 1;
-        Needed["floodgate"] = 1;
-        Needed["traction_bench"] = 1;
-        Needed["soap"] = 1;
-        Needed["lye"] = 1;
-        Needed["ash"] = 1;
-        Needed["plasterpowder"] = 1;
-        Needed["coal"] = 3;
-        Needed["raw_coke"] = 1;
-        Needed["gypsum"] = 1;
-        Needed["slab"] = 1;
-        Needed["giant_corkscrew"] = 1;
-        Needed["pipe_section"] = 1;
-        Needed["anvil"] = 1;
-        Needed["quern"] = 3;
-        Needed["minecart"] = 1;
-        Needed["nestbox"] = 1;
-        Needed["hive"] = 1;
-        Needed["jug"] = 1;
-        Needed["stepladder"] = 2;
-        Needed["pick"] = 2;
-        Needed["axe"] = 2;
-        Needed["armor_head"] = 2;
-        Needed["clothes_head"] = 2;
-        Needed["armor_legs"] = 2;
-        Needed["clothes_legs"] = 2;
-        Needed["armor_hands"] = 2;
-        Needed["clothes_hands"] = 2;
-        Needed["armor_feet"] = 2;
-        Needed["clothes_feet"] = 2;
-        Needed["armor_shield"] = 2;
-        Needed["bookcase"] = 1;
-        Needed["slurry"] = 5;
-        Needed["paper"] = 5;
-        Needed["quire"] = 5;
-        Needed["rock_pot"] = 4;
-        Needed["toy"] = 2;
-        Needed["book_binding"] = 5;
+        Needed[stock_item::door] = 4;
+        Needed[stock_item::bed] = 4;
+        Needed[stock_item::bin] = 4;
+        Needed[stock_item::barrel] = 4;
+        Needed[stock_item::cabinet] = 4;
+        Needed[stock_item::chest] = 4;
+        Needed[stock_item::mechanism] = 4;
+        Needed[stock_item::bag] = 3;
+        Needed[stock_item::table] = 3;
+        Needed[stock_item::chair] = 3;
+        Needed[stock_item::cage] = 3;
+        Needed[stock_item::coffin] = 2;
+        Needed[stock_item::coffin_bld] = 3;
+        Needed[stock_item::coffin_bld_pet] = 1;
+        Needed[stock_item::meal] = 20;
+        Needed[stock_item::drink] = 20;
+        Needed[stock_item::goblet] = 10;
+        Needed[stock_item::wood] = 16;
+        Needed[stock_item::bucket] = 2;
+        Needed[stock_item::thread_seeds] = 10;
+        Needed[stock_item::dye_seeds] = 10;
+        Needed[stock_item::dye] = 10;
+        Needed[stock_item::weapon] = 2;
+        Needed[stock_item::armor_torso] = 2;
+        Needed[stock_item::clothes_torso] = 2;
+        Needed[stock_item::block] = 6;
+        Needed[stock_item::quiver] = 2;
+        Needed[stock_item::flask] = 2;
+        Needed[stock_item::backpack] = 2;
+        Needed[stock_item::wheelbarrow] = 1;
+        Needed[stock_item::splint] = 1;
+        Needed[stock_item::crutch] = 1;
+        Needed[stock_item::rope] = 1;
+        Needed[stock_item::weapon_rack] = 1;
+        Needed[stock_item::armor_stand] = 1;
+        Needed[stock_item::floodgate] = 1;
+        Needed[stock_item::traction_bench] = 1;
+        Needed[stock_item::soap] = 1;
+        Needed[stock_item::lye] = 1;
+        Needed[stock_item::ash] = 1;
+        Needed[stock_item::plaster_powder] = 1;
+        Needed[stock_item::coal] = 3;
+        Needed[stock_item::raw_coke] = 1;
+        Needed[stock_item::gypsum] = 1;
+        Needed[stock_item::slab] = 1;
+        Needed[stock_item::giant_corkscrew] = 1;
+        Needed[stock_item::pipe_section] = 1;
+        Needed[stock_item::anvil] = 1;
+        Needed[stock_item::quern] = 3;
+        Needed[stock_item::minecart] = 1;
+        Needed[stock_item::nest_box] = 1;
+        Needed[stock_item::hive] = 1;
+        Needed[stock_item::jug] = 1;
+        Needed[stock_item::stepladder] = 2;
+        Needed[stock_item::pick] = 2;
+        Needed[stock_item::axe] = 2;
+        Needed[stock_item::armor_head] = 2;
+        Needed[stock_item::clothes_head] = 2;
+        Needed[stock_item::armor_legs] = 2;
+        Needed[stock_item::clothes_legs] = 2;
+        Needed[stock_item::armor_hands] = 2;
+        Needed[stock_item::clothes_hands] = 2;
+        Needed[stock_item::armor_feet] = 2;
+        Needed[stock_item::clothes_feet] = 2;
+        Needed[stock_item::armor_shield] = 2;
+        Needed[stock_item::bookcase] = 1;
+        Needed[stock_item::slurry] = 5;
+        Needed[stock_item::paper] = 5;
+        Needed[stock_item::quire] = 5;
+        Needed[stock_item::rock_pot] = 4;
+        Needed[stock_item::toy] = 2;
+        Needed[stock_item::book_binding] = 5;
 
-        NeededPerDwarf["food"] = 100;
-        NeededPerDwarf["drink"] = 200;
-        NeededPerDwarf["slab"] = 10;
-        NeededPerDwarf["soap"] = 20;
-        NeededPerDwarf["weapon"] = 5;
-        NeededPerDwarf["cloth"] = 20;
-        NeededPerDwarf["clothes_torso"] = 20;
-        NeededPerDwarf["clothes_legs"] = 20;
-        NeededPerDwarf["clothes_feet"] = 20;
-        NeededPerDwarf["clothes_hands"] = 20;
-        NeededPerDwarf["clothes_head"] = 20;
-        NeededPerDwarf["armor_shield"] = 3;
-        NeededPerDwarf["armor_torso"] = 3;
-        NeededPerDwarf["armor_legs"] = 3;
-        NeededPerDwarf["armor_feet"] = 3;
-        NeededPerDwarf["armor_hands"] = 3;
-        NeededPerDwarf["armor_head"] = 3;
-        NeededPerDwarf["toy"] = 5;
+        NeededPerDwarf[stock_item::meal] = 100;
+        NeededPerDwarf[stock_item::drink] = 200;
+        NeededPerDwarf[stock_item::slab] = 10;
+        NeededPerDwarf[stock_item::soap] = 20;
+        NeededPerDwarf[stock_item::weapon] = 5;
+        NeededPerDwarf[stock_item::cloth] = 20;
+        NeededPerDwarf[stock_item::clothes_torso] = 20;
+        NeededPerDwarf[stock_item::clothes_legs] = 20;
+        NeededPerDwarf[stock_item::clothes_feet] = 20;
+        NeededPerDwarf[stock_item::clothes_hands] = 20;
+        NeededPerDwarf[stock_item::clothes_head] = 20;
+        NeededPerDwarf[stock_item::armor_shield] = 3;
+        NeededPerDwarf[stock_item::armor_torso] = 3;
+        NeededPerDwarf[stock_item::armor_legs] = 3;
+        NeededPerDwarf[stock_item::armor_feet] = 3;
+        NeededPerDwarf[stock_item::armor_hands] = 3;
+        NeededPerDwarf[stock_item::armor_head] = 3;
+        NeededPerDwarf[stock_item::toy] = 5;
 
-        WatchStock["roughgem"] = 6;
-        WatchStock["thread_plant"] = 10;
-        WatchStock["cloth_nodye"] = 10;
-        WatchStock["mill_plant"] = 4;
-        WatchStock["bag_plant"] = 4;
-        WatchStock["milk"] = 1;
-        WatchStock["metal_ore"] = 6;
-        WatchStock["raw_coke"] = 2;
-        WatchStock["raw_adamantine"] = 2;
-        WatchStock["skull"] = 2;
-        WatchStock["bone"] = 8;
-        WatchStock["food_ingredients"] = 2;
-        WatchStock["drink_plant"] = 5;
-        WatchStock["drink_fruit"] = 5;
-        WatchStock["honey"] = 1;
-        WatchStock["honeycomb"] = 1;
-        WatchStock["wool"] = 1;
-        WatchStock["tallow"] = 1;
-        WatchStock["shell"] = 1;
-        WatchStock["raw_fish"] = 1;
-        WatchStock["clay"] = 1;
-        WatchStock["written_on_quire"] = 1;
+        WatchStock[stock_item::rough_gem] = 6;
+        WatchStock[stock_item::thread_plant] = 10;
+        WatchStock[stock_item::cloth_nodye] = 10;
+        WatchStock[stock_item::mill_plant] = 4;
+        WatchStock[stock_item::bag_plant] = 4;
+        WatchStock[stock_item::milk] = 1;
+        WatchStock[stock_item::metal_ore] = 6;
+        WatchStock[stock_item::raw_coke] = 2;
+        WatchStock[stock_item::raw_adamantine] = 2;
+        WatchStock[stock_item::skull] = 2;
+        WatchStock[stock_item::bone] = 8;
+        WatchStock[stock_item::food_ingredients] = 2;
+        WatchStock[stock_item::drink_plant] = 5;
+        WatchStock[stock_item::drink_fruit] = 5;
+        WatchStock[stock_item::honey] = 1;
+        WatchStock[stock_item::honeycomb] = 1;
+        WatchStock[stock_item::wool] = 1;
+        WatchStock[stock_item::tallow] = 1;
+        WatchStock[stock_item::shell] = 1;
+        WatchStock[stock_item::raw_fish] = 1;
+        WatchStock[stock_item::clay] = 1;
+        WatchStock[stock_item::written_on_quire] = 1;
 
-        AlsoCount.insert("dye_plant");
-        AlsoCount.insert("cloth");
-        AlsoCount.insert("leather");
-        AlsoCount.insert("crossbow");
-        AlsoCount.insert("bonebolts");
-        AlsoCount.insert("stone");
-        AlsoCount.insert("dead_dwarf");
-        AlsoCount.insert("slurry_plant");
-        AlsoCount.insert("thread");
+        AlsoCount.insert(stock_item::dye_plant);
+        AlsoCount.insert(stock_item::cloth);
+        AlsoCount.insert(stock_item::leather);
+        AlsoCount.insert(stock_item::crossbow);
+        AlsoCount.insert(stock_item::bone_bolts);
+        AlsoCount.insert(stock_item::stone);
+        AlsoCount.insert(stock_item::dead_dwarf);
+        AlsoCount.insert(stock_item::slurry_plant);
+        AlsoCount.insert(stock_item::thread);
     }
 } Watch;
 
@@ -236,6 +456,7 @@ const static struct Manager
     // no MatCategory => mat_type = 0 (ie generic rock), unless specified here
     std::map<std::string, int32_t> Type;
     std::map<std::string, std::string> Custom;
+    std::map<uint32_t, stock_item::item> MatCategoryItem;
 
     Manager()
     {
@@ -250,7 +471,7 @@ const static struct Manager
         RealOrder["MakeRope"] = job_type::MakeChain;
         RealOrder["MakeWoodenWheelbarrow"] = job_type::MakeTool;
         RealOrder["MakeWoodenMinecart"] = job_type::MakeTool;
-        RealOrder["MakeRockNestbox"] = job_type::MakeTool;
+        RealOrder["MakeRockNestBox"] = job_type::MakeTool;
         RealOrder["MakeRockHive"] = job_type::MakeTool;
         RealOrder["MakeRockJug"] = job_type::MakeTool;
         RealOrder["MakeBoneBolt"] = job_type::MakeAmmo;
@@ -334,6 +555,20 @@ const static struct Manager
         Custom["PressPlantPaper"] = "PRESS_PLANT_PAPER";
         Custom["MakeQuire"] = "MAKE_QUIRE";
         Custom["BindBook"] = "BIND_BOOK";
+
+#define MAT_CAT(item) \
+        { \
+            df::job_material_category cat; \
+            cat.bits.item = 1; \
+            MatCategoryItem[cat.whole] = stock_item::item; \
+        }
+
+        MAT_CAT(wood);
+        MAT_CAT(cloth);
+        MAT_CAT(leather);
+        MAT_CAT(bone);
+        MAT_CAT(shell);
+#undef MAT_CAT
     }
 } Manager;
 
@@ -357,36 +592,36 @@ Stocks::Stocks(AI *ai) :
     updating_farmplots(),
     manager_subtype(),
     last_treelist([ai](df::coord a, df::coord b) -> bool
-{
-    df::coord fe = ai->plan->fort_entrance->pos();
-    int16_t ascore = (a.x - fe.x) * (a.x - fe.x) + (a.y - fe.y) * (a.y - fe.y) + (a.z - fe.z) * (a.z - fe.z) * 16;
-    int16_t bscore = (b.x - fe.x) * (b.x - fe.x) + (b.y - fe.y) * (b.y - fe.y) + (b.z - fe.z) * (b.z - fe.z) * 16;
-    if (ascore < bscore)
-        return true;
-    if (ascore > bscore)
-        return false;
-    return a < b;
-}),
-last_cutpos(),
-last_warn_food(std::time(nullptr) - 610),
-drink_plants(),
-drink_fruits(),
-thread_plants(),
-mill_plants(),
-bag_plants(),
-dye_plants(),
-slurry_plants(),
-grow_plants(),
-milk_creatures(),
-clay_stones(),
-raw_coke(),
-raw_coke_inv(),
-metal_digger_pref(),
-metal_weapon_pref(),
-metal_armor_pref(),
-metal_anvil_pref(),
-simple_metal_ores(),
-complained_about_no_plants()
+    {
+        df::coord fe = ai->plan->fort_entrance->pos();
+        int16_t ascore = (a.x - fe.x) * (a.x - fe.x) + (a.y - fe.y) * (a.y - fe.y) + (a.z - fe.z) * (a.z - fe.z) * 16;
+        int16_t bscore = (b.x - fe.x) * (b.x - fe.x) + (b.y - fe.y) * (b.y - fe.y) + (b.z - fe.z) * (b.z - fe.z) * 16;
+        if (ascore < bscore)
+            return true;
+        if (ascore > bscore)
+            return false;
+        return a < b;
+    }),
+    last_cutpos(),
+    last_warn_food_year(-1),
+    drink_plants(),
+    drink_fruits(),
+    thread_plants(),
+    mill_plants(),
+    bag_plants(),
+    dye_plants(),
+    slurry_plants(),
+    grow_plants(),
+    milk_creatures(),
+    clay_stones(),
+    raw_coke(),
+    raw_coke_inv(),
+    metal_digger_pref(),
+    metal_weapon_pref(),
+    metal_armor_pref(),
+    metal_anvil_pref(),
+    simple_metal_ores(),
+    complained_about_no_plants()
 {
     last_cutpos.clear();
     events.onstatechange_register([this](color_ostream &, state_change_event st)
@@ -632,14 +867,14 @@ void Stocks::update(color_ostream & out)
         }
         if (!updating_count.empty())
         {
-            std::string key = updating_count.back();
+            stock_item::item key = updating_count.back();
             updating_count.pop_back();
             count[key] = count_stocks(out, key);
             return false;
         }
         if (!updating.empty())
         {
-            std::string key = updating.back();
+            stock_item::item key = updating.back();
             updating.pop_back();
             act(out, key);
             return false;
@@ -928,7 +1163,7 @@ void Stocks::update_slabs(color_ostream & out)
     updating_slabs = false;
 }
 
-int32_t Stocks::num_needed(const std::string & key)
+int32_t Stocks::num_needed(stock_item::item key)
 {
     int32_t amount = Watch.Needed.at(key);
     if (Watch.NeededPerDwarf.count(key))
@@ -936,22 +1171,22 @@ int32_t Stocks::num_needed(const std::string & key)
         amount += int32_t(ai->pop->citizen.size()) * Watch.NeededPerDwarf.at(key) / 100;
     }
 
-    if (key == "coffin" && count.count("dead_dwarf") && count.count("coffin_bld"))
+    if (key == stock_item::coffin && count.count(stock_item::dead_dwarf) && count.count(stock_item::coffin_bld))
     {
-        amount = std::max(amount, count.at("dead_dwarf") - count.at("coffin_bld"));
+        amount = std::max(amount, count.at(stock_item::dead_dwarf) - count.at(stock_item::coffin_bld));
     }
-    else if (key == "coffin_bld" && count.count("dead_dwarf"))
+    else if (key == stock_item::coffin_bld && count.count(stock_item::dead_dwarf))
     {
-        amount = std::max(amount, count.at("dead_dwarf"));
+        amount = std::max(amount, count.at(stock_item::dead_dwarf));
     }
-    else if (key == "barrel" && need_more("bed"))
+    else if (key == stock_item::barrel && need_more(stock_item::bed))
     {
         amount = 0;
     }
     return amount;
 }
 
-void Stocks::act(color_ostream & out, std::string key)
+void Stocks::act(color_ostream & out, stock_item::item key)
 {
     if (Watch.Needed.count(key))
     {
@@ -973,7 +1208,7 @@ void Stocks::act(color_ostream & out, std::string key)
 }
 
 // count unused stocks of one type of item
-int32_t Stocks::count_stocks(color_ostream & out, std::string k)
+int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
 {
     int32_t n = 0;
     auto add = [this, &n](df::item *i)
@@ -994,48 +1229,56 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
         }
     };
-    if (k == "bin")
+    switch (k)
+    {
+    case stock_item::bin:
     {
         add_all(items_other_id::BIN, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_binst>(i)->stockpile.id == -1;
         });
+        break;
     }
-    else if (k == "barrel")
+    case stock_item::barrel:
     {
         add_all(items_other_id::BARREL, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_barrelst>(i)->stockpile.id == -1;
         });
+        break;
     }
-    else if (k == "bag")
+    case stock_item::bag:
     {
         add_all(items_other_id::BOX, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.isAnyCloth() || mat.material->flags.is_set(material_flags::LEATHER);
         });
+        break;
     }
-    else if (k == "rope")
+    case stock_item::rope:
     {
         add_all(items_other_id::CHAIN, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.isAnyCloth();
         });
+        break;
     }
-    else if (k == "bucket")
+    case stock_item::bucket:
     {
         add_all(items_other_id::BUCKET, yes_i_mean_all);
+        break;
     }
-    else if (k == "food")
+    case stock_item::meal:
     {
         add_all(items_other_id::ANY_GOOD_FOOD, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_foodst>(i);
         });
+        break;
     }
-    else if (k == "food_ingredients")
+    case stock_item::food_ingredients:
     {
         std::set<std::tuple<df::item_type, int16_t, int16_t, int32_t>> forbidden;
         for (size_t i = 0; i < ui->kitchen.item_types.size(); i++)
@@ -1046,175 +1289,261 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
         }
 
-        add_all(items_other_id::ANY_COOKABLE, [forbidden](df::item *i) -> bool
+        for (auto i : world->items.other[items_other_id::ANY_COOKABLE])
         {
             if (virtual_cast<df::item_flaskst>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_cagest>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_barrelst>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_bucketst>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_animaltrapst>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_boxst>(i))
-                return false;
+                continue;
             if (virtual_cast<df::item_toolst>(i))
-                return false;
-            return !forbidden.count(std::make_tuple(i->getType(), i->getSubtype(), i->getMaterial(), i->getMaterialIndex()));
-        });
+                continue;
+            if (!forbidden.count(std::make_tuple(i->getType(), i->getSubtype(), i->getMaterial(), i->getMaterialIndex())) && is_item_free(i))
+                n++;
+        }
+        break;
     }
-    else if (k == "drink")
+    case stock_item::drink:
     {
         add_all(items_other_id::DRINK, yes_i_mean_all);
+        break;
     }
-    else if (k == "goblet")
+    case stock_item::goblet:
     {
         add_all(items_other_id::GOBLET, yes_i_mean_all);
+        break;
     }
-    else if (k == "soap" || k == "coal" || k == "ash")
+    case stock_item::soap:
     {
-        std::string mat_id = k == "soap" ? "SOAP" : k == "coal" ? "COAL" : "ASH";
-        add_all(items_other_id::BAR, [mat_id](df::item *i) -> bool
+        add_all(items_other_id::BAR, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
-            return mat.material && mat.material->id == mat_id;
+            return mat.material && mat.material->id == "SOAP";
         });
+        break;
     }
-    else if (k == "wood")
+    case stock_item::coal:
+    {
+        add_all(items_other_id::BAR, [](df::item *i) -> bool
+        {
+            MaterialInfo mat(i);
+            return mat.material && mat.material->id == "COAL";
+        });
+        break;
+    }
+    case stock_item::ash:
+    {
+        add_all(items_other_id::BAR, [](df::item *i) -> bool
+        {
+            MaterialInfo mat(i);
+            return mat.material && mat.material->id == "ASH";
+        });
+        break;
+    }
+    case stock_item::wood:
     {
         add_all(items_other_id::WOOD, yes_i_mean_all);
+        break;
     }
-    else if (k == "roughgem")
+    case stock_item::rough_gem:
     {
         add_all(items_other_id::ROUGH, [](df::item *i) -> bool
         {
             return i->getMaterial() == 0;
         });
+        break;
     }
-    else if (k == "metal_ore")
+    case stock_item::metal_ore:
     {
         add_all(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return is_metal_ore(i);
         });
+        break;
     }
-    else if (k == "raw_coke")
+    case stock_item::raw_coke:
     {
         add_all(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return !is_raw_coke(i).empty();
         });
+        break;
     }
-    else if (k == "gypsum")
+    case stock_item::gypsum:
     {
         add_all(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return is_gypsum(i);
         });
+        break;
     }
-    else if (k == "raw_adamantine")
+    case stock_item::raw_adamantine:
     {
         MaterialInfo candy;
         if (candy.findInorganic("RAW_ADAMANTINE"))
-            add_all(items_other_id::BOULDER, [candy](df::item *i) -> bool
         {
-            return i->getMaterialIndex() == candy.index;
-        });
+            add_all(items_other_id::BOULDER, [candy](df::item *i) -> bool
+            {
+                return i->getMaterialIndex() == candy.index;
+            });
+        }
+        break;
     }
-    else if (k == "stone")
+    case stock_item::stone:
     {
         add_all(items_other_id::BOULDER, [](df::item *i) -> bool
         {
             return !ui->economic_stone[i->getMaterialIndex()];
         });
+        break;
     }
-    else if (k == "raw_fish")
+    case stock_item::raw_fish:
     {
         add_all(items_other_id::FISH_RAW, yes_i_mean_all);
+        break;
     }
-    else if (k == "splint")
+    case stock_item::splint:
     {
         add_all(items_other_id::SPLINT, yes_i_mean_all);
+        break;
     }
-    else if (k == "crutch")
+    case stock_item::crutch:
     {
         add_all(items_other_id::CRUTCH, yes_i_mean_all);
+        break;
     }
-    else if (k == "crossbow")
+    case stock_item::crossbow:
     {
         if (manager_subtype.count("MakeBoneCrossbow"))
-            add_all(items_other_id::WEAPON, [this](df::item *i) -> bool
         {
-            return virtual_cast<df::item_weaponst>(i)->subtype->subtype == manager_subtype.at("MakeBoneCrossbow");
-        });
+            add_all(items_other_id::WEAPON, [this](df::item *i) -> bool
+            {
+                return virtual_cast<df::item_weaponst>(i)->subtype->subtype == manager_subtype.at("MakeBoneCrossbow");
+            });
+        }
+        break;
     }
-    else if (k == "clay")
+    case stock_item::clay:
     {
         add_all(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return clay_stones.count(i->getMaterialIndex());
         });
+        break;
     }
-    else if (k == "drink_plant" || k == "thread_plant" || k == "mill_plant" || k == "bag_plant" || k == "slurry_plant")
+    case stock_item::drink_plant:
     {
-        std::map<int32_t, int16_t> & plant = k == "drink_plant" ? drink_plants : k == "thread_plant" ? thread_plants : k == "mill_plant" ? mill_plants : k == "bag_plant" ? bag_plants : slurry_plants;
-        add_all(items_other_id::PLANT, [plant](df::item *i) -> bool
+        add_all(items_other_id::PLANT, [this](df::item *i) -> bool
         {
-            return plant.count(i->getMaterialIndex()) && plant.at(i->getMaterialIndex()) == i->getMaterial();
+            return drink_plants.count(i->getMaterialIndex()) && drink_plants.at(i->getMaterialIndex()) == i->getMaterial();
         });
+        break;
     }
-    else if (k == "drink_fruit")
+    case stock_item::thread_plant:
+    {
+        add_all(items_other_id::PLANT, [this](df::item *i) -> bool
+        {
+            return thread_plants.count(i->getMaterialIndex()) && thread_plants.at(i->getMaterialIndex()) == i->getMaterial();
+        });
+        break;
+    }
+    case stock_item::mill_plant:
+    {
+        add_all(items_other_id::PLANT, [this](df::item *i) -> bool
+        {
+            return mill_plants.count(i->getMaterialIndex()) && mill_plants.at(i->getMaterialIndex()) == i->getMaterial();
+        });
+        break;
+    }
+    case stock_item::bag_plant:
+    {
+        add_all(items_other_id::PLANT, [this](df::item *i) -> bool
+        {
+            return bag_plants.count(i->getMaterialIndex()) && bag_plants.at(i->getMaterialIndex()) == i->getMaterial();
+        });
+        break;
+    }
+    case stock_item::slurry_plant:
+    {
+        add_all(items_other_id::PLANT, [this](df::item *i) -> bool
+        {
+            return slurry_plants.count(i->getMaterialIndex()) && slurry_plants.at(i->getMaterialIndex()) == i->getMaterial();
+        });
+        break;
+    }
+    case stock_item::drink_fruit:
     {
         add_all(items_other_id::PLANT_GROWTH, [this](df::item *i) -> bool
         {
             return drink_fruits.count(i->getMaterialIndex()) && drink_fruits.at(i->getMaterialIndex()) == i->getMaterial();
         });
+        break;
     }
-    else if (k == "honey")
+    case stock_item::honey:
     {
         MaterialInfo honey;
         if (honey.findCreature("HONEY_BEE", "HONEY"))
-            add_all(items_other_id::LIQUID_MISC, [honey](df::item *i) -> bool
         {
-            return i->getMaterialIndex() == honey.index && i->getMaterial() == honey.type;
-        });
+            add_all(items_other_id::LIQUID_MISC, [honey](df::item *i) -> bool
+            {
+                return i->getMaterialIndex() == honey.index && i->getMaterial() == honey.type;
+            });
+        }
+        break;
     }
-    else if (k == "milk")
+    case stock_item::milk:
     {
         add_all(items_other_id::LIQUID_MISC, [this](df::item *i) -> bool
         {
             return milk_creatures.count(i->getMaterialIndex()) && milk_creatures.at(i->getMaterialIndex()) == i->getMaterial();
         });
+        break;
     }
-    else if (k == "dye_plant")
+    case stock_item::dye_plant:
     {
         add_all(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return mill_plants.count(i->getMaterialIndex()) && mill_plants.at(i->getMaterialIndex()) == i->getMaterial() && dye_plants.count(i->getMaterialIndex());
         });
+        break;
     }
-    else if (k == "thread_seeds" || k == "dye_seeds")
+    case stock_item::thread_seeds:
     {
-        std::map<int32_t, int16_t> & plant = k == "thread_seeds" ? thread_plants : dye_plants;
-        add_all(items_other_id::SEEDS, [this, plant](df::item *i) -> bool
+        add_all(items_other_id::SEEDS, [this](df::item *i) -> bool
         {
-            return plant.count(i->getMaterialIndex()) && grow_plants.count(i->getMaterialIndex());
+            return thread_plants.count(i->getMaterialIndex()) && grow_plants.count(i->getMaterialIndex());
         });
+        break;
     }
-    else if (k == "dye")
+    case stock_item::dye_seeds:
+    {
+        add_all(items_other_id::SEEDS, [this](df::item *i) -> bool
+        {
+            return dye_plants.count(i->getMaterialIndex()) && grow_plants.count(i->getMaterialIndex());
+        });
+        break;
+    }
+    case stock_item::dye:
     {
         add_all(items_other_id::POWDER_MISC, [this](df::item *i) -> bool
         {
             return dye_plants.count(i->getMaterialIndex()) && dye_plants.at(i->getMaterialIndex()) == i->getMaterial();
         });
+        break;
     }
-    else if (k == "block")
+    case stock_item::block:
     {
         add_all(items_other_id::BLOCKS, yes_i_mean_all);
+        break;
     }
-    else if (k == "skull")
+    case stock_item::skull:
     {
         // XXX exclude dwarf skulls ?
         add_all(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
@@ -1222,8 +1551,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             return i->corpse_flags.bits.skull && !i->corpse_flags.bits.unbutchered;
         });
+        break;
     }
-    else if (k == "bone")
+    case stock_item::bone:
     {
         for (auto it = world->items.other[items_other_id::CORPSEPIECE].begin(); it != world->items.other[items_other_id::CORPSEPIECE].end(); it++)
         {
@@ -1233,8 +1563,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 n += i->material_amount[corpse_material_type::Bone];
             }
         }
+        break;
     }
-    else if (k == "shell")
+    case stock_item::shell:
     {
         for (auto it = world->items.other[items_other_id::CORPSEPIECE].begin(); it != world->items.other[items_other_id::CORPSEPIECE].end(); it++)
         {
@@ -1244,8 +1575,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 n += i->material_amount[corpse_material_type::Shell];
             }
         }
+        break;
     }
-    else if (k == "wool")
+    case stock_item::wool:
     {
         // used for SpinThread which currently ignores the material_amount
         // note: if it didn't, use either HairWool or Yarn but not both
@@ -1254,19 +1586,22 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             return i->corpse_flags.bits.hair_wool || i->corpse_flags.bits.yarn;
         });
+        break;
     }
-    else if (k == "bonebolts")
+    case stock_item::bone_bolts:
     {
         add_all(items_other_id::AMMO, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_ammost>(i)->skill_used == job_skill::BONECARVE;
         });
+        break;
     }
-    else if (k == "cloth")
+    case stock_item::cloth:
     {
         add_all(items_other_id::CLOTH, yes_i_mean_all);
+        break;
     }
-    else if (k == "cloth_nodye")
+    case stock_item::cloth_nodye:
     {
         add_all(items_other_id::CLOTH, [this](df::item *i) -> bool
         {
@@ -1280,12 +1615,14 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
             return true;
         });
+        break;
     }
-    else if (k == "mechanism")
+    case stock_item::mechanism:
     {
         add_all(items_other_id::TRAPPARTS, yes_i_mean_all);
+        break;
     }
-    else if (k == "cage")
+    case stock_item::cage:
     {
         add_all(items_other_id::CAGE, [](df::item *i) -> bool
         {
@@ -1301,8 +1638,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             }
             return true;
         });
+        break;
     }
-    else if (k == "coffin_bld")
+    case stock_item::coffin_bld:
     {
         // count free constructed coffin buildings, not items
         for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
@@ -1312,8 +1650,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 n++;
             }
         }
+        break;
     }
-    else if (k == "coffin_bld_pet")
+    case stock_item::coffin_bld_pet:
     {
         for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
         {
@@ -1323,68 +1662,69 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 n++;
             }
         }
+        break;
     }
-    else if (k == "training_weapon")
+    case stock_item::training_weapon:
     {
         return count_stocks_weapon(out, job_skill::NONE, true);
     }
-    else if (k == "weapon")
+    case stock_item::weapon:
     {
         return count_stocks_weapon(out);
     }
-    else if (k == "pick")
+    case stock_item::pick:
     {
         return count_stocks_weapon(out, job_skill::MINING);
     }
-    else if (k == "axe")
+    case stock_item::axe:
     {
         return count_stocks_weapon(out, job_skill::AXE);
     }
-    else if (k == "armor_torso")
+    case stock_item::armor_torso:
     {
         return count_stocks_armor(out, items_other_id::ARMOR);
     }
-    else if (k == "clothes_torso")
+    case stock_item::clothes_torso:
     {
         return count_stocks_clothes(out, items_other_id::ARMOR);
     }
-    else if (k == "armor_legs")
+    case stock_item::armor_legs:
     {
         return count_stocks_armor(out, items_other_id::PANTS);
     }
-    else if (k == "clothes_legs")
+    case stock_item::clothes_legs:
     {
         return count_stocks_clothes(out, items_other_id::PANTS);
     }
-    else if (k == "armor_head")
+    case stock_item::armor_head:
     {
         return count_stocks_armor(out, items_other_id::HELM);
     }
-    else if (k == "clothes_head")
+    case stock_item::clothes_head:
     {
         return count_stocks_clothes(out, items_other_id::HELM);
     }
-    else if (k == "armor_hands")
+    case stock_item::armor_hands:
     {
         return count_stocks_armor(out, items_other_id::GLOVES);
     }
-    else if (k == "clothes_hands")
+    case stock_item::clothes_hands:
     {
         return count_stocks_clothes(out, items_other_id::GLOVES);
     }
-    else if (k == "armor_feet")
+    case stock_item::armor_feet:
     {
         return count_stocks_armor(out, items_other_id::SHOES);
     }
-    else if (k == "clothes_feet")
+    case stock_item::clothes_feet:
     {
         return count_stocks_clothes(out, items_other_id::SHOES);
     }
-    else if (k == "armor_shield")
+    case stock_item::armor_shield:
     {
         return count_stocks_armor(out, items_other_id::SHIELD);
     }
-    else if (k == "lye")
+    case stock_item::lye:
     {
         add_all(items_other_id::LIQUID_MISC, [](df::item *i) -> bool
         {
@@ -1392,90 +1732,114 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
             return mat.material && mat.material->id == "LYE";
             // TODO check container has no water
         });
+        break;
     }
-    else if (k == "plasterpowder")
+    case stock_item::plaster_powder:
     {
         add_all(items_other_id::POWDER_MISC, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "PLASTER";
         });
+        break;
     }
-    else if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire" || k == "rock_pot" || k == "book_binding")
+    case stock_item::wheelbarrow:
+    case stock_item::minecart:
+    case stock_item::nest_box:
+    case stock_item::hive:
+    case stock_item::jug:
+    case stock_item::stepladder:
+    case stock_item::bookcase:
+    case stock_item::quire:
+    case stock_item::rock_pot:
+    case stock_item::book_binding:
     {
         std::string ord = furniture_order(k);
         if (manager_subtype.count(ord))
-            add_all(items_other_id::TOOL, [this, ord](df::item *item) -> bool
         {
-            df::item_toolst *i = virtual_cast<df::item_toolst>(item);
-            return i->subtype->subtype == manager_subtype.at(ord) &&
-                i->stockpile.id == -1 &&
-                (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
-        });
+            add_all(items_other_id::TOOL, [this, ord](df::item *item) -> bool
+            {
+                df::item_toolst *i = virtual_cast<df::item_toolst>(item);
+                return i->subtype->subtype == manager_subtype.at(ord) &&
+                    i->stockpile.id == -1 &&
+                    (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
+            });
+        }
+        break;
     }
-    else if (k == "honeycomb")
+    case stock_item::honeycomb:
     {
         add_all(items_other_id::TOOL, [](df::item *i) -> bool
         {
-            return virtual_cast<df::item_toolst>(i)->subtype->id == "ITE_TOOL_HONEYCOMB";
+            return virtual_cast<df::item_toolst>(i)->subtype->id == "ITEM_TOOL_HONEYCOMB";
         });
+        break;
     }
-    else if (k == "quiver")
+    case stock_item::quiver:
     {
         add_all(items_other_id::QUIVER, yes_i_mean_all);
+        break;
     }
-    else if (k == "flask")
+    case stock_item::flask:
     {
         add_all(items_other_id::FLASK, yes_i_mean_all);
+        break;
     }
-    else if (k == "backpack")
+    case stock_item::backpack:
     {
         add_all(items_other_id::BACKPACK, yes_i_mean_all);
+        break;
     }
-    else if (k == "leather")
+    case stock_item::leather:
     {
         add_all(items_other_id::SKIN_TANNED, yes_i_mean_all);
+        break;
     }
-    else if (k == "tallow")
+    case stock_item::tallow:
     {
         add_all(items_other_id::GLOB, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "TALLOW";
         });
+        break;
     }
-    else if (k == "giant_corkscrew")
+    case stock_item::giant_corkscrew:
     {
         if (manager_subtype.count("MakeGiantCorkscrew"))
-            add_all(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
         {
-            df::item_trapcompst *i = virtual_cast<df::item_trapcompst>(item);
-            return i && i->subtype->subtype == manager_subtype.at("MakeGiantCorkscrew");
-        });
+            add_all(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
+            {
+                df::item_trapcompst *i = virtual_cast<df::item_trapcompst>(item);
+                return i && i->subtype->subtype == manager_subtype.at("MakeGiantCorkscrew");
+            });
+        }
     }
-    else if (k == "pipe_section")
+    case stock_item::pipe_section:
     {
         add_all(items_other_id::PIPE_SECTION, yes_i_mean_all);
+        break;
     }
-    else if (k == "quern")
+    case stock_item::quern:
     {
         // include used in building
-        return world->items.other[items_other_id::QUERN].size();
+        return int32_t(world->items.other[items_other_id::QUERN].size());
     }
-    else if (k == "anvil")
+    case stock_item::anvil:
     {
         add_all(items_other_id::ANVIL, yes_i_mean_all);
+        break;
     }
-    else if (k == "slab")
+    case stock_item::slab:
     {
         add_all(items_other_id::SLAB, [](df::item *i) -> bool { return i->getSlabEngravingType() == slab_engraving_type::Slab; });
+        break;
     }
-    else if (k == "dead_dwarf")
+    case stock_item::dead_dwarf:
     {
         std::set<df::unit *> units;
-        for (auto it = world->items.other[items_other_id::ANY_CORPSE].begin(); it != world->items.other[items_other_id::ANY_CORPSE].end(); it++)
+        for (auto i : world->items.other[items_other_id::ANY_CORPSE])
         {
-            df::item *i = *it;
             if (!is_item_free(i))
             {
                 continue;
@@ -1490,9 +1854,9 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 units.insert(u);
             }
         }
-        return units.size();
+        return int32_t(units.size());
     }
-    else if (k == "slurry")
+    case stock_item::slurry:
     {
         add_all(items_other_id::GLOB, [](df::item *i) -> bool
         {
@@ -1501,41 +1865,47 @@ int32_t Stocks::count_stocks(color_ostream & out, std::string k)
                 return false;
             }
             MaterialInfo mat(i);
-            for (auto it = mat.material->reaction_class.begin(); it != mat.material->reaction_class.end(); it++)
+            for (auto it : mat.material->reaction_class)
             {
-                if (**it == "PAPER_SLURRY")
+                if (*it == "PAPER_SLURRY")
                 {
                     return true;
                 }
             }
             return false;
         });
+        break;
     }
-    else if (k == "paper")
+    case stock_item::paper:
     {
         add_all(items_other_id::SHEET, yes_i_mean_all);
+        break;
     }
-    else if (k == "toy")
+    case stock_item::toy:
     {
         add_all(items_other_id::TOY, yes_i_mean_all);
+        break;
     }
-    else if (k == "written_on_quire")
+    case stock_item::written_on_quire:
     {
         add_all(items_other_id::TOOL, [this](df::item *i) -> bool
         {
             return i->getSubtype() == manager_subtype.at("MakeQuire") && i->hasSpecificImprovements(improvement_type::WRITING);
         });
+        break;
     }
-    else if (k == "thread")
+    case stock_item::thread:
     {
         add_all(items_other_id::THREAD, [](df::item *i) -> bool
         {
             return !i->flags.bits.spider_web && virtual_cast<df::item_threadst>(i)->dimension == 15000;
         });
+        break;
     }
-    else
+    default:
     {
         return find_furniture_itemcount(k);
+    }
     }
 
     return n;
@@ -1690,102 +2060,104 @@ int32_t Stocks::count_stocks_clothes(color_ostream &, df::items_other_id oidx)
 }
 
 // make it so the stocks of 'what' rises by 'amount'
-void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
+void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amount)
 {
     if (amount <= 0)
         return;
 
-    std::vector<std::string> input;
+    std::vector<stock_item::item> input;
     std::string order;
 
-    if (what == "training_weapon")
+    switch (what)
     {
-        queue_need_weapon(out, num_needed("training_weapon"), job_skill::NONE, true);
+    case stock_item::training_weapon:
+    {
+        queue_need_weapon(out, num_needed(stock_item::training_weapon), job_skill::NONE, true);
         return;
     }
-    else if (what == "weapon")
+    case stock_item::weapon:
     {
-        queue_need_weapon(out, num_needed("weapon"));
+        queue_need_weapon(out, num_needed(stock_item::weapon));
         return;
     }
-    else if (what == "pick")
+    case stock_item::pick:
     {
-        queue_need_weapon(out, num_needed("pick"), job_skill::MINING);
+        queue_need_weapon(out, num_needed(stock_item::pick), job_skill::MINING);
         return;
     }
-    else if (what == "axe")
+    case stock_item::axe:
     {
-        queue_need_weapon(out, num_needed("axe"), job_skill::AXE);
+        queue_need_weapon(out, num_needed(stock_item::axe), job_skill::AXE);
         return;
     }
-    else if (what == "armor_torso")
+    case stock_item::armor_torso:
     {
         queue_need_armor(out, items_other_id::ARMOR);
         return;
     }
-    else if (what == "clothes_torso")
+    case stock_item::clothes_torso:
     {
         queue_need_clothes(out, items_other_id::ARMOR);
         return;
     }
-    else if (what == "armor_legs")
+    case stock_item::armor_legs:
     {
         queue_need_armor(out, items_other_id::PANTS);
         return;
     }
-    else if (what == "clothes_legs")
+    case stock_item::clothes_legs:
     {
         queue_need_clothes(out, items_other_id::PANTS);
         return;
     }
-    else if (what == "armor_head")
+    case stock_item::armor_head:
     {
         queue_need_armor(out, items_other_id::HELM);
         return;
     }
-    else if (what == "clothes_head")
+    case stock_item::clothes_head:
     {
         queue_need_clothes(out, items_other_id::HELM);
         return;
     }
-    else if (what == "armor_hands")
+    case stock_item::armor_hands:
     {
         queue_need_armor(out, items_other_id::GLOVES);
         return;
     }
-    else if (what == "clothes_hands")
+    case stock_item::clothes_hands:
     {
         queue_need_clothes(out, items_other_id::GLOVES);
         return;
     }
-    else if (what == "armor_feet")
+    case stock_item::armor_feet:
     {
         queue_need_armor(out, items_other_id::SHOES);
         return;
     }
-    else if (what == "clothes_feet")
+    case stock_item::clothes_feet:
     {
         queue_need_clothes(out, items_other_id::SHOES);
         return;
     }
-    else if (what == "armor_shield")
+    case stock_item::armor_shield:
     {
         queue_need_armor(out, items_other_id::SHIELD);
         return;
     }
-    else if (what == "anvil")
+    case stock_item::anvil:
     {
         queue_need_anvil(out);
         return;
     }
-    else if (what == "coffin_bld")
+    case stock_item::coffin_bld:
     {
         queue_need_coffin_bld(out, amount);
         return;
     }
-    else if (what == "coffin_bld_pet")
+    case stock_item::coffin_bld_pet:
     {
-        if (count.at("coffin_bld") >= Watch.Needed.at("coffin_bld"))
+        if (count.at(stock_item::coffin_bld) >= Watch.Needed.at(stock_item::coffin_bld))
         {
             for (auto bld = world->buildings.other[buildings_other_id::COFFIN].begin(); bld != world->buildings.other[buildings_other_id::COFFIN].end(); bld++)
             {
@@ -1799,7 +2171,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         }
         return;
     }
-    else if (what == "raw_coke")
+    case stock_item::raw_coke:
     {
         if (ai->plan->should_search_for_metal)
         {
@@ -1814,7 +2186,7 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         }
         return;
     }
-    else if (what == "gypsum")
+    case stock_item::gypsum:
     {
         if (ai->plan->should_search_for_metal)
         {
@@ -1829,29 +2201,32 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         }
         return;
     }
-    else if (what == "food")
+    case stock_item::meal:
     {
         // XXX fish/hunt/cook ?
-        if (last_warn_food < std::time(nullptr) - 600) // warn every 10 minutes
+        if (last_warn_food_year != *cur_year)
         {
             ai->debug(out, stl_sprintf("need %d more food", amount));
-            last_warn_food = std::time(nullptr);
+            last_warn_food_year = *cur_year;
         }
         return;
     }
-    else if (what == "thread_seeds")
+    case stock_item::thread_seeds:
     {
         // only useful at game start, with low seeds stocks
         order = "ProcessPlants";
-        input.push_back("thread_plant");
+        input.push_back(stock_item::thread_plant);
+        break;
     }
-    else if (what == "dye_seeds" || what == "dye")
+    case stock_item::dye_seeds:
+    case stock_item::dye:
     {
         order = "MillPlants";
-        input.push_back("dye_plant");
-        input.push_back("bag");
+        input.push_back(stock_item::dye_plant);
+        input.push_back(stock_item::bag);
+        break;
     }
-    else if (what == "wood")
+    case stock_item::wood:
     {
         amount *= 2;
         if (amount > 30)
@@ -1861,19 +2236,20 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 
         return;
     }
-    else if (what == "honey")
+    case stock_item::honey:
     {
         order = "PressHoneycomb";
-        input.push_back("honeycomb");
-        input.push_back("jug");
+        input.push_back(stock_item::honeycomb);
+        input.push_back(stock_item::jug);
+        break;
     }
-    else if (what == "drink")
+    case stock_item::drink:
     {
-        std::map<std::string, std::string> orders;
-        orders["drink_plant"] = "BrewDrinkPlant";
-        orders["drink_fruit"] = "BrewDrinkFruit";
-        orders["honey"] = "BrewMead";
-        auto score = [this, &out](std::pair<const std::string, std::string> i) -> int32_t
+        std::map<stock_item::item, std::string> orders;
+        orders[stock_item::drink_plant] = "BrewDrinkPlant";
+        orders[stock_item::drink_fruit] = "BrewDrinkFruit";
+        orders[stock_item::honey] = "BrewMead";
+        auto score = [this, &out](std::pair<const stock_item::item, std::string> i) -> int32_t
         {
             int32_t c = count.at(i.first);
             df::manager_order_template tmpl;
@@ -1886,20 +2262,21 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
             c -= count_manager_orders(out, tmpl);
             return c;
         };
-        auto max = std::max_element(orders.begin(), orders.end(), [score](std::pair<const std::string, std::string> a, std::pair<const std::string, std::string> b) -> bool { return score(a) < score(b); });
+        auto max = std::max_element(orders.begin(), orders.end(), [score](std::pair<const stock_item::item, std::string> a, std::pair<const stock_item::item, std::string> b) -> bool { return score(a) < score(b); });
         order = max->second;
         input.push_back(max->first);
-        if (count["barrel"] > count["rock_pot"])
+        if (count[stock_item::barrel] > count[stock_item::rock_pot])
         {
-            input.push_back("barrel");
+            input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back("rock_pot");
+            input.push_back(stock_item::rock_pot);
         }
         amount = (amount + 4) / 5; // accounts for brewer yield, but not for input stack size
+        break;
     }
-    else if (what == "block")
+    case stock_item::block:
     {
         amount = (amount + 3) / 4;
         // no stone => make wooden blocks (needed for pumps for aquifer handling)
@@ -1919,57 +2296,69 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
                 amount = 2;
             order = "ConstructWoodenBlocks";
         }
+        break;
     }
-    else if (what == "coal")
+    case stock_item::coal:
     {
         // dont use wood -> charcoal if we have bituminous coal
         // (except for bootstraping)
-        if (amount > 2 - count.at("coal") && count.at("raw_coke") > Watch.WatchStock.at("raw_coke"))
+        if (amount > 2 - count.at(stock_item::coal) && count.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke))
         {
-            amount = 2 - count.at("coal");
+            amount = 2 - count.at(stock_item::coal);
         }
+        break;
     }
-    else if (what == "ash")
+    case stock_item::ash:
     {
-        input.push_back("wood");
+        input.push_back(stock_item::wood);
+        break;
     }
-    else if (what == "lye")
+    case stock_item::lye:
     {
-        input.push_back("ash");
-        input.push_back("bucket");
+        input.push_back(stock_item::ash);
+        input.push_back(stock_item::bucket);
+        break;
     }
-    else if (what == "soap")
+    case stock_item::soap:
     {
-        input.push_back("lye");
-        input.push_back("tallow");
+        input.push_back(stock_item::lye);
+        input.push_back(stock_item::tallow);
+        break;
     }
-    else if (what == "plasterpowder")
+    case stock_item::plaster_powder:
     {
-        input.push_back("gypsum");
-        input.push_back("bag");
+        input.push_back(stock_item::gypsum);
+        input.push_back(stock_item::bag);
+        break;
     }
-    else if (what == "slurry")
+    case stock_item::slurry:
     {
         order = "MakeSlurryFromPlant";
-        input.push_back("slurry_plant");
+        input.push_back(stock_item::slurry_plant);
+        break;
     }
-    else if (what == "paper")
+    case stock_item::paper:
     {
         order = "PressPlantPaper";
-        input.push_back("slurry");
+        input.push_back(stock_item::slurry);
+        break;
     }
-    else if (what == "quire")
+    case stock_item::quire:
     {
         order = "MakeQuire";
-        input.push_back("paper");
+        input.push_back(stock_item::paper);
+        break;
     }
-    else if (what == "toy")
+    case stock_item::toy:
     {
         order = "MakeToy";
+        break;
     }
-    else if (what == "book_binding")
+    case stock_item::book_binding:
     {
         order = "MakeBookBinding";
+        break;
+    }
     }
 
     if (order.empty())
@@ -2003,11 +2392,11 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
         df::job_material_category matcat = Manager.MatCategory.at(order);
         df::job_type job = job_type::NONE;
         find_enum_item(&job, order);
-        std::string matcat_str = bitfield_to_string(matcat);
-        int32_t i_amount = count.at(matcat_str) - count_manager_orders_matcat(matcat, job);
-        if (i_amount < amount && Watch.Needed.count(matcat_str))
+        stock_item::item matcat_item = Manager.MatCategoryItem.at(matcat.whole);
+        int32_t i_amount = count.at(matcat_item) - count_manager_orders_matcat(matcat, job);
+        if (i_amount < amount && Watch.Needed.count(matcat_item))
         {
-            queue_need(out, matcat_str, amount - i_amount);
+            queue_need(out, matcat_item, amount - i_amount);
         }
         if (amount > i_amount)
         {
@@ -2021,11 +2410,11 @@ void Stocks::queue_need(color_ostream & out, std::string what, int32_t amount)
 // forge weapons
 void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill, bool training)
 {
-    if (skill == job_skill::NONE && !training && (count.at("pick") == 0 || count.at("axe") == 0))
+    if (skill == job_skill::NONE && !training && (count.at(stock_item::pick) == 0 || count.at(stock_item::axe) == 0))
         return;
 
     std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at("coal");
+    int32_t coal_bars = count.at(stock_item::coal);
 
     if (!training)
     {
@@ -2057,7 +2446,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
             {
                 if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_DIGGER))
                 {
-                    metal_digger_pref.push_back(mi);
+                    metal_digger_pref.push_back(int32_t(mi));
                 }
             }
             std::sort(metal_digger_pref.begin(), metal_digger_pref.end(), [](int32_t a, int32_t b) -> bool
@@ -2073,7 +2462,7 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
             {
                 if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_WEAPON))
                 {
-                    metal_weapon_pref.push_back(mi);
+                    metal_weapon_pref.push_back(int32_t(mi));
                 }
             }
             std::sort(metal_weapon_pref.begin(), metal_weapon_pref.end(), [](int32_t a, int32_t b) -> bool
@@ -2174,16 +2563,16 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
 
         const static struct armor_needed
         {
-            std::map<df::items_other_id, std::string> map;
+            std::map<df::items_other_id, stock_item::item> map;
 
             armor_needed()
             {
-                map[items_other_id::ARMOR] = "armor_torso";
-                map[items_other_id::SHIELD] = "armor_shield";
-                map[items_other_id::HELM] = "armor_head";
-                map[items_other_id::PANTS] = "armor_legs";
-                map[items_other_id::GLOVES] = "armor_hands";
-                map[items_other_id::SHOES] = "armor_feet";
+                map[items_other_id::ARMOR] = stock_item::armor_torso;
+                map[items_other_id::SHIELD] = stock_item::armor_shield;
+                map[items_other_id::HELM] = stock_item::armor_head;
+                map[items_other_id::PANTS] = stock_item::armor_legs;
+                map[items_other_id::GLOVES] = stock_item::armor_hands;
+                map[items_other_id::SHOES] = stock_item::armor_feet;
             }
         } needed;
         int32_t cnt = Watch.Needed.at(needed.map.at(oidx));
@@ -2246,7 +2635,7 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
 void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
 {
     std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at("coal");
+    int32_t coal_bars = count.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
@@ -2275,7 +2664,7 @@ void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
         {
             if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_ARMOR))
             {
-                metal_armor_pref.push_back(mi);
+                metal_armor_pref.push_back(int32_t(mi));
             }
         }
         std::sort(metal_armor_pref.begin(), metal_armor_pref.end(), [](int32_t a, int32_t b) -> bool
@@ -2314,7 +2703,7 @@ void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
 void Stocks::queue_need_anvil(color_ostream & out)
 {
     std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at("coal");
+    int32_t coal_bars = count.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
@@ -2343,13 +2732,13 @@ void Stocks::queue_need_anvil(color_ostream & out)
         {
             if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_ANVIL))
             {
-                metal_anvil_pref.push_back(mi);
+                metal_anvil_pref.push_back(int32_t(mi));
             }
         }
     }
 
-    int32_t cnt = Watch.Needed.at("anvil");
-    cnt -= count.at("anvil");
+    int32_t cnt = Watch.Needed.at(stock_item::anvil);
+    cnt -= count.at(stock_item::anvil);
 
     for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
     {
@@ -2479,26 +2868,26 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
 void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
 {
     // try to avoid cancel spam
-    int32_t available_cloth = count.at("cloth") - 20;
+    int32_t available_cloth = count.at(stock_item::cloth) - 20;
 
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
 
     switch (oidx)
     {
     case items_other_id::ARMOR:
-        queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, num_needed("clothes_torso"));
+        queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, num_needed(stock_item::clothes_torso));
         return;
     case items_other_id::HELM:
-        queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, num_needed("clothes_head"));
+        queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, num_needed(stock_item::clothes_head));
         return;
     case items_other_id::PANTS:
-        queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, num_needed("clothes_legs"));
+        queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, num_needed(stock_item::clothes_legs));
         return;
     case items_other_id::GLOVES:
-        queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, num_needed("clothes_hands"), 2);
+        queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, num_needed(stock_item::clothes_hands), 2);
         return;
     case items_other_id::SHOES:
-        queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, num_needed("clothes_feet"), 2);
+        queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, num_needed(stock_item::clothes_feet), 2);
         return;
     default:
         return;
@@ -2530,62 +2919,68 @@ void Stocks::queue_need_coffin_bld(color_ostream & out, int32_t amount)
 }
 
 // make it so the stocks of 'what' decrease by 'amount'
-void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
+void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amount)
 {
     if (amount <= 0)
         return;
 
-    std::vector<std::string> input;
+    std::vector<stock_item::item> input;
     std::string order;
 
-    if (what == "metal_ore")
+    switch (what)
+    {
+    case stock_item::metal_ore:
     {
         queue_use_metal_ore(out, amount);
         return;
     }
-    else if (what == "raw_coke")
+    case stock_item::raw_coke:
     {
         queue_use_raw_coke(out, amount);
         return;
     }
-    else if (what == "roughgem")
+    case stock_item::rough_gem:
     {
         queue_use_gems(out, amount);
         return;
     }
-    else if (what == "raw_adamantine")
+    case stock_item::raw_adamantine:
     {
         order = "ExtractMetalStrands";
+        break;
     }
-    else if (what == "clay")
+    case stock_item::clay:
     {
-        input.push_back("coal"); // TODO: handle magma kilns
+        input.push_back(stock_item::coal); // TODO: handle magma kilns
         order = "MakeClayStatue";
+        break;
     }
-    else if (what == "drink_plant" || what == "drink_fruit")
+    case stock_item::drink_plant:
+    case stock_item::drink_fruit:
     {
-        order = what == "drink_plant" ? "BrewDrinkPlant" : "BrewDrinkFruit";
+        order = what == stock_item::drink_plant ? "BrewDrinkPlant" : "BrewDrinkFruit";
         // stuff may rot/be brewed before we can process it
         if (amount > 10)
             amount /= 2;
         if (amount > 4)
             amount /= 2;
 
-        if (count["barrel"] > count["rock_pot"])
+        if (count[stock_item::barrel] > count[stock_item::rock_pot])
         {
-            input.push_back("barrel");
+            input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back("rock_pot");
+            input.push_back(stock_item::rock_pot);
         }
 
-        if (!need_more("drink"))
+        if (!need_more(stock_item::drink))
         {
             return;
         }
+        break;
     }
-    else if (what == "thread_plant")
+    case stock_item::thread_plant:
     {
         order = "ProcessPlants";
         // stuff may rot/be brewed before we can process it
@@ -2593,31 +2988,36 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
             amount /= 2;
         if (amount > 4)
             amount /= 2;
+        break;
     }
-    else if (what == "mill_plant" || what == "bag_plant")
+    case stock_item::mill_plant:
+    case stock_item::bag_plant:
     {
-        order = what == "mill_plant" ? "MillPlants" : "ProcessPlantsBag";
+        order = what == stock_item::mill_plant ? "MillPlants" : "ProcessPlantsBag";
         // stuff may rot/be brewed before we can process it
         if (amount > 10)
             amount /= 2;
         if (amount > 4)
             amount /= 2;
-        input.push_back("bag");
+        input.push_back(stock_item::bag);
+        break;
     }
-    else if (what == "food_ingredients")
+    case stock_item::food_ingredients:
     {
         order = "PrepareMeal";
         amount = (amount + 4) / 5;
-        if (!need_more("food"))
+        if (!need_more(stock_item::meal))
         {
             return;
         }
+        break;
     }
-    else if (what == "skull")
+    case stock_item::skull:
     {
         order = "MakeTotem";
+        break;
     }
-    else if (what == "bone")
+    case stock_item::bone:
     {
         int32_t nhunters = 0;
         for (auto u = world->units.active.begin(); u != world->units.active.end(); u++)
@@ -2631,7 +3031,7 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
         {
             return;
         }
-        int32_t need_crossbow = nhunters + 1 - count.at("crossbow");
+        int32_t need_crossbow = nhunters + 1 - count.at(stock_item::crossbow);
         if (need_crossbow > 0)
         {
             order = "MakeBoneCrossbow";
@@ -2641,7 +3041,7 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
         else
         {
             order = "MakeBoneBolt";
-            int32_t stock = count.at("bonebolts");
+            int32_t stock = count.at(stock_item::bone_bolts);
             if (amount > 1000 - stock)
                 amount = 1000 - stock;
             if (amount > 10)
@@ -2649,63 +3049,74 @@ void Stocks::queue_use(color_ostream & out, std::string what, int32_t amount)
             if (amount > 4)
                 amount /= 2;
         }
+        break;
     }
-    else if (what == "shell")
+    case stock_item::shell:
     {
         order = "DecorateWithShell";
+        break;
     }
-    else if (what == "wool")
+    case stock_item::wool:
     {
         order = "SpinThread";
+        break;
     }
-    else if (what == "cloth_nodye")
+    case stock_item::cloth_nodye:
     {
         order = "DyeCloth";
-        input.push_back("dye");
+        input.push_back(stock_item::dye);
         if (amount > 10)
             amount /= 2;
         if (amount > 4)
             amount /= 2;
+        break;
     }
-    else if (what == "raw_fish")
+    case stock_item::raw_fish:
     {
         order = "PrepareRawFish";
+        break;
     }
-    else if (what == "honeycomb")
+    case stock_item::honeycomb:
     {
         order = "PressHoneycomb";
-        input.push_back("jug");
+        input.push_back(stock_item::jug);
+        break;
     }
-    else if (what == "honey")
+    case stock_item::honey:
     {
         order = "BrewMead";
-        if (count["barrel"] > count["rock_pot"])
+        if (count[stock_item::barrel] > count[stock_item::rock_pot])
         {
-            input.push_back("barrel");
+            input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back("rock_pot");
+            input.push_back(stock_item::rock_pot);
         }
+        break;
     }
-    else if (what == "milk")
+    case stock_item::milk:
     {
         order = "MakeCheese";
+        break;
     }
-    else if (what == "tallow")
+    case stock_item::tallow:
     {
         order = "MakeSoap";
-        input.push_back("lye");
-        if (!need_more("soap"))
+        input.push_back(stock_item::lye);
+        if (!need_more(stock_item::soap))
         {
             return;
         }
+        break;
     }
-    else if (what == "written_on_quire")
+    case stock_item::written_on_quire:
     {
-        input.push_back("book_binding");
-        input.push_back("thread");
+        input.push_back(stock_item::book_binding);
+        input.push_back(stock_item::thread);
         order = "BindBook";
+        break;
+    }
     }
 
     if (amount > 30)
@@ -2781,7 +3192,7 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
 void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 {
     // make coke from bituminous coal has priority
-    if (count.at("raw_coke") > Watch.WatchStock.at("raw_coke") && count.at("coal") < 100)
+    if (count.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke) && count.at(stock_item::coal) < 100)
     {
         return;
     }
@@ -2823,8 +3234,8 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 
     if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
     {
-        if (amount > count.at("coal"))
-            amount = count.at("coal");
+        if (amount > count.at(stock_item::coal))
+            amount = count.at(stock_item::coal);
         if (amount <= 0)
             return;
     }
@@ -2884,7 +3295,7 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
     if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
     {
         // need at least 1 unit of fuel to bootstrap
-        if (count.at("coal") <= 0)
+        if (count.at(stock_item::coal) <= 0)
         {
             return;
         }
@@ -3198,7 +3609,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
         }
     }
 
-    if (can_melt < Watch.WatchStock.at("metal_ore") && ai->plan->should_search_for_metal)
+    if (can_melt < Watch.WatchStock.at(stock_item::metal_ore) && ai->plan->should_search_for_metal)
     {
         for (auto k = ai->plan->map_veins.begin(); k != ai->plan->map_veins.end(); k++)
         {
@@ -3209,9 +3620,9 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
         }
     }
 
-    if (can_melt > Watch.WatchStock.at("metal_ore"))
+    if (can_melt > Watch.WatchStock.at(stock_item::metal_ore))
     {
-        return 4 * 150 * (can_melt - Watch.WatchStock.at("metal_ore"));
+        return 4 * 150 * (can_melt - Watch.WatchStock.at(stock_item::metal_ore));
     }
 
     // "make <mi> bars" customreaction
@@ -3369,7 +3780,7 @@ void Stocks::init_manager_subtype()
     if (!world->raws.itemdefs.tools_by_type[tool_uses::TRACK_CART].empty())
         manager_subtype["MakeWoodenMinecart"] = world->raws.itemdefs.tools_by_type[tool_uses::TRACK_CART][0]->subtype;
     if (!world->raws.itemdefs.tools_by_type[tool_uses::NEST_BOX].empty())
-        manager_subtype["MakeRockNestbox"] = world->raws.itemdefs.tools_by_type[tool_uses::NEST_BOX][0]->subtype;
+        manager_subtype["MakeRockNestBox"] = world->raws.itemdefs.tools_by_type[tool_uses::NEST_BOX][0]->subtype;
     if (!world->raws.itemdefs.tools_by_type[tool_uses::HIVE].empty())
         manager_subtype["MakeRockHive"] = world->raws.itemdefs.tools_by_type[tool_uses::HIVE][0]->subtype;
     if (!world->raws.itemdefs.tools_by_type[tool_uses::LIQUID_CONTAINER].empty())
@@ -3578,62 +3989,94 @@ void Stocks::add_manager_order(color_ostream & out, const df::manager_order_temp
     ai->debug(out, stl_sprintf("add_manager_order(%d) %s", amount, AI::describe_job(world->manager_orders.back()).c_str()));
 }
 
-std::string Stocks::furniture_order(std::string k)
+std::string Stocks::furniture_order(stock_item::item k)
 {
-    const static struct different_furniture_order
+    switch (k)
     {
-        std::map<std::string, std::string> map;
+    case stock_item::chair:
+        return "ConstructThrone";
+    case stock_item::traction_bench:
+        return "ConstructTractionBench";
+    case stock_item::weapon_rack:
+        return "ConstructWeaponRack";
+    case stock_item::armor_stand:
+        return "ConstructArmorStand";
+    case stock_item::bucket:
+        return "MakeBucket";
+    case stock_item::barrel:
+        return "MakeBarrel";
+    case stock_item::bin:
+        return "ConstructBin";
+    case stock_item::crutch:
+        return "ConstructCrutch";
+    case stock_item::splint:
+        return "ConstructSplint";
+    case stock_item::bag:
+        return "MakeBag";
+    case stock_item::block:
+        return "ConstructBlocks";
+    case stock_item::mechanism:
+        return "ConstructMechanisms";
+    case stock_item::cage:
+        return "MakeCage";
+    case stock_item::soap:
+        return "MakeSoap";
+    case stock_item::rope:
+        return "MakeRope";
+    case stock_item::lye:
+        return "MakeLye";
+    case stock_item::ash:
+        return "MakeAsh";
+    case stock_item::plaster_powder:
+        return "MakePlasterPowder";
+    case stock_item::wheelbarrow:
+        return "MakeWoodenWheelbarrow";
+    case stock_item::minecart:
+        return "MakeWoodenMinecart";
+    case stock_item::nest_box:
+        return "MakeRockNestBox";
+    case stock_item::hive:
+        return "MakeRockHive";
+    case stock_item::jug:
+        return "MakeRockJug";
+    case stock_item::quiver:
+        return "MakeQuiver";
+    case stock_item::flask:
+        return "MakeFlask";
+    case stock_item::backpack:
+        return "MakeBackpack";
+    case stock_item::giant_corkscrew:
+        return "MakeGiantCorkscrew";
+    case stock_item::pipe_section:
+        return "MakePipeSection";
+    case stock_item::coal:
+        return "MakeCharcoal";
+    case stock_item::stepladder:
+        return "MakeWoodenStepladder";
+    case stock_item::goblet:
+        return "MakeGoblet";
+    case stock_item::bookcase:
+        return "MakeRockBookcase";
+    case stock_item::quire:
+        return "MakeQuire";
+    case stock_item::rock_pot:
+        return "MakeRockPot";
+    case stock_item::book_binding:
+        return "MakeBookBinding";
+    }
 
-        different_furniture_order()
-        {
-            map["chair"] = "ConstructThrone";
-            map["traction_bench"] = "ConstructTractionBench";
-            map["weaponrack"] = "ConstructWeaponRack";
-            map["armorstand"] = "ConstructArmorStand";
-            map["bucket"] = "MakeBucket";
-            map["barrel"] = "MakeBarrel";
-            map["bin"] = "ConstructBin";
-            map["crutch"] = "ConstructCrutch";
-            map["splint"] = "ConstructSplint";
-            map["bag"] = "MakeBag";
-            map["block"] = "ConstructBlocks";
-            map["mechanism"] = "ConstructMechanisms";
-            map["trap"] = "ConstructMechanisms";
-            map["cage"] = "MakeCage";
-            map["soap"] = "MakeSoap";
-            map["rope"] = "MakeRope";
-            map["lye"] = "MakeLye";
-            map["ash"] = "MakeAsh";
-            map["plasterpowder"] = "MakePlasterPowder";
-            map["wheelbarrow"] = "MakeWoodenWheelbarrow";
-            map["minecart"] = "MakeWoodenMinecart";
-            map["nestbox"] = "MakeRockNestbox";
-            map["hive"] = "MakeRockHive";
-            map["jug"] = "MakeRockJug";
-            map["quiver"] = "MakeQuiver";
-            map["flask"] = "MakeFlask";
-            map["backpack"] = "MakeBackpack";
-            map["giant_corkscrew"] = "MakeGiantCorkscrew";
-            map["pipe_section"] = "MakePipeSection";
-            map["coal"] = "MakeCharcoal";
-            map["stepladder"] = "MakeWoodenStepladder";
-            map["goblet"] = "MakeGoblet";
-            map["bookcase"] = "MakeRockBookcase";
-            map["quire"] = "MakeQuire";
-            map["rock_pot"] = "MakeRockPot";
-            map["book_binding"] = "MakeBookBinding";
-        }
-    } diff;
-    if (diff.map.count(k))
-        return diff.map.at(k);
-
-    k[0] += 'A' - 'a';
-    return "Construct" + k;
+    std::ostringstream stringify;
+    stringify << k;
+    std::string str = stringify.str();
+    str[0] += 'A' - 'a';
+    return "Construct" + str;
 }
 
-std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
+std::function<bool(df::item *)> Stocks::furniture_find(stock_item::item k)
 {
-    if (k == "chest")
+    switch (k)
+    {
+    case stock_item::chest:
     {
         return [](df::item *item) -> bool
         {
@@ -3641,7 +4084,16 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && i->mat_type == 0;
         };
     }
-    if (k == "wheelbarrow" || k == "minecart" || k == "nestbox" || k == "hive" || k == "jug" || k == "stepladder" || k == "bookcase" || k == "quire" || k == "rock_pot" || k == "book_binding")
+    case stock_item::wheelbarrow:
+    case stock_item::minecart:
+    case stock_item::nest_box:
+    case stock_item::hive:
+    case stock_item::jug:
+    case stock_item::stepladder:
+    case stock_item::bookcase:
+    case stock_item::quire:
+    case stock_item::rock_pot:
+    case stock_item::book_binding:
     {
         if (!manager_subtype.count(furniture_order(k)))
             return [](df::item *) -> bool { return false; };
@@ -3652,14 +4104,14 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && i->subtype->subtype == subtype;
         };
     }
-    if (k == "trap" || k == "mechanism")
+    case stock_item::mechanism:
     {
         return [](df::item *i) -> bool
         {
             return virtual_cast<df::item_trappartsst>(i);
         };
     }
-    if (k == "weapon")
+    case stock_item::weapon:
     {
         return [](df::item *item) -> bool
         {
@@ -3667,8 +4119,32 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
             return i && !i->subtype->flags.is_set(weapon_flags::TRAINING);
         };
     }
+    case stock_item::weapon_rack:
+    {
+        return [](df::item *i) -> bool
+        {
+            return virtual_cast<df::item_weaponrackst>(i);
+        };
+    }
+    case stock_item::armor_stand:
+    {
+        return [](df::item *i) -> bool
+        {
+            return virtual_cast<df::item_armorstandst>(i);
+        };
+    }
+    case stock_item::traction_bench:
+    {
+        return [](df::item *i) -> bool
+        {
+            return virtual_cast<df::item_traction_benchst>(i);
+        };
+    }
+    }
 
-    virtual_identity *sym = virtual_identity::find("item_" + k + "st");
+    std::ostringstream str;
+    str << "item_" << k << "st";
+    virtual_identity *sym = virtual_identity::find(str.str());
     return [sym](df::item *i) -> bool
     {
         return sym->is_instance(i);
@@ -3676,7 +4152,7 @@ std::function<bool(df::item *)> Stocks::furniture_find(std::string k)
 }
 
 // find one item of this type (:bed, etc)
-df::item *Stocks::find_furniture_item(std::string itm)
+df::item *Stocks::find_furniture_item(stock_item::item itm)
 {
     std::function<bool(df::item *)> find = furniture_find(itm);
     std::string order = furniture_order(itm);
@@ -3701,7 +4177,7 @@ df::item *Stocks::find_furniture_item(std::string itm)
 }
 
 // return nr of free items of this type
-int32_t Stocks::find_furniture_itemcount(std::string itm)
+int32_t Stocks::find_furniture_itemcount(stock_item::item itm)
 {
     std::function<bool(df::item *)> find = furniture_find(itm);
     std::string order = furniture_order(itm);
@@ -3840,15 +4316,15 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                 return true;
             if (!seeds.count(a) && seeds.count(b))
                 return false;
-            int32_t ascore = plants.count(a) ? plants.at(a) : 0;
-            int32_t bscore = plants.count(b) ? plants.at(b) : 0;
+            int32_t ascore = plants.count(a) ? int32_t(plants.at(a)) : 0;
+            int32_t bscore = plants.count(b) ? int32_t(plants.at(b)) : 0;
             if (seeds.count(a))
             {
-                ascore -= seeds.at(a);
-                bscore -= seeds.at(b);
+                ascore -= int32_t(seeds.at(a));
+                bscore -= int32_t(seeds.at(b));
             }
-            ascore += farmplots.count(std::make_pair(season, a)) ? 3 * 3 * 2 * farmplots.at(std::make_pair(season, a)) : 0;
-            bscore += farmplots.count(std::make_pair(season, b)) ? 3 * 3 * 2 * farmplots.at(std::make_pair(season, b)) : 0;
+            ascore += farmplots.count(std::make_pair(season, a)) ? 3 * 3 * 2 * int32_t(farmplots.at(std::make_pair(season, a))) : 0;
+            bscore += farmplots.count(std::make_pair(season, b)) ? 3 * 3 * 2 * int32_t(farmplots.at(std::make_pair(season, b))) : 0;
             return ascore < bscore;
         });
 
@@ -3894,11 +4370,11 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
     add_manager_order(out, tmpl);
 }
 
-bool Stocks::need_more(std::string type)
+bool Stocks::need_more(stock_item::item type)
 {
     int32_t want = Watch.Needed.count(type) ? num_needed(type) : Watch.WatchStock.count(type) ? Watch.WatchStock.at(type) : 10;
     if (Watch.NeededPerDwarf.count(type))
-        want += Watch.NeededPerDwarf.at(type) * ai->pop->citizen.size() / 100 * 9;
+        want += Watch.NeededPerDwarf.at(type) * int32_t(ai->pop->citizen.size()) / 100 * 9;
 
     return (count.count(type) ? count.at(type) : 0) < want;
 }
@@ -3960,7 +4436,7 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::ANVIL && count["anvil"] == 0 && ai->plan->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding(); }))
+    if (item->getType() == item_type::ANVIL && count[stock_item::anvil] == 0 && ai->plan->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding(); }))
     {
         return true;
     }

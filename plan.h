@@ -2,6 +2,7 @@
 
 #include "event_manager.h"
 #include "room.h"
+#include "stocks.h"
 
 #include <functional>
 #include <list>
@@ -77,7 +78,7 @@ class Plan
     std::map<room_type::type, std::vector<room *>> room_category;
     std::map<int32_t, std::set<room *>> room_by_z;
     std::vector<room *> corridors;
-    std::set<std::string> cache_nofurnish;
+    std::set<stock_item::item> cache_nofurnish;
 public:
     room *fort_entrance;
     std::map<int32_t, std::set<df::coord>> map_veins;
