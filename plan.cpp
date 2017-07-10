@@ -746,8 +746,6 @@ void Plan::save(std::ostream & out)
         f["type"] = stringify.str();
         f["construction"] = ENUM_KEY_STR(construction_type, (*it)->construction);
         f["dig"] = ENUM_KEY_STR(tile_dig_designation, (*it)->dig);
-        f["direction"] = (*it)->direction;
-        f["way"] = (*it)->way;
         f["bld_id"] = Json::Int((*it)->bld_id);
         f["x"] = Json::Int((*it)->pos.x);
         f["y"] = Json::Int((*it)->pos.y);
@@ -1132,8 +1130,6 @@ void Plan::load(std::istream & in)
         }
         find_enum_item(&(*it)->construction, f["construction"].asString());
         find_enum_item(&(*it)->dig, f["dig"].asString());
-        (*it)->direction = f["direction"].asString();
-        (*it)->way = f["way"].asString();
         (*it)->bld_id = f["bld_id"].asInt();
         (*it)->pos.x = f["x"].asInt();
         (*it)->pos.y = f["y"].asInt();
@@ -1151,6 +1147,15 @@ void Plan::load(std::istream & in)
         (*it)->ignore = f["ignore"].asBool();
         (*it)->makeroom = f["makeroom"].asBool();
         (*it)->internal = f["internal"].asBool();
+        if (f.isMember("comment"))
+        {
+            (*it)->comment = f["comment"].asString();
+        }
+        else if (f.isMember("way") && !f["way"].asString().empty())
+        {
+            (*it)->comment = f["way"].asString();
+            (*it)->internal = (*it)->comment == "in";
+        }
     }
 
     fort_entrance = corridors.at(0);
@@ -3561,18 +3566,15 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     }
     else if (f->type == layout_type::floodgate)
     {
-        if (!f->way.empty())
+        for (auto rr : rooms)
         {
-            for (auto rr : rooms)
+            if (rr->status == room_status::plan)
+                continue;
+            for (auto ff : rr->layout)
             {
-                if (rr->status == room_status::plan)
-                    continue;
-                for (auto ff : rr->layout)
+                if (ff->type == layout_type::lever && ff->target == f)
                 {
-                    if (ff->type == layout_type::lever && ff->target == f)
-                    {
-                        link_lever(out, ff, f);
-                    }
+                    link_lever(out, ff, f);
                 }
             }
         }
@@ -3683,13 +3685,12 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
 {
     if (r->type == room_type::location && r->location_type == location_type::tavern)
     {
-        std::string way = f->way;
         if (!f->target)
         {
             room *cistern = find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::reserve; });
             for (auto gate : cistern->layout)
             {
-                if (gate->type == layout_type::floodgate && gate->way == way)
+                if (gate->type == layout_type::floodgate && gate->internal == f->internal)
                 {
                     f->target = gate;
                     break;
@@ -3700,7 +3701,7 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
         if (link_lever(out, f, f->target))
         {
             pull_lever(out, f);
-            if (way == "in")
+            if (f->internal)
             {
                 tasks_generic.push_back(new task(task_type::monitor_cistern));
             }
@@ -3768,15 +3769,15 @@ bool Plan::pull_lever(color_ostream & out, furniture *f)
     df::building *bld = df::building::find(f->bld_id);
     if (!bld)
     {
-        ai->debug(out, "cistern: missing lever " + f->way);
+        ai->debug(out, "cistern: missing " + describe_furniture(f));
         return false;
     }
     if (!bld->jobs.empty())
     {
-        ai->debug(out, "cistern: lever has job " + f->way);
+        ai->debug(out, "cistern: lever has job: " + describe_furniture(f));
         return false;
     }
-    ai->debug(out, "cistern: pull lever " + f->way);
+    ai->debug(out, "cistern: pull " + describe_furniture(f));
 
     df::general_ref_building_holderst *ref = df::allocate<df::general_ref_building_holderst>();
     ref->building_id = bld->id;
@@ -3799,9 +3800,9 @@ void Plan::monitor_cistern(color_ostream & out)
         {
             if (f->type == layout_type::lever)
             {
-                if (f->way == "in")
+                if (f->internal)
                     m_c_lever_in = f;
-                else if (f->way == "out")
+                else
                     m_c_lever_out = f;
             }
         }
@@ -5033,14 +5034,9 @@ std::string Plan::describe_furniture(furniture *f)
         s << " (dig " << ENUM_KEY_STR(tile_dig_designation, f->dig) << ")";
     }
 
-    if (!f->direction.empty())
+    if (!f->comment.empty())
     {
-        s << " (" << f->direction << ")";
-    }
-
-    if (!f->way.empty())
-    {
-        s << " (" << f->way << ")";
+        s << " (" << f->comment << ")";
     }
 
     if (f->has_users)

@@ -284,8 +284,6 @@ struct furniture
     layout_type::type type;
     df::construction_type construction;
     df::tile_dig_designation dig;
-    std::string direction;
-    std::string way;
     int32_t bld_id;
     df::coord pos;
     furniture *target;
@@ -294,13 +292,12 @@ struct furniture
     bool ignore;
     bool makeroom;
     bool internal;
+    std::string comment;
 
-    furniture() :
+    furniture(const std::string & comment = "") :
         type(layout_type::none),
         construction(construction_type::NONE),
         dig(tile_dig_designation::Default),
-        direction(),
-        way(),
         bld_id(-1),
         pos(0, 0, 0),
         target(nullptr),
@@ -308,7 +305,8 @@ struct furniture
         has_users(false),
         ignore(false),
         makeroom(false),
-        internal(false)
+        internal(false),
+        comment(comment)
     {
     }
 };

@@ -95,17 +95,19 @@ static furniture *new_well(int16_t x, int16_t y)
     return f;
 }
 
-static furniture *new_cistern_lever(int16_t x, int16_t y, const std::string & way)
+static furniture *new_cistern_lever(int16_t x, int16_t y, const std::string & comment, bool internal)
 {
     furniture *f = new_furniture(layout_type::lever, x, y);
-    f->way = way;
+    f->comment = comment;
+    f->internal = internal;
     return f;
 }
 
-static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string & way, bool ignore = false)
+static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string & comment, bool internal, bool ignore = false)
 {
     furniture *f = new_furniture(layout_type::floodgate, x, y);
-    f->way = way;
+    f->comment = comment;
+    f->internal = internal;
     f->ignore = ignore;
     return f;
 }
@@ -1347,8 +1349,8 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 
     // add a well to the tavern
     tavern->layout.push_back(new_well(4, 4));
-    tavern->layout.push_back(new_cistern_lever(1, 0, "out"));
-    tavern->layout.push_back(new_cistern_lever(0, 0, "in"));
+    tavern->layout.push_back(new_cistern_lever(1, 0, "out", false));
+    tavern->layout.push_back(new_cistern_lever(0, 0, "in", true));
 
     df::coord c = tavern->pos();
 
@@ -1371,8 +1373,8 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     //  cistern is 9x3 + 1 (stairs)
     //  reserve is 5x7 (can fill cistern 7/7 + itself 1/7 + 14 spare
     room *reserve = new room(cistern_type::reserve, c + df::coord(-10, -3, 0), c + df::coord(-14, 3, 0));
-    reserve->layout.push_back(new_cistern_floodgate(-1, 3, "in", false));
-    reserve->layout.push_back(new_cistern_floodgate(5, 3, "out", true));
+    reserve->layout.push_back(new_cistern_floodgate(-1, 3, "in", true, false));
+    reserve->layout.push_back(new_cistern_floodgate(5, 3, "out", false, true));
     reserve->accesspath.push_back(cist_cors.at(0));
 
     // cisterns are dug in order
