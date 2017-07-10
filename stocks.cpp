@@ -2359,6 +2359,8 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         order = "MakeBookBinding";
         break;
     }
+    default:
+        break; // TODO
     }
 
     if (order.empty())
@@ -3117,6 +3119,8 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         order = "BindBook";
         break;
     }
+    default:
+        break; // TODO
     }
 
     if (amount > 30)
@@ -4063,6 +4067,8 @@ std::string Stocks::furniture_order(stock_item::item k)
         return "MakeRockPot";
     case stock_item::book_binding:
         return "MakeBookBinding";
+    default:
+        break; // TODO
     }
 
     std::ostringstream stringify;
@@ -4140,6 +4146,8 @@ std::function<bool(df::item *)> Stocks::furniture_find(stock_item::item k)
             return virtual_cast<df::item_traction_benchst>(i);
         };
     }
+    default:
+        break; // TODO
     }
 
     std::ostringstream str;
