@@ -550,6 +550,13 @@ static void lockstep_loop()
         enabler->renderer->update_all();
         enabler->renderer->render();
     }
+
+    extern AI *dwarfAI;
+    if (dwarfAI->camera->movie_started_in_lockstep)
+    {
+        // Stop the current CMV so it doesn't get corrupted on the next frame.
+        lockstep_handlemovie(true);
+    }
 }
 
 static struct df_ai_renderer : public df::renderer
