@@ -2290,9 +2290,9 @@ void Population::update_pets(color_ostream & out)
         // we have reproductively viable animals, but there are more than 3 of
         // this sex (full-grown). kill the oldest ones for meat/leather/bones.
 
-        if (cst->second.size() > 5)
+        if (cst->second.size() > 3)
         {
-            // remove the youngest 5
+            // remove the youngest 3
             auto it = cst->second.begin();
             std::advance(it, 3);
             cst->second.erase(cst->second.begin(), it);
