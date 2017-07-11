@@ -29,6 +29,7 @@ REQUIRE_GLOBAL(enabler);
 REQUIRE_GLOBAL(gps);
 REQUIRE_GLOBAL(gview);
 REQUIRE_GLOBAL(init);
+REQUIRE_GLOBAL(ui);
 
 DFhackCExport uint32_t SDL_GetTicks(void);
 DFhackCExport int SDL_SemTryWait(void *sem);
@@ -516,16 +517,24 @@ static void lockstep_loop()
 {
     while (config.lockstep)
     {
-        lockstep_mainloop();
+        if (lockstep_mainloop())
+        {
+            lockstep_want_shutdown = true;
+            break;
+        }
         SDL_NumJoysticks();
         if (!config.lockstep)
         {
             break;
         }
         lockstep_tick_count += 10;
-        if (!enabler->flag.bits.maxfps)
+        if (!enabler->flag.bits.maxfps && !ui->main.autosave_request)
         {
-            lockstep_mainloop();
+            if (lockstep_mainloop())
+            {
+                lockstep_want_shutdown = true;
+                break;
+            }
             SDL_NumJoysticks();
             if (!config.lockstep)
             {
@@ -670,8 +679,12 @@ void Hook_Update()
         lockstep_hooked = true;
 
 #ifdef _WIN32
+        lockstep_tick_count = GetTickCount();
         Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        lockstep_tick_count = tv.tv_sec * 1000 + tv.tv_usec / 1000;
         Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
         Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
