@@ -116,6 +116,7 @@ namespace stockpile_type
         weapons,
         coins,
         sheets,
+        fresh_raw_hide,
 
         _stockpile_type_count
     };

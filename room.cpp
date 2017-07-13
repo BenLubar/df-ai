@@ -151,6 +151,8 @@ std::ostream & operator <<(std::ostream & stream, stockpile_type::type type)
         return stream << "coins";
     case stockpile_type::sheets:
         return stream << "sheets";
+    case stockpile_type::fresh_raw_hide:
+        return stream << "fresh_raw_hide";
 
     case stockpile_type::_stockpile_type_count:
         return stream << "???";

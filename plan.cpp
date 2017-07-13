@@ -2839,6 +2839,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
             map[stockpile_type::coins] = stockpile_list::Coins;
             map[stockpile_type::finished_goods] = stockpile_list::Goods;
             map[stockpile_type::sheets] = stockpile_list::Sheet;
+            map[stockpile_type::fresh_raw_hide] = stockpile_list::Refuse;
         }
     } stockpile_keys;
     df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen(true));
@@ -2861,21 +2862,29 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
         AI::feed_key(interface_key::STANDARDSCROLL_UP);
     }
     AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
-    for (auto it = r->stock_disable.begin(); it != r->stock_disable.end(); it++)
+    if (r->stockpile_type == stockpile_type::fresh_raw_hide)
     {
-        while (view->cur_list != *it)
+        AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
+        view->settings->refuse.fresh_raw_hide = true;
+    }
+    else
+    {
+        for (auto it = r->stock_disable.begin(); it != r->stock_disable.end(); it++)
         {
-            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+            while (view->cur_list != *it)
+            {
+                AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+            }
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
         }
-        AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
-    }
-    if (r->stock_specific1)
-    {
-        AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
-    }
-    if (r->stock_specific2)
-    {
-        AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+        if (r->stock_specific1)
+        {
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
+        }
+        if (r->stock_specific2)
+        {
+            AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+        }
     }
     AI::feed_key(interface_key::LEAVESCREEN);
     AI::feed_key(interface_key::SELECT);
