@@ -7,6 +7,15 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "wood"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "weapons",
+			"stock_disable": [
+				"WeaponsTrapcomp",
+				"WeaponsMetal",
+				"WeaponsStone"
+			]
 		}
 	]
 }

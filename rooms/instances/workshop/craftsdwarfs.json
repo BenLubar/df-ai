@@ -12,6 +12,9 @@
 				"RefuseCorpses",
 				"RefuseParts"
 			]
+		},
+		{
+			"skip": true
 		}
 	]
 }

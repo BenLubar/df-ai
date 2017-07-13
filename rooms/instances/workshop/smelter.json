@@ -11,6 +11,16 @@
 				"StoneOther",
 				"StoneClay"
 			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "bars_blocks",
+			"stock_disable": [
+				"BarsOther",
+				"BlocksStone",
+				"BlocksMetal",
+				"BlocksOther"
+			]
 		}
 	]
 }

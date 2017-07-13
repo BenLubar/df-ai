@@ -7,6 +7,16 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "wood"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "bars_blocks",
+			"stock_disable": [
+				"BarsMetal",
+				"BlocksStone",
+				"BlocksMetal",
+				"BlocksOther"
+			]
 		}
 	]
 }

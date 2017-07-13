@@ -11,6 +11,10 @@
 				"StoneOres",
 				"StoneClay"
 			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "furniture"
 		}
 	]
 }

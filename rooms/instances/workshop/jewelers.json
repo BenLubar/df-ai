@@ -7,6 +7,15 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "gems"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "gems",
+			"stock_disable": [
+				"CutGem",
+				"CutGlass",
+				"CutStone"
+			]
 		}
 	]
 }

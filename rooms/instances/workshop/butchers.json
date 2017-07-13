@@ -6,6 +6,19 @@
 		},
 		{
 			"type": "stockpile",
+			"stockpile_type": "refuse",
+			"stock_disable": [
+				"RefuseItems",
+				"RefuseSkulls",
+				"RefuseBones",
+				"RefuseShells",
+				"RefuseTeeth",
+				"RefuseHorns",
+				"RefuseHair"
+			]
+		},
+		{
+			"type": "stockpile",
 			"stockpile_type": "food",
 			"stock_disable": [
 				"FoodFish",

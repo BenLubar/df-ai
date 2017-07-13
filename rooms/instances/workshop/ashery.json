@@ -6,7 +6,37 @@
 		},
 		{
 			"type": "stockpile",
-			"stockpile_type": "wood"
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal"
+			],
+			"stock_specific1": true
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "bars_blocks",
+			"stock_disable": [
+				"BarsMetal",
+				"BlocksStone",
+				"BlocksMetal",
+				"BlocksOther"
+			]
 		}
 	]
 }

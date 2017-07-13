@@ -28,6 +28,31 @@
 				"FoodMiscLiquid"
 			],
 			"stock_specific1": true
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true
 		}
 	]
 }

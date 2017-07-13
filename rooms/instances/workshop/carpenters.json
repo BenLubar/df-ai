@@ -7,6 +7,10 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "wood"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "furniture"
 		}
 	]
 }

@@ -12,6 +12,9 @@
 				"StoneEconomic",
 				"StoneOther"
 			]
+		},
+		{
+			"skip": true
 		}
 	]
 }

@@ -27,6 +27,9 @@
 				"FoodMiscLiquid"
 			],
 			"stock_specific1": true
+		},
+		{
+			"skip": true
 		}
 	]
 }

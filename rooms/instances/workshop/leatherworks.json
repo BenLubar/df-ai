@@ -7,6 +7,13 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "leather"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "armor",
+			"stock_disable": [
+				"ArmorMetal"
+			]
 		}
 	]
 }

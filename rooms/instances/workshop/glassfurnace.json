@@ -6,6 +6,9 @@
 		},
 		{
 			"skip": true
+		},
+		{
+			"skip": true
 		}
 	]
 }

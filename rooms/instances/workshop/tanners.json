@@ -7,6 +7,10 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "fresh_raw_hide"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "leather"
 		}
 	]
 }

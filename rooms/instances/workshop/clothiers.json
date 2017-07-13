@@ -13,6 +13,14 @@
 				"ThreadYarn",
 				"ThreadMetal"
 			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "armor",
+			"stock_disable": [
+				"ArmorShield",
+				"ArmorMetal"
+			]
 		}
 	]
 }

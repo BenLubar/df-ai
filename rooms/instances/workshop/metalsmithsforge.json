@@ -12,6 +12,10 @@
 				"BlocksMetal",
 				"BlocksOther"
 			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "weapons"
 		}
 	]
 }

@@ -13,6 +13,16 @@
 				"ClothYarn",
 				"ClothMetal"
 			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "cloth",
+			"stock_disable": [
+				"ThreadSilk",
+				"ThreadPlant",
+				"ThreadYarn",
+				"ThreadMetal"
+			]
 		}
 	]
 }
