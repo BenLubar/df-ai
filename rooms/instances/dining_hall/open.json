@@ -1,0 +1,17 @@
+{
+	"p": [
+		{
+			"type": "table",
+			"has_users": true,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"has_users": true,
+			"ignore": true
+		},
+		{
+			"skip": true
+		}
+	]
+}
