@@ -1,0 +1,19 @@
+{
+	"p": [
+		{
+			"type": "bed",
+			"makeroom": true
+		},
+		{
+			"type": "door"
+		},
+		{
+			"type": "cabinet",
+			"ignore": true
+		},
+		{
+			"type": "chest",
+			"ignore": true
+		}
+	]
+}
