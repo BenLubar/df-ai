@@ -1,0 +1,11 @@
+{
+	"p": [
+		{
+			"type": "furnace",
+			"furnace_type": "GlassFurnace"
+		},
+		{
+			"skip": true
+		}
+	]
+}

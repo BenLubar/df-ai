@@ -1,0 +1,39 @@
+{
+	"f": [
+		{
+			"type": "door",
+			"x": 2,
+			"y": -1,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 4,
+			"y": -1,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"layout": [0, 1],
+			"level": 1,
+			"min": [-3, 1, 0],
+			"max": [3, 2, 0],
+			"placeholder": 0
+		},
+		{
+			"accesspath": [0],
+			"level": 2,
+			"min": [-3, 3, 0],
+			"max": [3, 9, 0],
+			"placeholder": 0
+		},
+		{
+			"accesspath": [1],
+			"level": 3,
+			"min": [-3, 10, 0],
+			"max": [3, 18, 0],
+			"placeholder": 0
+		}
+	]
+}

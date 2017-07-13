@@ -1,0 +1,17 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "MetalsmithsForge"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "bars_blocks",
+			"stock_disable": [
+				"BlocksStone",
+				"BlocksMetal",
+				"BlocksOther"
+			]
+		}
+	]
+}

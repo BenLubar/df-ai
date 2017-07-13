@@ -1,0 +1,12 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Carpenters"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "wood"
+		}
+	]
+}

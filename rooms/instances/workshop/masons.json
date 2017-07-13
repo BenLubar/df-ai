@@ -1,0 +1,16 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Masons"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "stone",
+			"stock_disable": [
+				"StoneOres",
+				"StoneClay"
+			]
+		}
+	]
+}

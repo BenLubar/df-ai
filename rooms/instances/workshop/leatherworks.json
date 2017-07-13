@@ -1,0 +1,12 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Leatherworks"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "leather"
+		}
+	]
+}

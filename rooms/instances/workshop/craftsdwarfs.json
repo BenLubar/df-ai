@@ -1,0 +1,17 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Craftsdwarfs"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "refuse",
+			"stock_disable": [
+				"RefuseItems",
+				"RefuseCorpses",
+				"RefuseParts"
+			]
+		}
+	]
+}

@@ -1,0 +1,34 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Custom",
+			"raw_type": "SOAP_MAKER"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true
+		}
+	]
+}

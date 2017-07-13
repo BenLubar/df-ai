@@ -1,0 +1,10 @@
+{
+	"r": [
+		{
+			"type": "tradedepot",
+			"min": [1, -2, 0],
+			"max": [5, 2, 0],
+			"placeholder": 0
+		}
+	]
+}

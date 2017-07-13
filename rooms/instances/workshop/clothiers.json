@@ -1,0 +1,18 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Clothiers"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "cloth",
+			"stock_disable": [
+				"ThreadSilk",
+				"ThreadPlant",
+				"ThreadYarn",
+				"ThreadMetal"
+			]
+		}
+	]
+}

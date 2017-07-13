@@ -1,0 +1,32 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Still"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true
+		}
+	]
+}

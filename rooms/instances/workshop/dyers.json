@@ -1,0 +1,11 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Dyers"
+		},
+		{
+			"skip": true
+		}
+	]
+}

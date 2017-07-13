@@ -1,0 +1,12 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Ashery"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "wood"
+		}
+	]
+}

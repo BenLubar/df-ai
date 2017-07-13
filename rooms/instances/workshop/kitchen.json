@@ -1,0 +1,20 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Kitchen"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodSeeds",
+				"FoodBoneMeal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true
+		}
+	]
+}

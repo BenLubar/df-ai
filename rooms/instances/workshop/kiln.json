@@ -1,0 +1,17 @@
+{
+	"p": [
+		{
+			"type": "furnace",
+			"furnace_type": "Kiln"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "stone",
+			"stock_disable": [
+				"StoneOres",
+				"StoneEconomic",
+				"StoneOther"
+			]
+		}
+	]
+}

@@ -1,0 +1,12 @@
+{
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Jewelers"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "gems"
+		}
+	]
+}

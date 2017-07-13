@@ -1,0 +1,16 @@
+{
+	"p": [
+		{
+			"type": "furnace",
+			"furnace_type": "Smelter"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "stone",
+			"stock_disable": [
+				"StoneOther",
+				"StoneClay"
+			]
+		}
+	]
+}

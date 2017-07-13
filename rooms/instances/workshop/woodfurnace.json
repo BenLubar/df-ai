@@ -1,0 +1,12 @@
+{
+	"p": [
+		{
+			"type": "furnace",
+			"furnace_type": "WoodFurnace"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "wood"
+		}
+	]
+}
