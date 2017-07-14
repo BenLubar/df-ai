@@ -135,15 +135,15 @@ static void lockstep_render_things()
     {
         return;
     }
-  
+
     if (currentscreen->breakdown_level == interface_breakdown_types::NONE)
     {
-	    currentscreen->render();
-	}
+        currentscreen->render();
+    }
     else
     {
-    	memset(gps->screen, 0, gps->dimx * gps->dimy * 4);
-	    memset(gps->screentexpos, 0, gps->dimx * gps->dimy * sizeof(long));
+        memset(gps->screen, 0, gps->dimx * gps->dimy * 4);
+        memset(gps->screentexpos, 0, gps->dimx * gps->dimy * sizeof(long));
     }
 
     // don't render REC/PLAY/FPS indicators

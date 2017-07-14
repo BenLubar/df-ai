@@ -37,6 +37,7 @@ SET(PROJECT_SRCS
     population.cpp
     plan.cpp
     plan_blueprint.cpp
+    blueprint.cpp
     stocks.cpp
     camera.cpp
     embark.cpp
@@ -52,6 +53,7 @@ SET(PROJECT_HDRS
     population.h
     plan.h
     plan_blueprint.h
+    blueprint.h
     stocks.h
     camera.h
     embark.h
@@ -76,3 +78,5 @@ IF(APPLE)
 ENDIF()
 
 DFHACK_PLUGIN(df-ai ${PROJECT_SRCS} LINK_LIBRARIES ${PROJECT_LIBS} COMPILE_FLAGS_GCC "-Wall -Wextra -Werror" COMPILE_FLAGS_MSVC "/W3")
+
+INSTALL(DIRECTORY rooms/ DESTINATION df-ai-blueprints/rooms)

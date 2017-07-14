@@ -20,6 +20,23 @@ namespace df
 
 struct furniture;
 
+template<typename T>
+inline bool df_ai_find_enum_item(T *var, const std::string & name, T count)
+{
+    std::ostringstream scratch;
+    for (T i = T(); i < count; i = (T)(i + 1))
+    {
+        scratch.clear();
+        scratch << i;
+        if (scratch.str() == name)
+        {
+            *var = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 namespace room_status
 {
     enum status
@@ -34,6 +51,7 @@ namespace room_status
 }
 
 std::ostream & operator <<(std::ostream & stream, room_status::status status);
+template<> inline bool DFHack::find_enum_item<room_status::status>(room_status::status *var, const std::string & name) { return df_ai_find_enum_item(var, name, room_status::_room_status_count); }
 
 namespace room_type
 {
@@ -65,6 +83,7 @@ namespace room_type
 }
 
 std::ostream & operator <<(std::ostream & stream, room_type::type type);
+template<> inline bool DFHack::find_enum_item<room_type::type>(room_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, room_type::_room_type_count); }
 
 namespace corridor_type
 {
@@ -81,6 +100,7 @@ namespace corridor_type
 }
 
 std::ostream & operator <<(std::ostream & stream, corridor_type::type type);
+template<> inline bool DFHack::find_enum_item<corridor_type::type>(corridor_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, corridor_type::_corridor_type_count); }
 
 namespace farm_type
 {
@@ -94,6 +114,7 @@ namespace farm_type
 }
 
 std::ostream & operator <<(std::ostream & stream, farm_type::type type);
+template<> inline bool DFHack::find_enum_item<farm_type::type>(farm_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, farm_type::_farm_type_count); }
 
 namespace stockpile_type
 {
@@ -123,6 +144,7 @@ namespace stockpile_type
 }
 
 std::ostream & operator <<(std::ostream & stream, stockpile_type::type type);
+template<> inline bool DFHack::find_enum_item<stockpile_type::type>(stockpile_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, stockpile_type::_stockpile_type_count); }
 
 namespace nobleroom_type
 {
@@ -138,6 +160,7 @@ namespace nobleroom_type
 }
 
 std::ostream & operator <<(std::ostream & stream, nobleroom_type::type type);
+template<> inline bool DFHack::find_enum_item<nobleroom_type::type>(nobleroom_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, nobleroom_type::_nobleroom_type_count); }
 
 namespace outpost_type
 {
@@ -150,6 +173,7 @@ namespace outpost_type
 }
 
 std::ostream & operator <<(std::ostream & stream, outpost_type::type type);
+template<> inline bool DFHack::find_enum_item<outpost_type::type>(outpost_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, outpost_type::_outpost_type_count); }
 
 namespace location_type
 {
@@ -164,6 +188,7 @@ namespace location_type
 }
 
 std::ostream & operator <<(std::ostream & stream, location_type::type type);
+template<> inline bool DFHack::find_enum_item<location_type::type>(location_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, location_type::_location_type_count); }
 
 namespace cistern_type
 {
@@ -177,6 +202,7 @@ namespace cistern_type
 }
 
 std::ostream & operator <<(std::ostream & stream, cistern_type::type type);
+template<> inline bool DFHack::find_enum_item<cistern_type::type>(cistern_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, cistern_type::_cistern_type_count); }
 
 namespace layout_type
 {
@@ -213,6 +239,7 @@ namespace layout_type
 }
 
 std::ostream & operator <<(std::ostream & stream, layout_type::type type);
+template<> inline bool DFHack::find_enum_item<layout_type::type>(layout_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, layout_type::_layout_type_count); }
 
 struct room
 {
