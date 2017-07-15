@@ -952,6 +952,51 @@ bool room_blueprint::apply(std::string & error)
         }
     }
 
+    std::set<room_base::layoutindex_t> used_furniture;
+    for (auto r : rooms)
+    {
+        for (auto f : r->layout)
+        {
+            if (!used_furniture.insert(f).second)
+            {
+                error = "multiple uses of a single furniture";
+                return false;
+            }
+        }
+    }
+
+    layout_move.clear();
+    layoutindex = 0;
+    for (room_base::layoutindex_t i = 0; i < layout.size(); i++)
+    {
+        layout_move.push_back(layoutindex);
+        if (!used_furniture.count(i))
+        {
+            delete layout.at(i);
+            layout.at(i) = nullptr;
+        }
+        else
+        {
+            layoutindex++;
+        }
+    }
+
+    for (auto f : layout)
+    {
+        if (f->has_target)
+        {
+            f->target = layout_move.at(f->target);
+        }
+    }
+
+    for (auto r : rooms)
+    {
+        for (auto & f : r->layout)
+        {
+            f = layout_move.at(f);
+        }
+    }
+
     tmpl = nullptr;
     inst = nullptr;
 
