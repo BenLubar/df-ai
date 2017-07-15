@@ -1,6 +1,7 @@
 #include "blueprint.h"
 
 #include "modules/Filesystem.h"
+#include "modules/Maps.h"
 
 template<typename idx_t>
 static bool apply_index(bool & has_idx, idx_t & idx, Json::Value & data, const std::string & name, std::string & error)
@@ -740,8 +741,44 @@ room_instance::~room_instance()
     }
 }
 
-room_blueprint::room_blueprint(const room_template *tmpl, const room_instance *inst, df::coord origin) : tmpl(tmpl), inst(inst), origin(origin)
+room_blueprint::room_blueprint(const room_template *tmpl, const room_instance *inst) :
+    origin(0, 0, 0),
+    tmpl(tmpl),
+    inst(inst),
+    layout(tmpl->layout.size() + inst->layout.size()),
+    rooms(tmpl->rooms.size() + inst->rooms.size()),
+    interior(),
+    no_room(),
+    no_corridor()
 {
+}
+
+room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset) :
+    origin(rb.origin + offset),
+    tmpl(),
+    inst(),
+    layout(rb.layout.size()),
+    rooms(rb.rooms.size()),
+    interior(),
+    no_room(),
+    no_corridor()
+{
+    for (auto f : rb.layout)
+    {
+        layout.push_back(new room_base::furniture_t(*f));
+    }
+
+    for (auto r : rb.rooms)
+    {
+        r = new room_base::room_t(*r);
+
+        r->min = r->min + offset;
+        r->max = r->max + offset;
+
+        rooms.push_back(r);
+    }
+
+    build_cache();
 }
 
 room_blueprint::~room_blueprint()
@@ -758,6 +795,12 @@ room_blueprint::~room_blueprint()
 
 bool room_blueprint::apply(std::string & error)
 {
+    if (!tmpl || !inst)
+    {
+        error = "room_blueprint::apply has already been called!";
+        return false;
+    }
+
     if (size_t(tmpl->min_placeholders) > inst->placeholders.size())
     {
         error = "not enough placeholders in instance";
@@ -909,7 +952,531 @@ bool room_blueprint::apply(std::string & error)
         }
     }
 
+    tmpl = nullptr;
+    inst = nullptr;
+
+    build_cache();
+
     return true;
+}
+
+void room_blueprint::build_cache()
+{
+    interior.clear();
+    no_room.clear();
+    no_corridor.clear();
+
+    for (auto r : rooms)
+    {
+        std::set<df::coord> holes;
+        for (auto fi : r->layout)
+        {
+            auto f = layout.at(fi);
+            if (f->dig == tile_dig_designation::No || f->construction == construction_type::Wall)
+            {
+                holes.insert(r->min + f->pos);
+            }
+            else
+            {
+                interior.insert(r->min + f->pos);
+                for (int16_t dx = -1; dx <= 1; dx++)
+                {
+                    for (int16_t dy = -1; dy <= 1; dy++)
+                    {
+                        no_room.insert(r->min + f->pos + df::coord(dx, dy, 0));
+                    }
+                }
+            }
+        }
+
+        for (int16_t x = r->min.x; x <= r->max.x; x++)
+        {
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                for (int16_t z = r->min.z; z <= r->max.z; z++)
+                {
+                    df::coord t(x, y, z);
+                    if (holes.count(t))
+                    {
+                        continue;
+                    }
+
+                    interior.insert(t);
+                    for (int16_t dx = -1; dx <= 1; dx++)
+                    {
+                        for (int16_t dy = -1; dy <= 1; dy++)
+                        {
+                            no_room.insert(t + df::coord(dx, dy, 0));
+                            if (!r->in_corridor)
+                            {
+                                no_corridor.insert(t + df::coord(dx, dy, 0));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+blueprint_plan::~blueprint_plan()
+{
+    for (auto r : rooms)
+    {
+        delete r;
+    }
+    for (auto f : layout)
+    {
+        delete f;
+    }
+}
+
+bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
+{
+    for (auto c : rb.interior)
+    {
+        if (no_room.count(c))
+        {
+            error = "room interior intersects no_room tile";
+            return false;
+        }
+    }
+    for (auto c : rb.no_corridor)
+    {
+        if (corridor.count(c))
+        {
+            error = "room no_corridor intersects corridor tile";
+            return false;
+        }
+    }
+    for (auto c : rb.no_room)
+    {
+        if (interior.count(c))
+        {
+            error = "room no_room intersects interior tile";
+            return false;
+        }
+    }
+
+    room_base::roomindex_t parent;
+    if (!build_corridor_to(rb, parent, error))
+    {
+        return false;
+    }
+
+    room_base::layoutindex_t layout_start = layout.size();
+    room_base::roomindex_t room_start = rooms.size();
+
+    for (auto f : rb.layout)
+    {
+        f = new room_base::furniture_t(*f);
+        f->shift(layout_start, room_start);
+        layout.push_back(f);
+    }
+
+    for (auto r : rb.rooms)
+    {
+        r = new room_base::room_t(*r);
+        r->shift(layout_start, room_start);
+        r->accesspath.push_back(parent);
+        rooms.push_back(r);
+    }
+
+    for (auto c : rb.interior)
+    {
+        interior.insert(c);
+    }
+
+    for (auto c : rb.no_room)
+    {
+        no_room.insert(c);
+    }
+
+    for (auto c : rb.no_corridor)
+    {
+        no_corridor.insert(c);
+        corridor_connect.erase(c);
+    }
+
+    return true;
+}
+
+bool blueprint_plan::build_corridor_to(const room_blueprint & rb, room_base::roomindex_t & parent, std::string & error)
+{
+    if (!Maps::isValidTilePos(rb.origin))
+    {
+        error = "invalid target for corridor";
+        return false;
+    }
+
+    if (corridor_connect.count(rb.origin))
+    {
+        return true;
+    }
+
+    df::coord target;
+    if (!rb.no_corridor.count(rb.origin))
+    {
+        target = rb.origin;
+    }
+    else if (!rb.no_corridor.count(rb.origin + df::coord(-1, 0, 0)))
+    {
+        target = rb.origin + df::coord(-1, 0, 0);
+    }
+    else if (!rb.no_corridor.count(rb.origin + df::coord(1, 0, 0)))
+    {
+        target = rb.origin + df::coord(1, 0, 0);
+    }
+    else if (!rb.no_corridor.count(rb.origin + df::coord(0, -1, 0)))
+    {
+        target = rb.origin + df::coord(0, -1, 0);
+    }
+    else if (!rb.no_corridor.count(rb.origin + df::coord(0, 1, 0)))
+    {
+        target = rb.origin + df::coord(0, 1, 0);
+    }
+    else
+    {
+        error = "could not find room entrance";
+        return false;
+    }
+
+    std::vector<room_base::room_t *> accesspath;
+
+    int32_t best_distance = -1;
+
+    for (auto & c : corridor_connect)
+    {
+        bool fail = false;
+        int32_t distance = 0;
+
+        // TODO: pathfinding
+
+        if (c.first.x >= target.x)
+        {
+            for (int16_t x = c.first.x; x <= target.x; x++)
+            {
+                if (no_corridor.count(df::coord(x, c.first.y, c.first.z)) || rb.no_corridor.count(df::coord(x, c.first.y, c.first.z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+        else
+        {
+            for (int16_t x = c.first.x; x >= target.x; x--)
+            {
+                if (no_corridor.count(df::coord(x, c.first.y, c.first.z)) || rb.no_corridor.count(df::coord(x, c.first.y, c.first.z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+
+        if (fail)
+        {
+            continue;
+        }
+
+        if (c.first.y >= target.y)
+        {
+            for (int16_t y = c.first.y; y <= target.y; y++)
+            {
+                if (no_corridor.count(df::coord(target.x, y, c.first.z)) || rb.no_corridor.count(df::coord(target.x, y, c.first.z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+        else
+        {
+            for (int16_t y = c.first.y; y >= target.y; y--)
+            {
+                if (no_corridor.count(df::coord(target.x, y, c.first.z)) || rb.no_corridor.count(df::coord(target.x, y, c.first.z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+
+        if (fail)
+        {
+            continue;
+        }
+
+        if (c.first.z >= target.z)
+        {
+            for (int16_t z = c.first.z; z <= target.z; z++)
+            {
+                if (no_corridor.count(df::coord(target.x, target.y, z)) || rb.no_corridor.count(df::coord(target.x, target.y, z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+        else
+        {
+            for (int16_t z = c.first.z; z >= target.z; z--)
+            {
+                if (no_corridor.count(df::coord(target.x, target.y, z)) || rb.no_corridor.count(df::coord(target.x, target.y, z)))
+                {
+                    fail = true;
+                    break;
+                }
+                distance++;
+            }
+        }
+
+        if (!fail && (best_distance == -1 || distance < best_distance))
+        {
+            for (auto r : accesspath)
+            {
+                delete r;
+            }
+            accesspath.clear();
+
+            parent = c.second;
+
+            if (c.first.x != target.x)
+            {
+                auto r = new room_base::room_t();
+                r->type = room_type::corridor;
+                r->corridor_type = corridor_type::corridor;
+                r->accesspath.push_back(parent);
+                r->min = df::coord(std::min(c.first.x, target.x), c.first.y, c.first.z);
+                r->max = df::coord(std::max(c.first.x, target.x), c.first.y, c.first.z);
+                if (c.first.y != target.y || c.first.z != target.z)
+                {
+                    if (c.first.x > target.x)
+                    {
+                        r->min.x++;
+                    }
+                    else
+                    {
+                        r->max.x--;
+                    }
+                }
+                parent = rooms.size() + accesspath.size();
+                accesspath.push_back(r);
+            }
+
+            if (c.first.y != target.y)
+            {
+                auto r = new room_base::room_t();
+                r->type = room_type::corridor;
+                r->corridor_type = corridor_type::corridor;
+                r->accesspath.push_back(parent);
+                r->min = df::coord(target.x, std::min(c.first.y, target.y), c.first.z);
+                r->max = df::coord(target.x, std::max(c.first.y, target.y), c.first.z);
+                if (c.first.z != target.z)
+                {
+                    if (c.first.y > target.y)
+                    {
+                        r->min.y++;
+                    }
+                    else
+                    {
+                        r->max.y--;
+                    }
+                }
+                parent = rooms.size() + accesspath.size();
+                accesspath.push_back(r);
+            }
+
+            if (c.first.z != target.z)
+            {
+                auto r = new room_base::room_t();
+                r->type = room_type::corridor;
+                r->corridor_type = corridor_type::corridor;
+                r->accesspath.push_back(parent);
+                r->min = df::coord(target.x, target.y, std::min(c.first.z, target.z));
+                r->max = df::coord(target.x, target.y, std::max(c.first.z, target.z));
+                parent = rooms.size() + accesspath.size();
+                accesspath.push_back(r);
+            }
+
+            best_distance = distance;
+        }
+    }
+
+    if (best_distance == -1)
+    {
+        error = "could not find path";
+        return false;
+    }
+
+    size_t base = rooms.size();
+
+    for (auto r : accesspath)
+    {
+        rooms.push_back(r);
+
+        for (int16_t x = r->min.x; x <= r->max.x; x++)
+        {
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                for (int16_t z = r->min.z; z <= r->max.z; z++)
+                {
+                    df::coord t(x, y, z);
+                    if (r->min.z == r->max.z)
+                    {
+                        corridor.insert(t);
+                    }
+                    else
+                    {
+                        interior.insert(t);
+                    }
+                    no_room.insert(t);
+                    no_corridor.insert(t);
+                    corridor_connect.erase(t);
+                }
+            }
+        }
+    }
+
+    for (size_t i = 0; i < accesspath.size(); i++)
+    {
+        auto r = accesspath.at(i);
+        for (int16_t z = r->min.z; z <= r->max.z; z++)
+        {
+            for (int16_t x = r->min.x; x <= r->max.x; x++)
+            {
+                df::coord t(x, r->min.y - 1, z);
+                if (!no_corridor.count(t) && !corridor_connect.count(t))
+                {
+                    corridor_connect[t] = base + i;
+                }
+                t.y = r->max.y + 1;
+                if (!no_corridor.count(t) && !corridor_connect.count(t))
+                {
+                    corridor_connect[t] = base + i;
+                }
+            }
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                df::coord t(r->min.x - 1, y, z);
+                if (!no_corridor.count(t) && !corridor_connect.count(t))
+                {
+                    corridor_connect[t] = base + i;
+                }
+                t.x = r->max.x + 1;
+                if (!no_corridor.count(t) && !corridor_connect.count(t))
+                {
+                    corridor_connect[t] = base + i;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+void blueprint_plan::create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const
+{
+    std::vector<furniture *> real_layout(layout.size());
+    std::vector<room *> real_rooms_and_corridors(rooms.size());
+
+    for (size_t i = 0; i < layout.size(); i++)
+    {
+        real_layout.push_back(new furniture());
+    }
+    for (size_t i = 0; i < rooms.size(); i++)
+    {
+        real_rooms_and_corridors.push_back(new room(room_type::type(), df::coord(), df::coord()));
+    }
+
+    for (size_t i = 0; i < layout.size(); i++)
+    {
+        auto in = layout.at(i);
+        auto out = real_layout.at(i);
+
+        out->type = in->type;
+        out->construction = in->construction;
+        out->dig = in->dig;
+        out->pos = in->pos;
+
+        if (in->has_target)
+        {
+            out->target = real_layout.at(in->target);
+        }
+        else
+        {
+            out->target = nullptr;
+        }
+
+        out->has_users = in->has_users;
+        out->ignore = in->ignore;
+        out->makeroom = in->makeroom;
+        out->internal = in->internal;
+
+        out->comment = in->comment;
+    }
+    for (size_t i = 0; i < rooms.size(); i++)
+    {
+        auto in = rooms.at(i);
+        auto out = real_rooms_and_corridors.at(i);
+
+        out->type = in->type;
+
+        out->corridor_type = in->corridor_type;
+        out->farm_type = in->farm_type;
+        out->stockpile_type = in->stockpile_type;
+        out->nobleroom_type = in->nobleroom_type;
+        out->outpost_type = in->outpost_type;
+        out->location_type = in->location_type;
+        out->cistern_type = in->cistern_type;
+        out->workshop_type = in->workshop_type;
+        out->furnace_type = in->furnace_type;
+
+        out->raw_type = in->raw_type;
+
+        out->comment = in->comment;
+
+        out->min = in->min;
+        out->max = in->max;
+
+        for (auto ri : in->accesspath)
+        {
+            out->accesspath.push_back(real_rooms_and_corridors.at(ri));
+        }
+        for (auto fi : in->layout)
+        {
+            out->layout.push_back(real_layout.at(fi));
+        }
+
+        out->level = in->level;
+        out->noblesuite = in->noblesuite;
+        out->queue = in->queue;
+
+        if (in->has_workshop)
+        {
+            out->workshop = real_rooms_and_corridors.at(in->workshop);
+        }
+        else
+        {
+            out->workshop = nullptr;
+        }
+
+        out->stock_disable = in->stock_disable;
+        out->stock_specific1 = in->stock_specific1;
+        out->stock_specific2 = in->stock_specific2;
+
+        out->has_users = in->has_users;
+        out->temporary = in->temporary;
+        out->outdoor = in->outdoor;
+    }
+
+    std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), real_corridors.end(), real_rooms.end(), [](room *r) -> bool { return r->type == room_type::corridor; });
 }
 
 template<typename T>
@@ -950,6 +1517,8 @@ blueprints_t::blueprints_t(color_ostream & out)
 {
     std::string error;
 
+    std::map<std::string, std::pair<std::vector<std::pair<std::string, room_template *>>, std::vector<std::pair<std::string, room_instance *>>>> rooms;
+
     std::vector<std::string> types;
     if (!Filesystem::listdir("df-ai-blueprints/rooms/templates", types))
     {
@@ -960,26 +1529,28 @@ blueprints_t::blueprints_t(color_ostream & out)
                 continue;
             }
 
-            std::vector<std::string> names;
-            if (!Filesystem::listdir("df-ai-blueprints/rooms/templates/" + type, names))
-            {
-                if (type.rfind(".json") != type.size() - strlen(".json"))
-                {
-                    continue;
-                }
+std::vector<std::string> names;
+if (!Filesystem::listdir("df-ai-blueprints/rooms/templates/" + type, names))
+{
+    if (type.rfind(".json") != type.size() - strlen(".json"))
+    {
+        continue;
+    }
 
-                for (auto & name : names)
-                {
-                    if (auto inst = load_json<room_template>("df-ai-blueprints/rooms/templates/" + type + "/" + name, error))
-                    {
-                        blueprints[type].first.push_back(inst);
-                    }
-                    else
-                    {
-                        out.printerr("%s\n", error.c_str());
-                    }
-                }
-            }
+    for (auto & name : names)
+    {
+        std::string path = "df-ai-blueprints/rooms/templates/" + type + "/" + name;
+
+        if (auto inst = load_json<room_template>(path, error))
+        {
+            rooms[type].first.push_back(std::make_pair(path, inst));
+        }
+        else
+        {
+            out.printerr("%s\n", error.c_str());
+        }
+    }
+}
         }
     }
     types.clear();
@@ -1002,9 +1573,11 @@ blueprints_t::blueprints_t(color_ostream & out)
                         continue;
                     }
 
-                    if (auto inst = load_json<room_instance>("df-ai-blueprints/rooms/instances/" + type + "/" + name, error))
+                    std::string path = "df-ai-blueprints/rooms/instances/" + type + "/" + name;
+
+                    if (auto inst = load_json<room_instance>(path, error))
                     {
-                        blueprints[type].second.push_back(inst);
+                        rooms[type].second.push_back(std::make_pair(path, inst));
                     }
                     else
                     {
@@ -1014,19 +1587,51 @@ blueprints_t::blueprints_t(color_ostream & out)
             }
         }
     }
+
+    for (auto & type : rooms)
+    {
+        auto & rbs = blueprints[type.first];
+        rbs.reserve(type.second.first.size() * type.second.second.size());
+        for (auto tmpl : type.second.first)
+        {
+            for (auto inst : type.second.second)
+            {
+                room_blueprint *rb = new room_blueprint(tmpl.second, inst.second);
+                if (!rb->apply(error))
+                {
+                    out.printerr("%s + %s: %s\n", tmpl.first.c_str(), inst.first.c_str(), error.c_str());
+                    delete rb;
+                    continue;
+                }
+                rbs.push_back(rb);
+            }
+            delete tmpl.second;
+        }
+        for (auto inst : type.second.second)
+        {
+            delete inst.second;
+        }
+    }
 }
 
 blueprints_t::~blueprints_t()
 {
     for (auto & type : blueprints)
     {
-        for (auto & tmpl : type.second.first)
+        for (auto rb : type.second)
         {
-            delete tmpl;
-        }
-        for (auto & inst : type.second.second)
-        {
-            delete inst;
+            delete rb;
         }
     }
+}
+
+std::vector<const room_blueprint *> blueprints_t::operator[](const std::string & type) const
+{
+    auto it = blueprints.find(type);
+    if (it == blueprints.end())
+    {
+        return std::vector<const room_blueprint *>();
+    }
+
+    return std::vector<const room_blueprint *>(it->second.begin(), it->second.end());
 }

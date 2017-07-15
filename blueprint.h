@@ -112,7 +112,8 @@ struct room_instance : public room_base
 
 struct room_blueprint
 {
-    room_blueprint(const room_template *tmpl, const room_instance *inst, df::coord origin = df::coord(0, 0, 0));
+    room_blueprint(const room_template *tmpl, const room_instance *inst);
+    room_blueprint(const room_blueprint & rb, df::coord offset = df::coord(0, 0, 0));
     ~room_blueprint();
 
     df::coord origin;
@@ -122,7 +123,30 @@ struct room_blueprint
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
 
+    std::set<df::coord> interior;
+    std::set<df::coord> no_room;
+    std::set<df::coord> no_corridor;
+
     bool apply(std::string & error);
+    void build_cache();
+};
+
+struct blueprint_plan
+{
+    ~blueprint_plan();
+
+    std::vector<room_base::furniture_t *> layout;
+    std::vector<room_base::room_t *> rooms;
+
+    std::map<df::coord, room_base::roomindex_t> corridor_connect;
+    std::set<df::coord> corridor;
+    std::set<df::coord> interior;
+    std::set<df::coord> no_room;
+    std::set<df::coord> no_corridor;
+
+    bool add(const room_blueprint & rb, std::string & error);
+    bool build_corridor_to(const room_blueprint & rb, room_base::roomindex_t & parent, std::string & error);
+    void create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
 };
 
 class blueprints_t
@@ -131,6 +155,8 @@ public:
     blueprints_t(color_ostream & out);
     ~blueprints_t();
 
+    std::vector<const room_blueprint *> operator[](const std::string & type) const;
+
 private:
-    std::map<std::string, std::pair<std::vector<room_template *>, std::vector<room_instance *>>> blueprints;
+    std::map<std::string, std::vector<room_blueprint *>> blueprints;
 };
