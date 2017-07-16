@@ -112,6 +112,8 @@ std::ostream & operator <<(std::ostream & stream, task_type::type type)
         return stream << "check_rooms";
     case task_type::construct_activityzone:
         return stream << "construct_activityzone";
+    case task_type::construct_farmplot:
+        return stream << "construct_farmplot";
     case task_type::construct_furnace:
         return stream << "construct_furnace";
     case task_type::construct_stockpile:
@@ -130,6 +132,8 @@ std::ostream & operator <<(std::ostream & stream, task_type::type type)
         return stream << "furnish";
     case task_type::monitor_cistern:
         return stream << "monitor_cistern";
+    case task_type::monitor_farm_irrigation:
+        return stream << "monitor_farm_irrigation";
     case task_type::setup_farmplot:
         return stream << "setup_farmplot";
     case task_type::want_dig:
@@ -404,6 +408,9 @@ void Plan::update(color_ostream &)
             case task_type::construct_workshop:
                 del = try_construct_workshop(out, t.r);
                 break;
+            case task_type::construct_farmplot:
+                del = try_construct_farmplot(out, t.r);
+                break;
             case task_type::construct_furnace:
                 del = try_construct_furnace(out, t.r);
                 break;
@@ -412,6 +419,9 @@ void Plan::update(color_ostream &)
                 break;
             case task_type::construct_activityzone:
                 del = try_construct_activityzone(out, t.r);
+                break;
+            case task_type::monitor_farm_irrigation:
+                del = monitor_farm_irrigation(out, t.r);
                 break;
             case task_type::setup_farmplot:
                 del = try_setup_farmplot(out, t.r);
@@ -2062,7 +2072,7 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
     {
         for (auto job = world->job_list.next; job != nullptr; job = job->next)
         {
-            if (ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging && job->item->pos == t)
+            if ((ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging || ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Gathering) && job->item->pos == t)
             {
                 // someone already enroute to dig here, avoid 'Inappropriate
                 // dig square' spam
@@ -2117,22 +2127,19 @@ void Plan::digroom(color_ostream & out, room *r)
         tasks_furniture.push_back(new task(task_type::furnish, r, f));
     }
 
-    if (r->type == room_type::workshop)
+    find_room(room_type::stockpile, [this, &out, r](room *r_) -> bool
     {
-        find_room(room_type::stockpile, [this, &out, r](room *r_) -> bool
+        if (r_->workshop != r)
         {
-            if (r_->workshop != r)
-            {
-                return false;
-            }
-
-            // dig associated stockpiles
-            digroom(out, r_);
-
-            // search all stockpiles in case there's more than one
             return false;
-        });
-    }
+        }
+
+        // dig associated stockpiles
+        digroom(out, r_);
+
+        // search all stockpiles in case there's more than one
+        return false;
+    });
 
     df::coord size = r->size();
     if (r->type != room_type::corridor || size.z > 1)
@@ -2179,7 +2186,8 @@ bool Plan::construct_room(color_ostream & out, room *r)
 
     if (r->type == room_type::farmplot)
     {
-        return construct_farmplot(out, r);
+        tasks_generic.push_back(new task(task_type::construct_farmplot, r));
+        return true;
     }
 
     if (r->type == room_type::cistern)
@@ -2192,7 +2200,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return furnish_room(out, r);
     }
 
-    if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::location || r->type == room_type::garbagedump)
+    if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::pond || r->type == room_type::location || r->type == room_type::garbagedump)
     {
         furnish_room(out, r);
         if (try_construct_activityzone(out, r))
@@ -3015,6 +3023,15 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     {
         bld->zone_flags.bits.pit_pond = 1;
     }
+    else if (r->type == room_type::pond)
+    {
+        bld->zone_flags.bits.pit_pond = 1;
+        bld->pit_flags.bits.is_pond = 1;
+        if (r->temporary && r->workshop && r->workshop->type == room_type::farmplot)
+        {
+            tasks_generic.push_back(new task(task_type::monitor_farm_irrigation, r));
+        }
+    }
     else if (r->type == room_type::location)
     {
         int32_t start_x, start_y, start_z;
@@ -3059,7 +3076,19 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     return true;
 }
 
-bool Plan::construct_farmplot(color_ostream & out, room *r)
+bool Plan::monitor_farm_irrigation(color_ostream & out, room *r)
+{
+    if (can_place_farm(out, r->workshop, false))
+    {
+        auto zone = virtual_cast<df::building_civzonest>(r->dfbuilding());
+        zone->pit_flags.bits.is_pond = 0;
+        return true;
+    }
+
+    return false;
+}
+
+bool Plan::can_place_farm(color_ostream & out, room *r, bool cheat)
 {
     for (int16_t x = r->min.x; x <= r->max.x; x++)
     {
@@ -3077,24 +3106,54 @@ bool Plan::construct_farmplot(color_ostream & out, room *r)
                             spatter->mat_type == builtin_mats::MUD &&
                             spatter->mat_index == -1;
                     });
-                    if (e == block->block_events.end())
+                    if (cheat)
                     {
-                        df::block_square_event_material_spatterst *spatter = df::allocate<df::block_square_event_material_spatterst>();
-                        spatter->mat_type = builtin_mats::MUD;
-                        spatter->mat_index = -1;
-                        spatter->min_temperature = 60001;
-                        spatter->max_temperature = 60001;
-                        e = block->block_events.insert(e, spatter);
+                        if (e == block->block_events.end())
+                        {
+                            df::block_square_event_material_spatterst *spatter = df::allocate<df::block_square_event_material_spatterst>();
+                            spatter->mat_type = builtin_mats::MUD;
+                            spatter->mat_index = -1;
+                            spatter->min_temperature = 60001;
+                            spatter->max_temperature = 60001;
+                            e = block->block_events.insert(e, spatter);
+                        }
+                        df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
+                        if (spatter->amount[x & 0xf][y & 0xf] == 0)
+                        {
+                            ai->debug(out, stl_sprintf("cheat: mud invocation (%d, %d, %d)", x, y, z));
+                            spatter->amount[x & 0xf][y & 0xf] = 50; // small pile of mud
+                        }
                     }
-                    df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
-                    if (spatter->amount[x & 0xf][y & 0xf] < 50)
+                    else
                     {
-                        ai->debug(out, stl_sprintf("cheat: mud invocation (%d, %d, %d)", x, y, z));
-                        spatter->amount[x & 0xf][y & 0xf] = 50; // small pile of mud
+                        if (e == block->block_events.end())
+                        {
+                            return false;
+                        }
+
+                        df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
+                        if (spatter->amount[x & 0xf][y & 0xf] == 0)
+                        {
+                            return false;
+                        }
                     }
                 }
             }
         }
+    }
+
+    return true;
+}
+
+bool Plan::try_construct_farmplot(color_ostream & out, room *r)
+{
+    auto pond = find_room(room_type::pond, [r](room *p) -> bool
+    {
+        return p->temporary && p->workshop == r;
+    });
+    if (!can_place_farm(out, r, !pond))
+    {
+        return false;
     }
 
     df::building *bld = Buildings::allocInstance(r->min, building_type::FarmPlot);
@@ -4179,7 +4238,7 @@ command_result Plan::make_map_walkable(color_ostream &)
             if (!plan->map_tile_in_rock(t))
                 return false;
             df::coord st = plan->surface_tile_at(t.x, t.y);
-            return plan->map_tile_in_rock(st + df::coord(0, 0, -1));
+            return st.isValid() && plan->map_tile_in_rock(st + df::coord(0, 0, -1));
         });
         if (!t1.isValid())
             return true;
@@ -4215,7 +4274,13 @@ command_result Plan::make_map_walkable(color_ostream &)
             df::feature_init_outdoor_riverst *r = virtual_cast<df::feature_init_outdoor_riverst>(*f);
             if (r)
             {
-                z = *std::min_element(r->feature->min_map_z.begin(), r->feature->min_map_z.end()) - 1;
+                for (auto zz : r->feature->min_map_z)
+                {
+                    if (zz > 0 && (z == -1 || z > zz))
+                    {
+                        z = zz;
+                    }
+                }
                 break;
             }
         }
@@ -5238,6 +5303,11 @@ void Plan::fixup_open(color_ostream & out, room *r)
             for (int16_t z = r->min.z; z <= r->max.z; z++)
             {
                 df::coord t(x, y, z);
+                if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(t)) == tiletype_shape::WALL)
+                {
+                    continue;
+                }
+
                 for (auto it = r->layout.begin(); it != r->layout.end(); it++)
                 {
                     furniture *f = *it;
@@ -5267,8 +5337,7 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
     if (!tt)
         return;
 
-    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape,
-        ENUM_ATTR(tiletype, shape, *tt));
+    auto ts = ENUM_ATTR(tiletype, shape, *tt);
 
     switch (d)
     {
@@ -5276,37 +5345,37 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
         // do nothing
         break;
     case tile_dig_designation::No:
-        if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+        if (ts != tiletype_shape::WALL)
         {
             fixup_open_helper(out, r, t, construction_type::Wall, f);
         }
         break;
     case tile_dig_designation::Default:
-        if (sb == tiletype_shape_basic::Open)
+        if (ts != tiletype_shape::FLOOR)
         {
             fixup_open_helper(out, r, t, construction_type::Floor, f);
         }
         break;
     case tile_dig_designation::UpDownStair:
-        if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+        if (ts != tiletype_shape::STAIR_UPDOWN)
         {
             fixup_open_helper(out, r, t, construction_type::UpDownStair, f);
         }
         break;
     case tile_dig_designation::UpStair:
-        if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+        if (ts != tiletype_shape::STAIR_UP)
         {
             fixup_open_helper(out, r, t, construction_type::UpStair, f);
         }
         break;
     case tile_dig_designation::Ramp:
-        if (sb == tiletype_shape_basic::Open || sb == tiletype_shape_basic::Floor)
+        if (ts != tiletype_shape::RAMP)
         {
             fixup_open_helper(out, r, t, construction_type::Ramp, f);
         }
         break;
     case tile_dig_designation::DownStair:
-        if (sb == tiletype_shape_basic::Open)
+        if (ts != tiletype_shape::STAIR_DOWN)
         {
             fixup_open_helper(out, r, t, construction_type::DownStair, f);
         }

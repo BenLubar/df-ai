@@ -64,6 +64,8 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
         return stream << "pasture";
     case room_type::pitcage:
         return stream << "pitcage";
+    case room_type::pond:
+        return stream << "pond";
     case room_type::stockpile:
         return stream << "stockpile";
     case room_type::tradedepot:
@@ -566,12 +568,45 @@ bool room::constructions_done() const
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
         furniture *f = *it;
-        if (f->construction == construction_type::NONE)
-            continue;
+
         df::coord ft = min + f->pos;
-        // TODO check actual tile shape vs construction type
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft))) == tiletype_shape_basic::Open)
+
+        auto ts = ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft));
+
+        bool ok = true;
+        switch (f->construction)
+        {
+        case construction_type::NONE:
+            continue;
+        case construction_type::Fortification:
+            ok = ts == tiletype_shape::FORTIFICATION;
+            break;
+        case construction_type::Wall:
+            ok = ts == tiletype_shape::WALL;
+            break;
+        case construction_type::Floor:
+            ok = ts == tiletype_shape::FLOOR;
+            break;
+        case construction_type::UpStair:
+            ok = ts == tiletype_shape::STAIR_UP;
+            break;
+        case construction_type::DownStair:
+            ok = ts == tiletype_shape::STAIR_DOWN;
+            break;
+        case construction_type::UpDownStair:
+            ok = ts == tiletype_shape::STAIR_UPDOWN;
+            break;
+        case construction_type::Ramp:
+            ok = ts == tiletype_shape::RAMP;
+            break;
+        default:
+            break;
+        }
+
+        if (!ok)
+        {
             return false;
+        }
     }
     return true;
 }

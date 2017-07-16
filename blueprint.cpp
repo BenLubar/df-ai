@@ -5,6 +5,7 @@
 #include "modules/Filesystem.h"
 #include "modules/Maps.h"
 
+#include "df/tile_designation.h"
 #include "df/tile_occupancy.h"
 #include "df/world.h"
 
@@ -1676,6 +1677,30 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
         }
         else
         {
+            for (auto fi : r->layout)
+            {
+                auto f = rb.layout.at(fi);
+                if (f->dig != tile_dig_designation::No && f->dig != tile_dig_designation::Default && f->dig != tile_dig_designation::UpStair && f->dig != tile_dig_designation::Ramp)
+                {
+                    df::coord t = min + f->pos;
+                    for (int16_t dx = -1; dx <= 1; dx++)
+                    {
+                        for (int16_t dy = -1; dy <= 1; dy++)
+                        {
+                            df::tiletype tt = *Maps::getTileType(t + df::coord(dx, dy, -1));
+                            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
+                            {
+                                if (config.plan_verbosity >= 3)
+                                {
+                                    ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s is directly above a cavern", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(f->dig)));
+                                }
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+
             for (df::coord t = min - df::coord(1, 1, 0); t.x <= max.x + 1; t.x++)
             {
                 for (t.y = min.y - 1; t.y <= max.y + 1; t.y++)
@@ -1688,6 +1713,16 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             if (config.plan_verbosity >= 3)
                             {
                                 ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            }
+                            return false;
+                        }
+
+                        auto des = *Maps::getTileDesignation(t);
+                        if (des.bits.flow_size > 0 || ENUM_ATTR(tiletype, material, tt) == tiletype_material::POOL || ENUM_ATTR(tiletype, material, tt) == tiletype_material::RIVER || ENUM_ATTR(tiletype, material, tt) == tiletype_material::BROOK)
+                        {
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) has water", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }

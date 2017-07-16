@@ -1,0 +1,10 @@
+{
+	"r": [
+		{
+			"type": "pasture",
+			"min": [-4, -4, 0],
+			"max": [4, 4, 0],
+			"outdoor": true
+		}
+	]
+}

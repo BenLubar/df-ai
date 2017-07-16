@@ -77,6 +77,7 @@ namespace room_type
         outpost,
         pasture,
         pitcage,
+        pond,
         stockpile,
         tradedepot,
         workshop,

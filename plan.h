@@ -35,6 +35,7 @@ namespace task_type
         check_idle,
         check_rooms,
         construct_activityzone,
+        construct_farmplot,
         construct_furnace,
         construct_stockpile,
         construct_tradedepot,
@@ -44,6 +45,7 @@ namespace task_type
         dig_room,
         furnish,
         monitor_cistern,
+        monitor_farm_irrigation,
         setup_farmplot,
         want_dig,
 
@@ -172,7 +174,9 @@ public:
     bool try_construct_stockpile(color_ostream & out, room *r);
     bool try_construct_activityzone(color_ostream & out, room *r);
 
-    bool construct_farmplot(color_ostream & out, room *r);
+    bool monitor_farm_irrigation(color_ostream & out, room *r);
+    bool can_place_farm(color_ostream & out, room *r, bool cheat);
+    bool try_construct_farmplot(color_ostream & out, room *r);
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
 

@@ -62,7 +62,7 @@
 			"comment": "seeds"
 		},
 		{
-			"type": "corridor", // TODO: pond
+			"type": "pond",
 			"accesspath": [1],
 			"min": [0, 0, 1],
 			"max": [0, 0, 1],
