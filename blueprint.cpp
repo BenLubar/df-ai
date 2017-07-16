@@ -1364,13 +1364,36 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     std::map<std::string, size_t> counts;
     std::map<std::string, std::map<std::string, size_t>> instance_counts;
 
-    std::vector<const room_blueprint *> available_blueprints;
+    ai->debug(out, "Placing starting room...");
+    place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_outdoor);
+    if (rooms.empty())
+    {
+        ai->debug(out, "No rooms placed by initial phase. Cannot continue building.");
+        return false;
+    }
 
-    ai->debug(out, "Placing starting rooms...");
+    ai->debug(out, "Placing outdoor rooms...");
+    place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_outdoor, &blueprint_plan::try_add_room_outdoor);
+
+    ai->debug(out, "Building remainder of fortress...");
+    place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_connect, &blueprint_plan::try_add_room_connect);
+
+    if (!plan.have_minimum_requirements(out, ai, counts, instance_counts))
+    {
+        ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
+        return false;
+    }
+
+    return true;
+}
+
+void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, blueprint_plan::find_fn find, blueprint_plan::try_add_fn try_add)
+{
+    std::vector<const room_blueprint *> available_blueprints;
     for (;;)
     {
         available_blueprints.clear();
-        find_available_blueprints_start(out, ai, available_blueprints, counts, instance_counts, blueprints, plan);
+        (this->*find)(out, ai, available_blueprints, counts, instance_counts, blueprints, plan);
         if (available_blueprints.empty())
         {
             ai->debug(out, "No available blueprints.");
@@ -1385,7 +1408,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
         {
             for (auto rb : available_blueprints)
             {
-                if (!try_add_room_start(out, ai, *rb, counts, instance_counts, plan))
+                if (!(this->*try_add)(out, ai, *rb, counts, instance_counts, plan))
                 {
                     failures++;
                     ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
@@ -1408,57 +1431,6 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
             break;
         }
     }
-
-    ai->debug(out, "Finished initial phase. Building remainder of fortress...");
-
-    for (;;)
-    {
-        available_blueprints.clear();
-        find_available_blueprints_connect(out, ai, available_blueprints, counts, instance_counts, blueprints, plan);
-        if (available_blueprints.empty())
-        {
-            ai->debug(out, "No available blueprints.");
-            break;
-        }
-
-        std::shuffle(available_blueprints.begin(), available_blueprints.end(), ai->rng);
-
-        bool stop = false;
-        size_t failures = 0;
-        while (!stop)
-        {
-            for (auto rb : available_blueprints)
-            {
-                if (!try_add_room_connect(out, ai, *rb, counts, instance_counts, plan))
-                {
-                    failures++;
-                    ai->debug(out, stl_sprintf("Failed to place room %s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->name.c_str(), failures, plan.max_failures));
-                    if (failures >= plan.max_failures)
-                    {
-                        stop = true;
-                        break;
-                    }
-                }
-                else
-                {
-                    stop = true;
-                    break;
-                }
-            }
-        }
-        if (failures >= plan.max_failures)
-        {
-            ai->debug(out, "Failed too many times in a row.");
-            break;
-        }
-    }
-
-    if (!plan.have_minimum_requirements(out, ai, counts, instance_counts))
-    {
-        ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
-        return false;
-    }
-    return true;
 }
 
 void blueprint_plan::clear()
@@ -1482,10 +1454,25 @@ void blueprint_plan::clear()
     no_corridor.clear();
 }
 
-void blueprint_plan::find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags, const std::function<bool(const room_blueprint &)> & check)
+void blueprint_plan::find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
 {
     const static std::map<std::string, size_t> no_instance_counts;
     const static std::map<std::string, std::pair<size_t, size_t>> no_instance_limits;
+
+    std::set<std::string> available_tags;
+    for (auto tag : available_tags_base)
+    {
+        available_tags.insert(tag);
+
+        auto it = plan.tags.find(tag);
+        if (it != plan.tags.end())
+        {
+            for (auto & t : it->second)
+            {
+                available_tags.insert(t);
+            }
+        }
+    }
 
     for (auto & type : blueprints.blueprints)
     {
@@ -1538,17 +1525,36 @@ void blueprint_plan::find_available_blueprints(color_ostream & out, AI *ai, std:
 
 void blueprint_plan::find_available_blueprints_start(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
-    find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, plan.start, [](const room_blueprint & rb) -> bool
+    std::set<std::string> available_tags;
+    available_tags.insert(plan.start);
+
+    find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint & rb) -> bool
     {
         for (auto r : rb.rooms)
         {
-            if (!r->outdoor)
+            if (r->outdoor)
             {
-                return false;
+                return true;
             }
         }
 
-        return true;
+        return false;
+    });
+}
+
+void blueprint_plan::find_available_blueprints_outdoor(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+{
+    find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, plan.outdoor, [](const room_blueprint & rb) -> bool
+    {
+        for (auto r : rb.rooms)
+        {
+            if (r->outdoor)
+            {
+                return true;
+            }
+        }
+
+        return false;
     });
 }
 
@@ -1557,26 +1563,15 @@ void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI *
     std::set<std::string> available_tags;
     for (auto & c : room_connect)
     {
-        for (auto & tag : c.second.second)
-        {
-            available_tags.insert(tag);
-            auto it = plan.tags.find(tag);
-            if (it != plan.tags.end())
-            {
-                for (auto & t : it->second)
-                {
-                    available_tags.insert(t);
-                }
-            }
-        }
+        available_tags.insert(c.second.second.begin(), c.second.second.end());
     }
 
     find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint &) -> bool { return true; });
 }
 
-bool blueprint_plan::try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
-    ai->debug(out, "TODO: try_add_room_start");
+    ai->debug(out, "TODO: try_add_room_outdoor");
     // TODO
     return false;
 }
@@ -1590,20 +1585,73 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
 
 bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 {
+    if (data.isMember("max_retries"))
+    {
+        Json::Value value = data.removeMember("max_retries");
+        if (!value.isIntegral())
+        {
+            error = "max_retries has wrong type (should be integer)";
+            return false;
+        }
+
+        if (value.asInt() <= 0)
+        {
+            error = "max_retries must be positive";
+            return false;
+        }
+
+        max_retries = size_t(value.asInt());
+    }
+
+    if (data.isMember("max_failures"))
+    {
+        Json::Value value = data.removeMember("max_failures");
+        if (!value.isIntegral())
+        {
+            error = "max_failures has wrong type (should be integer)";
+            return false;
+        }
+
+        if (value.asInt() <= 0)
+        {
+            error = "max_failures must be positive";
+            return false;
+        }
+
+        max_failures = size_t(value.asInt());
+    }
+
     if (data.isMember("start"))
     {
         Json::Value value = data.removeMember("start");
+        if (!value.isString())
+        {
+            error = "start has wrong type (should be string)";
+            return false;
+        }
+
+        start = value.asString();
+    }
+    else
+    {
+        error = "missing start";
+        return false;
+    }
+
+    if (data.isMember("outdoor"))
+    {
+        Json::Value value = data.removeMember("outdoor");
         if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isString(); }) != value.end())
         {
-            error = "start has wrong type (should be array of strings)";
+            error = "outdoor has wrong type (should be array of strings)";
             return false;
         }
 
         for (auto & v : value)
         {
-            if (!start.insert(v.asString()).second)
+            if (!outdoor.insert(v.asString()).second)
             {
-                error = "duplicate start tag: " + v.asString();
+                error = "duplicate outdoor tag: " + v.asString();
                 return false;
             }
         }

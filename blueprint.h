@@ -161,14 +161,19 @@ struct blueprint_plan
     void create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
 
 private:
+    typedef void (blueprint_plan::*find_fn)(color_ostream &, AI *, std::vector<const room_blueprint *> &, const std::map<std::string, size_t> &, const std::map<std::string, std::map<std::string, size_t>> &, const blueprints_t &, const blueprint_plan_template &);
+    typedef bool (blueprint_plan::*try_add_fn)(color_ostream &, AI *, const room_blueprint &, std::map<std::string, size_t> &, std::map<std::string, std::map<std::string, size_t>> &, const blueprint_plan_template &);
+
     bool add(const room_blueprint & rb, std::string & error);
     bool add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error);
     bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    void place_rooms(color_ostream & out, AI *ai, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, find_fn find, try_add_fn try_add);
     void clear();
-    void find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags, const std::function<bool(const room_blueprint &)> & check);
+    void find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check);
     void find_available_blueprints_start(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    void find_available_blueprints_outdoor(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void find_available_blueprints_connect(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
-    bool try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
+    bool try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     bool try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
 };
 
@@ -184,7 +189,8 @@ struct blueprint_plan_template
     const std::string name;
     size_t max_retries;
     size_t max_failures;
-    std::set<std::string> start;
+    std::string start;
+    std::set<std::string> outdoor;
     std::map<std::string, std::set<std::string>> tags;
     std::map<std::string, std::pair<size_t, size_t>> limits;
     std::map<std::string, std::map<std::string, std::pair<size_t, size_t>>> instance_limits;

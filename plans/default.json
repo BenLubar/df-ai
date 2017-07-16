@@ -1,6 +1,6 @@
 {
-	"start": [
-		"fort_entrance",
+	"start": "fort_entrance",
+	"outdoor": [
 		"trade_depot",
 		"outdoor_farm_plot"
 	],
