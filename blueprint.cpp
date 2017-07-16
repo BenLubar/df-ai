@@ -1,8 +1,14 @@
 #include "ai.h"
 #include "blueprint.h"
+#include "plan.h"
 
 #include "modules/Filesystem.h"
 #include "modules/Maps.h"
+
+#include "df/tile_occupancy.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(world);
 
 template<typename idx_t>
 static bool apply_index(bool & has_idx, idx_t & idx, Json::Value & data, const std::string & name, std::string & error)
@@ -556,7 +562,7 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
 
-    if (data.isMember("require_walls") && !apply_bool(in_corridor, data, "require_walls", error))
+    if (data.isMember("require_walls") && !apply_bool(require_walls, data, "require_walls", error))
     {
         return false;
     }
@@ -778,8 +784,8 @@ room_blueprint::room_blueprint(const room_template *tmpl, const room_instance *i
     type(inst->type),
     tmpl_name(tmpl->name),
     name(inst->name),
-    layout(tmpl->layout.size() + inst->layout.size()),
-    rooms(tmpl->rooms.size() + inst->rooms.size()),
+    layout(),
+    rooms(),
     interior(),
     no_room(),
     no_corridor()
@@ -793,8 +799,8 @@ room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset) :
     type(rb.type),
     tmpl_name(rb.tmpl_name),
     name(rb.name),
-    layout(rb.layout.size()),
-    rooms(rb.rooms.size()),
+    layout(),
+    rooms(),
     interior(),
     no_room(),
     no_corridor()
@@ -853,7 +859,7 @@ bool room_blueprint::apply(std::string & error)
     for (auto & ft : tmpl->layout)
     {
         room_base::furniture_t *f = new room_base::furniture_t(*ft);
-        Json::Value *p = f->placeholder != -1 ? inst->placeholders.at(size_t(f->placeholder)) : nullptr;
+        Json::Value *p = f->has_placeholder ? inst->placeholders.at(size_t(f->placeholder)) : nullptr;
         if (p)
         {
             if (p->isMember("skip") && (*p)["skip"].asBool())
@@ -877,7 +883,7 @@ bool room_blueprint::apply(std::string & error)
     for (auto & rt : tmpl->rooms)
     {
         room_base::room_t *r = new room_base::room_t(*rt);
-        Json::Value *p = r->placeholder != -1 ? inst->placeholders.at(size_t(r->placeholder)) : nullptr;
+        Json::Value *p = r->has_placeholder ? inst->placeholders.at(size_t(r->placeholder)) : nullptr;
         if (p)
         {
             if (p->isMember("skip") && (*p)["skip"].asBool())
@@ -1013,9 +1019,12 @@ bool room_blueprint::apply(std::string & error)
         }
         else
         {
+            layout.at(layoutindex) = layout.at(i);
             layoutindex++;
         }
     }
+
+    layout.erase(layout.begin() + layoutindex, layout.end());
 
     for (auto f : layout)
     {
@@ -1071,11 +1080,18 @@ void room_blueprint::build_cache()
             else
             {
                 interior.insert(r->min + f->pos);
-                for (int16_t dx = -1; dx <= 1; dx++)
+                if (f->type == layout_type::door)
                 {
-                    for (int16_t dy = -1; dy <= 1; dy++)
+                    no_room.insert(r->min + f->pos);
+                }
+                else
+                {
+                    for (int16_t dx = -1; dx <= 1; dx++)
                     {
-                        no_room.insert(r->min + f->pos + df::coord(dx, dy, 0));
+                        for (int16_t dy = -1; dy <= 1; dy++)
+                        {
+                            no_room.insert(r->min + f->pos + df::coord(dx, dy, 0));
+                        }
                     }
                 }
             }
@@ -1095,10 +1111,15 @@ void room_blueprint::build_cache()
 
                     if (r->type == room_type::corridor && r->corridor_type == corridor_type::corridor && r->min.z == r->max.z)
                     {
-                        corridor.insert(t);
                         if (!r->in_corridor)
                         {
+                            corridor.insert(t);
                             no_corridor.insert(t);
+                        }
+                        else
+                        {
+                            interior.insert(t);
+                            no_room.insert(t);
                         }
                     }
                     else if (r->in_corridor || !r->require_walls || r->outdoor)
@@ -1165,10 +1186,10 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     return false;
 }
 
-void blueprint_plan::create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const
+void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const
 {
-    std::vector<furniture *> real_layout(layout.size());
-    std::vector<room *> real_rooms_and_corridors(rooms.size());
+    std::vector<furniture *> real_layout;
+    std::vector<room *> real_rooms_and_corridors;
 
     for (size_t i = 0; i < layout.size(); i++)
     {
@@ -1260,7 +1281,8 @@ void blueprint_plan::create(std::vector<room *> & real_corridors, std::vector<ro
         out->outdoor = in->outdoor;
     }
 
-    std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), real_corridors.end(), real_rooms.end(), [](room *r) -> bool { return r->type == room_type::corridor; });
+    fort_entrance = real_rooms_and_corridors.at(0);
+    std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), std::back_inserter(real_corridors), std::back_inserter(real_rooms), [](room *r) -> bool { return r->type == room_type::corridor; });
 }
 
 bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
@@ -1411,7 +1433,7 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
                 if (!(this->*try_add)(out, ai, *rb, counts, instance_counts, plan))
                 {
                     failures++;
-                    ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
+                    // ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
                     if (failures >= plan.max_failures)
                     {
                         stop = true;
@@ -1569,17 +1591,164 @@ void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI *
     find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint &) -> bool { return true; });
 }
 
+bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_blueprint & rb, df::coord pos)
+{
+    for (auto c : rb.no_room)
+    {
+        if (!Maps::isValidTilePos(c + pos))
+        {
+            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            return false;
+        }
+    }
+
+    for (auto & r : rb.rooms)
+    {
+        df::coord min = r->min + pos;
+        df::coord max = r->max + pos;
+
+        if (!Maps::isValidTilePos(min + df::coord(-2, -2, -1)) || !Maps::isValidTilePos(max + df::coord(2, 2, 1)))
+        {
+            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            return false;
+        }
+
+        if (r->outdoor)
+        {
+            for (df::coord t = min; t.x <= max.x; t.x++)
+            {
+                for (t.y = min.y; t.y <= max.y; t.y++)
+                {
+                    for (t.z = min.z; t.z <= max.z; t.z++)
+                    {
+                        df::tiletype tt = *Maps::getTileType(t);
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall && ENUM_ATTR(tiletype, material, tt) != tiletype_material::TREE)
+                        {
+                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is underground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            return false;
+                        }
+
+                        auto building = Maps::getTileOccupancy(t)->bits.building;
+                        if (building != tile_building_occ::None)
+                        {
+                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (df::coord t = min - df::coord(1, 1, 0); t.x <= max.x + 1; t.x++)
+            {
+                for (t.y = min.y - 1; t.y <= max.y + 1; t.y++)
+                {
+                    for (t.z = min.z; t.z <= max.z; t.z++)
+                    {
+                        df::tiletype tt = *Maps::getTileType(t);
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
+                        {
+                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            return false;
+                        }
+
+                        auto building = Maps::getTileOccupancy(t)->bits.building;
+                        if (building != tile_building_occ::None)
+                        {
+                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
 bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
-    ai->debug(out, "TODO: try_add_room_outdoor");
-    // TODO
+    int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
+    for (auto c : rb.no_room)
+    {
+        min_x = std::min(min_x, c.x);
+        max_x = std::max(max_x, c.x);
+        min_y = std::min(min_y, c.y);
+        max_y = std::max(max_y, c.y);
+    }
+
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
+
+    df::coord pos = ai->plan->surface_tile_at(x, y, true);
+
+    if (!pos.isValid())
+    {
+        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
+        return false;
+    }
+
+    if (can_add_room(out, ai, rb, pos))
+    {
+        std::string error;
+        if (add(room_blueprint(rb, pos), error))
+        {
+            counts[rb.type]++;
+            instance_counts[rb.type][rb.name]++;
+            ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            return true;
+        }
+
+        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
+    }
+
     return false;
 }
 
 bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
-    ai->debug(out, "TODO: try_add_room_connect");
-    // TODO
+    std::set<std::string> tags;
+    tags.insert(rb.type);
+    for (auto & t : plan.tags)
+    {
+        if (t.second.count(rb.type))
+        {
+            tags.insert(t.first);
+        }
+    }
+
+    std::vector<std::pair<room_base::roomindex_t, df::coord>> connectors;
+
+    for (auto & c : room_connect)
+    {
+        for (auto & t : c.second.second)
+        {
+            if (tags.count(t))
+            {
+                connectors.push_back(std::make_pair(c.second.first, c.first));
+                break;
+            }
+        }
+    }
+
+    auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(ai->rng));
+
+    if (can_add_room(out, ai, rb, chosen.second))
+    {
+        std::string error;
+        if (add(room_blueprint(rb, chosen.second), chosen.first, error))
+        {
+            counts[rb.type]++;
+            instance_counts[rb.type][rb.name]++;
+            ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z));
+            return true;
+        }
+
+        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z, error.c_str()));
+    }
+
     return false;
 }
 
@@ -1690,7 +1859,7 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
     if (data.isMember("limits"))
     {
         Json::Value value = data.removeMember("limits");
-        if (value.isObject())
+        if (!value.isObject())
         {
             error = "limits has wrong type (should be object)";
             return false;
@@ -1725,7 +1894,7 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
     if (data.isMember("instance_limits"))
     {
         Json::Value value = data.removeMember("instance_limits");
-        if (value.isObject())
+        if (!value.isObject())
         {
             error = "instance_limits has wrong type (should be object)";
             return false;
@@ -1909,6 +2078,13 @@ static T *load_json(const std::string & filename, const std::string & type, cons
 
 blueprints_t::blueprints_t(color_ostream & out)
 {
+    if (!Filesystem::isdir("df-ai-blueprints"))
+    {
+        out.printerr("The df-ai-blueprints folder is missing! Download it from https://github.com/BenLubar/df-ai/releases to use the new scriptable blueprint system.\n");
+        out.printerr("The df-ai-blueprints folder should be inside %s.\n", Filesystem::getcwd().c_str());
+        return;
+    }
+
     std::string error;
 
     std::map<std::string, std::pair<std::vector<std::pair<std::string, room_template *>>, std::vector<std::pair<std::string, room_instance *>>>> rooms;

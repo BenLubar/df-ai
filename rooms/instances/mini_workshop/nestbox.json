@@ -11,6 +11,7 @@
 		{
 			"type": "corridor",
 			"corridor_type": "corridor",
+			"in_corridor": true,
 			"layout": [0]
 		}
 	]

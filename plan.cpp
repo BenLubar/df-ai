@@ -320,13 +320,7 @@ command_result Plan::startup(color_ostream & out)
         return CR_OK;
     }
 
-    command_result res = setup_blueprint(out);
-    if (res != CR_OK)
-        return res;
-
-    categorize_all();
-
-    return setup_ready(out);
+    return setup_blueprint(out);
 }
 
 command_result Plan::onupdate_register(color_ostream &)
@@ -771,6 +765,7 @@ void Plan::save(std::ostream & out)
     all["t"] = converted_tasks;
     all["r"] = converted_rooms;
     all["f"] = converted_furniture;
+    all["entrance"] = Json::Int(room_index.at(fort_entrance));
 
     out << all;
 }
@@ -1158,7 +1153,14 @@ void Plan::load(std::istream & in)
         }
     }
 
-    fort_entrance = corridors.at(0);
+    if (all.isMember("entrance"))
+    {
+        fort_entrance = all_rooms.at(all["entrance"].asInt());
+    }
+    else
+    {
+        fort_entrance = corridors.at(0);
+    }
     categorize_all();
 }
 
@@ -5329,11 +5331,11 @@ void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::cons
 }
 
 // XXX
-bool Plan::corridor_include_hack(const room *r, df::coord t)
+bool Plan::corridor_include_hack(const room *r, df::coord t1, df::coord t2)
 {
     for (auto c = corridors.begin(); c != corridors.end(); c++)
     {
-        if (!(*c)->include(t))
+        if (!(*c)->include(t1) || !(*c)->include(t2))
         {
             continue;
         }

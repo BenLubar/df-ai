@@ -1,6 +1,7 @@
 #include "ai.h"
 #include "plan.h"
 #include "room.h"
+#include "blueprint.h"
 
 #include <tuple>
 
@@ -129,44 +130,82 @@ command_result Plan::setup_ready(color_ostream & out)
 command_result Plan::setup_blueprint(color_ostream & out)
 {
     command_result res;
-    // TODO use existing fort facilities (so we can relay the user or continue from a save)
-    ai->debug(out, "setting up fort blueprint...");
-    // TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
-    res = scan_fort_entrance(out);
-    if (res != CR_OK)
-        return res;
-    ai->debug(out, "blueprint found entrance");
-    // TODO if no room for fort body, make surface fort
-    res = scan_fort_body(out);
-    if (res != CR_OK)
-        return res;
-    ai->debug(out, "blueprint found body");
-    res = setup_blueprint_rooms(out);
-    if (res != CR_OK)
-        return res;
-    ai->debug(out, "blueprint found rooms");
-    // ensure traps are on the surface
-    for (auto i : fort_entrance->layout)
+    blueprints_t blueprints(out);
+    blueprint_plan plan;
+    if (plan.build(out, ai, blueprints))
     {
-        i->pos.z = surface_tile_at(fort_entrance->min.x + i->pos.x, fort_entrance->min.y + i->pos.y, true).z - fort_entrance->min.z;
+        plan.create(fort_entrance, corridors, rooms);
+
+        categorize_all();
+
+        find_room(room_type::workshop, [this, &out](room *r) -> bool
+        {
+            if (r->workshop_type == workshop_type::Masons && r->level == 0)
+            {
+                digroom(out, r);
+                return true;
+            }
+            return false;
+        });
+        find_room(room_type::workshop, [this, &out](room *r) -> bool
+        {
+            if (r->workshop_type == workshop_type::Carpenters && r->level == 0)
+            {
+                digroom(out, r);
+                return true;
+            }
+            return false;
+        });
     }
-    fort_entrance->layout.erase(std::remove_if(fort_entrance->layout.begin(), fort_entrance->layout.end(), [this](furniture *i) -> bool
+    else
     {
-        df::coord t = fort_entrance->min + i->pos + df::coord(0, 0, -1);
-        df::tiletype *tt = Maps::getTileType(t);
-        if (!tt)
+        ai->debug(out, "using legacy layout...");
+
+        // TODO use existing fort facilities (so we can relay the user or continue from a save)
+        ai->debug(out, "setting up fort blueprint...");
+        // TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
+        res = scan_fort_entrance(out);
+        if (res != CR_OK)
+            return res;
+        ai->debug(out, "blueprint found entrance");
+        // TODO if no room for fort body, make surface fort
+        res = scan_fort_body(out);
+        if (res != CR_OK)
+            return res;
+        ai->debug(out, "blueprint found body");
+        res = setup_blueprint_rooms(out);
+        if (res != CR_OK)
+            return res;
+        ai->debug(out, "blueprint found rooms");
+        // ensure traps are on the surface
+        for (auto i : fort_entrance->layout)
         {
-            delete i;
-            return true;
+            i->pos.z = surface_tile_at(fort_entrance->min.x + i->pos.x, fort_entrance->min.y + i->pos.y, true).z - fort_entrance->min.z;
         }
-        df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
-        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall || (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID)))
+        fort_entrance->layout.erase(std::remove_if(fort_entrance->layout.begin(), fort_entrance->layout.end(), [this](furniture *i) -> bool
         {
-            delete i;
-            return true;
-        }
-        return false;
-    }), fort_entrance->layout.end());
+            df::coord t = fort_entrance->min + i->pos + df::coord(0, 0, -1);
+            df::tiletype *tt = Maps::getTileType(t);
+            if (!tt)
+            {
+                delete i;
+                return true;
+            }
+            df::tiletype_material tm = ENUM_ATTR(tiletype, material, *tt);
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall || (tm != tiletype_material::STONE && tm != tiletype_material::MINERAL && tm != tiletype_material::SOIL && tm != tiletype_material::ROOT && (!allow_ice || tm != tiletype_material::FROZEN_LIQUID)))
+            {
+                delete i;
+                return true;
+            }
+            return false;
+        }), fort_entrance->layout.end());
+
+        categorize_all();
+
+        res = setup_ready(out);
+        if (res != CR_OK)
+            return res;
+    }
     res = list_map_veins(out);
     if (res != CR_OK)
         return res;
@@ -182,6 +221,7 @@ command_result Plan::setup_blueprint(color_ostream & out)
     if (res != CR_OK)
         return res;
     ai->debug(out, "LET THE GAME BEGIN!");
+    categorize_all();
     return CR_OK;
 }
 

@@ -253,7 +253,7 @@ private:
     void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f = nullptr);
 
 protected:
-    bool corridor_include_hack(const room *r, df::coord t);
+    bool corridor_include_hack(const room *r, df::coord t1, df::coord t2);
     friend struct room;
 };
 

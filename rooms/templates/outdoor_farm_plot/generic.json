@@ -3,7 +3,7 @@
 		{
 			"type": "farmplot",
 			"min": [-1, -1, 0],
-			"min": [1, 1, 0],
+			"max": [1, 1, 0],
 			"outdoor": true,
 			"placeholder": 0
 		}

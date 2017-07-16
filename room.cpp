@@ -477,6 +477,14 @@ bool room::safe_include(df::coord t) const
 
 df::tile_dig_designation room::dig_mode(df::coord t) const
 {
+    for (auto f : layout)
+    {
+        if (min + f->pos == t && f->dig != tile_dig_designation::Default)
+        {
+            return f->dig;
+        }
+    }
+
     if (type != room_type::corridor)
     {
         return tile_dig_designation::Default;
@@ -486,8 +494,8 @@ df::tile_dig_designation room::dig_mode(df::coord t) const
 
     // XXX
     extern AI *dwarfAI;
-    wantup = wantup || dwarfAI->plan->corridor_include_hack(this, t + df::coord(0, 0, 1));
-    wantdown = wantdown || dwarfAI->plan->corridor_include_hack(this, t - df::coord(0, 0, 1));
+    wantup = wantup || dwarfAI->plan->corridor_include_hack(this, t, t + df::coord(0, 0, 1));
+    wantdown = wantdown || dwarfAI->plan->corridor_include_hack(this, t, t - df::coord(0, 0, 1));
 
     if (wantup)
         return wantdown ? tile_dig_designation::UpDownStair : tile_dig_designation::UpStair;

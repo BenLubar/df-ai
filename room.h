@@ -26,7 +26,7 @@ inline bool df_ai_find_enum_item(T *var, const std::string & name, T count)
     std::ostringstream scratch;
     for (T i = T(); i < count; i = (T)(i + 1))
     {
-        scratch.clear();
+        scratch.str(std::string());
         scratch << i;
         if (scratch.str() == name)
         {

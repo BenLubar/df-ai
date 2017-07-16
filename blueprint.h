@@ -5,6 +5,8 @@
 
 #include "jsoncpp.h"
 
+class AI;
+
 struct room_base
 {
     typedef size_t layoutindex_t;
@@ -158,7 +160,7 @@ struct blueprint_plan
     std::set<df::coord> no_corridor;
 
     bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints);
-    void create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
+    void create(room * & fort_entrance, std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
 
 private:
     typedef void (blueprint_plan::*find_fn)(color_ostream &, AI *, std::vector<const room_blueprint *> &, const std::map<std::string, size_t> &, const std::map<std::string, std::map<std::string, size_t>> &, const blueprints_t &, const blueprint_plan_template &);
@@ -173,6 +175,7 @@ private:
     void find_available_blueprints_start(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void find_available_blueprints_outdoor(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void find_available_blueprints_connect(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    bool can_add_room(color_ostream & out, AI *ai, const room_blueprint & rb, df::coord pos);
     bool try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     bool try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
 };

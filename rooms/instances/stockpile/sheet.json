@@ -2,7 +2,7 @@
 	"p": [
 		{
 			"type": "stockpile",
-			"stockpile_type": "sheet"
+			"stockpile_type": "sheets"
 		}
 	]
 }

@@ -5,22 +5,28 @@
 		"outdoor_farm_plot"
 	],
 	"tags": {
+		"main_staircase": [
+			"main_staircase",
+			"underground_farm_entrance"
+		],
 		"generic": [
 			"bedroom",
 			"dining_hall",
 			"stockpile",
-			"workshop",
-			"underground_farm_entrance"
+			"workshop"
+		],
+		"in_corridor": [
+			"mini_workshop"
 		]
 	},
 	"limits": {
 		"fort_entrance": [1, 1],
 		"trade_depot": [1, 1],
-		"main_staircase": [3, 15],
-		"main_hallway_east": [10, 50],
-		"main_hallway_west": [10, 50],
-		"secondary_hallway_north": [0, 100],
-		"secondary_hallway_south": [0, 100],
+		"main_staircase": [3, 25],
+		"main_hallway_east": [10, 9999],
+		"main_hallway_west": [10, 9999],
+		"secondary_hallway_north": [0, 9999],
+		"secondary_hallway_south": [0, 9999],
 		"dining_hall": [2, 8],
 		"bedroom": [150, 300],
 		"underground_farm_entrance": [1, 1]
