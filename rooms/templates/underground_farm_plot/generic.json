@@ -1,0 +1,74 @@
+{
+	"f": [
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "farmplot",
+			"min": [-1, -1, 0],
+			"min": [1, 1, 0],
+			"accesspath": [1, 2],
+			"require_walls": false,
+			"exits": [
+				["underground_farm_plot", -2, 1, 0],
+				["underground_farm_plot", 1, -2, 0],
+				["underground_farm_plot", 4, 1, 0],
+				["underground_farm_plot", 1, 4, 0]
+			],
+			"placeholder": 0
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true,
+			"min": [-1, -1, 1],
+			"max": [1, 1, 1],
+			"workshop": 0,
+			"layout": [0],
+			"comment": "seeds"
+		},
+		{
+			"type": "pond",
+			"accesspath": [1],
+			"min": [0, 0, 1],
+			"max": [0, 0, 1],
+			"temporary": true,
+			"workshop": 0,
+			"layout": [1],
+			"comment": "irrigation"
+		}
+	]
+}

@@ -1,0 +1,26 @@
+{
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, -1, 0],
+			"max": [4, 1, 0],
+			"comment": "main hallway - east",
+			"exits": [
+				["generic", 0, -1, 0],
+				["generic", 0, 3, 0],
+				["generic", 1, -1, 0],
+				["generic", 1, 3, 0],
+				["generic", 2, -1, 0],
+				["generic", 2, 3, 0],
+				["generic", 3, -1, 0],
+				["generic", 3, 3, 0],
+				["generic", 4, -1, 0],
+				["generic", 4, 3, 0],
+				["secondary_hallway_north", 3, -1, 0],
+				["secondary_hallway_south", 3, 3, 0],
+				["main_hallway_east", 5, 1, 0]
+			]
+		}
+	]
+}

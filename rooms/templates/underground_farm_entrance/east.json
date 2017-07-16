@@ -1,0 +1,29 @@
+{
+	"f": [
+		{
+			"type": "door",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 1,
+			"y": 0,
+			"z": 1
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 0, 0],
+			"max": [0, 0, 1],
+			"layout": [0, 1],
+			"comment": "underground farm entrance",
+			"exits": [
+				["underground_farm_plot", 3, 0, 0]
+			]
+		}
+	]
+}

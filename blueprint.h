@@ -83,7 +83,9 @@ struct room_base
         bool temporary;
         bool outdoor;
 
+        bool require_walls;
         bool in_corridor;
+        std::map<df::coord, std::set<std::string>> exits;
     };
 
     ~room_base();
@@ -96,17 +98,22 @@ struct room_base
 
 struct room_template : public room_base
 {
+    room_template(const std::string &, const std::string & name) : name(name), min_placeholders() {}
+
     bool apply(Json::Value data, std::string & error);
 
+    const std::string name;
     placeholderindex_t min_placeholders;
 };
 
 struct room_instance : public room_base
 {
+    room_instance(const std::string & type, const std::string & name) : type(type), name(name), placeholders() {}
     ~room_instance();
 
     bool apply(Json::Value data, std::string & error);
 
+    const std::string type, name;
     std::vector<Json::Value *> placeholders;
 };
 
@@ -120,9 +127,12 @@ struct room_blueprint
     const room_template *tmpl;
     const room_instance *inst;
 
+    const std::string type, tmpl_name, name;
+
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
 
+    std::set<df::coord> corridor;
     std::set<df::coord> interior;
     std::set<df::coord> no_room;
     std::set<df::coord> no_corridor;
@@ -131,6 +141,9 @@ struct room_blueprint
     void build_cache();
 };
 
+struct blueprint_plan_template;
+class blueprints_t;
+
 struct blueprint_plan
 {
     ~blueprint_plan();
@@ -138,15 +151,46 @@ struct blueprint_plan
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
 
-    std::map<df::coord, room_base::roomindex_t> corridor_connect;
+    std::map<df::coord, std::pair<room_base::roomindex_t, std::set<std::string>>> room_connect;
     std::set<df::coord> corridor;
     std::set<df::coord> interior;
     std::set<df::coord> no_room;
     std::set<df::coord> no_corridor;
 
-    bool add(const room_blueprint & rb, std::string & error);
-    bool build_corridor_to(const room_blueprint & rb, room_base::roomindex_t & parent, std::string & error);
+    bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints);
     void create(std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
+
+private:
+    bool add(const room_blueprint & rb, std::string & error);
+    bool add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error);
+    bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    void clear();
+    void find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags, const std::function<bool(const room_blueprint &)> & check);
+    void find_available_blueprints_start(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    void find_available_blueprints_connect(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
+    bool try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
+    bool try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
+};
+
+struct blueprint_plan_template
+{
+    blueprint_plan_template(const std::string &, const std::string & name) :
+        name(name),
+        max_retries(25),
+        max_failures(100)
+    {
+    }
+
+    const std::string name;
+    size_t max_retries;
+    size_t max_failures;
+    std::set<std::string> start;
+    std::map<std::string, std::set<std::string>> tags;
+    std::map<std::string, std::pair<size_t, size_t>> limits;
+    std::map<std::string, std::map<std::string, std::pair<size_t, size_t>>> instance_limits;
+
+    bool apply(Json::Value data, std::string & error);
+    bool have_minimum_requirements(color_ostream & out, AI *ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const;
 };
 
 class blueprints_t
@@ -155,8 +199,8 @@ public:
     blueprints_t(color_ostream & out);
     ~blueprints_t();
 
-    std::vector<const room_blueprint *> operator[](const std::string & type) const;
-
 private:
     std::map<std::string, std::vector<room_blueprint *>> blueprints;
+    std::map<std::string, blueprint_plan_template *> plans;
+    friend struct blueprint_plan;
 };
