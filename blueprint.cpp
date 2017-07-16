@@ -1386,23 +1386,38 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     std::map<std::string, size_t> counts;
     std::map<std::string, std::map<std::string, size_t>> instance_counts;
 
-    ai->debug(out, "Placing starting room...");
+    if (config.plan_verbosity >= 2)
+    {
+        ai->debug(out, "Placing starting room...");
+    }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_outdoor);
     if (rooms.empty())
     {
-        ai->debug(out, "No rooms placed by initial phase. Cannot continue building.");
+        if (config.plan_verbosity >= 1)
+        {
+            ai->debug(out, "No rooms placed by initial phase. Cannot continue building.");
+        }
         return false;
     }
 
-    ai->debug(out, "Placing outdoor rooms...");
+    if (config.plan_verbosity >= 2)
+    {
+        ai->debug(out, "Placing outdoor rooms...");
+    }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_outdoor, &blueprint_plan::try_add_room_outdoor);
 
-    ai->debug(out, "Building remainder of fortress...");
+    if (config.plan_verbosity >= 2)
+    {
+        ai->debug(out, "Building remainder of fortress...");
+    }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_connect, &blueprint_plan::try_add_room_connect);
 
     if (!plan.have_minimum_requirements(out, ai, counts, instance_counts))
     {
-        ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
+        if (config.plan_verbosity >= 1)
+        {
+            ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
+        }
         return false;
     }
 
@@ -1418,7 +1433,10 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
         (this->*find)(out, ai, available_blueprints, counts, instance_counts, blueprints, plan);
         if (available_blueprints.empty())
         {
-            ai->debug(out, "No available blueprints.");
+            if (config.plan_verbosity >= 3)
+            {
+                ai->debug(out, "No available blueprints.");
+            }
             break;
         }
 
@@ -1433,7 +1451,10 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
                 if (!(this->*try_add)(out, ai, *rb, counts, instance_counts, plan))
                 {
                     failures++;
-                    // ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
+                    if (config.plan_verbosity >= 3)
+                    {
+                        ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
+                    }
                     if (failures >= plan.max_failures)
                     {
                         stop = true;
@@ -1449,7 +1470,10 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
         }
         if (failures >= plan.max_failures)
         {
-            ai->debug(out, "Failed too many times in a row.");
+            if (config.plan_verbosity >= 1)
+            {
+                ai->debug(out, "Failed too many times in a row.");
+            }
             break;
         }
     }
@@ -1597,7 +1621,10 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
     {
         if (!Maps::isValidTilePos(c + pos))
         {
-            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            if (config.plan_verbosity >= 3)
+            {
+                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            }
             return false;
         }
     }
@@ -1609,7 +1636,10 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
 
         if (!Maps::isValidTilePos(min + df::coord(-2, -2, -1)) || !Maps::isValidTilePos(max + df::coord(2, 2, 1)))
         {
-            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            if (config.plan_verbosity >= 3)
+            {
+                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            }
             return false;
         }
 
@@ -1624,14 +1654,20 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         df::tiletype tt = *Maps::getTileType(t);
                         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall && ENUM_ATTR(tiletype, material, tt) != tiletype_material::TREE)
                         {
-                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is underground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is underground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            }
                             return false;
                         }
 
                         auto building = Maps::getTileOccupancy(t)->bits.building;
                         if (building != tile_building_occ::None)
                         {
-                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            }
                             return false;
                         }
                     }
@@ -1649,14 +1685,20 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         df::tiletype tt = *Maps::getTileType(t);
                         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
                         {
-                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            }
                             return false;
                         }
 
                         auto building = Maps::getTileOccupancy(t)->bits.building;
                         if (building != tile_building_occ::None)
                         {
-                            // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                            }
                             return false;
                         }
                     }
@@ -1686,7 +1728,10 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
 
     if (!pos.isValid())
     {
-        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
+        if (config.plan_verbosity >= 3)
+        {
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
+        }
         return false;
     }
 
@@ -1697,11 +1742,17 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
-            ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            if (config.plan_verbosity >= 2)
+            {
+                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            }
             return true;
         }
 
-        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
+        if (config.plan_verbosity >= 3)
+        {
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
+        }
     }
 
     return false;
@@ -1742,11 +1793,17 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
-            ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z));
+            if (config.plan_verbosity >= 2)
+            {
+                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z));
+            }
             return true;
         }
 
-        // ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z, error.c_str()));
+        if (config.plan_verbosity >= 3)
+        {
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z, error.c_str()));
+        }
     }
 
     return false;
@@ -1966,24 +2023,36 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
         {
             if (limit.second.first > 0)
             {
-                ai->debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %d and %d.", limit.first.c_str(), limit.second.first, limit.second.second));
+                if (config.plan_verbosity >= 0)
+                {
+                    ai->debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %d and %d.", limit.first.c_str(), limit.second.first, limit.second.second));
+                }
                 ok = false;
             }
             else
             {
-                ai->debug(out, stl_sprintf("have 0 %s (want between %d and %d)", limit.first.c_str(), limit.second.first, limit.second.second));
+                if (config.plan_verbosity >= 0)
+                {
+                    ai->debug(out, stl_sprintf("have 0 %s (want between %d and %d)", limit.first.c_str(), limit.second.first, limit.second.second));
+                }
             }
         }
         else
         {
             if (limit.second.first > type->second)
             {
-                ai->debug(out, stl_sprintf("Requirement not met: have %d %s but want between %d and %d.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                if (config.plan_verbosity >= 0)
+                {
+                    ai->debug(out, stl_sprintf("Requirement not met: have %d %s but want between %d and %d.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                }
                 ok = false;
             }
             else
             {
-                ai->debug(out, stl_sprintf("have %d %s (want between %d and %d)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                if (config.plan_verbosity >= 0)
+                {
+                    ai->debug(out, stl_sprintf("have %d %s (want between %d and %d)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                }
             }
         }
     }
@@ -1997,12 +2066,18 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (limit.second.first > 0)
                 {
-                    ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                    if (config.plan_verbosity >= 0)
+                    {
+                        ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                    }
                     ok = false;
                 }
                 else
                 {
-                    ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                    if (config.plan_verbosity >= 0)
+                    {
+                        ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                    }
                 }
             }
         }
@@ -2015,24 +2090,36 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (limit.second.first > 0)
                     {
-                        ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        if (config.plan_verbosity >= 0)
+                        {
+                            ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        }
                         ok = false;
                     }
                     else
                     {
-                        ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        if (config.plan_verbosity >= 0)
+                        {
+                            ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        }
                     }
                 }
                 else
                 {
                     if (limit.second.first > count->second)
                     {
-                        ai->debug(out, stl_sprintf("Requirement not met: have %d %s/%s but want between %d and %d.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        if (config.plan_verbosity >= 0)
+                        {
+                            ai->debug(out, stl_sprintf("Requirement not met: have %d %s/%s but want between %d and %d.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        }
                         ok = false;
                     }
                     else
                     {
-                        ai->debug(out, stl_sprintf("have %d %s/%s (want between %d and %d)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        if (config.plan_verbosity >= 0)
+                        {
+                            ai->debug(out, stl_sprintf("have %d %s/%s (want between %d and %d)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        }
                     }
                 }
             }

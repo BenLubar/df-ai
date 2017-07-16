@@ -41,6 +41,7 @@ struct Config
     bool manage_nobles;
     uint8_t cancel_announce;
     volatile bool lockstep;
+    int32_t plan_verbosity;
 };
 
 extern Config config;
