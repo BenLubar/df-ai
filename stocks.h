@@ -135,7 +135,10 @@ namespace stock_item
 }
 
 std::ostream & operator <<(std::ostream & stream, stock_item::item item);
-template<> inline bool DFHack::find_enum_item<stock_item::item>(stock_item::item *var, const std::string & name) { return df_ai_find_enum_item(var, name, stock_item::_stock_item_count); }
+namespace DFHack
+{
+    template<> inline bool find_enum_item<stock_item::item>(stock_item::item *var, const std::string & name) { return df_ai_find_enum_item(var, name, stock_item::_stock_item_count); }
+}
 
 class Stocks
 {
