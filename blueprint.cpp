@@ -1662,6 +1662,15 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             return false;
                         }
 
+                        if (t.z == pos.z && ai->plan->surface_tile_at(t.x, t.y, true).z != t.z)
+                        {
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is not on the ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            }
+                            return false;
+                        }
+
                         auto building = Maps::getTileOccupancy(t)->bits.building;
                         if (building != tile_building_occ::None)
                         {

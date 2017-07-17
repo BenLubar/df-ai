@@ -244,6 +244,27 @@
 			"y": 0,
 			"z": 0,
 			"ignore": true
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 4,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 4,
+			"y": 6,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 4,
+			"y": 4,
+			"z": 0
 		}
 	],
 	"r": [
@@ -266,7 +287,8 @@
 			"min": [-4, -5, 0],
 			"max": [4, 5, 0],
 			"comment": "near fort entrance",
-			"outdoor": true
+			"outdoor": true,
+			"layout": [35, 36, 37]
 		}
 	]
 }
