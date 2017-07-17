@@ -322,7 +322,7 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
     return false;
 }
 
-void room_base::furniture_t::shift(room_base::layoutindex_t layout_start, room_base::roomindex_t room_start)
+void room_base::furniture_t::shift(room_base::layoutindex_t layout_start, room_base::roomindex_t)
 {
     if (has_target)
     {
@@ -330,7 +330,7 @@ void room_base::furniture_t::shift(room_base::layoutindex_t layout_start, room_b
     }
 }
 
-bool room_base::furniture_t::check_indexes(room_base::layoutindex_t layout_limit, room_base::roomindex_t room_limit, std::string & error) const
+bool room_base::furniture_t::check_indexes(room_base::layoutindex_t layout_limit, room_base::roomindex_t, std::string & error) const
 {
     if (has_target && target >= layout_limit)
     {
@@ -1501,7 +1501,7 @@ void blueprint_plan::clear()
     no_corridor.clear();
 }
 
-void blueprint_plan::find_available_blueprints(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
+void blueprint_plan::find_available_blueprints(color_ostream &, AI *, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
 {
     const static std::map<std::string, size_t> no_instance_counts;
     const static std::map<std::string, std::pair<size_t, size_t>> no_instance_limits;
@@ -1754,7 +1754,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
     return true;
 }
 
-bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template &)
 {
     int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
     for (auto c : rb.no_room)
