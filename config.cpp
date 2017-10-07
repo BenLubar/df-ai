@@ -24,6 +24,7 @@ Config::Config() :
     manage_nobles(true),
     cancel_announce(0),
     lockstep(false),
+    lockstep_debug(false),
     plan_verbosity(2)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
@@ -110,6 +111,10 @@ void Config::load(color_ostream & out)
             {
                 lockstep = v["lockstep"].asBool();
             }
+            if (v.isMember("lockstep_debug"))
+            {
+                lockstep_debug = v["lockstep_debug"].asBool();
+            }
             if (v.isMember("plan_verbosity"))
             {
                 plan_verbosity = v["plan_verbosity"].asInt();
@@ -146,6 +151,8 @@ void Config::save(color_ostream & out)
     v["manage_nobles"] = manage_nobles;
     v["cancel_announce"] = cancel_announce;
     v["lockstep"] = lockstep;
+    if (lockstep_debug) // hide from config if not set
+        v["lockstep_debug"] = true;
     v["plan_verbosity"] = plan_verbosity;
 
     std::ofstream f(config_name, std::ofstream::trunc);
