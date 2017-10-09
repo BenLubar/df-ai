@@ -716,9 +716,9 @@ bool AI::tag_enemies(color_ostream & out)
 
 void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)
 {
-    const df::viewscreen *curscreen = Gui::getCurViewscreen(true);
+    df::viewscreen *curscreen = Gui::getCurViewscreen(true);
     std::string name("unknown viewscreen");
-    if (virtual_identity *ident = virtual_identity::get(curview))
+    if (virtual_identity *ident = virtual_identity::get(curscreen))
     {
         name = ident->getName();
     }
