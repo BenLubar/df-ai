@@ -716,23 +716,25 @@ bool AI::tag_enemies(color_ostream & out)
 
 void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)
 {
-    virtual_identity *curscreen = virtual_identity::get(Gui::getCurViewscreen(true));
+    const df::viewscreen *curscreen = Gui::getCurViewscreen(true);
+    std::string name("unknown viewscreen");
+    if (virtual_identity *ident = virtual_identity::get(curview))
+    {
+        name = ident->getName();
+    }
     int32_t *counter = new int32_t(enabler->fps * seconds);
 
-    events.onupdate_register_once(std::string("timeout_sameview on ") + curscreen->getName(), [this, curscreen, counter, cb](color_ostream & out) -> bool
+    events.onupdate_register_once(std::string("timeout_sameview on ") + name, [this, curscreen, counter, cb](color_ostream & out) -> bool
     {
-        if (virtual_identity::get(Gui::getCurViewscreen(true)) != curscreen)
+        if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
         {
-            if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
-            {
-                Screen::dismiss(view);
-                camera->check_record_status();
-            }
-            else
-            {
-                delete counter;
-                return true;
-            }
+            Screen::dismiss(view);
+            camera->check_record_status();
+        }
+        if (Gui::getCurViewscreen(true) != curscreen)
+        {
+            delete counter;
+            return true;
         }
 
         if (--*counter <= 0)
