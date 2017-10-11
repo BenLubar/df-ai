@@ -36,6 +36,7 @@ REQUIRE_GLOBAL(ui);
 DFhackCExport uint32_t SDL_GetTicks(void);
 DFhackCExport int SDL_SemTryWait(void *sem);
 DFhackCExport uint32_t SDL_ThreadID(void);
+DFhackCExport void SDL_Quit(void);
 
 static volatile uint32_t lockstep_tick_count = 0;
 static volatile bool lockstep_hooked = false;
@@ -486,7 +487,7 @@ static bool lockstep_mainloop()
     return 0;
 }
 
-static void lockstep_drain_sdl()
+static bool lockstep_drain_sdl()
 {
     SDL::Event event;
 
@@ -499,7 +500,7 @@ static void lockstep_drain_sdl()
         case SDL::ET_KEYUP:
             break;
         case SDL::ET_QUIT:
-            break;
+            return true;
         case SDL::ET_MOUSEBUTTONDOWN:
         case SDL::ET_MOUSEBUTTONUP:
         case SDL::ET_MOUSEMOTION:
@@ -514,6 +515,8 @@ static void lockstep_drain_sdl()
             break;
         }
     }
+
+    return false;
 }
 
 static void lockstep_loop()
@@ -524,8 +527,9 @@ static void lockstep_loop()
         if (lockstep_mainloop())
         {
             LOCKSTEP_DEBUG("want shutdown (A)");
-            lockstep_want_shutdown = true;
-            break;
+            SDL_Quit();
+            exit(0);
+            return;
         }
         LOCKSTEP_DEBUG("calling DFHack (A)");
         SDL_NumJoysticks();
@@ -541,8 +545,9 @@ static void lockstep_loop()
             if (lockstep_mainloop())
             {
                 LOCKSTEP_DEBUG("want shutdown (B)");
-                lockstep_want_shutdown = true;
-                break;
+                SDL_Quit();
+                exit(0);
+                return;
             }
             LOCKSTEP_DEBUG("calling DFHack (B)");
             SDL_NumJoysticks();
@@ -560,7 +565,11 @@ static void lockstep_loop()
         enabler->last_tick = lockstep_tick_count;
         enabler->clock = lockstep_tick_count;
         LOCKSTEP_DEBUG("draining events");
-        lockstep_drain_sdl();
+        if (lockstep_drain_sdl())
+        {
+            LOCKSTEP_DEBUG("user requested quit");
+            break;
+        }
         LOCKSTEP_DEBUG("swap_arrays");
         lockstep_swap_arrays();
         LOCKSTEP_DEBUG("render_things");
