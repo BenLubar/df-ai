@@ -365,7 +365,7 @@ void AI::debug(color_ostream & out, const std::string & str)
     {
         write_lockstep("AI: " + ts + " " + str);
     }
-    if (config.debug)
+    if (config.write_console)
     {
         write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
     }

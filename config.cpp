@@ -12,7 +12,7 @@ const static std::string config_name("dfhack-config/df-ai.json");
 Config::Config() :
     random_embark(true),
     random_embark_world(""),
-    debug(true),
+    write_console(true),
     write_log(true),
     record_movie(false),
     no_quit(true),
@@ -55,9 +55,13 @@ void Config::load(color_ostream & out)
             {
                 random_embark_world = v["random_embark_world"].asString();
             }
-            if (v.isMember("debug"))
+            if (v.isMember("write_console"))
             {
-                debug = v["debug"].asBool();
+                write_console = v["write_console"].asBool();
+            }
+            else if (v.isMember("debug"))
+            {
+                write_console = v["debug"].asBool();
             }
             if (v.isMember("write_log"))
             {
@@ -132,7 +136,7 @@ void Config::save(color_ostream & out)
     Json::Value v(Json::objectValue);
     v["random_embark"] = random_embark;
     v["random_embark_world"] = random_embark_world;
-    v["debug"] = debug;
+    v["write_console"] = write_console;
     v["write_log"] = write_log;
     v["record_movie"] = record_movie;
     v["no_quit"] = no_quit;
