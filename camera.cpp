@@ -54,7 +54,7 @@ command_result Camera::onupdate_register(color_ostream &)
         gps->display_frames = 1;
     }
     onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
-    onstatechange_handle = events.onstatechange_register([this](color_ostream &, state_change_event mode)
+    onstatechange_handle = events.onstatechange_register("fps meter watcher", [this](color_ostream &, state_change_event mode)
     {
         if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
         {

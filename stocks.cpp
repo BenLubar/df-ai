@@ -624,7 +624,7 @@ Stocks::Stocks(AI *ai) :
     complained_about_no_plants()
 {
     last_cutpos.clear();
-    events.onstatechange_register([this](color_ostream &, state_change_event st)
+    events.onstatechange_register("init_manager_subtype", [this](color_ostream &, state_change_event st)
     {
         if (st == SC_WORLD_LOADED)
             init_manager_subtype();

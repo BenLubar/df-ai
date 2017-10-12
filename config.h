@@ -43,6 +43,7 @@ struct Config
     volatile bool lockstep;
     bool lockstep_debug;
     int32_t plan_verbosity;
+    bool tick_debug;
 };
 
 extern Config config;

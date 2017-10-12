@@ -786,7 +786,7 @@ command_result AI::onupdate_register(color_ostream & out)
             return false;
         });
         tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7 * 1200, 7 * 1200, [this](color_ostream & out) { tag_enemies(out); });
-        events.onstatechange_register_once([this](color_ostream & out, state_change_event st) -> bool
+        events.onstatechange_register_once("world unload watcher", [this](color_ostream & out, state_change_event st) -> bool
         {
             if (st == SC_WORLD_UNLOADED)
             {

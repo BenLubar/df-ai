@@ -1365,7 +1365,7 @@ static bool represents_plant_murder(df::item *item)
 
 bool Population::perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade)
 {
-    if (!events.register_exclusive([this](color_ostream & s) -> bool
+    if (!events.register_exclusive("perform trade", [this](color_ostream & s) -> bool
     {
         return perform_trade_step(s);
     }, 2))

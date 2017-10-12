@@ -25,7 +25,8 @@ Config::Config() :
     cancel_announce(0),
     lockstep(false),
     lockstep_debug(false),
-    plan_verbosity(2)
+    plan_verbosity(2),
+    tick_debug(false)
 {
     for (int32_t i = 0; i < embark_options_count; i++)
     {
@@ -123,6 +124,10 @@ void Config::load(color_ostream & out)
             {
                 plan_verbosity = v["plan_verbosity"].asInt();
             }
+            if (v.isMember("tick_debug"))
+            {
+                tick_debug = v["tick_debug"].asBool();
+            }
         }
         catch (Json::Exception & ex)
         {
@@ -158,6 +163,8 @@ void Config::save(color_ostream & out)
     if (lockstep_debug) // hide from config if not set
         v["lockstep_debug"] = true;
     v["plan_verbosity"] = plan_verbosity;
+    if (tick_debug) // hide from config if not set
+        v["tick_debug"] = true;
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
