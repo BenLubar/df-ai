@@ -1070,7 +1070,10 @@ void Stocks::update_corpses(color_ostream & out)
 {
     room *r = ai->plan->find_room(room_type::garbagepit);
     if (!r)
+    {
+        updating_corpses = false;
         return;
+    }
     df::coord t = r->min - df::coord(0, 0, 1);
 
     for (auto it = world->items.other[items_other_id::ANY_CORPSE].begin(); it != world->items.other[items_other_id::ANY_CORPSE].end(); it++)
