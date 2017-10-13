@@ -6,8 +6,6 @@
 
 #include <functional>
 #include <list>
-#include <map>
-#include <set>
 
 #include "df/coord.h"
 #include "df/furnace_type.h"

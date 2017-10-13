@@ -180,6 +180,32 @@ static bool apply_string(std::string & var, Json::Value & data, const std::strin
     return true;
 }
 
+static bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append = false)
+{
+    Json::Value value = data.removeMember(name);
+    try
+    {
+        variable_string str(value);
+
+        if (append)
+        {
+            var.contents.insert(var.contents.end(), str.contents.begin(), str.contents.end());
+        }
+        else
+        {
+            var.contents = str.contents;
+        }
+
+        return true;
+    }
+    catch (std::invalid_argument & ex)
+    {
+        error = name + " is invalid (" + ex.what() + ")";
+
+        return false;
+    }
+}
+
 static bool apply_coord(df::coord & var, Json::Value & data, const std::string & name, std::string & error)
 {
     Json::Value value = data.removeMember(name);
@@ -194,6 +220,73 @@ static bool apply_coord(df::coord & var, Json::Value & data, const std::string &
     var.z = int16_t(value[2].asInt());
 
     return true;
+}
+
+variable_string::element_t::element_t(const std::string & text) :
+    element_t(text.empty() || text.at(0) != '$' ? text : text.substr(1), !text.empty() && text.at(0) == '$')
+{
+}
+
+variable_string::element_t::element_t(const std::string & text, bool variable) :
+    text(text),
+    variable(variable)
+{
+}
+
+variable_string::context_t::context_t(const context_t & parent, const std::map<std::string, variable_string> & values)
+{
+    for (auto & v : values)
+    {
+        variables[v.first] = v.second(parent);
+    }
+}
+
+std::string variable_string::context_t::operator[](const std::string & name) const
+{
+    auto it = variables.find(name);
+    return it == variables.end() ? "$" + name : it->second;
+}
+
+variable_string::variable_string(const std::string & text)
+{
+    contents.push_back(element_t(text, false));
+}
+
+variable_string::variable_string(const Json::Value & value)
+{
+    if (value.isString())
+    {
+        contents.push_back(element_t(value.asString(), false));
+    }
+    else if (value.isArray())
+    {
+        contents.reserve(value.size());
+        for (auto & el : value)
+        {
+            if (el.isString())
+            {
+                contents.push_back(element_t(el.asString()));
+            }
+            else
+            {
+                throw std::invalid_argument("elements of array should be strings");
+            }
+        }
+    }
+    else
+    {
+        throw std::invalid_argument("should be string or array of strings");
+    }
+}
+
+std::string variable_string::operator()(const variable_string::context_t & ctx) const
+{
+    std::ostringstream str;
+    for (auto v : contents)
+    {
+        str << (v.variable ? ctx[v.text] : v.text);
+    }
+    return str.str();
 }
 
 static bool check_indexes(const std::vector<room_base::furniture_t *> & layout, const std::vector<room_base::room_t *> & rooms, std::string & error)
@@ -373,7 +466,8 @@ room_base::room_t::room_t() :
     outdoor(false),
     require_walls(true),
     in_corridor(false),
-    exits()
+    exits(),
+    context()
 {
 }
 
@@ -426,12 +520,12 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
 
-    if (data.isMember("raw_type") && !apply_string(raw_type, data, "raw_type", error))
+    if (data.isMember("raw_type") && !apply_variable_string(raw_type, data, "raw_type", error))
     {
         return false;
     }
 
-    if (data.isMember("comment") && !apply_string(comment, data, "comment", error, true))
+    if (data.isMember("comment") && !apply_variable_string(comment, data, "comment", error, true))
     {
         return false;
     }
@@ -498,14 +592,27 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
 
             for (auto exit : value)
             {
-                if (!exit.isArray() || exit.size() != 4 || !exit[0].isString() || !exit[1].isInt() || !exit[2].isInt() || !exit[3].isInt())
+                if (!exit.isArray() || exit.size() < 4 || exit.size() > 5 || !exit[0].isString() || !exit[1].isInt() || !exit[2].isInt() || !exit[3].isInt() || (exit.size() > 4 && !exit[4].isObject()))
                 {
                     error = "exit has wrong type (should be [string, integer, integer, integer])";
                     return false;
                 }
 
                 df::coord t(exit[1].asInt(), exit[2].asInt(), exit[3].asInt());
-                exits[t].insert(exit[0].asString());
+                std::map<std::string, variable_string> context;
+                if (exit.size() > 4)
+                {
+                    std::vector<std::string> vars(exit[4].getMemberNames());
+                    for (auto var : vars)
+                    {
+                        if (!apply_variable_string(context[var], exit[4], var, error))
+                        {
+                            error = "exit variable " + error;
+                            return false;
+                        }
+                    }
+                }
+                exits[t][exit[0].asString()] = context;
             }
         }
     }
@@ -523,9 +630,17 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
     {
         return false;
     }
-    if (data.isMember("noblesuite") && !apply_int(noblesuite, data, "noblesuite", error))
+    if (data.isMember("noblesuite"))
     {
-        return false;
+        bool is_noblesuite;
+        if (!apply_index(is_noblesuite, noblesuite, data, "noblesuite", error))
+        {
+            return false;
+        }
+        if (!is_noblesuite)
+        {
+            noblesuite = -1;
+        }
     }
     if (data.isMember("queue") && !apply_int(queue, data, "queue", error))
     {
@@ -787,13 +902,43 @@ room_blueprint::room_blueprint(const room_template *tmpl, const room_instance *i
     name(inst->name),
     layout(),
     rooms(),
+    max_noblesuite(-1),
+    corridor(),
     interior(),
     no_room(),
     no_corridor()
 {
 }
 
-room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset) :
+room_blueprint::room_blueprint(const room_blueprint & rb) :
+    origin(rb.origin),
+    tmpl(),
+    inst(),
+    type(rb.type),
+    tmpl_name(rb.tmpl_name),
+    name(rb.name),
+    layout(),
+    rooms(),
+    max_noblesuite(-1),
+    corridor(),
+    interior(),
+    no_room(),
+    no_corridor()
+{
+    for (auto f : rb.layout)
+    {
+        layout.push_back(new room_base::furniture_t(*f));
+    }
+
+    for (auto r : rb.rooms)
+    {
+        rooms.push_back(new room_base::room_t(*r));
+    }
+
+    build_cache();
+}
+
+room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset, const variable_string::context_t & context) :
     origin(rb.origin + offset),
     tmpl(),
     inst(),
@@ -802,6 +947,8 @@ room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset) :
     name(rb.name),
     layout(),
     rooms(),
+    max_noblesuite(-1),
+    corridor(),
     interior(),
     no_room(),
     no_corridor()
@@ -814,6 +961,8 @@ room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset) :
     for (auto r : rb.rooms)
     {
         r = new room_base::room_t(*r);
+
+        r->context = context;
 
         r->min = r->min + offset;
         r->max = r->max + offset;
@@ -1053,6 +1202,7 @@ bool room_blueprint::apply(std::string & error)
 
 void room_blueprint::build_cache()
 {
+    max_noblesuite = -1;
     corridor.clear();
     interior.clear();
     no_room.clear();
@@ -1060,6 +1210,8 @@ void room_blueprint::build_cache()
 
     for (auto r : rooms)
     {
+        max_noblesuite = std::max(max_noblesuite, r->noblesuite);
+
         std::set<df::coord> holes;
         for (auto fi : r->layout)
         {
@@ -1148,6 +1300,11 @@ void room_blueprint::build_cache()
             }
         }
     }
+}
+
+blueprint_plan::blueprint_plan() :
+    next_noblesuite(0)
+{
 }
 
 blueprint_plan::~blueprint_plan()
@@ -1244,9 +1401,9 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
         out->workshop_type = in->workshop_type;
         out->furnace_type = in->furnace_type;
 
-        out->raw_type = in->raw_type;
+        out->raw_type = in->raw_type(in->context);
 
-        out->comment = in->comment;
+        out->comment = in->comment(in->context);
 
         out->min = in->min;
         out->max = in->max;
@@ -1323,6 +1480,8 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
 
     room_base::layoutindex_t layout_start = layout.size();
     room_base::roomindex_t room_start = rooms.size();
+    int32_t noblesuite_start = next_noblesuite;
+    next_noblesuite += rb.max_noblesuite + 1;
 
     for (auto f : rb.layout)
     {
@@ -1335,12 +1494,16 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
     {
         r = new room_base::room_t(*r);
         r->shift(layout_start, room_start);
+        if (r->noblesuite != -1)
+        {
+            r->noblesuite += noblesuite_start;
+        }
         rooms.push_back(r);
         for (auto & exit : r->exits)
         {
             if (!no_room.count(r->min + exit.first))
             {
-                room_connect[r->min + exit.first] = std::make_pair(rooms.size() - 1, exit.second);
+                room_connect[r->min + exit.first] = std::make_pair(rooms.size() - 1, variable_string::context_t::map(r->context, exit.second));
             }
         }
     }
@@ -1494,6 +1657,7 @@ void blueprint_plan::clear()
     }
     rooms.clear();
 
+    next_noblesuite = 0;
     room_connect.clear();
     corridor.clear();
     interior.clear();
@@ -1754,7 +1918,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
     return true;
 }
 
-bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template &)
+bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
     for (auto c : rb.no_room)
@@ -1782,7 +1946,7 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
     if (can_add_room(out, ai, rb, pos))
     {
         std::string error;
-        if (add(room_blueprint(rb, pos), error))
+        if (add(room_blueprint(rb, pos, plan.context), error))
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
@@ -1814,15 +1978,15 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
         }
     }
 
-    std::vector<std::pair<room_base::roomindex_t, df::coord>> connectors;
+    std::vector<std::tuple<room_base::roomindex_t, df::coord, variable_string::context_t>> connectors;
 
     for (auto & c : room_connect)
     {
         for (auto & t : c.second.second)
         {
-            if (tags.count(t))
+            if (tags.count(t.first))
             {
-                connectors.push_back(std::make_pair(c.second.first, c.first));
+                connectors.push_back(std::make_tuple(c.second.first, c.first, t.second));
                 break;
             }
         }
@@ -1830,23 +1994,23 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
 
     auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(ai->rng));
 
-    if (can_add_room(out, ai, rb, chosen.second))
+    if (can_add_room(out, ai, rb, std::get<1>(chosen)))
     {
         std::string error;
-        if (add(room_blueprint(rb, chosen.second), chosen.first, error))
+        if (add(room_blueprint(rb, std::get<1>(chosen), std::get<2>(chosen)), std::get<0>(chosen), error))
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
             if (config.plan_verbosity >= 2)
             {
-                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z));
+                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
             }
             return true;
         }
 
         if (config.plan_verbosity >= 3)
         {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), chosen.second.x, chosen.second.y, chosen.second.z, error.c_str()));
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z, error.c_str()));
         }
     }
 
@@ -2036,6 +2200,29 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
                 limits[instance_name] = std::make_pair(size_t(limit[0].asInt()), size_t(limit[1].asInt()));
             }
+        }
+    }
+
+    if (data.isMember("variables"))
+    {
+        Json::Value vars = data.removeMember("variables");
+        if (!vars.isObject())
+        {
+            error = "variables has wrong type (should be object)";
+            return false;
+        }
+
+        auto var_names = vars.getMemberNames();
+        for (auto & var_name : var_names)
+        {
+            Json::Value & var_value = vars[var_name];
+            if (!var_value.isString())
+            {
+                error = "variable " + var_name + " has wrong type (should be string)";
+                return false;
+            }
+
+            context.variables[var_name] = var_value.asString();
         }
     }
 

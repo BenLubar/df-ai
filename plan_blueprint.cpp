@@ -3,8 +3,6 @@
 #include "room.h"
 #include "blueprint.h"
 
-#include <tuple>
-
 #include "modules/Buildings.h"
 
 #include "df/block_square_event_grassst.h"

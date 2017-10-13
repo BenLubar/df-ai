@@ -7,6 +7,10 @@
 
 #include "DataDefs.h"
 
+#include <map>
+#include <set>
+#include <tuple>
+
 #ifndef HAVE_NULLPTR
 #define nullptr 0L
 #endif

@@ -2,9 +2,6 @@
 
 #include "event_manager.h"
 
-#include <map>
-#include <set>
-
 #include "df/entity_position_responsibility.h"
 #include "df/job_type.h"
 #include "df/occupation_type.h"

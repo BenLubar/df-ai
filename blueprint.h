@@ -7,6 +7,48 @@
 
 class AI;
 
+struct variable_string
+{
+    struct element_t
+    {
+        std::string text;
+        bool variable;
+
+        explicit element_t(const std::string & text);
+        explicit element_t(const std::string & text, bool variable);
+    };
+
+    struct context_t
+    {
+        std::map<std::string, std::string> variables;
+
+        context_t() = default;
+        context_t(const context_t &) = default;
+        context_t(const context_t &, const std::map<std::string, variable_string> &);
+
+        template<typename K>
+        static inline std::map<K, context_t> map(const context_t & parent, const std::map<K, std::map<std::string, variable_string>> & contexts)
+        {
+            std::map<K, context_t> out;
+            for (auto ctx : contexts)
+            {
+                out[ctx.first] = context_t(parent, ctx.second);
+            }
+            return out;
+        }
+
+    private:
+        friend struct variable_string;
+        std::string operator[](const std::string &) const;
+    };
+
+    std::vector<element_t> contents;
+    variable_string() = default;
+    explicit variable_string(const std::string & text);
+    explicit variable_string(const Json::Value & value);
+    std::string operator()(const context_t &) const;
+};
+
 struct room_base
 {
     typedef size_t layoutindex_t;
@@ -61,9 +103,9 @@ struct room_base
         df::workshop_type workshop_type;
         df::furnace_type furnace_type;
 
-        std::string raw_type;
+        variable_string raw_type;
 
-        std::string comment;
+        variable_string comment;
 
         df::coord min, max;
 
@@ -87,7 +129,9 @@ struct room_base
 
         bool require_walls;
         bool in_corridor;
-        std::map<df::coord, std::set<std::string>> exits;
+        std::map<df::coord, std::map<std::string, std::map<std::string, variable_string>>> exits;
+
+        variable_string::context_t context;
     };
 
     ~room_base();
@@ -122,7 +166,8 @@ struct room_instance : public room_base
 struct room_blueprint
 {
     room_blueprint(const room_template *tmpl, const room_instance *inst);
-    room_blueprint(const room_blueprint & rb, df::coord offset = df::coord(0, 0, 0));
+    room_blueprint(const room_blueprint & rb);
+    room_blueprint(const room_blueprint & rb, df::coord offset, const variable_string::context_t & context);
     ~room_blueprint();
 
     df::coord origin;
@@ -134,6 +179,7 @@ struct room_blueprint
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
 
+    int32_t max_noblesuite;
     std::set<df::coord> corridor;
     std::set<df::coord> interior;
     std::set<df::coord> no_room;
@@ -148,12 +194,14 @@ class blueprints_t;
 
 struct blueprint_plan
 {
+    blueprint_plan();
     ~blueprint_plan();
 
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
 
-    std::map<df::coord, std::pair<room_base::roomindex_t, std::set<std::string>>> room_connect;
+    int32_t next_noblesuite;
+    std::map<df::coord, std::pair<room_base::roomindex_t, std::map<std::string, variable_string::context_t>>> room_connect;
     std::set<df::coord> corridor;
     std::set<df::coord> interior;
     std::set<df::coord> no_room;
@@ -197,6 +245,7 @@ struct blueprint_plan_template
     std::map<std::string, std::set<std::string>> tags;
     std::map<std::string, std::pair<size_t, size_t>> limits;
     std::map<std::string, std::map<std::string, std::pair<size_t, size_t>>> instance_limits;
+    variable_string::context_t context;
 
     bool apply(Json::Value data, std::string & error);
     bool have_minimum_requirements(color_ostream & out, AI *ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const;

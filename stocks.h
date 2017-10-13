@@ -3,10 +3,6 @@
 #include "event_manager.h"
 #include "room.h"
 
-#include <map>
-#include <set>
-#include <tuple>
-
 #include "df/biome_type.h"
 #include "df/items_other_id.h"
 #include "df/job_material_category.h"
