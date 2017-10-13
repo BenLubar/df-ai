@@ -888,27 +888,37 @@ void Stocks::update(color_ostream & out)
         }
         if (ai->eventsJson.is_open())
         {
+            std::ostringstream stringify;
             Json::Value payload(Json::objectValue);
             for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
             {
                 Json::Value needed(Json::arrayValue);
                 needed.append(count.at(it->first));
                 needed.append(num_needed(it->first));
-                payload[it->first] = needed;
+                stringify.str(std::string());
+                stringify.clear();
+                stringify << it->first;
+                payload[stringify.str()] = needed;
             }
             for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
             {
                 Json::Value watch(Json::arrayValue);
                 watch.append(count.at(it->first));
                 watch.append(-it->second);
-                payload[it->first] = watch;
+                stringify.str(std::string());
+                stringify.clear();
+                stringify << it->first;
+                payload[stringify.str()] = watch;
             }
             for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
             {
                 Json::Value also(Json::arrayValue);
                 also.append(count.at(*it));
                 also.append(0);
-                payload[*it] = also;
+                stringify.str(std::string());
+                stringify.clear();
+                stringify << *it;
+                payload[stringify.str()] = also;
             }
             ai->event("stocks update", payload);
         }
