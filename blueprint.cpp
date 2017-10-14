@@ -233,7 +233,8 @@ variable_string::element_t::element_t(const std::string & text, bool variable) :
 {
 }
 
-variable_string::context_t::context_t(const context_t & parent, const std::map<std::string, variable_string> & values)
+variable_string::context_t::context_t(const context_t & parent, const std::map<std::string, variable_string> & values) :
+    variables(parent.variables)
 {
     for (auto & v : values)
     {
