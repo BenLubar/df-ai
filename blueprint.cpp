@@ -1774,7 +1774,10 @@ void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI *
     std::set<std::string> available_tags;
     for (auto & c : room_connect)
     {
-        available_tags.insert(c.second.second.begin(), c.second.second.end());
+        for (auto & tag : c.second.second)
+        {
+            available_tags.insert(tag.first);
+        }
     }
 
     find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint &) -> bool { return true; });
