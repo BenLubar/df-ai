@@ -1,0 +1,61 @@
+{
+	"f": [
+		{
+			"type": "door",
+			"x": 9,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 9,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "chest",
+			"x": 8,
+			"y": 0,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "location",
+			"location_type": "tavern",
+			"min": [-10, -4, 0],
+			"max": [-1, 4, 0],
+			"layout": [],
+			"accesspath": [1]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"min": [-10, -4, 0],
+			"max": [-2, -4, 0],
+			"comment": "tavern - booze stockpile",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true,
+			"level": 0,
+			"workshop": 0
+		}
+	]
+}

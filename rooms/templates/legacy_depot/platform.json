@@ -1,0 +1,20 @@
+{
+	"r": [
+		{
+			"type": "tradedepot",
+			"outdoor": true,
+			"min": [-2, -2, 0],
+			"max": [2, 2, 0],
+			"accesspath": [1],
+			"comment": "trade depot"
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"outdoor": true,
+			"min": [-4, -4, 0],
+			"max": [4, 4, 0],
+			"comment": "trade depot - surrounding area"
+		}
+	]
+}

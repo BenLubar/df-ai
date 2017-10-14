@@ -1,0 +1,39 @@
+{
+	"f": [
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, -1, 0],
+			"max": [0, 1, 0],
+			"comment": "main staircase",
+			"layout": [0, 1, 2],
+			"exits": [
+				["legacy_main_staircase", 0, 1, -1],
+				["legacy_main_staircase_workshops", 0, 1, -1]
+			]
+		}
+	]
+}

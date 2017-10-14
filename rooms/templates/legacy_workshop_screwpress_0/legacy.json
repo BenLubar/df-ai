@@ -1,0 +1,13 @@
+{
+	"r": [
+		{
+			"type": "workshop",
+			"workshop_type": "Custom",
+			"raw_type": "SCREW_PRESS",
+			"level": 0,
+			"min": [0, 0, 0],
+			"max": [0, 0, 0],
+			"in_corridor": true
+		}
+	]
+}

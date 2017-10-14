@@ -1,0 +1,12 @@
+{
+	"r": [
+		{
+			"type": "workshop",
+			"workshop_type": "Quern",
+			"level": 0,
+			"min": [0, 0, 0],
+			"max": [0, 0, 0],
+			"in_corridor": true
+		}
+	]
+}

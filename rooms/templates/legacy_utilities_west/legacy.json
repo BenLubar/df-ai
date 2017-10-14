@@ -1,0 +1,91 @@
+{
+	"f": [
+		{
+			"type": "table",
+			"x": 0,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 2,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "dininghall",
+			"min": [-1, -1, 0],
+			"max": [0, -1, 0],
+			"temporary": true,
+			"comment": "temporary dining room",
+			"layout": [0, 1, 2, 3, 4, 5],
+			"in_corridor": true
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-23, 0, 0],
+			"max": [0, 0, 0],
+			"exits": [
+				["legacy_location_tavern", -1, 0, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-2, -1, 0],
+			"max": [0, 1, 0],
+			"comment": "west utilities - segment 1",
+			"exits": [
+				["legacy_dininghall_north", 0, -1, 0, {
+					"dining_room_code": "A"
+				}],
+				["legacy_dininghall_south", 0, 3, 0, {
+					"dining_room_code": "C"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-14, -1, 0],
+			"max": [-3, 1, 0],
+			"comment": "west utilities - segment 2",
+			"exits": [
+				["legacy_dininghall_north", 0, -1, 0, {
+					"dining_room_code": "B"
+				}],
+				["legacy_dininghall_south", 0, 3, 0, {
+					"dining_room_code": "D"
+				}]
+			]
+		}
+	]
+}

@@ -1,0 +1,19 @@
+{
+	"f": [
+		{
+			"type": "door",
+			"x": 10,
+			"y": 0,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "location",
+			"location_type": "temple",
+			"min": [-10, 0, 0],
+			"max": [-1, 4, 0],
+			"layout": [0]
+		}
+	]
+}

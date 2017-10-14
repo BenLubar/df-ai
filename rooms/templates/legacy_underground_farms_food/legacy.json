@@ -1,0 +1,30 @@
+{
+	"r": [
+		{
+			"type": "farmplot",
+			"farm_type": "food",
+			"min": [0, -2, 0],
+			"max": [2, 0, 0],
+			"has_users": true,
+			"exits": [
+				["legacy_underground_farms_food", 3, 2, 0]
+			]
+		},
+		{
+			"type": "farmplot",
+			"farm_type": "food",
+			"min": [0, -5, 0],
+			"max": [2, -3, 0],
+			"accesspath": [0],
+			"has_users": true
+		},
+		{
+			"type": "farmplot",
+			"farm_type": "food",
+			"min": [0, -8, 0],
+			"max": [2, -6, 0],
+			"accesspath": [1],
+			"has_users": true
+		}
+	]
+}
