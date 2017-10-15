@@ -1,4 +1,48 @@
 {
 	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, -1, 0],
+			"max": [2, 1, 0],
+			"comment": "east stockpiles - segment 1",
+			"exits": [
+				["legacy_stockpile_finishedgoods_north", 1, -1, 0],
+				["legacy_stockpile_cloth_south", 1, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [3, -1, 0],
+			"max": [10, 1, 0],
+			"comment": "east stockpiles - segment 2",
+			"exits": [
+				["legacy_stockpile_barsblocks_north", 6, -1, 0],
+				["legacy_stockpile_leather_south", 6, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [11, -1, 0],
+			"max": [18, 1, 0],
+			"comment": "east stockpiles - segment 3",
+			"exits": [
+				["legacy_stockpile_ammo_north", 6, -1, 0],
+				["legacy_stockpile_armor_south", 6, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [19, -1, 0],
+			"max": [26, 1, 0],
+			"comment": "east stockpiles - segment 4",
+			"exits": [
+				["legacy_stockpile_weapons_north", 6, -1, 0],
+				["legacy_stockpile_coins_south", 6, 3, 0]
+			]
+		}
 	]
 }

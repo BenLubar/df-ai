@@ -6,4 +6,3 @@ The following features are not yet implemented in the "legacy" plan:
 - barracks
 - pastures
 - outdoor farms
-- stockpiles

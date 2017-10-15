@@ -1,4 +1,48 @@
 {
 	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-2, -1, 0],
+			"max": [0, 1, 0],
+			"comment": "west stockpiles - segment 1",
+			"exits": [
+				["legacy_stockpile_food_north", 1, -1, 0],
+				["legacy_stockpile_furniture_south", 1, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-10, -1, 0],
+			"max": [-3, 1, 0],
+			"comment": "west stockpiles - segment 2",
+			"exits": [
+				["legacy_stockpile_wood_north", 1, -1, 0],
+				["legacy_stockpile_stone_south", 1, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-18, -1, 0],
+			"max": [-11, 1, 0],
+			"comment": "west stockpiles - segment 3",
+			"exits": [
+				["legacy_stockpile_refuse_north", 1, -1, 0],
+				["legacy_stockpile_animals_south", 1, 3, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-26, -1, 0],
+			"max": [-19, 1, 0],
+			"comment": "west stockpiles - segment 4",
+			"exits": [
+				["legacy_stockpile_corpses_north", 1, -1, 0],
+				["legacy_stockpile_gems_south", 1, 3, 0]
+			]
+		}
 	]
 }
