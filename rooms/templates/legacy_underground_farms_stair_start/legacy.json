@@ -1,10 +1,12 @@
 {
 	"f": [
-		"construction": "UpStair",
-		"dig": "UpStair",
-		"x": 0,
-		"y": 0,
-		"z": 0
+		{
+			"construction": "UpStair",
+			"dig": "UpStair",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		}
 	],
 	"r": [
 		{
