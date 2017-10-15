@@ -1,18 +1,4 @@
 {
-	"f": [
-		{
-			"type": "nest_box",
-			"x": -1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "nest_box",
-			"x": -1,
-			"y": 2,
-			"z": 0
-		}
-	],
 	"r": [
 		{
 			"type": "corridor",
@@ -20,10 +6,11 @@
 			"min": [-1, -1, 0],
 			"max": [0, 1, 0],
 			"comment": "west workshops - segment 1",
-			"layout": [0, 1],
 			"exits": [
 				["legacy_workshop_north_still", 0, -1, 0],
-				["legacy_workshop_south_kitchen", 0, 3, 0]
+				["legacy_workshop_south_kitchen", 0, 3, 0],
+				["legacy_workshop_nestbox", -2, 0, 0],
+				["legacy_workshop_nestbox", -2, 2, 0]
 			]
 		},
 		{

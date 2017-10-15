@@ -1,5 +1,7 @@
 {
 	"start": "legacy_fort_entrance",
+	"padding_x": [-48, 48],
+	"padding_y": [-33, 33],
 	"outdoor": [
 		"legacy_depot",
 		"legacy_outdoor_farm_plot",
@@ -19,6 +21,7 @@
 		"legacy_workshops_west": [1, 1],
 		"legacy_location_library": [1, 1],
 		"legacy_location_temple": [1, 1],
+		"legacy_workshop_nestbox": [2, 2],
 		"legacy_workshop_north_ashery": [1, 1],
 		"legacy_workshop_north_craftsdwarfs": [1, 1],
 		"legacy_workshop_north_dyers": [1, 1],
@@ -47,11 +50,6 @@
 		"legacy_workshop_south_metalsmithsforge": [1, 1],
 		"legacy_workshop_south_tanners": [1, 1],
 		"legacy_workshop_south_woodfurnace": [1, 1],
-		"legacy_underground_farms_stair_start": [0, 1],
-		"legacy_underground_farms_stair_mid": [0, 10],
-		"legacy_underground_farms_stair_end": [0, 1],
-		"legacy_underground_farms_no_stair": [0, 1],
-		"legacy_underground_farms": [1, 1],
 		"legacy_underground_farms_food": [3, 9],
 		"legacy_underground_farms_cloth": [3, 9],
 		"legacy_utilities_east": [1, 1],

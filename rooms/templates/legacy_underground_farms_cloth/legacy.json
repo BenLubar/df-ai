@@ -6,6 +6,7 @@
 			"min": [0, 0, 0],
 			"max": [2, 2, 0],
 			"has_users": true,
+			"require_walls": false,
 			"exits": [
 				["legacy_underground_farms_cloth", 3, 0, 0]
 			]
@@ -16,7 +17,8 @@
 			"min": [0, 3, 0],
 			"max": [2, 5, 0],
 			"accesspath": [0],
-			"has_users": true
+			"has_users": true,
+			"require_walls": false
 		},
 		{
 			"type": "farmplot",
@@ -24,7 +26,8 @@
 			"min": [0, 6, 0],
 			"max": [2, 8, 0],
 			"accesspath": [1],
-			"has_users": true
+			"has_users": true,
+			"require_walls": false
 		}
 	]
 }

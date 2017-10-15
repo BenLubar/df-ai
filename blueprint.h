@@ -49,6 +49,8 @@ struct variable_string
     std::string operator()(const context_t &) const;
 };
 
+struct room_blueprint;
+
 struct room_base
 {
     typedef size_t layoutindex_t;
@@ -78,7 +80,9 @@ struct room_base
         bool makeroom;
         bool internal;
 
-        std::string comment;
+        variable_string comment;
+
+        variable_string::context_t context;
     };
     struct room_t
     {
@@ -132,6 +136,7 @@ struct room_base
         std::map<df::coord, std::map<std::string, std::map<std::string, variable_string>>> exits;
 
         variable_string::context_t context;
+        std::string blueprint;
     };
 
     ~room_base();
@@ -214,8 +219,8 @@ private:
     typedef void (blueprint_plan::*find_fn)(color_ostream &, AI *, std::vector<const room_blueprint *> &, const std::map<std::string, size_t> &, const std::map<std::string, std::map<std::string, size_t>> &, const blueprints_t &, const blueprint_plan_template &);
     typedef bool (blueprint_plan::*try_add_fn)(color_ostream &, AI *, const room_blueprint &, std::map<std::string, size_t> &, std::map<std::string, std::map<std::string, size_t>> &, const blueprint_plan_template &);
 
-    bool add(const room_blueprint & rb, std::string & error);
-    bool add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error);
+    bool add(color_ostream & out, AI *ai, const room_blueprint & rb, std::string & error, df::coord exit_location = df::coord());
+    bool add(color_ostream & out, AI *ai, const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location = df::coord());
     bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void place_rooms(color_ostream & out, AI *ai, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, find_fn find, try_add_fn try_add);
     void clear();
@@ -224,6 +229,7 @@ private:
     void find_available_blueprints_outdoor(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void find_available_blueprints_connect(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan);
     bool can_add_room(color_ostream & out, AI *ai, const room_blueprint & rb, df::coord pos);
+    bool try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     bool try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     bool try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
 };
@@ -246,6 +252,8 @@ struct blueprint_plan_template
     std::map<std::string, std::pair<size_t, size_t>> limits;
     std::map<std::string, std::map<std::string, std::pair<size_t, size_t>>> instance_limits;
     variable_string::context_t context;
+    std::pair<int16_t, int16_t> padding_x;
+    std::pair<int16_t, int16_t> padding_y;
 
     bool apply(Json::Value data, std::string & error);
     bool have_minimum_requirements(color_ostream & out, AI *ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const;

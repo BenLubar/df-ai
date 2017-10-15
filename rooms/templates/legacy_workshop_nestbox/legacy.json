@@ -1,8 +1,7 @@
 {
 	"f": [
 		{
-			"construction": "DownStair",
-			"dig": "DownStair",
+			"type": "nest_box",
 			"x": 0,
 			"y": 0,
 			"z": 0
@@ -13,12 +12,10 @@
 			"type": "corridor",
 			"corridor_type": "corridor",
 			"min": [0, 0, 0],
-			"max": [2, 0, 0],
+			"max": [0, 0, 0],
+			"in_corridor": true,
 			"layout": [0],
-			"comment": "farm corridor",
-			"exits": [
-				["legacy_underground_farms", 3, 0, 0]
-			]
+			"comment": "next box"
 		}
 	]
 }

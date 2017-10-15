@@ -159,27 +159,6 @@ static bool apply_bool(bool & var, Json::Value & data, const std::string & name,
     return true;
 }
 
-static bool apply_string(std::string & var, Json::Value & data, const std::string & name, std::string & error, bool append = false)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isString())
-    {
-        error = name + " has wrong type (should be string)";
-        return false;
-    }
-
-    if (append)
-    {
-        var += value.asString();
-    }
-    else
-    {
-        var = value.asString();
-    }
-
-    return true;
-}
-
 static bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append = false)
 {
     Json::Value value = data.removeMember(name);
@@ -393,7 +372,7 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
         return false;
     }
 
-    if (data.isMember("comment") && !apply_string(comment, data, "comment", error, true))
+    if (data.isMember("comment") && !apply_variable_string(comment, data, "comment", error, true))
     {
         return false;
     }
@@ -468,7 +447,8 @@ room_base::room_t::room_t() :
     require_walls(true),
     in_corridor(false),
     exits(),
-    context()
+    context(),
+    blueprint()
 {
 }
 
@@ -956,7 +936,11 @@ room_blueprint::room_blueprint(const room_blueprint & rb, df::coord offset, cons
 {
     for (auto f : rb.layout)
     {
-        layout.push_back(new room_base::furniture_t(*f));
+        f = new room_base::furniture_t(*f);
+
+        f->context = context;
+
+        layout.push_back(f);
     }
 
     for (auto r : rb.rooms)
@@ -1187,6 +1171,8 @@ bool room_blueprint::apply(std::string & error)
 
     for (auto r : rooms)
     {
+        r->blueprint = type + "/" + tmpl_name + "/" + name;
+
         for (auto & f : r->layout)
         {
             f = layout_move.at(f);
@@ -1383,7 +1369,7 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
         out->makeroom = in->makeroom;
         out->internal = in->internal;
 
-        out->comment = in->comment;
+        out->comment = in->comment(in->context);
     }
     for (size_t i = 0; i < rooms.size(); i++)
     {
@@ -1444,7 +1430,7 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
     std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), std::back_inserter(real_corridors), std::back_inserter(real_rooms), [](room *r) -> bool { return r->type == room_type::corridor; });
 }
 
-bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
+bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb, std::string & error, df::coord exit_location)
 {
     for (auto c : rb.corridor)
     {
@@ -1506,6 +1492,14 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
             {
                 room_connect[r->min + exit.first] = std::make_pair(rooms.size() - 1, variable_string::context_t::map(r->context, exit.second));
             }
+            else if (config.plan_verbosity >= 4)
+            {
+                df::coord c = r->min + exit.first;
+                for (auto t : exit.second)
+                {
+                    ai->debug(out, stl_sprintf("Not adding already-blocked %s exit on %s at (%d, %d, %d)", t.first.c_str(), r->blueprint.c_str(), c.x, c.y, c.z));
+                }
+            }
         }
     }
 
@@ -1522,6 +1516,21 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
     for (auto c : rb.no_room)
     {
         no_room.insert(c);
+        if (config.plan_verbosity >= 4)
+        {
+            auto old_connect = room_connect.find(c);
+            if (old_connect != room_connect.end())
+            {
+                auto r = rooms.at(old_connect->second.first);
+                for (auto exit : old_connect->second.second)
+                {
+                    if (c != exit_location || exit.first != rb.type)
+                    {
+                        ai->debug(out, stl_sprintf("Removing blocked %s exit on %s at (%d, %d, %d)", exit.first.c_str(), r->blueprint.c_str(), c.x, c.y, c.z));
+                    }
+                }
+            }
+        }
         room_connect.erase(c);
     }
 
@@ -1533,7 +1542,7 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error)
     return true;
 }
 
-bool blueprint_plan::add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error)
+bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location)
 {
     parent += (~rooms.size()) + 1;
 
@@ -1543,7 +1552,7 @@ bool blueprint_plan::add(const room_blueprint & rb, room_base::roomindex_t paren
         r->accesspath.push_back(parent);
     }
 
-    return add(rb_parent, error);
+    return add(out, ai, rb_parent, error, exit_location);
 }
 
 bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blueprints, const blueprint_plan_template & plan)
@@ -1555,7 +1564,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     {
         ai->debug(out, "Placing starting room...");
     }
-    place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_outdoor);
+    place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_start);
     if (rooms.empty())
     {
         if (config.plan_verbosity >= 1)
@@ -1792,7 +1801,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
         {
             if (config.plan_verbosity >= 3)
             {
-                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d+%d, %d+%d, %d+%d): out of bounds (0-%d, 0-%d, 0-%d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, c.x, pos.y, c.y, pos.z, c.z, world->map.x_count - 1, world->map.y_count - 1, world->map.z_count - 1));
             }
             return false;
         }
@@ -1922,6 +1931,54 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
     return true;
 }
 
+bool blueprint_plan::try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+{
+    int16_t min_x = plan.padding_x.first, max_x = plan.padding_x.second, min_y = plan.padding_y.first, max_y = plan.padding_y.second;
+    for (auto c : rb.no_room)
+    {
+        min_x = std::min(min_x, c.x);
+        max_x = std::max(max_x, c.x);
+        min_y = std::min(min_y, c.y);
+        max_y = std::max(max_y, c.y);
+    }
+
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
+
+    df::coord pos = ai->plan->surface_tile_at(x, y, true);
+
+    if (!pos.isValid())
+    {
+        if (config.plan_verbosity >= 3)
+        {
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
+        }
+        return false;
+    }
+
+    if (can_add_room(out, ai, rb, pos))
+    {
+        std::string error;
+        if (add(out, ai, room_blueprint(rb, pos, plan.context), error))
+        {
+            counts[rb.type]++;
+            instance_counts[rb.type][rb.name]++;
+            if (config.plan_verbosity >= 2)
+            {
+                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            }
+            return true;
+        }
+
+        if (config.plan_verbosity >= 3)
+        {
+            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
+        }
+    }
+
+    return false;
+}
+
 bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
@@ -1950,7 +2007,7 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
     if (can_add_room(out, ai, rb, pos))
     {
         std::string error;
-        if (add(room_blueprint(rb, pos, plan.context), error))
+        if (add(out, ai, room_blueprint(rb, pos, plan.context), error))
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
@@ -2001,7 +2058,7 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
     if (can_add_room(out, ai, rb, std::get<1>(chosen)))
     {
         std::string error;
-        if (add(room_blueprint(rb, std::get<1>(chosen), std::get<2>(chosen)), std::get<0>(chosen), error))
+        if (add(out, ai, room_blueprint(rb, std::get<1>(chosen), std::get<2>(chosen)), std::get<0>(chosen), error, std::get<1>(chosen)))
         {
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
@@ -2228,6 +2285,54 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
             context.variables[var_name] = var_value.asString();
         }
+    }
+
+    if (data.isMember("padding_x"))
+    {
+        Json::Value value = data.removeMember("padding_x");
+        if (!value.isArray() || value.size() != 2 || !value[0].isIntegral() || !value[1].isIntegral())
+        {
+            error = "padding_x has wrong type (should be [integer, integer])";
+            return false;
+        }
+
+        if (value[0].asInt() > 0)
+        {
+            error = "padding_x[0] must not be positive";
+            return false;
+        }
+
+        if (value[1].asInt() < 0)
+        {
+            error = "padding_x[1] must not be negative";
+            return false;
+        }
+
+        padding_x = std::make_pair((int16_t)value[0].asInt(), (int16_t)value[1].asInt());
+    }
+
+    if (data.isMember("padding_y"))
+    {
+        Json::Value value = data.removeMember("padding_y");
+        if (!value.isArray() || value.size() != 2 || !value[0].isIntegral() || !value[1].isIntegral())
+        {
+            error = "padding_y has wrong type (should be [integer, integer])";
+            return false;
+        }
+
+        if (value[0].asInt() > 0)
+        {
+            error = "padding_y[0] must not be positive";
+            return false;
+        }
+
+        if (value[1].asInt() < 0)
+        {
+            error = "padding_y[1] must not be negative";
+            return false;
+        }
+
+        padding_y = std::make_pair((int16_t)value[0].asInt(), (int16_t)value[1].asInt());
     }
 
     std::vector<std::string> remaining_members(data.getMemberNames());
