@@ -1,1 +1,42 @@
-../legacy_workshop_south.json
+{
+	"f": [
+		{
+			"type": "door",
+			"x": 1,
+			"y": -1,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"accesspath": [1],
+			"layout": [0],
+			"level": 0,
+			"min": [-1, 1, 0],
+			"max": [1, 3, 0],
+			"placeholder": 0
+		},
+		{
+			"workshop": 0,
+			"level": 0,
+			"min": [-1, -1, 0],
+			"max": [1, -1, 0],
+			"in_corridor": true,
+			"placeholder": 1
+		},
+		{
+			"accesspath": [0],
+			"level": 1,
+			"min": [-1, 4, 0],
+			"max": [1, 6, 0],
+			"placeholder": 0
+		},
+		{
+			"accesspath": [2],
+			"level": 2,
+			"min": [-1, 7, 0],
+			"max": [1, 9, 0],
+			"placeholder": 0
+		}
+	]
+}
