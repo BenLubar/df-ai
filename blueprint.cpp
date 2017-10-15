@@ -282,7 +282,7 @@ static bool check_indexes(const std::vector<room_base::furniture_t *> & layout, 
         }
     }
 
-    for (auto r : layout)
+    for (auto r : rooms)
     {
         if (r && !r->check_indexes(layout_limit, room_limit, error))
         {
@@ -1436,7 +1436,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     {
         if (no_corridor.count(c))
         {
-            error = "room corridor intersects no_corridor tile";
+            error = "room corridor intersects no_corridor tile (" + no_corridor.at(c) + ")";
             return false;
         }
     }
@@ -1444,7 +1444,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     {
         if (no_room.count(c))
         {
-            error = "room interior intersects no_room tile";
+            error = "room interior intersects no_room tile (" + no_room.at(c) + ")";
             return false;
         }
     }
@@ -1452,7 +1452,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     {
         if (corridor.count(c))
         {
-            error = "room no_corridor intersects corridor tile";
+            error = "room no_corridor intersects corridor tile (" + corridor.at(c) + ")";
             return false;
         }
     }
@@ -1460,7 +1460,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     {
         if (interior.count(c))
         {
-            error = "room no_room intersects interior tile";
+            error = "room no_room intersects interior tile (" + interior.at(c) + ")";
             return false;
         }
     }
@@ -1505,17 +1505,17 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
 
     for (auto c : rb.corridor)
     {
-        corridor.insert(c);
+        corridor[c] = rb.type + "/" + rb.tmpl_name + "/" + rb.name;
     }
 
     for (auto c : rb.interior)
     {
-        interior.insert(c);
+        interior[c] = rb.type + "/" + rb.tmpl_name + "/" + rb.name;
     }
 
     for (auto c : rb.no_room)
     {
-        no_room.insert(c);
+        no_room[c] = rb.type + "/" + rb.tmpl_name + "/" + rb.name;
         if (config.plan_verbosity >= 4)
         {
             auto old_connect = room_connect.find(c);
@@ -1536,7 +1536,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
 
     for (auto c : rb.no_corridor)
     {
-        no_corridor.insert(c);
+        no_corridor[c] = rb.type + "/" + rb.tmpl_name + "/" + rb.name;
     }
 
     return true;

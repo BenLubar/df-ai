@@ -68,7 +68,7 @@
 			"layout": [3, 4],
 			"exits": [
 				["legacy_bedrooms_east", 2, 1, 0, {
-					"level": "upper"
+					"bedroom_level": "upper"
 				}]
 			]
 		},
@@ -82,7 +82,7 @@
 			"layout": [5, 6],
 			"exits": [
 				["legacy_bedrooms_west", -2, 1, 0, {
-					"level": "upper"
+					"bedroom_level": "upper"
 				}]
 			]
 		}

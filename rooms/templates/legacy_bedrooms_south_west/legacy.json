@@ -1,0 +1,143 @@
+{
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 0, 0],
+			"max": [1, 1, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-1"],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 1, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "1",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 1, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "1",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 2, 0],
+			"max": [1, 4, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-2"],
+			"accesspath": [0],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "2",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "2",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 5, 0],
+			"max": [1, 7, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-3"],
+			"accesspath": [1],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "3",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "3",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 8, 0],
+			"max": [1, 10, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-3"],
+			"accesspath": [2],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "3",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "3",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 11, 0],
+			"max": [1, 13, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-4"],
+			"accesspath": [3],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "4",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "4",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 14, 0],
+			"max": [1, 16, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-5"],
+			"accesspath": [4],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "5",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "5",
+					"bedroom_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 17, 0],
+			"max": [1, 19, 0],
+			"comment": ["south west ", "$bedroom_level", " bedrooms - segment ", "$bedroom_segment_x", "-6"],
+			"accesspath": [5],
+			"exits": [
+				["legacy_bedroom_south_east", 2, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "6",
+					"bedroom_code": "A"
+				}],
+				["legacy_bedroom_south_west", -1, 2, 0, {
+					"bedroom_quadrant": "south west",
+					"bedroom_segment_y": "6",
+					"bedroom_code": "B"
+				}]
+			]
+		}
+	]
+}

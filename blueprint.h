@@ -207,10 +207,10 @@ struct blueprint_plan
 
     int32_t next_noblesuite;
     std::map<df::coord, std::pair<room_base::roomindex_t, std::map<std::string, variable_string::context_t>>> room_connect;
-    std::set<df::coord> corridor;
-    std::set<df::coord> interior;
-    std::set<df::coord> no_room;
-    std::set<df::coord> no_corridor;
+    std::map<df::coord, std::string> corridor;
+    std::map<df::coord, std::string> interior;
+    std::map<df::coord, std::string> no_room;
+    std::map<df::coord, std::string> no_corridor;
 
     bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints);
     void create(room * & fort_entrance, std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;

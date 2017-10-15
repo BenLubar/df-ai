@@ -62,7 +62,19 @@
 		"legacy_stockpiles_east": [1, 1],
 		"legacy_stockpiles_west": [1, 1],
 
-		"legacy_bedrooms_east": [1, 1],
-		"legacy_bedrooms_west": [1, 1]
+		"legacy_bedrooms_east": [2, 2],
+		"legacy_bedrooms_west": [2, 2],
+		"legacy_bedrooms_north_east": [6, 6],
+		"legacy_bedrooms_north_west": [6, 6],
+		"legacy_bedrooms_south_east": [6, 6],
+		"legacy_bedrooms_south_west": [6, 6],
+		"legacy_nobleroom_north_east": [2, 2],
+		"legacy_nobleroom_north_west": [2, 2],
+		"legacy_nobleroom_south_east": [2, 2],
+		"legacy_nobleroom_south_west": [2, 2],
+		"legacy_bedroom_north_east": [72, 72],
+		"legacy_bedroom_north_west": [72, 72],
+		"legacy_bedroom_south_east": [72, 72],
+		"legacy_bedroom_south_west": [72, 72]
 	}
 }

@@ -1,0 +1,41 @@
+{
+	"f": [
+		{
+			"type": "bed",
+			"x": 1,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "cabinet",
+			"x": 1,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "chest",
+			"x": 0,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "door",
+			"x": -1,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		}
+	],
+	"r": [
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [2, 0, 0],
+			"comment": ["$bedroom_quadrant", " ", "$bedroom_level", " bedrooms - room ", "$bedroom_segment_x", "-", "$bedroom_segment_y", " ", "$bedroom_code"],
+			"layout": [0, 1, 2, 3]
+		}
+	]
+}
