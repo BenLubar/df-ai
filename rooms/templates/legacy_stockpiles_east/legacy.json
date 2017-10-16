@@ -17,6 +17,7 @@
 			"min": [3, -1, 0],
 			"max": [10, 1, 0],
 			"comment": "east stockpiles - segment 2",
+			"accesspath": [0],
 			"exits": [
 				["legacy_stockpile_barsblocks_north", 6, -1, 0],
 				["legacy_stockpile_leather_south", 6, 3, 0]
@@ -28,6 +29,7 @@
 			"min": [11, -1, 0],
 			"max": [18, 1, 0],
 			"comment": "east stockpiles - segment 3",
+			"accesspath": [1],
 			"exits": [
 				["legacy_stockpile_ammo_north", 6, -1, 0],
 				["legacy_stockpile_armor_south", 6, 3, 0]
@@ -39,6 +41,7 @@
 			"min": [19, -1, 0],
 			"max": [26, 1, 0],
 			"comment": "east stockpiles - segment 4",
+			"accesspath": [2],
 			"exits": [
 				["legacy_stockpile_weapons_north", 6, -1, 0],
 				["legacy_stockpile_coins_south", 6, 3, 0]
