@@ -1,11 +1,18 @@
 {
+	"f": [
+		{
+			"type": "door",
+			"x": 9,
+			"y": -1,
+			"z": 0
+		}
+	],
 	"r": [
 		{
 			"type": "corridor",
 			"corridor_type": "corridor",
 			"min": [0, -1, 0],
 			"max": [2, -1, 0],
-			"comment": "east utilities - infirmary access",
 			"exits": [
 				["legacy_infirmary", 2, -1, 0]
 			]
@@ -14,9 +21,79 @@
 			"type": "corridor",
 			"corridor_type": "corridor",
 			"min": [3, -1, 0],
-			"max": [11, 1, 0],
-			"comment": "east utilities - cemetary access",
-			"accesspath": [0]
+			"max": [12, -1, 0],
+			"accesspath": [0],
+			"layout": [0],
+			"exits": [
+				["legacy_cemetary_west", 5, -2, 0]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, -1, 0],
+			"max": [2, 1, 0],
+			"comment": "east utilities - segment 1",
+			"exits": [
+				["legacy_barracks_south", 2, 3, 0, {
+					"barracks_code": "A"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [3, -1, 0],
+			"max": [10, 1, 0],
+			"comment": "east utilities - segment 2",
+			"accesspath": [2],
+			"exits": [
+				["legacy_barracks_south", 7, 3, 0, {
+					"barracks_code": "B"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [11, -1, 0],
+			"max": [18, 1, 0],
+			"comment": "east utilities - segment 3",
+			"accesspath": [3],
+			"exits": [
+				["legacy_barracks_south", 7, 3, 0, {
+					"barracks_code": "C"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [19, -1, 0],
+			"max": [26, 1, 0],
+			"comment": "east utilities - segment 4",
+			"accesspath": [4],
+			"exits": [
+				["legacy_barracks_south", 7, 3, 0, {
+					"barracks_code": "D"
+				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [27, -1, 0],
+			"max": [34, 1, 0],
+			"comment": "east utilities - segment 5",
+			"accesspath": [5],
+			"exits": [
+				["legacy_barracks_north", 7, -1, 0, {
+					"barracks_code": "E"
+				}],
+				["legacy_barracks_south", 7, 3, 0, {
+					"barracks_code": "F"
+				}]
+			]
 		}
 	]
 }

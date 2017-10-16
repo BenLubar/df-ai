@@ -58,7 +58,10 @@
 		"legacy_dininghall_north": [2, 2],
 		"legacy_dininghall_south": [2, 2],
 		"legacy_infirmary": [1, 1],
-
+		"legacy_cemetary_east": [4, 10],
+		"legacy_cemetary_west": [4, 10],
+		"legacy_barracks_north": [1, 1],
+		"legacy_barracks_south": [5, 5],
 		"legacy_stockpiles_east": [1, 1],
 		"legacy_stockpiles_west": [1, 1],
 		"legacy_stockpile_ammo_north": [1, 1],
