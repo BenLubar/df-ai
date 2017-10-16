@@ -23,7 +23,7 @@
 		{
 			"type": "location",
 			"location_type": "tavern",
-			"min": [-10, -4, 0],
+			"min": [-9, -4, 0],
 			"max": [-1, 4, 0],
 			"layout": [],
 			"accesspath": [1]
@@ -31,7 +31,7 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-10, -4, 0],
+			"min": [-9, -4, 0],
 			"max": [-2, -4, 0],
 			"comment": "tavern - booze stockpile",
 			"stock_disable": [
