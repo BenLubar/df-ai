@@ -1449,19 +1449,19 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
         {
             return da.z < db.z;
         }
-        if (da_abs.x < db_abs.x)
+        if (da_abs.x != db_abs.x)
         {
             return da_abs.x < db_abs.x;
         }
-        if (da.x < db.x)
+        if (da.x != db.x)
         {
             return da.x < db.x;
         }
-        if (da_abs.y < db_abs.y)
+        if (da_abs.y != db_abs.y)
         {
             return da_abs.y < db_abs.y;
         }
-        if (da.y < db.y)
+        if (da.y != db.y)
         {
             return da.y < db.y;
         }
