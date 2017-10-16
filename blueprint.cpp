@@ -1427,6 +1427,46 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
     }
 
     fort_entrance = real_rooms_and_corridors.at(0);
+    std::sort(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), [fort_entrance](const room *a, const room *b) -> bool
+    {
+        if (b == fort_entrance)
+        {
+            return false;
+        }
+        if (a == fort_entrance)
+        {
+            return true;
+        }
+        df::coord da(fort_entrance->pos() - a->pos());
+        df::coord db(fort_entrance->pos() - b->pos());
+        df::coord da_abs(std::abs(da.x), std::abs(da.y), std::abs(da.z));
+        df::coord db_abs(std::abs(db.x), std::abs(db.y), std::abs(db.z));
+        if (da_abs.z != db_abs.z)
+        {
+            return da_abs.z < db_abs.z;
+        }
+        if (da.z != db.z)
+        {
+            return da.z < db.z;
+        }
+        if (da_abs.x < db_abs.x)
+        {
+            return da_abs.x < db_abs.x;
+        }
+        if (da.x < db.x)
+        {
+            return da.x < db.x;
+        }
+        if (da_abs.y < db_abs.y)
+        {
+            return da_abs.y < db_abs.y;
+        }
+        if (da.y < db.y)
+        {
+            return da.y < db.y;
+        }
+        return false;
+    });
     std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), std::back_inserter(real_corridors), std::back_inserter(real_rooms), [](room *r) -> bool { return r->type == room_type::corridor; });
 }
 

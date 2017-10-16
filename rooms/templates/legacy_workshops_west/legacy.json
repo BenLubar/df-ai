@@ -69,7 +69,7 @@
 			"accesspath": [4],
 			"comment": "west workshops - segment 6",
 			"exits": [
-				["legacy_workshop_north_masons_secondary", 1, -1, 0],
+				["legacy_workshop_north_masons", 1, -1, 0],
 				["legacy_workshop_south_kiln", 1, 3, 0]
 			]
 		},
