@@ -155,6 +155,11 @@ command_result Plan::setup_blueprint(color_ostream & out)
             return false;
         });
     }
+    else if (!config.plan_allow_legacy)
+    {
+        ai->debug(out, "not allowed to use legacy plan and blueprint failed. giving up.");
+        return CR_FAILURE;
+    }
     else
     {
         ai->debug(out, "using legacy layout...");

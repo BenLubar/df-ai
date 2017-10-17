@@ -44,6 +44,7 @@ struct Config
     bool lockstep_debug;
     int32_t plan_verbosity;
     bool tick_debug;
+    bool plan_allow_legacy;
 };
 
 extern Config config;
