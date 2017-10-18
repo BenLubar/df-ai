@@ -74,6 +74,10 @@ void Embark::register_restart_timer(color_ostream & out)
 
             if (!config.no_quit)
             {
+                if (config.lockstep)
+                {
+                    exit(0);
+                }
                 Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
                 return true;
             }
