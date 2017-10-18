@@ -2,19 +2,19 @@
 	"f": [
 		{
 			"type": "door",
-			"x": 9,
+			"x": 11,
 			"y": 3,
 			"z": 0
 		},
 		{
 			"type": "door",
-			"x": 9,
+			"x": 11,
 			"y": 5,
 			"z": 0
 		},
 		{
 			"type": "chest",
-			"x": 8,
+			"x": 10,
 			"y": 0,
 			"z": 0
 		}
@@ -23,7 +23,7 @@
 		{
 			"type": "location",
 			"location_type": "tavern",
-			"min": [-9, -4, 0],
+			"min": [-10, -4, 0],
 			"max": [-1, 4, 0],
 			"layout": [],
 			"accesspath": [1]
@@ -31,7 +31,7 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-9, -4, 0],
+			"min": [-10, -4, 0],
 			"max": [-2, -4, 0],
 			"comment": "tavern - booze stockpile",
 			"stock_disable": [
