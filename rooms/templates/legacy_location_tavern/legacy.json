@@ -2,19 +2,19 @@
 	"f": [
 		{
 			"type": "door",
-			"x": 11,
+			"x": 10,
 			"y": 3,
 			"z": 0
 		},
 		{
 			"type": "door",
-			"x": 11,
+			"x": 10,
 			"y": 5,
 			"z": 0
 		},
 		{
 			"type": "chest",
-			"x": 10,
+			"x": 9,
 			"y": 0,
 			"z": 0
 		}
@@ -25,7 +25,7 @@
 			"location_type": "tavern",
 			"min": [-10, -4, 0],
 			"max": [-1, 4, 0],
-			"layout": [],
+			"layout": [0, 1, 2],
 			"accesspath": [1]
 		},
 		{
