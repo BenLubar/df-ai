@@ -307,24 +307,24 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai status</title></head>";
-        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a></p>";
-        out << "<pre>" << html_escape(dwarfAI->status()) << "</pre></body></html>";
+        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/verison\">Version</a></p></p>";
+        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->status()) << "</pre></body></html>";
         return true;
     }
     if (url == "/report")
     {
-        out << "<!DOCTYPE html><html><head><title>df-ai report</title></head>";
-        out << "<body><p><a href=\"../../df-ai\">Status</a> - <b>Report</b></p>";
-        out << "<pre>" << html_escape(dwarfAI->report()) << "</pre></body></html>";
+        out << "<!DOCTYPE html><html><head><title>df-ai report</title><base href=\"..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/verison\">Version</a></p>";
+        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->report()) << "</pre></body></html>";
         return true;
     }
     if (url == "/version")
     {
         std::ostringstream version;
         ai_version(version);
-        out << "<!DOCTYPE html><html><head><title>df-ai version</title></head>";
-        out << "<body><p><a href=\"../../df-ai\">Status</a> - <a href=\"../report\">Report</a></p>";
-        out << "<pre>" << html_escape(version.str()) << "</pre></body></html>";
+        out << "<!DOCTYPE html><html><head><title>df-ai version</title><base href=\"..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report\">Report</a> - <b>Version</b></p>";
+        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(version.str()) << "</pre></body></html>";
         return true;
     }
     return false;
