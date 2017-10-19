@@ -113,14 +113,31 @@ static furniture *new_cistern_floodgate(int16_t x, int16_t y, const std::string 
 
 command_result Plan::setup_ready(color_ostream & out)
 {
-    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && !r->temporary && r->level == 0; }));
-    digroom(out, find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Carpenters && r->level == 0; }));
-    find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->temporary && r->level == 0; })->temporary = false;
-    find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->temporary && r->level == 1; })->temporary = false;
-    find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->temporary && r->level == 2; })->temporary = false;
-    wantdig(out, find_room(room_type::stockpile, [](room *r) -> bool { return r->stockpile_type == stockpile_type::food && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }));
+    auto dig_starting_room = [this, &out](room_type::type rt, std::function<bool(room *)> f, bool want = false)
+    {
+        find_room(rt, [this, &out, f, want](room *r) -> bool
+        {
+            if (f(r))
+            {
+                if (want)
+                {
+                    wantdig(out, r);
+                }
+                else
+                {
+                    digroom(out, r);
+                }
+                return true;
+            }
+            return false;
+        });
+    };
 
-    digroom(out, find_room(room_type::garbagepit));
+    dig_starting_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->level == 0; });
+    dig_starting_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Carpenters && r->level == 0; });
+    dig_starting_room(room_type::stockpile, [](room *r) -> bool { return r->stockpile_type == stockpile_type::food && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }, true);
+
+    dig_starting_room(room_type::garbagepit, [](room *) -> bool { return true; });
 
     return CR_OK;
 }
@@ -133,27 +150,6 @@ command_result Plan::setup_blueprint(color_ostream & out)
     if (plan.build(out, ai, blueprints))
     {
         plan.create(fort_entrance, corridors, rooms);
-
-        categorize_all();
-
-        find_room(room_type::workshop, [this, &out](room *r) -> bool
-        {
-            if (r->workshop_type == workshop_type::Masons && r->level == 0)
-            {
-                digroom(out, r);
-                return true;
-            }
-            return false;
-        });
-        find_room(room_type::workshop, [this, &out](room *r) -> bool
-        {
-            if (r->workshop_type == workshop_type::Carpenters && r->level == 0)
-            {
-                digroom(out, r);
-                return true;
-            }
-            return false;
-        });
     }
     else if (!config.plan_allow_legacy)
     {
@@ -202,13 +198,14 @@ command_result Plan::setup_blueprint(color_ostream & out)
             }
             return false;
         }), fort_entrance->layout.end());
-
-        categorize_all();
-
-        res = setup_ready(out);
-        if (res != CR_OK)
-            return res;
     }
+
+    categorize_all();
+
+    res = setup_ready(out);
+    if (res != CR_OK)
+        return res;
+
     res = list_map_veins(out);
     if (res != CR_OK)
         return res;
@@ -637,7 +634,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Clothiers, min, max, comment); });
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Dyers, min, max, comment); });
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Bowyers, min, max, comment); });
-    types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { room *r = new room(workshop_type::Masons, min, max, comment); r->temporary = true; return r; });
+    types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Masons, min, max, comment); });
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(furnace_type::Kiln, min, max, comment); });
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Masons, min, max, comment); });
     types.push_back([](df::coord min, df::coord max, const std::string & comment) -> room * { return new room(workshop_type::Carpenters, min, max, comment); });
