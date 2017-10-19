@@ -57,15 +57,6 @@
 		{
 			"type": "corridor",
 			"corridor_type": "corridor",
-			"min": [-23, 0, 0],
-			"max": [0, 0, 0],
-			"exits": [
-				["legacy_location_tavern", -1, 0, 0]
-			]
-		},
-		{
-			"type": "corridor",
-			"corridor_type": "corridor",
 			"min": [-2, -1, 0],
 			"max": [0, 1, 0],
 			"comment": "west utilities - segment 1",
@@ -84,6 +75,7 @@
 			"min": [-14, -1, 0],
 			"max": [-3, 1, 0],
 			"comment": "west utilities - segment 2",
+			"accesspath": [1],
 			"exits": [
 				["legacy_dininghall_north", 0, -1, 0, {
 					"dining_room_code": "B"
@@ -91,6 +83,23 @@
 				["legacy_dininghall_south", 0, 3, 0, {
 					"dining_room_code": "D"
 				}]
+			]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-14, 0, 0],
+			"max": [0, 0, 0]
+		},
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-23, -1, 0],
+			"max": [-15, 1, 0],
+			"comment": "west utilities - segment 3",
+			"accesspath": [3],
+			"exits": [
+				["legacy_location_tavern", -1, 0, 0]
 			]
 		}
 	]
