@@ -307,14 +307,14 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai status</title></head>";
-        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/verison\">Version</a></p></p>";
+        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->status()) << "</pre></body></html>";
         return true;
     }
     if (url == "/report")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai report</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/verison\">Version</a></p>";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/version\">Version</a></p>";
         out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->report()) << "</pre></body></html>";
         return true;
     }
