@@ -191,6 +191,7 @@ struct room_blueprint
     std::set<df::coord> no_corridor;
 
     bool apply(std::string & error);
+    bool warn(std::string & error);
     void build_cache();
 };
 

@@ -1187,6 +1187,52 @@ bool room_blueprint::apply(std::string & error)
     return true;
 }
 
+bool room_blueprint::warn(std::string & error)
+{
+    std::vector<bool> furniture_used;
+    furniture_used.resize(layout.size(), false);
+    for (auto ri = rooms.begin(); ri != rooms.end(); ri++)
+    {
+        auto r = *ri;
+        for (auto fi : r->layout)
+        {
+            furniture_used.at(fi) = true;
+
+            auto f = layout.at(fi);
+            df::coord pos = r->min + f->pos;
+            if (pos.x > r->max.x + 1)
+            {
+                error = stl_sprintf("room %d, furniture %d: furniture outside of east wall", ri - rooms.begin(), fi);
+                return true;
+            }
+            if (pos.y > r->max.y + 1)
+            {
+                error = stl_sprintf("room %d, furniture %d: furniture outside of south wall", ri - rooms.begin(), fi);
+                return true;
+            }
+            if (pos.x < r->min.x - 1)
+            {
+                error = stl_sprintf("room %d, furniture %d: furniture outside of west wall", ri - rooms.begin(), fi);
+                return true;
+            }
+            if (pos.y < r->min.y - 1)
+            {
+                error = stl_sprintf("room %d, furniture %d: furniture outside of north wall", ri - rooms.begin(), fi);
+                return true;
+            }
+        }
+    }
+    for (size_t i = 0; i < furniture_used.size(); i++)
+    {
+        if (!furniture_used.at(i))
+        {
+            error = stl_sprintf("furniture %d: not included in any room layout", i);
+            return true;
+        }
+    }
+    return false;
+}
+
 void room_blueprint::build_cache()
 {
     max_noblesuite = -1;
@@ -2631,6 +2677,14 @@ blueprints_t::blueprints_t(color_ostream & out)
     {
         auto & rbs = blueprints[type.first];
         rbs.reserve(type.second.first.size() * type.second.second.size());
+        if (type.second.first.empty())
+        {
+            out.printerr("%s: no templates\n", type.first.c_str());
+        }
+        if (type.second.second.empty())
+        {
+            out.printerr("%s: no instances\n", type.first.c_str());
+        }
         for (auto tmpl : type.second.first)
         {
             for (auto inst : type.second.second)
@@ -2641,6 +2695,10 @@ blueprints_t::blueprints_t(color_ostream & out)
                     out.printerr("%s + %s: %s\n", tmpl.first.c_str(), inst.first.c_str(), error.c_str());
                     delete rb;
                     continue;
+                }
+                if (rb->warn(error))
+                {
+                    out.printerr("%s + %s: %s\n", tmpl.first.c_str(), inst.first.c_str(), error.c_str());
                 }
                 rbs.push_back(rb);
             }
