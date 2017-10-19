@@ -292,6 +292,7 @@ static std::string html_escape(const std::string & str)
     replace_all(escaped, "&", "&amp;");
     replace_all(escaped, "<", "&lt;");
     replace_all(escaped, ">", "&gt;");
+    replace_all(escaped, "\n", "<br/>");
     return escaped;
 }
 
@@ -299,27 +300,31 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
 {
     if (!enabled || !dwarfAI)
     {
-        out << "<p>AI is not active.</p>";
+        out << "<!DOCTYPE html><html><head><title>df-ai</title></head>";
+        out << "<body><p>AI is not active.</p></body></html>";
         return true;
     }
-    if (url == "/")
+    if (url == "")
     {
-        out << "<p><b>Status</b> - <a href=\"/df-ai/report\">Report</a></p>";
-        out << "<pre>" << html_escape(dwarfAI->status()) << "</pre>";
+        out << "<!DOCTYPE html><html><head><title>df-ai status</title></head>";
+        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a></p>";
+        out << "<pre>" << html_escape(dwarfAI->status()) << "</pre></body></html>";
         return true;
     }
     if (url == "/report")
     {
-        out << "<p><a href=\"/df-ai\">Status</a> - <b>Report</b></p>";
-        out << "<pre>" << html_escape(dwarfAI->report()) << "</pre>";
+        out << "<!DOCTYPE html><html><head><title>df-ai report</title></head>";
+        out << "<body><p><a href=\"../../df-ai\">Status</a> - <b>Report</b></p>";
+        out << "<pre>" << html_escape(dwarfAI->report()) << "</pre></body></html>";
         return true;
     }
     if (url == "/version")
     {
-        out << "<p><a href=\"/df-ai\">Status</a> - <a href=\"/df-ai/report\">Report</a></p>";
-        out << "<pre>";
-        ai_version(out);
-        out << "</pre>";
+        std::ostringstream version;
+        ai_version(version);
+        out << "<!DOCTYPE html><html><head><title>df-ai version</title></head>";
+        out << "<body><p><a href=\"../../df-ai\">Status</a> - <a href=\"../report\">Report</a></p>";
+        out << "<pre>" << html_escape(version.str()) << "</pre></body></html>";
         return true;
     }
     return false;
