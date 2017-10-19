@@ -48,7 +48,7 @@
 		{
 			"type": "dininghall",
 			"min": [-1, -1, 0],
-			"max": [0, -1, 0],
+			"max": [0, 1, 0],
 			"temporary": true,
 			"comment": "temporary dining room",
 			"layout": [0, 1, 2, 3, 4, 5],
