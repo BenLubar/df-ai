@@ -8,6 +8,7 @@
 
 #include "DFHackVersion.h"
 #include "df-ai-git-describe.h"
+#include "thirdparty/weblegends/weblegends-plugin.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
@@ -27,6 +28,7 @@ AI *dwarfAI = nullptr;
 bool full_reset_requested = false;
 
 command_result ai_command(color_ostream & out, std::vector<std::string> & args);
+bool ai_weblegends_handler(std::ostringstream & out, const std::string & url);
 
 // Check whether we are enabled and make sure the AI data exists iff we are.
 bool check_enabled(color_ostream & out)
@@ -110,6 +112,9 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         "ai disable camera\n"
         "  Undoes \"ai enable camera\".\n"
     ));
+
+    add_weblegends_handler("df-ai", &ai_weblegends_handler, "Artificial Intelligence");
+
     return CR_OK;
 }
 
@@ -117,6 +122,9 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
 DFhackCExport command_result plugin_shutdown(color_ostream & out)
 {
     CoreSuspender suspend;
+
+    remove_weblegends_handler("df-ai");
+
     enabled = false;
     check_enabled(out); // delete the AI if it was enabled.
     return CR_OK;
@@ -129,33 +137,39 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
     return CR_OK;
 }
 
+template<typename O>
+void ai_version(O & out)
+{
+#ifdef DFHACK64
+    constexpr int bits = 64;
+#else
+    constexpr int bits = 32;
+#endif
+#ifdef WIN32
+    constexpr const char *os = "Windows";
+#elif _LINUX
+    constexpr const char *os = "Linux";
+#elif _DARWIN
+    constexpr const char *os = "Mac";
+#else
+    constexpr const char *os = "UNKNOWN";
+#endif
+    out << "Dwarf Fortress " << DF_VERSION << std::endl;
+    out << "  " << os << " " << bits << "-bit" << std::endl;
+    out << "df-ai " << DF_AI_GIT_DESCRIPTION << std::endl;
+    out << "  code " << DF_AI_GIT_COMMIT << std::endl;
+    out << "DFHack " << DFHACK_GIT_DESCRIPTION << std::endl;
+    out << "  library " << DFHACK_GIT_COMMIT << std::endl;
+    out << "  structures " << DFHACK_GIT_XML_COMMIT << std::endl;
+}
+
 command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 {
     CoreSuspender suspend;
 
     if (args.size() == 1 && args[0] == "version")
     {
-#ifdef DFHACK64
-        constexpr int bits = 64;
-#else
-        constexpr int bits = 32;
-#endif
-#ifdef WIN32
-        constexpr const char *os = "Windows";
-#elif _LINUX
-        constexpr const char *os = "Linux";
-#elif _DARWIN
-        constexpr const char *os = "Mac";
-#else
-        constexpr const char *os = "UNKNOWN";
-#endif
-        out << "Dwarf Fortress " << DF_VERSION << std::endl;
-        out << "  " << os << " " << bits << "-bit" << std::endl;
-        out << "df-ai " << DF_AI_GIT_DESCRIPTION << std::endl;
-        out << "  code " << DF_AI_GIT_COMMIT << std::endl;
-        out << "DFHack " << DFHACK_GIT_DESCRIPTION << std::endl;
-        out << "  library " << DFHACK_GIT_COMMIT << std::endl;
-        out << "  structures " << DFHACK_GIT_XML_COMMIT << std::endl;
+        ai_version(out);
         return CR_OK;
     }
 
@@ -259,4 +273,54 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
 
     events.onupdate(out);
     return CR_OK;
+}
+
+// https://stackoverflow.com/a/24315631/2664560
+static void replace_all(std::string & str, const std::string & from, const std::string & to)
+{
+    size_t pos = 0;
+    while ((pos = str.find(from, pos)) != std::string::npos)
+    {
+        str.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+}
+
+static std::string html_escape(const std::string & str)
+{
+    std::string escaped(str);
+    replace_all(escaped, "&", "&amp;");
+    replace_all(escaped, "<", "&lt;");
+    replace_all(escaped, ">", "&gt;");
+    return escaped;
+}
+
+bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
+{
+    if (!enabled || !dwarfAI)
+    {
+        out << "<p>AI is not active.</p>";
+        return true;
+    }
+    if (url == "/")
+    {
+        out << "<p><b>Status</b> - <a href=\"/df-ai/report\">Report</a></p>";
+        out << "<pre>" << html_escape(dwarfAI->status()) << "</pre>";
+        return true;
+    }
+    if (url == "/report")
+    {
+        out << "<p><a href=\"/df-ai\">Status</a> - <b>Report</b></p>";
+        out << "<pre>" << html_escape(dwarfAI->report()) << "</pre>";
+        return true;
+    }
+    if (url == "/version")
+    {
+        out << "<p><a href=\"/df-ai\">Status</a> - <a href=\"/df-ai/report\">Report</a></p>";
+        out << "<pre>";
+        ai_version(out);
+        out << "</pre>";
+        return true;
+    }
+    return false;
 }
