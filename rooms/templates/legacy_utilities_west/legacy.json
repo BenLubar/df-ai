@@ -99,7 +99,7 @@
 			"comment": "west utilities - segment 3",
 			"accesspath": [3],
 			"exits": [
-				["legacy_location_tavern", -1, 0, 0]
+				["legacy_location_tavern", -1, 1, 0]
 			]
 		}
 	]
