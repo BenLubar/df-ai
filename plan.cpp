@@ -4992,7 +4992,7 @@ void Plan::report(std::ostream & out, bool html)
         }
 
         task *t = *it;
-        if (html)
+        if (!html)
         {
             out << "- ";
         }
