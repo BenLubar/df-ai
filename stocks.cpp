@@ -711,36 +711,104 @@ std::string Stocks::status()
     return s.str();
 }
 
-std::string Stocks::report()
+void Stocks::report(std::ostream & out, bool html)
 {
-    std::ostringstream s;
+    if (html)
+    {
+        out << "<h2 id=\"Stocks_Need\">Need</h2><ul>";
+    }
+    else
+    {
+        out << "## Need\n";
+    }
+    for (auto n : Watch.Needed)
+    {
+        if (html)
+        {
+            out << "<li><b>" << n.first << ":</b> " << count[n.first] << " / " << num_needed(n.first) << "</li>";
+        }
+        else
+        {
+            out << "- " << n.first << ": " << count[n.first] << " / " << num_needed(n.first) << "\n";
+        }
+    }
 
-    s << "## Need\n";
-    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
+    if (html)
     {
-        s << "- " << it->first << ": " << count[it->first] << " / " << num_needed(it->first) << "\n";
+        out << "</ul><h2 id=\"Stocks_Watch\">Watch</h2><ul>";
     }
-    s << "\n";
-    s << "## Watch\n";
-    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
+    else
     {
-        s << "- " << it->first << ": " << count[it->first] << " / " << it->second << "\n";
+        out << "\n## Watch\n";
     }
-    s << "\n";
-    s << "## Track\n";
-    for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
+    for (auto w : Watch.WatchStock)
     {
-        s << "- " << *it << ": " << count[*it] << "\n";
+        if (html)
+        {
+            out << "<li><b>" << w.first << ":</b> " << count[w.first] << " / " << w.second << "</li>";
+        }
+        else
+        {
+            out << "- " << w.first << ": " << count[w.first] << " / " << w.second << "\n";
+        }
     }
-    s << "\n";
-    s << "## Orders\n";
-    for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
-    {
-        s << stl_sprintf("- % 4d /% 4d ", (*it)->amount_left, (*it)->amount_total) << AI::describe_job(*it) << "\n";
-    }
-    s << "\n";
 
-    return s.str();
+    if (html)
+    {
+        out << "</ul><h2 id=\"Stocks_Track\">Track</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Track\n";
+    }
+    for (auto t : Watch.AlsoCount)
+    {
+        if (html)
+        {
+            out << "<li><b>" << t << ":</b> " << count[t] << "</li>";
+        }
+        else
+        {
+            out << "- " << t << ": " << count[t] << "\n";
+        }
+    }
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Stocks_Orders\">Orders</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Orders\n";
+    }
+    for (auto mo : world->manager_orders)
+    {
+        if (html)
+        {
+            out << "<li>";
+        }
+        else
+        {
+            out << "- ";
+        }
+        out << stl_sprintf("% 4d /% 4d ", mo->amount_left, mo->amount_total);
+        if (html)
+        {
+            out << html_escape(AI::describe_job(mo)) << "</li>";
+        }
+        else
+        {
+            out << AI::describe_job(mo) << "\n";
+        }
+    }
+    if (html)
+    {
+        out << "</ul>";
+    }
+    else
+    {
+        out << "\n";
+    }
 }
 
 void Stocks::update(color_ostream & out)

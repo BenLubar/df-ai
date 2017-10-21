@@ -4,6 +4,7 @@
 #include "plan.h"
 #include "stocks.h"
 #include "trade.h"
+#include "thirdparty/weblegends/weblegends-plugin.h"
 
 #include <sstream>
 
@@ -2371,56 +2372,129 @@ std::string Population::status()
     return stl_sprintf("%d citizen, %d military, %d pet, %d visitor, %d resident", citizen.size(), military.size(), pet.size(), visitor.size(), resident.size());
 }
 
-std::string Population::report()
+void Population::report(std::ostream & out, bool html)
 {
-    std::ostringstream s;
-
-    auto do_unit = [this, &s](int32_t id)
+    auto do_unit = [this, &out, html](int32_t id, bool skip_end = false)
     {
         auto u = df::unit::find(id);
 
-        s << "- " << AI::describe_unit(u);
+        if (html)
+        {
+            out << "<li>";
+        }
+        else
+        {
+            out << "- ";
+        }
+        out << AI::describe_unit(u, html);
 
         if (u == nullptr)
         {
-            s << "\n";
+            if (html)
+            {
+                out << "</li>";
+            }
+            else
+            {
+                out << "\n";
+            }
             return;
         }
 
         int32_t age = days_since(u->birth_year, u->birth_time);
-        s << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)\n";
+        out << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)";
 
         if (room *r = ai->plan->find_room_at(Units::getPosition(u)))
         {
-            s << "  " << ai->plan->describe_room(r) << "\n";
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "\n  ";
+            }
+            out << ai->plan->describe_room(r, html);
         }
 
         std::string job = AI::describe_job(u);
         if (!job.empty())
         {
-            s << "  " << job << "\n";
+            if (html)
+            {
+                out << "<br/>" << html_escape(job);
+            }
+            else
+            {
+                out << "\n  " << job;
+            }
+        }
+        if (!skip_end)
+        {
+            if (html)
+            {
+                out << "</li>";
+            }
+            else
+            {
+                out << "\n";
+            }
         }
     };
 
-    s << "## Citizens\n";
+    if (html)
+    {
+        out << "<h2 id=\"Population_Citizens\">Citizens</h2><ul>";
+    }
+    else
+    {
+        out << "## Citizens\n";
+    }
     for (auto it = citizen.begin(); it != citizen.end(); it++)
     {
         do_unit(*it);
     }
-    s << "\n";
-    s << "## Military\n";
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Military\">Military</h2>";
+    }
+    else
+    {
+        out << "\n## Military\n";
+    }
     for (auto sqid = ui->main.fortress_entity->squads.begin(); sqid != ui->main.fortress_entity->squads.end(); sqid++)
     {
         df::squad *sq = df::squad::find(*sqid);
 
-        s << "### " << AI::describe_name(sq->name, false) << ", " << AI::describe_name(sq->name, true) << "\n";
+        if (html)
+        {
+            out << "<h3>" << html_escape(AI::describe_name(sq->name, false)) << ", " << html_escape(AI::describe_name(sq->name, true)) << "</h3><ul>";
+        }
+        else
+        {
+            out << "### " << AI::describe_name(sq->name, false) << ", " << AI::describe_name(sq->name, true) << "\n";
+        }
 
-        s << "#### Members\n";
+        if (html)
+        {
+            out << "<h4>Members</h4><ul>";
+        }
+        else
+        {
+            out << "#### Members\n";
+        }
         for (auto sp = sq->positions.begin(); sp != sq->positions.end(); sp++)
         {
             if ((*sp)->occupant == -1)
             {
-                s << "- (vacant)\n";
+                if (html)
+                {
+                    out << "<li><i>(vacant)</i></li>";
+                }
+                else
+                {
+                    out << "- (vacant)\n";
+                }
             }
             else
             {
@@ -2428,72 +2502,157 @@ std::string Population::report()
                 do_unit(hf ? hf->unit_id : -1);
             }
         }
-        s << "\n";
 
-        s << "#### Targets\n";
+        if (html)
+        {
+            out << "</ul><h4>Targets</h4><ul>";
+        }
+        else
+        {
+            out << "\n#### Targets\n";
+        }
         for (auto o = sq->orders.begin(); o != sq->orders.end(); o++)
         {
             std::string description;
             (*o)->getDescription(&description);
-            s << "- " << description << "\n";
+            if (html)
+            {
+                out << "<li>" << html_escape(description) << "</li>";
+            }
+            else
+            {
+                out << "- " << description << "\n";
+            }
         }
         if (sq->orders.empty())
         {
-            s << "(none)\n";
+            if (html)
+            {
+                out << "<li><i>(none)</i></li>";
+            }
+            else
+            {
+                out << "(none)\n";
+            }
         }
-        s << "\n";
+        if (html)
+        {
+            out << "</ul>";
+        }
+        else
+        {
+            out << "\n";
+        }
     }
-    s << "\n";
-    s << "## Pets\n";
+
+    if (html)
+    {
+        out << "<h2 id=\"Population_Pets\">Pets</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Pets\n";
+    }
     for (auto it = pet.begin(); it != pet.end(); it++)
     {
-        do_unit(it->first);
+        do_unit(it->first, true);
 
         bool first = true;
+        auto trait = [&first, &out, html](const std::string & name)
+        {
+            if (first)
+            {
+                if (html)
+                {
+                    out << "<br/>";
+                }
+                else
+                {
+                    out << "\n  ";
+                }
+                first = false;
+            }
+            else
+            {
+                out << ", ";
+            }
+            if (html)
+            {
+                out << html_escape(name);
+            }
+            else
+            {
+                out << name;
+            }
+        };
 
         if (it->second.bits.milkable)
         {
-            s << "  milkable";
-            first = false;
+            trait("milkable");
         }
 
         if (it->second.bits.shearable)
         {
-            s << (first ? "  " : ", ") << "shearable";
-            first = false;
+            trait("shearable");
         }
 
         if (it->second.bits.hunts_vermin)
         {
-            s << (first ? "  " : ", ") << "hunts vermin";
-            first = false;
+            trait("hunts vermin");
         }
 
         if (it->second.bits.grazer)
         {
-            s << (first ? "  " : ", ") << "grazer";
-            first = false;
+            trait("grazer");
         }
 
         if (!first)
         {
-            s << "\n";
+            if (html)
+            {
+                out << "</li>";
+            }
+            else
+            {
+                out << "\n";
+            }
         }
     }
-    s << "\n";
-    s << "## Visitors\n";
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Visitors\">Visitors</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Visitors\n";
+    }
     for (auto it = visitor.begin(); it != visitor.end(); it++)
     {
         do_unit(*it);
     }
-    s << "\n";
-    s << "## Residents\n";
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Residents\">Residents</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Residents\n";
+    }
     for (auto it = resident.begin(); it != resident.end(); it++)
     {
         do_unit(*it);
     }
-    s << "\n";
-    s << "## Deaths\n";
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Deaths\">Deaths</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Deaths\n";
+    }
     for (auto it = world->history.events2.begin(); it != world->history.events2.end(); it++)
     {
         auto d = virtual_cast<df::history_event_hist_figure_diedst>(*it);
@@ -2503,9 +2662,23 @@ std::string Population::report()
             continue;
         }
 
-        s << "- " << AI::describe_event(d) << "\n";
+        if (html)
+        {
+            out << "<li>";
+            weblegends_describe_event(out, d);
+            out << "</li>";
+        }
+        else
+        {
+            out << "- " << AI::describe_event(d) << "\n";
+        }
     }
-    s << "\n";
-
-    return s.str();
+    if (html)
+    {
+        out << "</ul>";
+    }
+    else
+    {
+        out << "\n";
+    }
 }

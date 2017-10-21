@@ -197,7 +197,7 @@ public:
     command_result onupdate_unregister(color_ostream & out);
 
     std::string status();
-    std::string report();
+    void report(std::ostream & out, bool html);
 
     void update(color_ostream & out);
     void update_kitchen(color_ostream & out);

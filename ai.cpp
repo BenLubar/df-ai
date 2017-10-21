@@ -133,10 +133,14 @@ std::string AI::describe_name(const df::language_name & name, bool in_english, b
     return Translation::capitalize(s);
 }
 
-std::string AI::describe_unit(df::unit *u)
+std::string AI::describe_unit(df::unit *u, bool html)
 {
     if (!u)
     {
+        if (html)
+        {
+            return "<i>(unknown unit)</i>";
+        }
         return "(unknown unit)";
     }
 
@@ -144,6 +148,14 @@ std::string AI::describe_unit(df::unit *u)
     if (!s.empty())
         s += ", ";
     s += Units::getProfessionName(u);
+    if (html)
+    {
+        s = html_escape(s);
+        if (u->hist_figure_id)
+        {
+            s = stl_sprintf("<a href=\"fig-%d\">", u->hist_figure_id) + s + "</a>";
+        }
+    }
     return s;
 }
 
@@ -838,17 +850,39 @@ std::string AI::status()
     return str.str();
 }
 
-std::string AI::report()
+template<typename M>
+static void report_section(std::ostringstream & out, const std::string & name, M *module, bool html)
+{
+    if (html)
+    {
+        out << "<h1 id=\"" << html_escape(name) << "\">" << html_escape(name) << "</h1>";
+    }
+    else
+    {
+        out << "# " << name << "\n";
+    }
+    module->report(out, html);
+    if (!html)
+    {
+        out << "\n";
+    }
+}
+
+std::string AI::report(bool html)
 {
     if (embark->is_embarking())
     {
+        if (html)
+        {
+            return "<i>Report is not available during embark.</i>";
+        }
         return "";
     }
 
     std::ostringstream str;
-    str << "# Plan\n" << plan->report() << "\n";
-    str << "# Population\n" << pop->report() << "\n";
-    str << "# Stocks\n" << stocks->report();
+    report_section(str, "Plan", plan, html);
+    report_section(str, "Population", pop, html);
+    report_section(str, "Stocks", stocks, html);
     return str.str();
 }
 

@@ -104,6 +104,8 @@ public:
     bool past_initial_phase;
 private:
     bool cistern_channel_requested;
+    int32_t last_update_year;
+    int32_t last_update_tick;
 
 public:
     Plan(AI *ai);
@@ -235,12 +237,12 @@ public:
     df::coord surface_tile_at(int16_t tx, int16_t ty, bool allow_trees = false);
 
     std::string status();
-    std::string report();
+    void report(std::ostream & out, bool html);
 
     void categorize_all();
 
-    std::string describe_room(room *r);
-    std::string describe_furniture(furniture *f);
+    std::string describe_room(room *r, bool html = false);
+    std::string describe_furniture(furniture *f, bool html = false);
 
     room *find_room(room_type::type type);
     room *find_room(room_type::type type, std::function<bool(room *)> b);

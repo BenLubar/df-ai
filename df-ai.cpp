@@ -137,8 +137,7 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
     return CR_OK;
 }
 
-template<typename O>
-void ai_version(O & out)
+void ai_version(std::ostream & out, bool html = false)
 {
 #ifdef DFHACK64
     constexpr int bits = 64;
@@ -154,13 +153,27 @@ void ai_version(O & out)
 #else
     constexpr const char *os = "UNKNOWN";
 #endif
-    out << "Dwarf Fortress " << DF_VERSION << std::endl;
-    out << "  " << os << " " << bits << "-bit" << std::endl;
-    out << "df-ai " << DF_AI_GIT_DESCRIPTION << std::endl;
-    out << "  code " << DF_AI_GIT_COMMIT << std::endl;
+    const char *br = html ? "<br/>" : "\n";
+    auto commit = [&out, br, html](const std::string & name, const std::string & repo, const std::string & commit)
+    {
+        out << "  " << name << " ";
+        if (html)
+        {
+            out << "<a href=\"https://github.com/" << repo << "/commit/" << commit << "\">" << commit << "</a>";
+        }
+        else
+        {
+            out << commit;
+        }
+        out << br;
+    };
+    out << "Dwarf Fortress " << DF_VERSION << br;
+    out << "  " << os << " " << bits << "-bit" << br;
+    out << "df-ai " << DF_AI_GIT_DESCRIPTION << br;
+    commit("code", "BenLubar/df-ai", DF_AI_GIT_COMMIT);
     out << "DFHack " << DFHACK_GIT_DESCRIPTION << std::endl;
-    out << "  library " << DFHACK_GIT_COMMIT << std::endl;
-    out << "  structures " << DFHACK_GIT_XML_COMMIT << std::endl;
+    commit("library", "DFHack/dfhack", DFHACK_GIT_COMMIT);
+    commit("structures", "DFHack/df-structures", DFHACK_GIT_XML_COMMIT);
 }
 
 command_result ai_command(color_ostream & out, std::vector<std::string> & args)
@@ -286,7 +299,7 @@ static void replace_all(std::string & str, const std::string & from, const std::
     }
 }
 
-static std::string html_escape(const std::string & str)
+std::string html_escape(const std::string & str)
 {
     std::string escaped(str);
     replace_all(escaped, "&", "&amp;");
@@ -315,16 +328,16 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     {
         out << "<!DOCTYPE html><html><head><title>df-ai report</title><base href=\"..\"/></head>";
         out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/version\">Version</a></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->report()) << "</pre></body></html>";
+        out << "<pre style=\"white-space:pre-wrap\">" << dwarfAI->report(true) << "</pre></body></html>";
         return true;
     }
     if (url == "/version")
     {
         std::ostringstream version;
-        ai_version(version);
+        ai_version(version, true);
         out << "<!DOCTYPE html><html><head><title>df-ai version</title><base href=\"..\"/></head>";
         out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report\">Report</a> - <b>Version</b></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(version.str()) << "</pre></body></html>";
+        out << "<pre style=\"white-space:pre-wrap\">" << version.str() << "</pre></body></html>";
         return true;
     }
     return false;

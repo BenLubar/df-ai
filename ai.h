@@ -35,6 +35,8 @@ class Camera;
 class Embark;
 class Trade;
 
+std::string html_escape(const std::string & str);
+
 class AI
 {
 public:
@@ -64,7 +66,7 @@ public:
 
     static std::string describe_name(const df::language_name & name, bool in_english = false, bool only_last_part = false);
     static std::string describe_item(df::item *i);
-    static std::string describe_unit(df::unit *u);
+    static std::string describe_unit(df::unit *u, bool html = false);
     static std::string describe_job(df::job *job);
     static std::string describe_job(df::manager_order *job);
     static std::string describe_job(df::manager_order_template *job);
@@ -104,7 +106,7 @@ public:
     command_result onupdate_unregister(color_ostream & out);
 
     std::string status();
-    std::string report();
+    std::string report(bool html = false);
 
     command_result persist(color_ostream & out);
     command_result unpersist(color_ostream & out);

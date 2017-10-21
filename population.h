@@ -117,7 +117,7 @@ public:
     void assign_unit_to_zone(df::unit *u, df::building_civzonest *bld);
 
     std::string status();
-    std::string report();
+    void report(std::ostream & out, bool html);
 };
 
 // vim: et:sw=4:ts=4

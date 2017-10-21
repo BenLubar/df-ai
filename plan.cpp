@@ -74,6 +74,7 @@
 #include "df/world_underground_region.h"
 
 REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(cursor);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
@@ -179,7 +180,9 @@ Plan::Plan(AI *ai) :
     allow_ice(false),
     should_search_for_metal(false),
     past_initial_phase(false),
-    cistern_channel_requested(false)
+    cistern_channel_requested(false),
+    last_update_year(-1),
+    last_update_tick(-1)
 {
     add_task(task_type::check_rooms);
 
@@ -343,6 +346,8 @@ static bool want_reupdate = false;
 
 void Plan::update(color_ostream &)
 {
+    last_update_year = *cur_year;
+    last_update_tick = *cur_year_tick;
     if (bg_idx_generic == tasks_generic.end())
     {
         bg_idx_generic = tasks_generic.begin();
@@ -4866,59 +4871,184 @@ std::string Plan::status()
     return s.str();
 }
 
-std::string Plan::report()
+void Plan::report(std::ostream & out, bool html)
 {
-    std::ostringstream s;
-
-    s << "## Tasks\n";
+    if (html)
+    {
+        out << "<h2 id=\"Plan_Tasks\">Tasks</h2><h3 id=\"Plan_Tasks_Generic\">Generic</h3><ul>";
+    }
+    else
+    {
+        out << "## Tasks\n### Generic\n";
+    }
     for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
     {
+        if (html)
+        {
+            out << "<li>";
+        }
         if (bg_idx_generic == it)
         {
-            s << "--- current position (generic) ---\n";
+            if (html)
+            {
+                out << "<i>--- current position ---</i><br/>";
+            }
+            else
+            {
+                out << "--- current position ---\n";
+            }
         }
 
         task *t = *it;
-        s << "- " << t->type << "\n";
+        if (!html)
+        {
+            out << "- ";
+        }
+        out << t->type;
         if (t->r != nullptr)
         {
-            s << "  " << describe_room(t->r) << "\n";
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "\n  ";
+            }
+            out << describe_room(t->r, html);
         }
         if (t->f != nullptr)
         {
-            s << "  " << describe_furniture(t->f) << "\n";
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "\n  ";
+            }
+            out << describe_furniture(t->f, html);
         }
+        if (html)
+        {
+            out << "</li>";
+        }
+        else
+        {
+            out << "\n";
+        }
+    }
+    if (html)
+    {
+        out << "</ul>";
     }
     if (bg_idx_generic == tasks_generic.end())
     {
-        s << "--- current position (generic) ---\n";
+        int32_t tick_diff = 20 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
+        if (html)
+        {
+            out << "<p><i>";
+        }
+        out << "--- next check in " << tick_diff << " ticks ---";
+        if (html)
+        {
+            out << "</i></p>";
+        }
+        else
+        {
+            out << "\n";
+        }
     }
-    s << "\n";
+    if (html)
+    {
+        out << "<h2 id=\"Plan_Tasks_Furniture\">Furniture</h2><ul>";
+    }
+    else
+    {
+        out << "\n### Furniture\n";
+    }
     for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
     {
+        if (html)
+        {
+            out << "<li>";
+        }
         if (bg_idx_furniture == it)
         {
-            s << "--- current position (furniture) ---\n";
+            if (html)
+            {
+                out << "<i>--- current position ---</i><br/>";
+            }
+            else
+            {
+                out << "--- current position ---\n";
+            }
         }
 
         task *t = *it;
-        s << "- " << t->type << "\n";
+        if (html)
+        {
+            out << "- ";
+        }
+        out << t->type;
         if (t->r != nullptr)
         {
-            s << "  " << describe_room(t->r) << "\n";
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "\n  ";
+            }
+            out << describe_room(t->r, html);
         }
         if (t->f != nullptr)
         {
-            s << "  " << describe_furniture(t->f) << "\n";
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "\n  ";
+            }
+            out << describe_furniture(t->f, html);
         }
+        if (html)
+        {
+            out << "</li>";
+        }
+        else
+        {
+            out << "\n";
+        }
+    }
+    if (html)
+    {
+        out << "</ul>";
     }
     if (bg_idx_furniture == tasks_furniture.end())
     {
-        s << "--- current position (furniture) ---\n";
+        int32_t tick_diff = 20 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
+        if (html)
+        {
+            out << "<p><i>";
+        }
+        out << "--- next check in " << tick_diff << " ticks ---";
+        if (html)
+        {
+            out << "</i></p>";
+        }
+        else
+        {
+            out << "\n";
+        }
     }
-    s << "\n";
-
-    return s.str();
+    if (!html)
+    {
+        out << "\n";
+    }
 }
 
 void Plan::categorize_all()
@@ -4971,12 +5101,13 @@ void Plan::categorize_all()
     }
 }
 
-std::string Plan::describe_room(room *r)
+std::string Plan::describe_room(room *r, bool html)
 {
     if (!r)
     {
         return "(unknown room)";
     }
+    std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & str) -> std::string { return str; };
 
     std::ostringstream s;
     s << r->type;
@@ -4994,7 +5125,7 @@ std::string Plan::describe_room(room *r)
     case room_type::furnace:
         if (r->furnace_type == furnace_type::Custom)
         {
-            s << " (\"" << r->raw_type << "\")";
+            s << " (\"" << escape(r->raw_type) << "\")";
         }
         else
         {
@@ -5011,7 +5142,7 @@ std::string Plan::describe_room(room *r)
                 {
                     if (auto name = loc->getName())
                     {
-                        s << " (" << AI::describe_name(*name, false) << " \"" << AI::describe_name(*name, true) << "\")";
+                        s << " (" << escape(AI::describe_name(*name, false)) << " \"" << escape(AI::describe_name(*name, true)) << "\")";
                     }
                 }
             }
@@ -5029,7 +5160,7 @@ std::string Plan::describe_room(room *r)
     case room_type::workshop:
         if (r->workshop_type == workshop_type::Custom)
         {
-            s << " (\"" << r->raw_type << "\")";
+            s << " (\"" << escape(r->raw_type) << "\")";
         }
         else
         {
@@ -5042,12 +5173,12 @@ std::string Plan::describe_room(room *r)
 
     if (!r->comment.empty())
     {
-        s << " (" << r->comment << ")";
+        s << " (" << escape(r->comment) << ")";
     }
 
     if (df::unit *u = df::unit::find(r->owner))
     {
-        s << " (owned by " << AI::describe_unit(u) << ")";
+        s << " (owned by " << AI::describe_unit(u, html) << ")";
     }
 
     if (r->noblesuite != -1)
@@ -5057,7 +5188,7 @@ std::string Plan::describe_room(room *r)
 
     if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (used by " << AI::describe_name(squad->name, true) << ")";
+        s << " (used by " << escape(AI::describe_name(squad->name, true)) << ")";
     }
 
     if (r->level != -1)
@@ -5067,7 +5198,7 @@ std::string Plan::describe_room(room *r)
 
     if (r->workshop)
     {
-        s << " (" << describe_room(r->workshop) << ")";
+        s << " (" << describe_room(r->workshop, html) << ")";
     }
 
     if (r->has_users)
@@ -5080,7 +5211,7 @@ std::string Plan::describe_room(room *r)
     return s.str();
 }
 
-std::string Plan::describe_furniture(furniture *f)
+std::string Plan::describe_furniture(furniture *f, bool html)
 {
     if (!f)
     {
@@ -5110,7 +5241,14 @@ std::string Plan::describe_furniture(furniture *f)
 
     if (!f->comment.empty())
     {
-        s << " (" << f->comment << ")";
+        if (html)
+        {
+            s << " (" << html_escape(f->comment) << ")";
+        }
+        else
+        {
+            s << " (" << f->comment << ")";
+        }
     }
 
     if (f->has_users)
@@ -5137,7 +5275,7 @@ std::string Plan::describe_furniture(furniture *f)
 
     if (f->target != nullptr)
     {
-        s << " (" << describe_furniture(f->target) << ")";
+        s << " (" << describe_furniture(f->target, html) << ")";
     }
 
     return s.str();
