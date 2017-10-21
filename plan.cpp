@@ -4950,7 +4950,7 @@ void Plan::report(std::ostream & out, bool html)
     }
     if (bg_idx_generic == tasks_generic.end())
     {
-        int32_t tick_diff = 20 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
+        int32_t tick_diff = 240 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
         if (html)
         {
             out << "<p><i>";
@@ -5036,7 +5036,7 @@ void Plan::report(std::ostream & out, bool html)
     }
     if (bg_idx_furniture == tasks_furniture.end())
     {
-        int32_t tick_diff = 20 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
+        int32_t tick_diff = 240 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
         if (html)
         {
             out << "<p><i>";
