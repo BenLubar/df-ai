@@ -89,9 +89,9 @@
 		"legacy_nobleroom_north_west": [2, 2],
 		"legacy_nobleroom_south_east": [2, 2],
 		"legacy_nobleroom_south_west": [2, 2],
-		"legacy_bedroom_north_east": [72, 72],
-		"legacy_bedroom_north_west": [72, 72],
-		"legacy_bedroom_south_east": [72, 72],
-		"legacy_bedroom_south_west": [72, 72]
+		"legacy_bedroom_north_east": [84, 84],
+		"legacy_bedroom_north_west": [84, 84],
+		"legacy_bedroom_south_east": [84, 84],
+		"legacy_bedroom_south_west": [84, 84]
 	}
 }
