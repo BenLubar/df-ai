@@ -2900,6 +2900,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
         }
     }
     AI::feed_key(interface_key::LEAVESCREEN);
+    size_t buildings_before = world->buildings.all.size();
     AI::feed_key(interface_key::SELECT);
     for (int16_t x = r->min.x; x < r->max.x; x++)
     {
@@ -2913,6 +2914,11 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     AI::feed_key(interface_key::LEAVESCREEN);
     ai->camera->ignore_pause(start_x, start_y, start_z);
     df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
+    if (!bld || buildings_before == world->buildings.all.size())
+    {
+        ai->debug(out, "Failed to create stockpile: " + describe_room(r));
+        return false;
+    }
     r->bld_id = bld->id;
     furnish_room(out, r);
 
@@ -2961,9 +2967,9 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
                     b_from = bld;
                     b_to = obld;
                 }
-                for (auto btf = b_to->links.take_from_pile.begin(); btf != b_to->links.take_from_pile.end(); btf++)
+                for (auto btf : b_to->links.take_from_pile)
                 {
-                    if ((*btf)->id == b_from->id)
+                    if (btf->id == b_from->id)
                     {
                         return false;
                     }
