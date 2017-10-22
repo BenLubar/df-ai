@@ -151,7 +151,7 @@ std::string AI::describe_unit(df::unit *u, bool html)
     if (html)
     {
         s = html_escape(s);
-        if (u->hist_figure_id)
+        if (u->hist_figure_id != -1)
         {
             s = stl_sprintf("<a href=\"fig-%d\">", u->hist_figure_id) + s + "</a>";
         }
