@@ -2468,7 +2468,7 @@ void Population::report(std::ostream & out, bool html)
 
         if (html)
         {
-            out << "<h3>" << html_escape(AI::describe_name(sq->name, false)) << ", " << html_escape(AI::describe_name(sq->name, true)) << "</h3><ul>";
+            out << "<h3>" << html_escape(AI::describe_name(sq->name, false)) << ", " << html_escape(AI::describe_name(sq->name, true)) << "</h3>";
         }
         else
         {
