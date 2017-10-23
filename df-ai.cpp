@@ -137,7 +137,7 @@ DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
     return CR_OK;
 }
 
-void ai_version(std::ostream & out, bool html = false)
+void ai_version(std::ostream & out, bool html)
 {
 #ifdef DFHACK64
     constexpr int bits = 64;
@@ -286,59 +286,4 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
 
     events.onupdate(out);
     return CR_OK;
-}
-
-// https://stackoverflow.com/a/24315631/2664560
-static void replace_all(std::string & str, const std::string & from, const std::string & to)
-{
-    size_t pos = 0;
-    while ((pos = str.find(from, pos)) != std::string::npos)
-    {
-        str.replace(pos, from.length(), to);
-        pos += to.length();
-    }
-}
-
-std::string html_escape(const std::string & str)
-{
-    std::string escaped(str);
-    replace_all(escaped, "&", "&amp;");
-    replace_all(escaped, "<", "&lt;");
-    replace_all(escaped, ">", "&gt;");
-    replace_all(escaped, "\n", "<br/>");
-    return escaped;
-}
-
-bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
-{
-    if (!enabled || !dwarfAI)
-    {
-        out << "<!DOCTYPE html><html><head><title>df-ai</title></head>";
-        out << "<body><p>AI is not active.</p></body></html>";
-        return true;
-    }
-    if (url == "")
-    {
-        out << "<!DOCTYPE html><html><head><title>df-ai status</title></head>";
-        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/version\">Version</a></p></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->status()) << "</pre></body></html>";
-        return true;
-    }
-    if (url == "/report")
-    {
-        out << "<!DOCTYPE html><html><head><title>df-ai report</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/version\">Version</a></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << dwarfAI->report(true) << "</pre></body></html>";
-        return true;
-    }
-    if (url == "/version")
-    {
-        std::ostringstream version;
-        ai_version(version, true);
-        out << "<!DOCTYPE html><html><head><title>df-ai version</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report\">Report</a> - <b>Version</b></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << version.str() << "</pre></body></html>";
-        return true;
-    }
-    return false;
 }

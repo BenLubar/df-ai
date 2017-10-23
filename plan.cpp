@@ -5194,17 +5194,7 @@ std::string Plan::describe_room(room *r, bool html)
 
     if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (used by ";
-        if (html && squad->entity_id != -1)
-        {
-            s << "<a href=\"ent-" << squad->entity_id << "\">";
-        }
-        s << escape(AI::describe_name(squad->name, true));
-        if (html && squad->entity_id != -1)
-        {
-            s << "</a>";
-        }
-        s << ")";
+        s << " (used by " << escape(AI::describe_name(squad->name, true)) << ")";
     }
 
     if (r->level != -1)

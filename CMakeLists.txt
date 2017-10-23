@@ -44,6 +44,7 @@ SET(PROJECT_SRCS
     room.cpp
     trade.cpp
     event_manager.cpp
+    weblegends.cpp
 )
 
 SET(PROJECT_HDRS

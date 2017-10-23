@@ -249,6 +249,8 @@ public:
     room *find_room_at(df::coord t);
     bool map_tile_intersects_room(df::coord t);
 
+    void weblegends_write_svg(std::ostream & out);
+
     static df::coord find_tree_base(df::coord t);
 
 private:
