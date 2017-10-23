@@ -2917,7 +2917,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     if (!bld || buildings_before == world->buildings.all.size())
     {
         ai->debug(out, "Failed to create stockpile: " + describe_room(r));
-        return false;
+        return true;
     }
     r->bld_id = bld->id;
     furnish_room(out, r);
@@ -5194,7 +5194,17 @@ std::string Plan::describe_room(room *r, bool html)
 
     if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (used by " << escape(AI::describe_name(squad->name, true)) << ")";
+        s << " (used by ";
+        if (html && squad->entity_id != -1)
+        {
+            s << "<a href=\"ent-" << squad->entity_id << "\">";
+        }
+        s << escape(AI::describe_name(squad->name, true));
+        if (html && squad->entity_id != -1)
+        {
+            s << "</a>";
+        }
+        s << ")";
     }
 
     if (r->level != -1)
@@ -5209,7 +5219,25 @@ std::string Plan::describe_room(room *r, bool html)
 
     if (r->has_users)
     {
-        s << " (" << r->users.size() << " users)";
+        s << " (" << r->users.size() << " users";
+        if (!r->users.empty() && html)
+        {
+            bool first = true;
+            for (auto u : r->users)
+            {
+                if (first)
+                {
+                    s << ": ";
+                    first = false;
+                }
+                else
+                {
+                    s << ", ";
+                }
+                s << AI::describe_unit(df::unit::find(u), true);
+            }
+        }
+        s << ")";
     }
 
     s << " (" << r->status << ")";
@@ -5259,7 +5287,25 @@ std::string Plan::describe_furniture(furniture *f, bool html)
 
     if (f->has_users)
     {
-        s << " (" << f->users.size() << " users)";
+        s << " (" << f->users.size() << " users";
+        if (!f->users.empty() && html)
+        {
+            bool first = true;
+            for (auto u : f->users)
+            {
+                if (first)
+                {
+                    s << ": ";
+                    first = false;
+                }
+                else
+                {
+                    s << ", ";
+                }
+                s << AI::describe_unit(df::unit::find(u), true);
+            }
+        }
+        s << ")";
     }
 
     if (f->ignore)
