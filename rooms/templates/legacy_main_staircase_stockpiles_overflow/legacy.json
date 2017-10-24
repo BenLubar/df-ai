@@ -140,7 +140,7 @@
 			"type": "stockpile",
 			"stockpile_type": "food",
 			"min": [-2, 3, 0],
-			"max": [2, 23, 0],
+			"max": [2, 13, 0],
 			"accesspath": [6, 8],
 			"comment": "stockpile overflow - south 1",
 			"level": 6
@@ -194,7 +194,7 @@
 			"type": "stockpile",
 			"stockpile_type": "food",
 			"min": [-2, 13, 0],
-			"max": [2, 33, 0],
+			"max": [2, 22, 0],
 			"accesspath": [12, 14],
 			"comment": "stockpile overflow - south 2",
 			"level": 7
@@ -238,8 +238,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-7, -12, 0],
-			"max": [2, -3, 0],
+			"min": [13, -12, 0],
+			"max": [22, -3, 0],
 			"accesspath": [18],
 			"comment": "stockpile overflow - north 1 east 2",
 			"level": 8
@@ -247,8 +247,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-7, 3, 0],
-			"max": [2, 12, 0],
+			"min": [13, 3, 0],
+			"max": [22, 12, 0],
 			"accesspath": [18],
 			"comment": "stockpile overflow - south 1 east 2",
 			"level": 8
@@ -274,8 +274,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-7, -22, 0],
-			"max": [2, -13, 0],
+			"min": [13, -22, 0],
+			"max": [22, -13, 0],
 			"accesspath": [21],
 			"comment": "stockpile overflow - north 2 east 2",
 			"level": 9
@@ -283,8 +283,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-7, 13, 0],
-			"max": [2, 22, 0],
+			"min": [13, 13, 0],
+			"max": [22, 22, 0],
 			"accesspath": [22],
 			"comment": "stockpile overflow - south 2 east 2",
 			"level": 9
@@ -328,8 +328,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-17, -12, 0],
-			"max": [-8, -3, 0],
+			"min": [23, -12, 0],
+			"max": [32, -3, 0],
 			"accesspath": [28],
 			"comment": "stockpile overflow - north 1 east 3",
 			"level": 11
@@ -337,8 +337,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-17, 3, 0],
-			"max": [-8, 12, 0],
+			"min": [23, 3, 0],
+			"max": [32, 12, 0],
 			"accesspath": [28],
 			"comment": "stockpile overflow - south 1 east 3",
 			"level": 11
@@ -364,8 +364,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-17, -22, 0],
-			"max": [-8, -13, 0],
+			"min": [23, -22, 0],
+			"max": [32, -13, 0],
 			"accesspath": [31],
 			"comment": "stockpile overflow - north 2 east 3",
 			"level": 12
@@ -373,8 +373,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-17, 13, 0],
-			"max": [-8, 22, 0],
+			"min": [23, 13, 0],
+			"max": [32, 22, 0],
 			"accesspath": [32],
 			"comment": "stockpile overflow - south 2 east 3",
 			"level": 12
@@ -418,8 +418,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-27, -12, 0],
-			"max": [-18, -3, 0],
+			"min": [33, -12, 0],
+			"max": [42, -3, 0],
 			"accesspath": [38],
 			"comment": "stockpile overflow - north 1 east 4",
 			"level": 14
@@ -427,8 +427,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-27, 3, 0],
-			"max": [-18, 12, 0],
+			"min": [33, 3, 0],
+			"max": [42, 12, 0],
 			"accesspath": [38],
 			"comment": "stockpile overflow - south 1 east 4",
 			"level": 14
@@ -454,8 +454,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-27, -22, 0],
-			"max": [-18, -13, 0],
+			"min": [33, -22, 0],
+			"max": [42, -13, 0],
 			"accesspath": [41],
 			"comment": "stockpile overflow - north 2 east 4",
 			"level": 15
@@ -463,8 +463,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [-27, 13, 0],
-			"max": [-18, 22, 0],
+			"min": [33, 13, 0],
+			"max": [42, 22, 0],
 			"accesspath": [42],
 			"comment": "stockpile overflow - south 2 east 4",
 			"level": 15
