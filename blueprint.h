@@ -133,6 +133,8 @@ struct room_base
         bool single_biome;
 
         bool require_walls;
+        bool require_floor;
+        int32_t require_grass;
         bool in_corridor;
         std::map<df::coord, std::map<std::string, std::map<std::string, variable_string>>> exits;
 

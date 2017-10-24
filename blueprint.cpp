@@ -5,6 +5,8 @@
 #include "modules/Filesystem.h"
 #include "modules/Maps.h"
 
+#include "df/block_square_event_grassst.h"
+#include "df/map_block.h"
 #include "df/tile_designation.h"
 #include "df/tile_occupancy.h"
 #include "df/world.h"
@@ -446,6 +448,8 @@ room_base::room_t::room_t() :
     outdoor(false),
     single_biome(false),
     require_walls(true),
+    require_floor(true),
+    require_grass(0),
     in_corridor(false),
     exits(),
     context(),
@@ -665,6 +669,14 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
     }
 
     if (data.isMember("require_walls") && !apply_bool(require_walls, data, "require_walls", error))
+    {
+        return false;
+    }
+    if (data.isMember("require_floor") && !apply_bool(require_floor, data, "require_floor", error))
+    {
+        return false;
+    }
+    if (data.isMember("require_grass") && !apply_int(require_grass, data, "require_grass", error))
     {
         return false;
     }
@@ -1930,7 +1942,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             return false;
                         }
 
-                        if (t.z == pos.z && ai->plan->surface_tile_at(t.x, t.y, true).z != t.z)
+                        if (r->require_floor && ai->plan->surface_tile_at(t.x, t.y, true).z != t.z)
                         {
                             if (config.plan_verbosity >= 3)
                             {
@@ -1949,6 +1961,40 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             return false;
                         }
                     }
+                }
+            }
+
+            if (r->require_grass > 0)
+            {
+                int32_t grass_count = 0;
+
+                for (df::coord t = min; t.x <= max.x; t.x++)
+                {
+                    for (t.y = min.y; t.y <= max.y; t.y++)
+                    {
+                        for (t.z = min.z; t.z <= max.z; t.z++)
+                        {
+                            auto & events = Maps::getTileBlock(t)->block_events;
+                            for (auto be : events)
+                            {
+                                df::block_square_event_grassst *grass = virtual_cast<df::block_square_event_grassst>(be);
+                                if (grass && grass->amount[t.x & 0xf][t.y & 0xf] > 0)
+                                {
+                                    grass_count++;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (grass_count < r->require_grass)
+                {
+                    if (config.plan_verbosity >= 3)
+                    {
+                        ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): need at least %d square meters of grass, but only have %d", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, r->require_grass, grass_count));
+                    }
+                    return false;
                 }
             }
 

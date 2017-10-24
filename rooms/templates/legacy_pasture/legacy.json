@@ -1,0 +1,11 @@
+{
+	"r": [
+		{
+			"type": "pasture",
+			"min": [-5, -5, 0],
+			"max": [5, 5, 0],
+			"outdoor": true,
+			"require_grass": 64
+		}
+	]
+}
