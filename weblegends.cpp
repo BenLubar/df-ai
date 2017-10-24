@@ -99,7 +99,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                 if (r->min.z <= level->first && r->max.z >= level->first)
                 {
                     // "<a xlink:href=\"df-ai/plan/room-" << r->id << "\">"
-                    out << "<g><title>" << html_escape(describe_room(r)) << "</title><path fill-rule=\"evenodd\" d=\"M " << r->min.x << " " << r->min.y << " h " << (r->max.x - r->min.x + 1) << " v " << (r->max.y - r->min.y + 1) << " h " << (r->min.x - r->max.x - 1) << " v " << (r->min.y - r->max.y - 1);
+                    out << "<g><title>" << html_escape(describe_room(r)) << "</title><path fill-rule=\"evenodd\" d=\"M" << r->min.x << " " << r->min.y << "h" << (r->max.x - r->min.x + 1) << "v" << (r->max.y - r->min.y + 1) << "h" << (r->min.x - r->max.x - 1) << "v" << (r->min.y - r->max.y - 1);
                     for (auto f : r->layout)
                     {
                         if (r->min.z + f->pos.z != level->first)
@@ -108,7 +108,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                         }
                         if ((f->dig == tile_dig_designation::No || f->construction == construction_type::Wall) && holes.insert(f->pos).second)
                         {
-                            out << " M " << (r->min.x + f->pos.x) << " " << (r->min.y + f->pos.y) << " h 1 v 1 h -1 v -1";
+                            out << "M" << (r->min.x + f->pos.x) << " " << (r->min.y + f->pos.y) << "h1v1h-1v-1";
                         }
                     }
                     out << "\" fill=\"";
@@ -147,7 +147,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     {
                         out << "#963";
                     }
-                    else if (f->construction != construction_type::NONE)
+                    else if (f->construction != construction_type::NONE || r->dig != tile_dig_designation::Default)
                     {
                         out << "#533";
                     }
