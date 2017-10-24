@@ -137,7 +137,7 @@ command_result Plan::setup_ready(color_ostream & out)
     dig_starting_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Carpenters && r->level == 0; });
     dig_starting_room(room_type::stockpile, [](room *r) -> bool { return r->stockpile_type == stockpile_type::food && r->level == 0 && r->workshop && r->workshop->type == room_type::farmplot; }, true);
 
-    dig_starting_room(room_type::garbagepit, [](room *) -> bool { return true; });
+    dig_starting_room(room_type::garbagedump, [](room *) -> bool { return true; });
 
     return CR_OK;
 }
@@ -1254,12 +1254,12 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     r->min = r->max = tile;
     garbagedump->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
     rooms.push_back(r);
-    r = new room(room_type::garbagepit, tile + df::coord(-5, -5, 0), tile + df::coord(5, 5, 0));
+    r = new room(corridor_type::corridor, tile + df::coord(-5, -5, 0), tile + df::coord(5, 5, 0));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 5, 5));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 6, 5));
     r->layout.push_back(new_construction(construction_type::Floor, 5, 5, -1));
-    r->accesspath.push_back(garbagedump);
-    rooms.push_back(r);
+    garbagedump->accesspath.push_back(r);
+    corridors.push_back(r);
 
     // infirmary
     old_cor = corridor_center2;

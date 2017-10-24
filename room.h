@@ -70,7 +70,6 @@ namespace room_type
         farmplot,
         furnace,
         garbagedump,
-        garbagepit,
         infirmary,
         location,
         nobleroom,

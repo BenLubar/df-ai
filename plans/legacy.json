@@ -6,7 +6,8 @@
 		"legacy_depot",
 		"legacy_outdoor_farms_food",
 		"legacy_outdoor_farms_cloth",
-		"legacy_pasture"
+		"legacy_pasture",
+		"legacy_pitting_tower"
 	],
 	"limits": {
 		"legacy_fort_entrance": [1, 1],
@@ -14,6 +15,7 @@
 		"legacy_outdoor_farms_food": [9, 27],
 		"legacy_outdoor_farms_cloth": [9, 27],
 		"legacy_pasture": [0, 8],
+		"legacy_pitting_tower": [1, 1],
 		"legacy_main_staircase": [0, 25],
 		"legacy_main_staircase_workshops": [1, 1],
 		"legacy_main_staircase_utilities": [1, 1],

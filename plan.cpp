@@ -866,6 +866,7 @@ void Plan::load(std::istream & in)
 
     ENUM_NAMES(room_status, status);
     ENUM_NAMES(room_type, type);
+    room_type_names["garbagepit"] = room_type::corridor;
     ENUM_NAMES(corridor_type, type);
     corridor_type_names[""] = corridor_type::corridor;
     ENUM_NAMES(farm_type, type);

@@ -50,8 +50,6 @@ std::ostream & operator <<(std::ostream & stream, room_type::type type)
         return stream << "furnace";
     case room_type::garbagedump:
         return stream << "garbagedump";
-    case room_type::garbagepit:
-        return stream << "garbagepit";
     case room_type::infirmary:
         return stream << "infirmary";
     case room_type::location:

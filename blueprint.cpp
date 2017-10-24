@@ -1487,6 +1487,41 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
         out->has_users = in->has_users;
         out->temporary = in->temporary;
         out->outdoor = in->outdoor;
+
+        if (in->outdoor && !in->require_floor)
+        {
+            for (df::coord t = in->min; t.x <= in->max.x; t.x++)
+            {
+                for (t.y = in->min.y; t.y <= in->max.y; t.y++)
+                {
+                    extern AI *dwarfAI;
+                    int16_t z = dwarfAI->plan->surface_tile_at(t.x, t.y, true).z;
+                    for (t.z = in->min.z; t.z <= in->max.z; t.z++)
+                    {
+                        if (t.z == z)
+                        {
+                            continue;
+                        }
+                        bool has_layout = false;
+                        for (auto f : out->layout)
+                        {
+                            if (in->min + f->pos == t)
+                            {
+                                has_layout = true;
+                                break;
+                            }
+                        }
+                        if (!has_layout)
+                        {
+                            furniture *f = new furniture();
+                            f->dig = tile_dig_designation::No;
+                            f->pos = t - in->min;
+                            out->layout.push_back(f);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fort_entrance = real_rooms_and_corridors.at(0);

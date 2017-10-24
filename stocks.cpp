@@ -1146,7 +1146,7 @@ void Stocks::count_plants(color_ostream &)
 
 void Stocks::update_corpses(color_ostream & out)
 {
-    room *r = ai->plan->find_room(room_type::garbagepit);
+    room *r = ai->plan->find_room(room_type::garbagedump);
     if (!r)
     {
         updating_corpses = false;
