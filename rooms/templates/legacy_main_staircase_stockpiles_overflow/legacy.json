@@ -140,7 +140,7 @@
 			"type": "stockpile",
 			"stockpile_type": "food",
 			"min": [-2, 3, 0],
-			"max": [2, 13, 0],
+			"max": [2, 12, 0],
 			"accesspath": [6, 8],
 			"comment": "stockpile overflow - south 1",
 			"level": 6
