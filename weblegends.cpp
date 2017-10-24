@@ -147,7 +147,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     {
                         out << "#963";
                     }
-                    else if (f->construction != construction_type::NONE || r->dig != tile_dig_designation::Default)
+                    else if (f->construction != construction_type::NONE || f->dig != tile_dig_designation::Default)
                     {
                         out << "#533";
                     }
