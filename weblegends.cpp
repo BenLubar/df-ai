@@ -95,10 +95,10 @@ void Plan::weblegends_write_svg(std::ostream & out)
                 {
                     continue;
                 }
-                if (r->min.z >= level->first && r->max.z <= level->first)
+                if (r->min.z <= level->first && r->max.z >= level->first)
                 {
                     // "<a xlink:href=\"df-ai/plan/room-" << r->id << "\">"
-                    out << "<path fill-rule=\"evenodd\" d=\"M " << r->min.x << " " << r->min.y << " h " << (r->max.x - r->min.x + 1) << " v " << (r->max.y - r->min.y + 1) << " h " << (r->min.x - r->max.x - 1) << " v " << (r->min.x - r->max.x - 1);
+                    out << "<path fill-rule=\"evenodd\" d=\"M " << r->min.x << " " << r->min.y << " h " << (r->max.x - r->min.x + 1) << " v " << (r->max.y - r->min.y + 1) << " h " << (r->min.x - r->max.x - 1) << " v " << (r->min.y - r->max.y - 1);
                     std::set<df::coord> holes;
                     for (auto f : r->layout)
                     {
