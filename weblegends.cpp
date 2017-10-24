@@ -95,11 +95,11 @@ void Plan::weblegends_write_svg(std::ostream & out)
                 {
                     continue;
                 }
-                std::set<df::coord> holes;
                 if (r->min.z <= level->first && r->max.z >= level->first)
                 {
                     // "<a xlink:href=\"df-ai/plan/room-" << r->id << "\">"
                     out << "<g><title>" << html_escape(describe_room(r)) << "</title><path fill-rule=\"evenodd\" d=\"M" << r->min.x << " " << r->min.y << "h" << (r->max.x - r->min.x + 1) << "v" << (r->max.y - r->min.y + 1) << "h" << (r->min.x - r->max.x - 1) << "v" << (r->min.y - r->max.y - 1);
+                    std::set<df::coord> holes;
                     for (auto f : r->layout)
                     {
                         if (r->min.z + f->pos.z != level->first)
@@ -136,9 +136,19 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     }
                     out << "\"></path></g>";
                 }
+            }
+        }
+        for (room_status::status s = room_status::plan; s != room_status::_room_status_count; s = static_cast<room_status::status>(s + 1))
+        {
+            for (auto r : level->second)
+            {
+                if (r->status != s)
+                {
+                    continue;
+                }
                 for (auto f : r->layout)
                 {
-                    if (r->min.z + f->pos.z != level->first || holes.count(f->pos))
+                    if (r->min.z + f->pos.z != level->first || f->dig == tile_dig_designation::No || f->construction == construction_type::Wall)
                     {
                         continue;
                     }
@@ -149,7 +159,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     }
                     else if (f->construction != construction_type::NONE || f->dig != tile_dig_designation::Default)
                     {
-                        out << "#533";
+                        out << "#444";
                     }
                     else
                     {
