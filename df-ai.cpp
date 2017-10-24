@@ -171,7 +171,7 @@ void ai_version(std::ostream & out, bool html)
     out << "  " << os << " " << bits << "-bit" << br;
     out << "df-ai " << DF_AI_GIT_DESCRIPTION << br;
     commit("code", "BenLubar/df-ai", DF_AI_GIT_COMMIT);
-    out << "DFHack " << DFHACK_GIT_DESCRIPTION << std::endl;
+    out << "DFHack " << DFHACK_GIT_DESCRIPTION << br;
     commit("library", "DFHack/dfhack", DFHACK_GIT_COMMIT);
     commit("structures", "DFHack/df-structures", DFHACK_GIT_XML_COMMIT);
 }
