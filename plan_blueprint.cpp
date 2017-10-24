@@ -2066,17 +2066,18 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
         }
         cor->max.z--;
         out2.z--;
+        room *cor2 = cor;
 
-        if (cor->max.x != out2.x)
+        if (cor2->max.x != out2.x)
         {
-            cor = new room(type, df::coord(out2.x, out2.y, out2.z), df::coord(cor->max.x, out2.y, out2.z));
+            cor = new room(type, df::coord(out2.x, out2.y, out2.z), df::coord(cor2->max.x, out2.y, out2.z));
             cors.back()->accesspath.push_back(cor);
             cors.push_back(cor);
         }
 
-        if (cor->max.y != out2.y)
+        if (cor2->max.y != out2.y)
         {
-            cor = new room(type, df::coord(cor->max.x, out2.y, out2.z), df::coord(cor->max.x, cor->max.y, out2.z));
+            cor = new room(type, df::coord(cor2->max.x, out2.y, out2.z), df::coord(cor2->max.x, cor2->max.y, out2.z));
             cors.back()->accesspath.push_back(cor);
             cors.push_back(cor);
         }
