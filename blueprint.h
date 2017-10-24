@@ -130,6 +130,7 @@ struct room_base
         bool has_users;
         bool temporary;
         bool outdoor;
+        bool single_biome;
 
         bool require_walls;
         bool in_corridor;
@@ -232,6 +233,7 @@ private:
     bool can_add_room(color_ostream & out, AI *ai, const room_blueprint & rb, df::coord pos);
     bool try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     bool try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
+    bool try_add_room_outdoor_shared(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y);
     bool try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
 };
 

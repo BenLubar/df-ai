@@ -444,6 +444,7 @@ room_base::room_t::room_t() :
     has_users(false),
     temporary(false),
     outdoor(false),
+    single_biome(false),
     require_walls(true),
     in_corridor(false),
     exits(),
@@ -655,6 +656,10 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
     if (data.isMember("outdoor") && !apply_bool(outdoor, data, "outdoor", error))
+    {
+        return false;
+    }
+    if (data.isMember("single_biome") && !apply_bool(single_biome, data, "single_biome", error))
     {
         return false;
     }
@@ -1946,6 +1951,33 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                     }
                 }
             }
+
+            if (r->single_biome)
+            {
+                df::coord2d base_region(Maps::getTileBiomeRgn(min));
+                extern int get_biome_type(int world_coord_x, int world_coord_y);
+                df::biome_type base_biome = static_cast<df::biome_type>(get_biome_type(base_region.x, base_region.y));
+
+                for (df::coord t = min; t.x <= max.x; t.x++)
+                {
+                    for (t.y = min.y; t.y <= max.y; t.y++)
+                    {
+                        for (t.z = min.z; t.z <= max.z; t.z++)
+                        {
+                            df::coord2d region(Maps::getTileBiomeRgn(t));
+                            df::biome_type biome = region == base_region ? base_biome : static_cast<df::biome_type>(get_biome_type(region.x, region.y));
+                            if (biome != base_biome)
+                            {
+                                if (config.plan_verbosity >= 3)
+                                {
+                                    ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): area contains multiple biomes (%s and %s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(base_biome), enum_item_key_str(biome)));
+                                }
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
         }
         else
         {
@@ -2031,38 +2063,7 @@ bool blueprint_plan::try_add_room_start(color_ostream & out, AI *ai, const room_
     int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
     int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
 
-    df::coord pos = ai->plan->surface_tile_at(x, y, true);
-
-    if (!pos.isValid())
-    {
-        if (config.plan_verbosity >= 3)
-        {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
-        }
-        return false;
-    }
-
-    if (can_add_room(out, ai, rb, pos))
-    {
-        std::string error;
-        if (add(out, ai, room_blueprint(rb, pos, plan.context), error))
-        {
-            counts[rb.type]++;
-            instance_counts[rb.type][rb.name]++;
-            if (config.plan_verbosity >= 2)
-            {
-                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
-            }
-            return true;
-        }
-
-        if (config.plan_verbosity >= 3)
-        {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
-        }
-    }
-
-    return false;
+    return try_add_room_outdoor_shared(out, ai, rb, counts, instance_counts, plan, x, y);
 }
 
 bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
@@ -2079,6 +2080,11 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
     int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
     int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
 
+    return try_add_room_outdoor_shared(out, ai, rb, counts, instance_counts, plan, x, y);
+}
+
+bool blueprint_plan::try_add_room_outdoor_shared(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y)
+{
     df::coord pos = ai->plan->surface_tile_at(x, y, true);
 
     if (!pos.isValid())
