@@ -1514,7 +1514,7 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
                         if (!has_layout)
                         {
                             furniture *f = new furniture();
-                            f->dig = tile_dig_designation::No;
+                            f->dig = tile_dig_designation::Channel;
                             f->pos = t - in->min;
                             out->layout.push_back(f);
                         }
