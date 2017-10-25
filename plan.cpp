@@ -5149,7 +5149,17 @@ std::string Plan::describe_room(room *r, bool html)
                 {
                     if (auto name = loc->getName())
                     {
-                        s << " (" << escape(AI::describe_name(*name, false)) << " \"" << escape(AI::describe_name(*name, true)) << "\")";
+                        s << " (";
+                        if (html)
+                        {
+                            s << "<a href=\"site-" << civzone->site_id << "/bld-" << loc->id << "\">";
+                        }
+                        s << escape(AI::describe_name(*name, false)) << " \"" << escape(AI::describe_name(*name, true)) << "\"";
+                        if (html)
+                        {
+                            s << "</a>";
+                        }
+                        s << ")";
                     }
                 }
             }
