@@ -10,8 +10,7 @@
 #include "df/coord.h"
 #include "df/furnace_type.h"
 #include "df/tile_dig_designation.h"
-#include "df/tiletype_material.h"
-#include "df/tiletype_shape_basic.h"
+#include "df/tiletype.h"
 #include "df/workshop_type.h"
 
 namespace df
@@ -256,7 +255,7 @@ public:
 private:
     void fixup_open(color_ostream & out, room *r);
     void fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_dig_designation d, furniture *f = nullptr);
-    void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f = nullptr);
+    void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f, df::tiletype tt);
     void add_task(task_type::type type, room *r = nullptr, furniture *f = nullptr);
 
 protected:

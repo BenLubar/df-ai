@@ -5526,43 +5526,43 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
     case tile_dig_designation::No:
         if (ts != tiletype_shape::WALL)
         {
-            fixup_open_helper(out, r, t, construction_type::Wall, f);
+            fixup_open_helper(out, r, t, construction_type::Wall, f, *tt);
         }
         break;
     case tile_dig_designation::Default:
         if (ts != tiletype_shape::FLOOR)
         {
-            fixup_open_helper(out, r, t, construction_type::Floor, f);
+            fixup_open_helper(out, r, t, construction_type::Floor, f, *tt);
         }
         break;
     case tile_dig_designation::UpDownStair:
         if (ts != tiletype_shape::STAIR_UPDOWN)
         {
-            fixup_open_helper(out, r, t, construction_type::UpDownStair, f);
+            fixup_open_helper(out, r, t, construction_type::UpDownStair, f, *tt);
         }
         break;
     case tile_dig_designation::UpStair:
         if (ts != tiletype_shape::STAIR_UP)
         {
-            fixup_open_helper(out, r, t, construction_type::UpStair, f);
+            fixup_open_helper(out, r, t, construction_type::UpStair, f, *tt);
         }
         break;
     case tile_dig_designation::Ramp:
         if (ts != tiletype_shape::RAMP)
         {
-            fixup_open_helper(out, r, t, construction_type::Ramp, f);
+            fixup_open_helper(out, r, t, construction_type::Ramp, f, *tt);
         }
         break;
     case tile_dig_designation::DownStair:
         if (ts != tiletype_shape::STAIR_DOWN)
         {
-            fixup_open_helper(out, r, t, construction_type::DownStair, f);
+            fixup_open_helper(out, r, t, construction_type::DownStair, f, *tt);
         }
         break;
     }
 }
 
-void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f)
+void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f, df::tiletype tt)
 {
     if (!f)
     {
@@ -5572,7 +5572,7 @@ void Plan::fixup_open_helper(color_ostream & out, room *r, df::coord t, df::cons
     }
     if (f->construction != c)
     {
-        ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d)", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->pos.x, f->pos.y, f->pos.z));
+        ai->debug(out, stl_sprintf("plan fixup_open %s %s(%d, %d, %d) %s", describe_room(r).c_str(), ENUM_KEY_STR(construction_type, c).c_str(), f->pos.x, f->pos.y, f->pos.z, ENUM_KEY_STR(tiletype, tt).c_str()));
         add_task(task_type::furnish, r, f);
     }
     f->construction = c;
