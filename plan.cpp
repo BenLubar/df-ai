@@ -84,7 +84,7 @@ const int32_t dwarves_per_farmtile_num = 3; // number of dwarves per farmplot ti
 const int32_t dwarves_per_farmtile_den = 2;
 const size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
 const int32_t spare_bedroom = 3; // dig this much free bedroom in advance when idle
-const int32_t extra_farms = 2; // built after utilities are finished
+const int32_t extra_farms = 3; // built after utilities are finished
 
 farm_allowed_materials_t::farm_allowed_materials_t()
 {
@@ -1253,7 +1253,7 @@ bool Plan::checkidle(color_ostream & out)
     {
         return r->stockpile_type == stockpile_type::food &&
             r->level == 0 &&
-            !r->workshop &&
+            r->workshop == nullptr &&
             r->status == room_status::plan;
     });
     FIND_ROOM(!important_workshops.empty(), room_type::workshop, [this](room *r) -> bool
@@ -1387,7 +1387,8 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
-            r->level <= 2;
+            r->level <= 2 &&
+            r->workshop == nullptr;
     });
     auto finished_nofurnished = [](room *r) -> bool
     {
@@ -1415,10 +1416,12 @@ bool Plan::checkidle(color_ostream & out)
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
-            r->level <= 3;
+            r->level <= 3 &&
+            r->workshop == nullptr;
     });
     FIND_ROOM(true, room_type::workshop, ifplan);
     FIND_ROOM(true, room_type::furnace, ifplan);
+    FIND_ROOM(true, room_type::farmplot, ifplan);
     FIND_ROOM(true, room_type::stockpile, ifplan);
     FIND_ROOM(true, room_type::outpost, ifplan);
     if (r == nullptr)
@@ -1467,7 +1470,6 @@ bool Plan::checkidle(color_ostream & out)
     }
     FIND_ROOM(true, room_type::dininghall, ifplan);
     FIND_ROOM(true, room_type::barracks, ifplan);
-    FIND_ROOM(true, room_type::farmplot, ifplan);
     FIND_ROOM(true, room_type::nobleroom, ifplan);
     FIND_ROOM(true, room_type::bedroom, ifplan);
     FIND_ROOM(true, room_type::cemetary, ifplan);
