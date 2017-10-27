@@ -2,14 +2,40 @@
 	"f": [
 		{
 			"type": "door",
-			"x": 1,
-			"y": 3,
+			"x": 25,
+			"y": 1,
 			"z": 0
 		},
 		{
 			"type": "door",
-			"x": 1,
+			"x": 25,
 			"y": -1,
+			"z": 0
+		},
+		{
+			"construction": "UpStair",
+			"dig": "UpStair",
+			"x": 26,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 0,
+			"y": -1,
+			"z": 0
+		},
+		{
+			"construction": "DownStair",
+			"dig": "DownStair",
+			"x": 1,
+			"y": 0,
 			"z": 0
 		}
 	],
@@ -93,101 +119,20 @@
 			"type": "corridor",
 			"corridor_type": "corridor",
 			"min": [0, 0, 0],
-			"max": [25, 0, 0]
-		},
-		{
-			"type": "stockpile",
-			"stockpile_type": "food",
-			"min": [26, 0, 0],
-			"max": [28, 0, 0],
-			"require_walls": false,
-			"comment": "farm seeds stockpile",
-			"accesspath": [6],
-			"level": 0,
-			"stock_disable": [
-				"FoodMeat",
-				"FoodFish",
-				"FoodUnpreparedFish",
-				"FoodEgg",
-				"FoodPlants",
-				"FoodDrinkPlant",
-				"FoodDrinkAnimal",
-				"FoodCheesePlant",
-				"FoodCheeseAnimal",
-				"FoodLeaves",
-				"FoodMilledPlant",
-				"FoodBoneMeal",
-				"FoodFat",
-				"FoodPaste",
-				"FoodPressedMaterial",
-				"FoodExtractPlant",
-				"FoodExtractAnimal",
-				"FoodMiscLiquid"
-			],
-			"stock_specific1": true,
-			"workshop": 8
-		},
-		{
-			"type": "farmplot",
-			"farm_type": "food",
-			"min": [24, -4, 0],
-			"max": [26, -2, 0],
-			"require_walls": false,
+			"max": [26, 0, 0],
+			"layout": [0, 1, 2],
 			"accesspath": [7],
-			"has_users": true,
-			"layout": [0],
 			"exits": [
-				["legacy_underground_farms_food", 3, 2, 0]
+				["legacy_underground_farms_food", 24, -2, 0],
+				["legacy_underground_farms_cloth", 24, 2, 0]
 			]
 		},
 		{
-			"type": "farmplot",
-			"farm_type": "cloth",
-			"min": [24, 2, 0],
-			"max": [26, 4, 0],
-			"require_walls": false,
-			"accesspath": [7],
-			"has_users": true,
-			"layout": [1],
-			"exits": [
-				["legacy_underground_farms_cloth", 3, 0, 0]
-			]
-		},
-		{
-			"type": "farmplot",
-			"farm_type": "food",
-			"min": [24, -7, 0],
-			"max": [26, -5, 0],
-			"require_walls": false,
-			"accesspath": [8],
-			"has_users": true
-		},
-		{
-			"type": "farmplot",
-			"farm_type": "cloth",
-			"min": [24, 5, 0],
-			"max": [26, 7, 0],
-			"require_walls": false,
-			"accesspath": [9],
-			"has_users": true
-		},
-		{
-			"type": "farmplot",
-			"farm_type": "food",
-			"min": [24, -10, 0],
-			"max": [26, -8, 0],
-			"require_walls": false,
-			"accesspath": [10],
-			"has_users": true
-		},
-		{
-			"type": "farmplot",
-			"farm_type": "cloth",
-			"min": [24, 8, 0],
-			"max": [26, 10, 0],
-			"require_walls": false,
-			"accesspath": [11],
-			"has_users": true
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [25, 0, 1],
+			"max": [26, 0, 1],
+			"layout": [3, 4, 5]
 		}
 	]
 }

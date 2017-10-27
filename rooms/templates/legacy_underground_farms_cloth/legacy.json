@@ -1,10 +1,55 @@
 {
+	"f": [
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"construction": "NONE",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		}
+	],
 	"r": [
 		{
 			"type": "farmplot",
 			"farm_type": "cloth",
 			"min": [0, 0, 0],
 			"max": [2, 2, 0],
+			"accesspath": [4],
 			"has_users": true,
 			"require_walls": false,
 			"exits": [
@@ -16,7 +61,7 @@
 			"farm_type": "cloth",
 			"min": [0, 3, 0],
 			"max": [2, 5, 0],
-			"accesspath": [0],
+			"accesspath": [0, 6],
 			"has_users": true,
 			"require_walls": false
 		},
@@ -25,9 +70,135 @@
 			"farm_type": "cloth",
 			"min": [0, 6, 0],
 			"max": [2, 8, 0],
-			"accesspath": [1],
+			"accesspath": [1, 8],
 			"has_users": true,
 			"require_walls": false
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true,
+			"min": [0, 0, 1],
+			"max": [2, 2, 1],
+			"workshop": 0,
+			"layout": [0],
+			"require_walls": false,
+			"comment": "seeds"
+		},
+		{
+			"type": "pond",
+			"accesspath": [3],
+			"min": [1, 1, 1],
+			"max": [1, 1, 1],
+			"temporary": true,
+			"workshop": 0,
+			"layout": [1],
+			"require_walls": false,
+			"comment": "irrigation"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true,
+			"min": [0, 3, 1],
+			"max": [2, 5, 1],
+			"workshop": 1,
+			"layout": [2],
+			"require_walls": false,
+			"comment": "seeds"
+		},
+		{
+			"type": "pond",
+			"accesspath": [5],
+			"min": [1, 4, 1],
+			"max": [1, 4, 1],
+			"temporary": true,
+			"workshop": 1,
+			"layout": [3],
+			"require_walls": false,
+			"comment": "irrigation"
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"stock_specific1": true,
+			"min": [0, 6, 1],
+			"max": [2, 8, 1],
+			"workshop": 2,
+			"layout": [4],
+			"require_walls": false,
+			"comment": "seeds"
+		},
+		{
+			"type": "pond",
+			"accesspath": [7],
+			"min": [1, 7, 1],
+			"max": [1, 7, 1],
+			"temporary": true,
+			"workshop": 2,
+			"layout": [5],
+			"require_walls": false,
+			"comment": "irrigation"
 		}
 	]
 }
