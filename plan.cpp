@@ -5542,8 +5542,18 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
         }
         break;
     case tile_dig_designation::Default:
-        if (ts != tiletype_shape::FLOOR)
+        if (ts == tiletype_shape::BOULDER || ts == tiletype_shape::PEBBLES)
         {
+            // do nothing
+        }
+        else if (ts == tiletype_shape::SHRUB)
+        {
+            // harvest
+            dig_tile(t, tile_dig_designation::Default);
+        }
+        else if (ts != tiletype_shape::FLOOR)
+        {
+            // TODO: what to do about SAPLING?
             fixup_open_helper(out, r, t, construction_type::Floor, f, *tt);
         }
         break;
