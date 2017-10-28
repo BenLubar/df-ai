@@ -2090,24 +2090,29 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
             {
                 for (t.y = min.y - 1; t.y <= max.y + 1; t.y++)
                 {
-                    for (t.z = min.z; t.z <= max.z; t.z++)
+                    for (t.z = min.z; t.z <= max.z + 1; t.z++)
                     {
                         df::tiletype tt = *Maps::getTileType(t);
-                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
-                        {
-                            if (config.plan_verbosity >= 3)
-                            {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
-                            }
-                            return false;
-                        }
-
                         auto des = *Maps::getTileDesignation(t);
                         if (des.bits.flow_size > 0 || ENUM_ATTR(tiletype, material, tt) == tiletype_material::POOL || ENUM_ATTR(tiletype, material, tt) == tiletype_material::RIVER || ENUM_ATTR(tiletype, material, tt) == tiletype_material::BROOK)
                         {
                             if (config.plan_verbosity >= 3)
                             {
                                 ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) has water", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            }
+                            return false;
+                        }
+
+                        if (t.z == max.z + 1)
+                        {
+                            continue;
+                        }
+
+                        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Wall || ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
+                        {
+                            if (config.plan_verbosity >= 3)
+                            {
+                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }
