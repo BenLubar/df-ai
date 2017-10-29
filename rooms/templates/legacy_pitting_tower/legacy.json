@@ -193,6 +193,25 @@
 			"x": 3,
 			"y": 5,
 			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"x": 6,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"dig": "Channel",
+			"x": 7,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "hatch",
+			"dig": "Channel",
+			"x": 0,
+			"y": 0,
+			"z": 0
 		}
 	],
 	"r": [
@@ -217,13 +236,24 @@
 			"layout": [3, 4, 5, 6, 7, 8, 9, 10, 11]
 		},
 		{
-			"type": "pitcage",
+			"type": "corridor",
+			"corridor_type": "corridor",
 			"min": [-5, -5, 0],
 			"max": [5, 5, 10],
 			"outdoor": true,
 			"require_floor": false,
 			"accesspath": [0, 1],
-			"layout": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+			"comment": "pitting tower",
+			"layout": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
+		},
+		{
+			"type": "pitcage",
+			"min": [0, 0, 10],
+			"max": [0, 0, 10],
+			"outdoor": true,
+			"require_floor": false,
+			"accesspath": [2],
+			"layout": [34]
 		}
 	]
 }

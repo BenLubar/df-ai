@@ -3654,7 +3654,15 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     else if (f->type == layout_type::hatch)
     {
         df::building_hatchst *hatch = virtual_cast<df::building_hatchst>(bld);
-        hatch->door_flags.bits.pet_passable = 1;
+        if (r->type == room_type::pitcage)
+        {
+            hatch->door_flags.bits.forbidden = 1;
+            hatch->door_flags.bits.pet_passable = 0;
+        }
+        else
+        {
+            hatch->door_flags.bits.pet_passable = 1;
+        }
         hatch->door_flags.bits.internal = f->internal ? 1 : 0;
     }
     else if (f->type == layout_type::lever)
