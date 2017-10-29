@@ -255,6 +255,8 @@ std::ostream & operator <<(std::ostream & stream, layout_type::type type)
         return stream << "floodgate";
     case layout_type::gear_assembly:
         return stream << "gear_assembly";
+    case layout_type::hatch:
+        return stream << "hatch";
     case layout_type::hive:
         return stream << "hive";
     case layout_type::lever:

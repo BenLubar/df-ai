@@ -208,6 +208,8 @@ std::ostream & operator <<(std::ostream & stream, stock_item::item item)
         return stream << "goblet";
     case stock_item::gypsum:
         return stream << "gypsum";
+    case stock_item::hatch_cover:
+        return stream << "hatch_cover";
     case stock_item::hive:
         return stream << "hive";
     case stock_item::honey:
@@ -323,6 +325,7 @@ const static struct Watch
     Watch()
     {
         Needed[stock_item::door] = 4;
+        Needed[stock_item::hatch_cover] = 2;
         Needed[stock_item::bed] = 4;
         Needed[stock_item::bin] = 4;
         Needed[stock_item::barrel] = 4;
@@ -4120,6 +4123,8 @@ std::string Stocks::furniture_order(stock_item::item k)
         return "MakeWoodenMinecart";
     case stock_item::nest_box:
         return "MakeRockNestBox";
+    case stock_item::hatch_cover:
+        return "ConstructHatchCover";
     case stock_item::hive:
         return "MakeRockHive";
     case stock_item::jug:

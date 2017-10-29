@@ -76,6 +76,7 @@ namespace stock_item
         giant_corkscrew,
         goblet,
         gypsum,
+        hatch_cover,
         hive,
         honey,
         honeycomb,

@@ -35,6 +35,7 @@
 #include "df/building_doorst.h"
 #include "df/building_floodgatest.h"
 #include "df/building_furnacest.h"
+#include "df/building_hatchst.h"
 #include "df/building_squad_use.h"
 #include "df/building_tablest.h"
 #include "df/building_trapst.h"
@@ -1086,6 +1087,10 @@ void Plan::load(std::istream & in)
             else if (f["item"].asString() == "gear_assembly")
             {
                 (*it)->type = layout_type::gear_assembly;
+            }
+            else if (f["item"].asString() == "hatch")
+            {
+                (*it)->type = layout_type::hatch;
             }
             else if (f["item"].asString() == "hive")
             {
@@ -2346,6 +2351,10 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         building_type = building_type::GearAssembly;
         stocks_furniture_type = stock_item::mechanism;
         break;
+    case layout_type::hatch:
+        building_type = building_type::Hatch;
+        stocks_furniture_type = stock_item::hatch_cover;
+        break;
     case layout_type::hive:
         building_type = building_type::Hive;
         stocks_furniture_type = stock_item::hive;
@@ -2412,7 +2421,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     if (df::item *itm = ai->stocks->find_furniture_item(stocks_furniture_type))
     {
         std::ostringstream str;
-        str << "furnish " << f->type << " in " << describe_room(r);
+        str << "furnish " << describe_furniture(f) << " in " << describe_room(r);
         ai->debug(out, str.str());
         df::building *bld = Buildings::allocInstance(tgtile, building_type, building_subtype);
         Buildings::setSize(bld, df::coord(1, 1, 1));
@@ -3641,6 +3650,12 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         df::building_doorst *door = virtual_cast<df::building_doorst>(bld);
         door->door_flags.bits.pet_passable = 1;
         door->door_flags.bits.internal = f->internal ? 1 : 0;
+    }
+    else if (f->type == layout_type::hatch)
+    {
+        df::building_hatchst *hatch = virtual_cast<df::building_hatchst>(bld);
+        hatch->door_flags.bits.pet_passable = 1;
+        hatch->door_flags.bits.internal = f->internal ? 1 : 0;
     }
     else if (f->type == layout_type::lever)
     {

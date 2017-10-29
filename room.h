@@ -250,6 +250,7 @@ namespace layout_type
         door,
         floodgate,
         gear_assembly,
+        hatch,
         hive,
         lever,
         nest_box,
