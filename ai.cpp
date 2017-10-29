@@ -705,6 +705,9 @@ bool AI::tag_enemies(color_ostream & out)
             !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
             !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden &&
             (u->flags1.bits.marauder ||
+                u->flags1.bits.zombie ||
+                u->flags1.bits.skeleton ||
+                u->flags1.bits.active_invader ||
                 u->flags2.bits.underworld ||
                 u->flags2.bits.visitor_uninvited ||
                 (race &&
@@ -797,7 +800,7 @@ command_result AI::onupdate_register(color_ostream & out)
 
             return false;
         });
-        tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 7 * 1200, 7 * 1200, [this](color_ostream & out) { tag_enemies(out); });
+        tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 1200, 1200, [this](color_ostream & out) { tag_enemies(out); });
         events.onstatechange_register_once("world unload watcher", [this](color_ostream & out, state_change_event st) -> bool
         {
             if (st == SC_WORLD_UNLOADED)
