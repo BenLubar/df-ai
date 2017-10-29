@@ -2133,6 +2133,24 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                 }
             }
         }
+
+        if (r->type == room_type::farmplot)
+        {
+            for (df::coord t = r->min - df::coord(0, 0, 1); t.x <= r->max.x; t.x++)
+            {
+                for (t.y = r->min.y; t.y <= r->max.y; t.y++)
+                {
+                    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID)
+                    {
+                        if (config.plan_verbosity >= 3)
+                        {
+                            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is ice", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                        }
+                        return false;
+                    }
+                }
+            }
+        }
     }
 
     return true;
