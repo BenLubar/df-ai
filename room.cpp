@@ -505,12 +505,11 @@ df::tile_dig_designation room::dig_mode(df::coord t) const
         return wantdown ? tile_dig_designation::DownStair : tile_dig_designation::Default;
 }
 
-bool room::is_dug(df::tiletype_shape_basic want) const
+bool room::is_dug(std::ostream & reason, df::tiletype_shape_basic want) const
 {
     std::set<df::coord> holes;
-    for (auto it = layout.begin(); it != layout.end(); it++)
+    for (auto f : layout)
     {
-        furniture *f = *it;
         if (f->ignore)
             continue;
 
@@ -522,15 +521,20 @@ bool room::is_dug(df::tiletype_shape_basic want) const
             continue;
         }
 
-        switch (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft))))
+        auto sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft)));
+        switch (sb)
         {
         case tiletype_shape_basic::Wall:
+            reason << enum_item_key(f->dig) << "-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is Wall";
             return false;
         case tiletype_shape_basic::Open:
             break;
         default:
             if (f->dig == tile_dig_designation::Channel)
+            {
+                reason << "Channel-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is " << enum_item_key(sb);
                 return false;
+            }
             break;
         }
     }
@@ -547,6 +551,7 @@ bool room::is_dug(df::tiletype_shape_basic want) const
                 df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *Maps::getTileType(x, y, z));
                 if (s == tiletype_shape::WALL)
                 {
+                    reason << "interior tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is Wall";
                     return false;
                 }
                 if (want != tiletype_shape_basic::None)
@@ -554,6 +559,7 @@ bool room::is_dug(df::tiletype_shape_basic want) const
                     df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
                     if (want != sb)
                     {
+                        reason << "tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is " << enum_item_key(sb) << " but want " << enum_item_key(want);
                         return false;
                     }
                 }
@@ -563,7 +569,7 @@ bool room::is_dug(df::tiletype_shape_basic want) const
     return true;
 }
 
-bool room::constructions_done() const
+bool room::constructions_done(std::ostream & reason) const
 {
     for (auto it = layout.begin(); it != layout.end(); it++)
     {
@@ -573,38 +579,40 @@ bool room::constructions_done() const
 
         auto ts = ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft));
 
-        bool ok = true;
+        df::tiletype_shape want;
         switch (f->construction)
         {
         case construction_type::NONE:
             continue;
         case construction_type::Fortification:
-            ok = ts == tiletype_shape::FORTIFICATION;
+            want = tiletype_shape::FORTIFICATION;
             break;
         case construction_type::Wall:
-            ok = ts == tiletype_shape::WALL;
+            want = tiletype_shape::WALL;
             break;
         case construction_type::Floor:
-            ok = ts == tiletype_shape::FLOOR;
+            want = tiletype_shape::FLOOR;
             break;
         case construction_type::UpStair:
-            ok = ts == tiletype_shape::STAIR_UP;
+            want = tiletype_shape::STAIR_UP;
             break;
         case construction_type::DownStair:
-            ok = ts == tiletype_shape::STAIR_DOWN;
+            want = tiletype_shape::STAIR_DOWN;
             break;
         case construction_type::UpDownStair:
-            ok = ts == tiletype_shape::STAIR_UPDOWN;
+            want = tiletype_shape::STAIR_UPDOWN;
             break;
         case construction_type::Ramp:
-            ok = ts == tiletype_shape::RAMP;
+            want = tiletype_shape::RAMP;
             break;
         default:
-            break;
+            reason << "unknown construction type " << enum_item_key(f->construction) << " at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ")";
+            return false;
         }
 
-        if (!ok)
+        if (ts != want)
         {
+            reason << "want construction type " << enum_item_key(f->construction) << " at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") but have " << enum_item_key(ts) << " instead of " << enum_item_key(want);
             return false;
         }
     }

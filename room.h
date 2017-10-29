@@ -334,8 +334,18 @@ struct room
     bool include(df::coord t) const;
     bool safe_include(df::coord t) const;
     df::tile_dig_designation dig_mode(df::coord t) const;
-    bool is_dug(df::tiletype_shape_basic want = tiletype_shape_basic::None) const;
-    bool constructions_done() const;
+    bool is_dug(df::tiletype_shape_basic want = tiletype_shape_basic::None) const
+    {
+        std::ostringstream discard;
+        return is_dug(discard, want);
+    }
+    bool is_dug(std::ostream & reason, df::tiletype_shape_basic want = tiletype_shape_basic::None) const;
+    bool constructions_done() const
+    {
+        std::ostringstream discard;
+        return constructions_done(discard);
+    }
+    bool constructions_done(std::ostream & reason) const;
     df::building *dfbuilding() const;
 };
 

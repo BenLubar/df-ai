@@ -382,6 +382,7 @@ void Plan::update(color_ostream &)
                 }
                 return true;
             }
+            std::ostringstream reason;
             task & t = **bg_idx_generic;
 
             bool del = false;
@@ -393,10 +394,14 @@ void Plan::update(color_ostream &)
                     digroom(out, t.r);
                     del = true;
                 }
+                else
+                {
+                    reason << "dig queue " << t.r->queue << " has " << nrdig[t.r->queue] << " of " << wantdig_max << " slots already filled";
+                }
                 break;
             case task_type::dig_room:
                 fixup_open(out, t.r);
-                if (t.r->is_dug())
+                if (t.r->is_dug(reason))
                 {
                     t.r->status = room_status::dug;
                     construct_room(out, t.r);
@@ -409,35 +414,35 @@ void Plan::update(color_ostream &)
                 }
                 break;
             case task_type::construct_tradedepot:
-                del = try_construct_tradedepot(out, t.r);
+                del = try_construct_tradedepot(out, t.r, reason);
                 break;
             case task_type::construct_workshop:
-                del = try_construct_workshop(out, t.r);
+                del = try_construct_workshop(out, t.r, reason);
                 break;
             case task_type::construct_farmplot:
-                del = try_construct_farmplot(out, t.r);
+                del = try_construct_farmplot(out, t.r, reason);
                 break;
             case task_type::construct_furnace:
-                del = try_construct_furnace(out, t.r);
+                del = try_construct_furnace(out, t.r, reason);
                 break;
             case task_type::construct_stockpile:
-                del = try_construct_stockpile(out, t.r);
+                del = try_construct_stockpile(out, t.r, reason);
                 break;
             case task_type::construct_activityzone:
-                del = try_construct_activityzone(out, t.r);
+                del = try_construct_activityzone(out, t.r, reason);
                 break;
             case task_type::monitor_farm_irrigation:
-                del = monitor_farm_irrigation(out, t.r);
+                del = monitor_farm_irrigation(out, t.r, reason);
                 break;
             case task_type::setup_farmplot:
-                del = try_setup_farmplot(out, t.r);
+                del = try_setup_farmplot(out, t.r, reason);
                 break;
             case task_type::furnish:
                 break;
             case task_type::check_furnish:
                 break;
             case task_type::check_construct:
-                del = try_endconstruct(out, t.r);
+                del = try_endconstruct(out, t.r, reason);
                 break;
             case task_type::dig_cistern:
                 del = try_digcistern(out, t.r);
@@ -446,13 +451,13 @@ void Plan::update(color_ostream &)
                 del = true;
                 break;
             case task_type::check_idle:
-                del = checkidle(out);
+                del = checkidle(out, reason);
                 break;
             case task_type::check_rooms:
                 checkrooms(out);
                 break;
             case task_type::monitor_cistern:
-                monitor_cistern(out);
+                monitor_cistern(out, reason);
                 break;
             case task_type::_task_type_count:
                 break;
@@ -465,6 +470,7 @@ void Plan::update(color_ostream &)
             }
             else
             {
+                t.last_status = reason.str();
                 bg_idx_generic++;
             }
             return false;
@@ -487,16 +493,17 @@ void Plan::update(color_ostream &)
             {
                 return true;
             }
+            std::ostringstream reason;
             task & t = **bg_idx_furniture;
 
             bool del = false;
             switch (t.type)
             {
             case task_type::furnish:
-                del = try_furnish(out, t.r, t.f);
+                del = try_furnish(out, t.r, t.f, reason);
                 break;
             case task_type::check_furnish:
-                del = try_endfurnish(out, t.r, t.f);
+                del = try_endfurnish(out, t.r, t.f, reason);
                 break;
             default:
                 break;
@@ -509,6 +516,7 @@ void Plan::update(color_ostream &)
             }
             else
             {
+                t.last_status = reason.str();
                 bg_idx_furniture++;
             }
             return false;
@@ -589,6 +597,10 @@ void Plan::save(std::ostream & out)
         if ((*it)->f)
         {
             t["f"] = Json::Int(furniture_index.at((*it)->f));
+        }
+        if (!(*it)->last_status.empty())
+        {
+            t["l"] = (*it)->last_status;
         }
         converted_tasks.append(t);
     }
@@ -854,6 +866,10 @@ void Plan::load(std::istream & in)
         if (it->isMember("f"))
         {
             t->f = all_furniture.at((*it)["f"].asInt());
+        }
+        if (it->isMember("l"))
+        {
+            t->last_status = (*it)["l"].asString();
         }
         if (t->type == task_type::furnish || t->type == task_type::check_furnish)
         {
@@ -1232,12 +1248,13 @@ void Plan::del_citizen(color_ostream & out, int32_t uid)
     freebedroom(out, uid);
 }
 
-bool Plan::checkidle(color_ostream & out)
+bool Plan::checkidle(color_ostream & out, std::ostream & reason)
 {
-    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
+    for (auto t : tasks_generic)
     {
-        if ((*it)->type == task_type::want_dig && (*it)->r->type != room_type::corridor && (*it)->r->queue == 0)
+        if (t->type == task_type::want_dig && t->r->type != room_type::corridor && t->r->queue == 0)
         {
+            reason << "already have queued room: " << describe_room(t->r);
             return false;
         }
     }
@@ -1470,6 +1487,7 @@ bool Plan::checkidle(color_ostream & out)
         {
             ai->debug(out, "found next cavern");
             categorize_all();
+            reason << "digging next outpost";
             return false;
         }
     }
@@ -1484,6 +1502,7 @@ bool Plan::checkidle(color_ostream & out)
         if (last_idle_year != -1)
         {
             idleidle(out);
+            reason << "smoothing fortress";
         }
         last_idle_year = *cur_year;
     }
@@ -1492,6 +1511,7 @@ bool Plan::checkidle(color_ostream & out)
     if (r)
     {
         ai->debug(out, "checkidle " + describe_room(r));
+        reason << "queued room: " << describe_room(r);
         wantdig(out, r);
         if (r->status == room_status::finished)
         {
@@ -1500,6 +1520,7 @@ bool Plan::checkidle(color_ostream & out)
             {
                 (*it)->ignore = false;
             }
+            out << " (for finishing)";
             furnish_room(out, r);
             smooth_room(out, r);
         }
@@ -1634,7 +1655,8 @@ void Plan::checkroom(color_ostream & out, room *r)
             }
             if (f->construction != construction_type::NONE)
             {
-                try_furnish_construction(out, f->construction, t);
+                std::ostringstream discard;
+                try_furnish_construction(out, f->construction, t, discard);
             }
         }
         // tantrumed building
@@ -2214,7 +2236,8 @@ bool Plan::construct_room(color_ostream & out, room *r)
     if (r->type == room_type::infirmary || r->type == room_type::pasture || r->type == room_type::pitcage || r->type == room_type::pond || r->type == room_type::location || r->type == room_type::garbagedump)
     {
         furnish_room(out, r);
-        if (try_construct_activityzone(out, r))
+        std::ostringstream discard;
+        if (try_construct_activityzone(out, r, discard))
             return true;
         add_task(task_type::construct_activityzone, r);
         return true;
@@ -2257,7 +2280,7 @@ const static struct traptypes
     }
 } traptypes;
 
-bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
+bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream & reason)
 {
     if (f->bld_id != -1)
         return true;
@@ -2267,7 +2290,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     df::tiletype tt = *Maps::getTileType(tgtile);
     if (f->construction != construction_type::NONE)
     {
-        if (try_furnish_construction(out, f->construction, tgtile))
+        if (try_furnish_construction(out, f->construction, tgtile, reason))
         {
             if (f->type == layout_type::none)
                 return true;
@@ -2279,7 +2302,10 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     }
 
     if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall)
+    {
+        reason << "waiting for wall to be excavated";
         return false;
+    }
 
     df::building_type building_type = building_type::NONE;
     int building_subtype = -1;
@@ -2291,7 +2317,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         return true;
 
     case layout_type::archery_target:
-        return try_furnish_archerytarget(out, r, f, tgtile);
+        return try_furnish_archerytarget(out, r, f, tgtile, reason);
     case layout_type::armor_stand:
         building_type = building_type::Armorstand;
         stocks_furniture_type = stock_item::armor_stand;
@@ -2312,6 +2338,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         if (ai->stocks->count[stock_item::cage] < 1)
         {
             // avoid too much spam
+            reason << "no empty cages available";
             return false;
         }
         building_type = building_type::Trap;
@@ -2342,6 +2369,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
             std::set<df::coord> tiles;
             tiles.insert(tgtile);
             smooth(tiles);
+            reason << "floor under floodgate is not smooth";
             return false;
         }
         building_type = building_type::Floodgate;
@@ -2369,7 +2397,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         stocks_furniture_type = stock_item::nest_box;
         break;
     case layout_type::roller:
-        return try_furnish_roller(out, r, f, tgtile);
+        return try_furnish_roller(out, r, f, tgtile, reason);
     case layout_type::table:
         building_type = building_type::Table;
         stocks_furniture_type = stock_item::table;
@@ -2391,9 +2419,9 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
         stocks_furniture_type = stock_item::weapon_rack;
         break;
     case layout_type::well:
-        return try_furnish_well(out, r, f, tgtile);
+        return try_furnish_well(out, r, f, tgtile, reason);
     case layout_type::windmill:
-        return try_furnish_windmill(out, r, f, tgtile);
+        return try_furnish_windmill(out, r, f, tgtile, reason);
 
     case layout_type::_layout_type_count:
         return true;
@@ -2401,20 +2429,28 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
 
     if (cache_nofurnish.count(stocks_furniture_type))
     {
+        reason << "no " << stocks_furniture_type << " available";
         return false;
     }
 
     if (Maps::getTileOccupancy(tgtile)->bits.building != tile_building_occ::None)
     {
         // TODO warn if this stays for too long?
+        reason << "tile occupied by building";
         return false;
     }
 
-    if (ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::RAMP ||
-        ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE ||
-        ENUM_ATTR(tiletype, material, tt) == tiletype_material::ROOT)
+    if (ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::RAMP)
     {
         dig_tile(tgtile, f->dig);
+        reason << "tile occupied by ramp";
+        return false;
+    }
+    auto tm = ENUM_ATTR(tiletype, material, tt);
+    if (tm == tiletype_material::TREE || tm == tiletype_material::ROOT)
+    {
+        dig_tile(tgtile, f->dig);
+        reason << "tile occupied by " << enum_item_key(tm);
         return false;
     }
 
@@ -2438,12 +2474,16 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f)
     }
 
     cache_nofurnish.insert(stocks_furniture_type);
+    reason << "no " << stocks_furniture_type << " available";
     return false;
 }
 
-bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t, std::ostream & reason)
 {
-    df::item *block, *mecha, *buckt, *chain;
+    df::item *block = nullptr;
+    df::item *mecha = nullptr;
+    df::item *buckt = nullptr;
+    df::item *chain = nullptr;
     if (find_item(items_other_id::BLOCKS, block) &&
         find_item(items_other_id::TRAPPARTS, mecha) &&
         find_item(items_other_id::BUCKET, buckt) &&
@@ -2461,14 +2501,46 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t)
         add_task(task_type::check_furnish, r, f);
         return true;
     }
+    reason << "missing: ";
+    if (!block)
+    {
+        reason << "block";
+    }
+    if (!mecha)
+    {
+        if (block)
+        {
+            reason << ", ";
+        }
+        reason << "mechanisms";
+    }
+    if (!buckt)
+    {
+        if (block || mecha)
+        {
+            reason << ", ";
+        }
+        reason << "bucket";
+    }
+    if (!chain)
+    {
+        if (block || mecha || buckt)
+        {
+            reason << ", ";
+        }
+        reason << "rope/chain";
+    }
     return false;
 }
 
-bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df::coord t, std::ostream & reason)
 {
     df::item *bould = nullptr;
     if (!find_item(items_other_id::BOULDER, bould, false, true))
+    {
+        reason << "no boulder available";
         return false;
+    }
 
     df::building *bld = Buildings::allocInstance(t, building_type::ArcheryTarget);
     Buildings::setSize(bld, df::coord(1, 1, 1));
@@ -2481,12 +2553,18 @@ bool Plan::try_furnish_archerytarget(color_ostream &, room *r, furniture *f, df:
     return true;
 }
 
-bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype, df::coord t)
+bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype, df::coord t, std::ostream & reason)
 {
     df::tiletype tt = *Maps::getTileType(t);
     if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE)
     {
-        dig_tile(ai->plan->find_tree_base(t));
+        df::plant *tree = nullptr;
+        dig_tile(ai->plan->find_tree_base(t, &tree));
+        if (auto plant = tree ? df::plant_raw::find(tree->material) : nullptr)
+        {
+            reason << plant->name << " ";
+        }
+        reason << "tree in the way";
         return false;
     }
 
@@ -2534,6 +2612,7 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
     {
         // remove existing invalid construction
         dig_tile(t);
+        reason << "have " << enum_item_key(sb) << " construction but want " << enum_item_key(ctype) << " construction";
         return false;
     }
 
@@ -2544,6 +2623,7 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
             b->x1 <= t.x && b->x2 >= t.x &&
             b->y1 <= t.y && b->y2 >= t.y)
         {
+            reason << "building in the way: " << enum_item_key(b->getType());
             return false;
         }
     }
@@ -2554,10 +2634,12 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
         if (find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Masons && r->status == room_status::finished && r->dfbuilding() != nullptr; }) != nullptr)
         {
             // we don't have blocks but we can make them.
+            reason << "waiting for blocks to become available";
             return false;
         }
         if (!find_item(items_other_id::BOULDER, mat, false, true))
         {
+            reason << "no building materials available";
             return false;
         }
     }
@@ -2570,14 +2652,21 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
     return true;
 }
 
-bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coord t, std::ostream & reason)
 {
-    if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Open)
+    auto sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t)));
+    if (sb != tiletype_shape_basic::Open)
+    {
+        reason << "need channel (tile is currently " << enum_item_key(sb) << ")";
         return false;
+    }
 
     std::vector<df::item *> mat;
     if (!find_items(items_other_id::WOOD, mat, 4))
+    {
+        reason << "have " << mat.size() << "/4 logs";
         return false;
+    }
 
     df::building *bld = Buildings::allocInstance(t - df::coord(1, 1, 0), building_type::Windmill);
     Buildings::setSize(bld, df::coord(3, 3, 1));
@@ -2587,9 +2676,10 @@ bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coor
     return true;
 }
 
-bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord t)
+bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord t, std::ostream & reason)
 {
-    df::item *mecha, *chain;
+    df::item *mecha = nullptr;
+    df::item *chain = nullptr;
     if (find_item(items_other_id::TRAPPARTS, mecha) &&
         find_item(items_other_id::CHAIN, chain))
     {
@@ -2603,6 +2693,18 @@ bool Plan::try_furnish_roller(color_ostream &, room *r, furniture *f, df::coord 
         f->bld_id = bld->id;
         add_task(task_type::check_furnish, r, f);
         return true;
+    }
+    if (mecha)
+    {
+        reason << "need rope or chain";
+    }
+    else if (chain)
+    {
+        reason << "need mechanisms";
+    }
+    else
+    {
+        reason << "need mechanisms and rope or chain";
     }
     return false;
 }
@@ -2623,7 +2725,7 @@ static void init_managed_workshop(color_ostream &, room *, df::building *bld)
     }
 }
 
-bool Plan::try_construct_tradedepot(color_ostream &, room *r)
+bool Plan::try_construct_tradedepot(color_ostream &, room *r, std::ostream & reason)
 {
     std::vector<df::item *> boulds;
     if (find_items(items_other_id::BOULDER, boulds, 3, false, true))
@@ -2635,12 +2737,13 @@ bool Plan::try_construct_tradedepot(color_ostream &, room *r)
         add_task(task_type::check_construct, r);
         return true;
     }
+    reason << "have " << boulds.size() << "/3 boulders";
     return false;
 }
 
-bool Plan::try_construct_workshop(color_ostream & out, room *r)
+bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & reason)
 {
-    if (!r->constructions_done())
+    if (!r->constructions_done(reason))
         return false;
 
     if (r->workshop_type == workshop_type::Dyers)
@@ -2768,9 +2871,9 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r)
     return false;
 }
 
-bool Plan::try_construct_furnace(color_ostream & out, room *r)
+bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & reason)
 {
-    if (!r->constructions_done())
+    if (!r->constructions_done(reason))
         return false;
 
     if (r->furnace_type == furnace_type::Custom)
@@ -2823,13 +2926,16 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r)
     }
 }
 
-bool Plan::try_construct_stockpile(color_ostream & out, room *r)
+bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & reason)
 {
-    if (!r->constructions_done())
+    if (!r->constructions_done(reason))
         return false;
 
     if (!AI::is_dwarfmode_viewscreen())
+    {
+        reason << "not on main viewscreen";
         return false;
+    }
 
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
@@ -2996,13 +3102,16 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r)
     return true;
 }
 
-bool Plan::try_construct_activityzone(color_ostream & out, room *r)
+bool Plan::try_construct_activityzone(color_ostream & out, room *r, std::ostream & reason)
 {
-    if (!r->constructions_done())
+    if (!r->constructions_done(reason))
         return false;
 
     if (!AI::is_dwarfmode_viewscreen())
+    {
+        reason << "not on main viewscreen";
         return false;
+    }
 
     df::coord size = r->size();
 
@@ -3097,9 +3206,9 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r)
     return true;
 }
 
-bool Plan::monitor_farm_irrigation(color_ostream & out, room *r)
+bool Plan::monitor_farm_irrigation(color_ostream & out, room *r, std::ostream & reason)
 {
-    if (can_place_farm(out, r->workshop, false))
+    if (can_place_farm(out, r->workshop, false, reason))
     {
         auto zone = virtual_cast<df::building_civzonest>(r->dfbuilding());
         zone->pit_flags.bits.is_pond = 0;
@@ -3109,70 +3218,82 @@ bool Plan::monitor_farm_irrigation(color_ostream & out, room *r)
     return false;
 }
 
-bool Plan::can_place_farm(color_ostream & out, room *r, bool cheat)
+bool Plan::can_place_farm(color_ostream & out, room *r, bool cheat, std::ostream & reason)
 {
+    size_t need = (r->max.x - r->min.x + 1) * (r->max.y - r->min.y + 1) * (r->max.z - r->min.z + 1);
+    size_t have = 0;
     for (int16_t x = r->min.x; x <= r->max.x; x++)
     {
         for (int16_t y = r->min.y; y <= r->max.y; y++)
         {
             for (int16_t z = r->min.z; z <= r->max.z; z++)
             {
-                if (!farm_allowed_materials.set.count(ENUM_ATTR(tiletype, material, *Maps::getTileType(x, y, z))))
+                if (farm_allowed_materials.set.count(ENUM_ATTR(tiletype, material, *Maps::getTileType(x, y, z))))
                 {
-                    df::map_block *block = Maps::getTileBlock(x, y, z);
-                    auto e = std::find_if(block->block_events.begin(), block->block_events.end(), [](df::block_square_event *e) -> bool
-                    {
-                        df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(e);
-                        return spatter &&
-                            spatter->mat_type == builtin_mats::MUD &&
-                            spatter->mat_index == -1;
-                    });
-                    if (cheat)
-                    {
-                        if (e == block->block_events.end())
-                        {
-                            df::block_square_event_material_spatterst *spatter = df::allocate<df::block_square_event_material_spatterst>();
-                            spatter->mat_type = builtin_mats::MUD;
-                            spatter->mat_index = -1;
-                            spatter->min_temperature = 60001;
-                            spatter->max_temperature = 60001;
-                            e = block->block_events.insert(e, spatter);
-                        }
-                        df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
-                        if (spatter->amount[x & 0xf][y & 0xf] == 0)
-                        {
-                            ai->debug(out, stl_sprintf("cheat: mud invocation (%d, %d, %d)", x, y, z));
-                            spatter->amount[x & 0xf][y & 0xf] = 50; // small pile of mud
-                        }
-                    }
-                    else
-                    {
-                        if (e == block->block_events.end())
-                        {
-                            return false;
-                        }
+                    have++;
+                    continue;
+                }
 
-                        df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
-                        if (spatter->amount[x & 0xf][y & 0xf] == 0)
-                        {
-                            return false;
-                        }
+                df::map_block *block = Maps::getTileBlock(x, y, z);
+                auto e = std::find_if(block->block_events.begin(), block->block_events.end(), [](df::block_square_event *e) -> bool
+                {
+                    df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(e);
+                    return spatter &&
+                        spatter->mat_type == builtin_mats::MUD &&
+                        spatter->mat_index == -1;
+                });
+                if (cheat)
+                {
+                    if (e == block->block_events.end())
+                    {
+                        df::block_square_event_material_spatterst *spatter = df::allocate<df::block_square_event_material_spatterst>();
+                        spatter->mat_type = builtin_mats::MUD;
+                        spatter->mat_index = -1;
+                        spatter->min_temperature = 60001;
+                        spatter->max_temperature = 60001;
+                        e = block->block_events.insert(e, spatter);
+                    }
+                    df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
+                    if (spatter->amount[x & 0xf][y & 0xf] == 0)
+                    {
+                        ai->debug(out, stl_sprintf("cheat: mud invocation (%d, %d, %d)", x, y, z));
+                        spatter->amount[x & 0xf][y & 0xf] = 50; // small pile of mud
+                    }
+                    have++;
+                }
+                else
+                {
+                    if (e == block->block_events.end())
+                    {
+                        continue;
+                    }
+
+                    df::block_square_event_material_spatterst *spatter = virtual_cast<df::block_square_event_material_spatterst>(*e);
+                    if (spatter->amount[x & 0xf][y & 0xf] == 0)
+                    {
+                        continue;
                     }
                 }
             }
         }
     }
 
-    return true;
+    if (have == need)
+    {
+        return true;
+    }
+
+    reason << "waiting for irrigation (" << have << "/" << need << ")";
+    return false;
 }
 
-bool Plan::try_construct_farmplot(color_ostream & out, room *r)
+bool Plan::try_construct_farmplot(color_ostream & out, room *r, std::ostream & reason)
 {
     auto pond = find_room(room_type::pond, [r](room *p) -> bool
     {
         return p->temporary && p->workshop == r;
     });
-    if (!can_place_farm(out, r, !pond))
+    if (!can_place_farm(out, r, !pond, reason))
     {
         return false;
     }
@@ -3608,24 +3729,28 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
     return false;
 }
 
-bool Plan::try_setup_farmplot(color_ostream & out, room *r)
+bool Plan::try_setup_farmplot(color_ostream & out, room *r, std::ostream & reason)
 {
     df::building *bld = r->dfbuilding();
     if (!bld)
         return true;
     if (bld->getBuildStage() < bld->getMaxBuildStage())
+    {
+        reason << "waiting for field to be tilled (" << bld->getBuildStage() << "/" << bld->getMaxBuildStage() << ")";
         return false;
+    }
 
     ai->stocks->farmplot(out, r);
 
     return true;
 }
 
-bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
+bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostream & reason)
 {
     if (!AI::is_dwarfmode_viewscreen())
     {
         // some of these things need to use the UI.
+        reason << "not on main viewscreen";
         return false;
     }
 
@@ -3636,7 +3761,10 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
         return true;
     }
     if (bld->getBuildStage() < bld->getMaxBuildStage())
+    {
+        reason << "waiting for construction (" << bld->getBuildStage() << "/" << bld->getMaxBuildStage() << ")";
         return false;
+    }
 
     if (f->type == layout_type::coffin)
     {
@@ -3713,9 +3841,14 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f)
     }
 
     if (!f->makeroom)
+    {
         return true;
-    if (!r->is_dug())
+    }
+    if (!r->is_dug(reason))
+    {
+        reason << " (waiting to make room)";
         return false;
+    }
 
     ai->debug(out, "makeroom " + describe_room(r));
 
@@ -3896,7 +4029,7 @@ bool Plan::pull_lever(color_ostream & out, furniture *f)
     return true;
 }
 
-void Plan::monitor_cistern(color_ostream & out)
+void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
 {
     if (!m_c_lever_in)
     {
@@ -3936,7 +4069,12 @@ void Plan::monitor_cistern(color_ostream & out)
         {
             if (!f_in->gate_flags.bits.opening)
             {
-                pull_lever(out, m_c_lever_out);
+                pull_lever(out, m_c_lever_in);
+                reason << "pulling lever to open input floodgate";
+            }
+            else
+            {
+                reason << "waiting for input floodgate to open";
             }
             return;
         }
@@ -3951,11 +4089,20 @@ void Plan::monitor_cistern(color_ostream & out)
     }
 
     if (!l_in || !f_in || !l_out || !f_out)
+    {
+        reason << "waiting for mechanic";
         return;
+    }
     if (l_in->linked_mechanisms.empty() || l_out->linked_mechanisms.empty())
+    {
+        reason << "waiting for lever to be linked";
         return;
+    }
     if (!l_in->jobs.empty() || !l_out->jobs.empty())
+    {
+        reason << "lever waiting to be pulled";
         return;
+    }
 
     // may use mechanisms for entrance cage traps now
     bool furnish_entrance = false;
@@ -3980,7 +4127,10 @@ void Plan::monitor_cistern(color_ostream & out)
         // expensive, dont check too often
         m_c_testgate_delay--;
         if (m_c_testgate_delay > 0)
+        {
+            reason << "waiting to test gate again (" << m_c_testgate_delay << " times remaining)";
             return;
+        }
 
         // re-dump garbage + smooth reserve accesspath
         construct_cistern(out, m_c_reserve);
@@ -4009,7 +4159,9 @@ void Plan::monitor_cistern(color_ostream & out)
                             df::coord t(x, y, z);
                             if (!is_smooth(t) && Maps::getTileDesignation(t)->bits.flow_size < 3 && (r->type != room_type::corridor || (r->min.x <= x && x <= r->max.x && r->min.y <= y && y <= r->max.y) || ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) == tiletype_shape_basic::Wall))
                             {
-                                ai->debug(out, stl_sprintf("cistern: unsmoothed %s (%d, %d, %d) %s", enum_item_key_str(*Maps::getTileType(t)), x, y, z, describe_room(r).c_str()));
+                                std::string msg = stl_sprintf("unsmoothed %s (%d, %d, %d) %s", enum_item_key_str(*Maps::getTileType(t)), x, y, z, describe_room(r).c_str());
+                                ai->debug(out, "cistern: " + msg);
+                                reason << msg;
                                 empty = false;
                                 break;
                             }
@@ -4020,7 +4172,9 @@ void Plan::monitor_cistern(color_ostream & out)
                                 {
                                     if (Units::getPosition(*u) == t)
                                     {
-                                        ai->debug(out, stl_sprintf("cistern: unit (%d, %d, %d) (%s) %s", x, y, z, AI::describe_unit(*u).c_str(), describe_room(r).c_str()));
+                                        std::string msg = stl_sprintf("unit (%d, %d, %d) (%s) %s", x, y, z, AI::describe_unit(*u).c_str(), describe_room(r).c_str());
+                                        ai->debug(out, "cistern: " + msg);
+                                        reason << msg;
                                         break;
                                     }
                                 }
@@ -4035,7 +4189,9 @@ void Plan::monitor_cistern(color_ostream & out)
                                     df::item *i = df::item::find(*it);
                                     if (Items::getPosition(i) == t)
                                     {
-                                        ai->debug(out, stl_sprintf("cistern: item (%d, %d, %d) (%s) %s", x, y, z, AI::describe_item(i).c_str(), describe_room(r).c_str()));
+                                        std::string msg = stl_sprintf("item (%d, %d, %d) (%s) %s", x, y, z, AI::describe_item(i).c_str(), describe_room(r).c_str());
+                                        ai->debug(out, "cistern: " + msg);
+                                        break;
                                     }
                                 }
                                 empty = false;
@@ -4053,6 +4209,7 @@ void Plan::monitor_cistern(color_ostream & out)
                     // avoid floods. wait for the output to be closed.
                     pull_lever(out, m_c_lever_out);
                     m_c_testgate_delay = 4;
+                    reason << "waiting for output floodgate to be closed";
                 }
                 else
                 {
@@ -4064,6 +4221,7 @@ void Plan::monitor_cistern(color_ostream & out)
                     cistern_channel_requested = true;
                     dig_tile(gate + df::coord(0, 0, 1), tile_dig_designation::Channel);
                     m_c_testgate_delay = 16;
+                    reason << "waiting for channel";
                 }
             }
             else
@@ -4073,6 +4231,7 @@ void Plan::monitor_cistern(color_ostream & out)
                 {
                     // something went not as planned, but we have a water source
                     m_c_testgate_delay = -1;
+                    reason << "we have water (unexpectedly)";
                 }
                 else
                 {
@@ -4085,6 +4244,7 @@ void Plan::monitor_cistern(color_ostream & out)
                             pull_lever(out, m_c_lever_out);
                     }
                     m_c_testgate_delay = 16;
+                    reason << "not ready to channel";
                 }
             }
         }
@@ -4108,12 +4268,16 @@ void Plan::monitor_cistern(color_ostream & out)
                     }
                 }
             }
+            reason << "waiting for channel";
         }
         return;
     }
 
     if (!m_c_cistern->channeled)
+    {
+        reason << "waiting for channel";
         return;
+    }
 
     // cistlvl = water level for the top floor
     // if it is flooded, reserve output tile is probably > 4 and prevents
@@ -4126,63 +4290,89 @@ void Plan::monitor_cistern(color_ostream & out)
 
     if (resvlvl <= 1)
     {
+        reason << "reserve empty";
         // reserve empty, fill it
         if (!f_out_closed)
         {
             pull_lever(out, m_c_lever_out);
+            reason << "; closing output";
         }
         else if (f_in_closed)
         {
             pull_lever(out, m_c_lever_in);
+            reason << "; opening input";
         }
     }
     else if (resvlvl == 7 || river_is_frozen_or_dry)
     {
+        if (resvlvl == 7)
+        {
+            reason << "reserve full";
+        }
+        if (river_is_frozen_or_dry)
+        {
+            if (resvlvl == 7)
+            {
+                reason << " and ";
+            }
+            reason << "river is frozen or dry";
+        }
         // reserve full, empty into cistern if needed
         if (!f_in_closed)
         {
             pull_lever(out, m_c_lever_in);
+            reason << "; closing input";
         }
         else
         {
             if (cistlvl < 7)
             {
+                reason << "; cistern filling (" << cistlvl << "/7)";
                 if (f_out_closed)
                 {
                     pull_lever(out, m_c_lever_out);
+                    reason << "; opening output";
                 }
             }
             else
             {
+                reason << "; cistern full";
                 if (!f_out_closed)
                 {
                     pull_lever(out, m_c_lever_out);
+                    reason << "; closing output";
                 }
             }
         }
     }
     else
     {
+        reason << "cistern " << cistlvl << "/7, reserve " << resvlvl << "/7";
         // ensure it's either filling up or emptying
         if (f_in_closed && f_out_closed)
         {
             if (resvlvl >= 6 && cistlvl < 7)
             {
                 pull_lever(out, m_c_lever_out);
+                reason << "; opening output";
             }
             else
             {
                 pull_lever(out, m_c_lever_in);
+                reason << "; opening input";
             }
         }
     }
 }
 
-bool Plan::try_endconstruct(color_ostream & out, room *r)
+bool Plan::try_endconstruct(color_ostream & out, room *r, std::ostream & reason)
 {
     df::building *bld = r->dfbuilding();
     if (bld && bld->getBuildStage() < bld->getMaxBuildStage())
+    {
+        reason << "waiting for construction (" << bld->getBuildStage() << "/" << bld->getMaxBuildStage() << ")";
         return false;
+    }
     furnish_room(out, r);
     return true;
 }
@@ -4409,7 +4599,7 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
             df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
             if (sb == tiletype_shape_basic::Open)
             {
-                df::construction_type ctype;
+                df::construction_type ctype = construction_type::Floor;
                 if (d.second == tile_dig_designation::Default)
                 {
                     ctype = construction_type::Floor;
@@ -4419,7 +4609,8 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
                     ai->debug(out, "[ERROR] could not find construction_type::" + ENUM_KEY_STR(tile_dig_designation, d.second));
                     return false;
                 }
-                return try_furnish_construction(out, ctype, d.first);
+                std::ostringstream discard;
+                return try_furnish_construction(out, ctype, d.first, discard);
             }
             if (sb != tiletype_shape_basic::Wall)
             {
@@ -4961,6 +5152,17 @@ void Plan::report(std::ostream & out, bool html)
             }
             out << describe_furniture(t->f, html);
         }
+        if (!t->last_status.empty())
+        {
+            if (html)
+            {
+                out << "<br/><i>" << html_escape(t->last_status) << "</i>";
+            }
+            else
+            {
+                out << "\n  " << t->last_status;
+            }
+        }
         if (html)
         {
             out << "</li>";
@@ -5046,6 +5248,17 @@ void Plan::report(std::ostream & out, bool html)
                 out << "\n  ";
             }
             out << describe_furniture(t->f, html);
+        }
+        if (!t->last_status.empty())
+        {
+            if (html)
+            {
+                out << "<br/><i>" << html_escape(t->last_status) << "</i>";
+            }
+            else
+            {
+                out << "\n  " << t->last_status;
+            }
         }
         if (html)
         {
@@ -5451,7 +5664,7 @@ bool Plan::map_tile_intersects_room(df::coord t)
     return find_room_at(t) != nullptr;
 }
 
-df::coord Plan::find_tree_base(df::coord t)
+df::coord Plan::find_tree_base(df::coord t, df::plant **ptree)
 {
     auto find = [t](df::plant *tree) -> bool
     {
@@ -5486,6 +5699,10 @@ df::coord Plan::find_tree_base(df::coord t)
     {
         if (find(*tree))
         {
+            if (ptree)
+            {
+                *ptree = *tree;
+            }
             return (*tree)->pos;
         }
     }
@@ -5494,12 +5711,20 @@ df::coord Plan::find_tree_base(df::coord t)
     {
         if (find(*tree))
         {
+            if (ptree)
+            {
+                *ptree = *tree;
+            }
             return (*tree)->pos;
         }
     }
 
     df::coord invalid;
     invalid.clear();
+    if (ptree)
+    {
+        *ptree = nullptr;
+    }
     return invalid;
 }
 

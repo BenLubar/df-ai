@@ -18,6 +18,7 @@ namespace df
     struct building;
     struct building_stockpilest;
     struct item;
+    struct plant;
     struct stockpile_settings;
 }
 
@@ -57,9 +58,10 @@ struct task
     task_type::type type;
     room *r;
     furniture *f;
+    std::string last_status;
 
     task(task_type::type type, room *r = nullptr, furniture *f = nullptr) :
-        type(type), r(r), f(f)
+        type(type), r(r), f(f), last_status()
     {
     }
 };
@@ -130,7 +132,7 @@ public:
     void new_citizen(color_ostream & out, int32_t uid);
     void del_citizen(color_ostream & out, int32_t uid);
 
-    bool checkidle(color_ostream & out);
+    bool checkidle(color_ostream & out, std::ostream & reason);
     void idleidle(color_ostream & out);
 
     void checkrooms(color_ostream & out);
@@ -160,22 +162,22 @@ public:
     void digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
     bool furnish_room(color_ostream & out, room *r);
-    bool try_furnish(color_ostream & out, room *r, furniture *f);
-    bool try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t);
-    bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t);
-    bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t);
+    bool try_furnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
+    bool try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
+    bool try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
+    bool try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t, std::ostream & reason);
+    bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
+    bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
 
-    bool try_construct_tradedepot(color_ostream & out, room *r);
-    bool try_construct_workshop(color_ostream & out, room *r);
-    bool try_construct_furnace(color_ostream & out, room *r);
-    bool try_construct_stockpile(color_ostream & out, room *r);
-    bool try_construct_activityzone(color_ostream & out, room *r);
+    bool try_construct_tradedepot(color_ostream & out, room *r, std::ostream & reason);
+    bool try_construct_workshop(color_ostream & out, room *r, std::ostream & reason);
+    bool try_construct_furnace(color_ostream & out, room *r, std::ostream & reason);
+    bool try_construct_stockpile(color_ostream & out, room *r, std::ostream & reason);
+    bool try_construct_activityzone(color_ostream & out, room *r, std::ostream & reason);
 
-    bool monitor_farm_irrigation(color_ostream & out, room *r);
-    bool can_place_farm(color_ostream & out, room *r, bool cheat);
-    bool try_construct_farmplot(color_ostream & out, room *r);
+    bool monitor_farm_irrigation(color_ostream & out, room *r, std::ostream & reason);
+    bool can_place_farm(color_ostream & out, room *r, bool cheat, std::ostream & reason);
+    bool try_construct_farmplot(color_ostream & out, room *r, std::ostream & reason);
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
 
@@ -193,16 +195,16 @@ public:
     bool try_digcistern(color_ostream & out, room *r);
     void dig_garbagedump(color_ostream & out);
     bool try_diggarbage(color_ostream & out, room *r);
-    bool try_setup_farmplot(color_ostream & out, room *r);
-    bool try_endfurnish(color_ostream & out, room *r, furniture *f);
+    bool try_setup_farmplot(color_ostream & out, room *r, std::ostream & reason);
+    bool try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
 
     bool setup_lever(color_ostream & out, room *r, furniture *f);
     bool link_lever(color_ostream & out, furniture *src, furniture *dst);
     bool pull_lever(color_ostream & out, furniture *f);
 
-    void monitor_cistern(color_ostream & out);
+    void monitor_cistern(color_ostream & out, std::ostream & reason);
 
-    bool try_endconstruct(color_ostream & out, room *r);
+    bool try_endconstruct(color_ostream & out, room *r, std::ostream & reason);
 
     df::coord scan_river(color_ostream & out);
 
@@ -250,7 +252,7 @@ public:
 
     void weblegends_write_svg(std::ostream & out);
 
-    static df::coord find_tree_base(df::coord t);
+    static df::coord find_tree_base(df::coord t, df::plant **ptree = nullptr);
 
 private:
     void fixup_open(color_ostream & out, room *r);
