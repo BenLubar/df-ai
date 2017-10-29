@@ -2192,7 +2192,7 @@ void Population::update_pets(color_ostream & out)
                 {
                     // animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
                     u->flags2.bits.slaughter = true;
-                    ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (can't reproduce)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
+                    ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (can't reproduce)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
                     continue;
                 }
 
@@ -2273,7 +2273,7 @@ void Population::update_pets(color_ostream & out)
             {
                 // TODO slaughter best candidate, keep this one
                 u->flags2.bits.slaughter = 1;
-                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->caste_id.c_str()));
+                ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
             }
         }
 
@@ -2304,7 +2304,7 @@ void Population::update_pets(color_ostream & out)
                 df::unit *u = it->second;
                 df::creature_raw *race = df::creature_raw::find(u->race);
                 u->flags2.bits.slaughter = 1;
-                ai->debug(out, stl_sprintf("marked %dy%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, age % (12 * 28), race->creature_id.c_str(), cst->first->caste_id.c_str()));
+                ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->first->caste_id.c_str()));
             }
         }
     }
@@ -2402,7 +2402,7 @@ void Population::report(std::ostream & out, bool html)
         }
 
         int32_t age = days_since(u->birth_year, u->birth_time);
-        out << " (age " << (age / 12 / 28) << "y" << (age % (12 * 28)) << "d)";
+        out << " (age " << (age / 12 / 28) << "y" << ((age / 28) % 12) << "m" << (age % 28) << "d)";
 
         if (room *r = ai->plan->find_room_at(Units::getPosition(u)))
         {
