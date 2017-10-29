@@ -1498,10 +1498,6 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
                     int16_t z = dwarfAI->plan->surface_tile_at(t.x, t.y, true).z;
                     for (t.z = in->min.z; t.z <= in->max.z; t.z++)
                     {
-                        if (t.z == z)
-                        {
-                            continue;
-                        }
                         bool has_layout = false;
                         for (auto f : out->layout)
                         {
@@ -1514,7 +1510,14 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
                         if (!has_layout)
                         {
                             furniture *f = new furniture();
-                            f->dig = tile_dig_designation::Channel;
+                            if (t.z == z)
+                            {
+                                f->construction = construction_type::Floor;
+                            }
+                            else
+                            {
+                                f->dig = tile_dig_designation::Channel;
+                            }
                             f->pos = t - in->min;
                             out->layout.push_back(f);
                         }
