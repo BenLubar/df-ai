@@ -2136,9 +2136,9 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
 
         if (r->type == room_type::farmplot)
         {
-            for (df::coord t = r->min - df::coord(0, 0, 1); t.x <= r->max.x; t.x++)
+            for (df::coord t = min - df::coord(0, 0, 1); t.x <= max.x; t.x++)
             {
-                for (t.y = r->min.y; t.y <= r->max.y; t.y++)
+                for (t.y = min.y; t.y <= max.y; t.y++)
                 {
                     if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID)
                     {
