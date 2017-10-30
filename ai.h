@@ -17,6 +17,7 @@
 
 namespace df
 {
+    struct activity_event_conflictst;
     struct history_event;
     struct item;
     struct job;
@@ -97,6 +98,8 @@ public:
     void statechanged(color_ostream & out, state_change_event event);
     static void abandon(color_ostream & out);
     bool tag_enemies(color_ostream & out);
+    static bool is_attacking_citizen(df::unit *u);
+    static bool is_in_conflict(df::unit *u, std::function<bool(df::activity_event_conflictst *)> filter = [](df::activity_event_conflictst *) -> bool { return true; });
 
     void timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb);
     void timeout_sameview(std::function<void(color_ostream &)> cb)

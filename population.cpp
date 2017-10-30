@@ -968,7 +968,7 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
     AI::feed_key(interface_key::LEAVESCREEN);
 }
 
-void Population::military_random_squad_attack_unit(color_ostream & out, df::unit *u)
+bool Population::military_random_squad_attack_unit(color_ostream & out, df::unit *u)
 {
     df::squad *squad = nullptr;
     int32_t best = std::numeric_limits<int32_t>::min();
@@ -986,6 +986,17 @@ void Population::military_random_squad_attack_unit(color_ostream & out, df::unit
         }
         score -= int32_t(sq->orders.size());
 
+        for (auto it = sq->orders.begin(); it != sq->orders.end(); it++)
+        {
+            if (auto so = strict_virtual_cast<df::squad_order_kill_listst>(*it))
+            {
+                if (std::find(so->units.begin(), so->units.end(), u->id) != so->units.end())
+                {
+                    score -= 10000;
+                }
+            }
+        }
+
         if (!squad || best < score)
         {
             squad = sq;
@@ -994,10 +1005,10 @@ void Population::military_random_squad_attack_unit(color_ostream & out, df::unit
     }
     if (!squad)
     {
-        return;
+        return false;
     }
 
-    military_squad_attack_unit(out, squad, u);
+    return military_squad_attack_unit(out, squad, u);
 }
 
 bool Population::military_all_squads_attack_unit(color_ostream & out, df::unit *u)

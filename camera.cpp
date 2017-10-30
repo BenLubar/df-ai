@@ -8,6 +8,7 @@
 #include "modules/Screen.h"
 #include "modules/Units.h"
 
+#include "df/activity_event_conflictst.h"
 #include "df/creature_interaction_effect_body_transformationst.h"
 #include "df/graphic.h"
 #include "df/interfacest.h"
@@ -120,7 +121,20 @@ void Camera::update(color_ostream &)
         if (u->flags1.bits.marauder ||
             u->flags1.bits.active_invader ||
             u->flags2.bits.visitor_uninvited ||
-            !u->status.attacker_ids.empty() ||
+            AI::is_in_conflict(u, [](df::activity_event_conflictst *c) -> bool
+            {
+                for (auto s : c->sides)
+                {
+                    for (auto e : s->enemies)
+                    {
+                        if (e->conflict_level > conflict_level::Encounter && e->conflict_level != conflict_level::Training)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }) ||
             std::find_if(u->syndromes.active.begin(), u->syndromes.active.end(), [](df::unit_syndrome *us) -> bool
         {
             auto & s = df::syndrome::find(us->type)->ce;
