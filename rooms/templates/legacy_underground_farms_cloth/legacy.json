@@ -1,7 +1,6 @@
 {
 	"f": [
 		{
-			"type": "hatch",
 			"dig": "Channel",
 			"construction": "NONE",
 			"x": 1,
@@ -17,7 +16,6 @@
 			"z": 0
 		},
 		{
-			"type": "hatch",
 			"dig": "Channel",
 			"construction": "NONE",
 			"x": 1,
@@ -33,7 +31,6 @@
 			"z": 0
 		},
 		{
-			"type": "hatch",
 			"dig": "Channel",
 			"construction": "NONE",
 			"x": 1,
