@@ -1207,7 +1207,7 @@ int32_t Population::military_find_free_squad()
         (*pos)->flags.bits.exact_matches = 1;
     }
 
-    if (ui->main.fortress_entity->squads.size() % 3 == 0)
+    if (ui->main.fortress_entity->squads.size() % 3 == 1)
     {
         // ranged squad
         for (auto pos = squad->positions.begin(); pos != squad->positions.end(); pos++)
