@@ -3295,6 +3295,7 @@ bool Plan::can_place_farm(color_ostream & out, room *r, bool cheat, std::ostream
                     {
                         continue;
                     }
+                    have++;
                 }
             }
         }
