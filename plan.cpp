@@ -3102,7 +3102,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
     return true;
 }
 
-bool Plan::try_construct_activityzone(color_ostream & out, room *r, std::ostream & reason)
+bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & reason)
 {
     if (!r->constructions_done(reason))
         return false;
@@ -3113,50 +3113,70 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r, std::ostream
         return false;
     }
 
-    df::coord size = r->size();
+    int32_t start_x, start_y, start_z;
+    Gui::getViewCoords(start_x, start_y, start_z);
 
-    df::building_civzonest *bld = virtual_cast<df::building_civzonest>(Buildings::allocInstance(r->min, building_type::Civzone, civzone_type::ActivityZone));
-    Buildings::setSize(bld, size);
-    delete[] bld->room.extents;
-    bld->room.extents = new uint8_t[size.x * size.y]();
-    bld->room.x = r->min.x;
-    bld->room.y = r->min.y;
-    bld->room.width = size.x;
-    bld->room.height = size.y;
-    memset(bld->room.extents, 1, size.x * size.y);
-    Buildings::constructAbstract(bld);
+    AI::feed_key(interface_key::D_CIVZONE);
+
+    Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
+    Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
+
+    AI::feed_key(interface_key::CURSOR_LEFT);
+    AI::feed_key(interface_key::SELECT);
+
+    for (int16_t x = r->min.x; x < r->max.x; x++)
+    {
+        AI::feed_key(interface_key::CURSOR_RIGHT);
+    }
+    for (int16_t y = r->min.y; y < r->max.y; y++)
+    {
+        AI::feed_key(interface_key::CURSOR_DOWN);
+    }
+    for (int16_t z = r->min.z; z < r->max.z; z++)
+    {
+        AI::feed_key(interface_key::CURSOR_UP_Z);
+    }
+
+    AI::feed_key(interface_key::SELECT);
+    auto bld = virtual_cast<df::building_civzonest>(world->buildings.all.back());
     r->bld_id = bld->id;
-    bld->is_room = true;
 
-    bld->zone_flags.bits.active = 1;
+    if (bld->zone_flags.bits.active != 1)
+    {
+        AI::feed_key(interface_key::CIVZONE_ACTIVE);
+    }
+
     if (r->type == room_type::infirmary)
     {
-        bld->zone_flags.bits.hospital = 1;
-        bld->hospital.max_splints = 5;
-        bld->hospital.max_thread = 75000;
-        bld->hospital.max_cloth = 50000;
-        bld->hospital.max_crutches = 5;
-        bld->hospital.max_plaster = 750;
-        bld->hospital.max_buckets = 2;
-        bld->hospital.max_soap = 750;
+        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
     }
     else if (r->type == room_type::garbagedump)
     {
-        bld->zone_flags.bits.garbage_dump = 1;
+        AI::feed_key(interface_key::CIVZONE_DUMP);
     }
     else if (r->type == room_type::pasture)
     {
-        bld->zone_flags.bits.pen_pasture = 1;
-        bld->pit_flags.whole |= 2;
+        AI::feed_key(interface_key::CIVZONE_PEN);
     }
     else if (r->type == room_type::pitcage)
     {
-        bld->zone_flags.bits.pit_pond = 1;
+        AI::feed_key(interface_key::CIVZONE_POND);
+        if (bld->pit_flags.bits.is_pond != 0)
+        {
+            AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
+            AI::feed_key(interface_key::CIVZONE_POND_WATER);
+            AI::feed_key(interface_key::LEAVESCREEN);
+        }
     }
     else if (r->type == room_type::pond)
     {
-        bld->zone_flags.bits.pit_pond = 1;
-        bld->pit_flags.bits.is_pond = 1;
+        AI::feed_key(interface_key::CIVZONE_POND);
+        if (bld->pit_flags.bits.is_pond != 1)
+        {
+            AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
+            AI::feed_key(interface_key::CIVZONE_POND_WATER);
+            AI::feed_key(interface_key::LEAVESCREEN);
+        }
         if (r->temporary && r->workshop && r->workshop->type == room_type::farmplot)
         {
             add_task(task_type::monitor_farm_irrigation, r);
@@ -3164,44 +3184,38 @@ bool Plan::try_construct_activityzone(color_ostream & out, room *r, std::ostream
     }
     else if (r->type == room_type::location)
     {
-        int32_t start_x, start_y, start_z;
-        Gui::getViewCoords(start_x, start_y, start_z);
-
-        AI::feed_key(interface_key::D_CIVZONE);
-
-        df::coord pos = r->pos();
-        Gui::revealInDwarfmodeMap(pos, true);
-        Gui::setCursorCoords(pos.x, pos.y, pos.z);
-
-        AI::feed_key(interface_key::CURSOR_LEFT);
         AI::feed_key(interface_key::CIVZONE_MEETING);
         AI::feed_key(interface_key::ASSIGN_LOCATION);
         AI::feed_key(interface_key::LOCATION_NEW);
-        if (r->location_type == location_type::tavern)
+        bool known = false;
+        switch (r->location_type)
         {
-            AI::feed_key(interface_key::LOCATION_INN_TAVERN);
-        }
-        else if (r->location_type == location_type::library)
-        {
-            AI::feed_key(interface_key::LOCATION_LIBRARY);
-        }
-        else if (r->location_type == location_type::temple)
-        {
-            AI::feed_key(interface_key::LOCATION_TEMPLE);
-            AI::feed_key(interface_key::SELECT); // no specific deity
-        }
-        else
-        {
-            AI::feed_key(interface_key::LEAVESCREEN);
-            AI::feed_key(interface_key::LEAVESCREEN);
-            std::ostringstream str;
-            str << r->location_type;
-            ai->debug(out, "[ERROR] unknown location type: " + str.str());
-        }
-        AI::feed_key(interface_key::LEAVESCREEN);
+            case location_type::tavern:
+                AI::feed_key(interface_key::LOCATION_INN_TAVERN);
+                known = true;
+                break;
+            case location_type::library:
+                AI::feed_key(interface_key::LOCATION_LIBRARY);
+                known = true;
+                break;
+            case location_type::temple:
+                AI::feed_key(interface_key::LOCATION_TEMPLE);
+                AI::feed_key(interface_key::SELECT); // no specific deity
+                known = true;
+                break;
 
-        ai->camera->ignore_pause(start_x, start_y, start_z);
+            case location_type::_location_type_count:
+                break;
+        }
+        if (!known)
+        {
+            AI::feed_key(interface_key::LEAVESCREEN);
+            AI::feed_key(interface_key::LEAVESCREEN);
+        }
     }
+
+    AI::feed_key(interface_key::LEAVESCREEN);
+    ai->camera->ignore_pause(start_x, start_y, start_z);
 
     return true;
 }
@@ -3215,7 +3229,7 @@ bool Plan::monitor_farm_irrigation(color_ostream & out, room *r, std::ostream & 
         return true;
     }
 
-    if (auto pond = virtual_cast<df::building_civzonest *>(r->dfbuilding()))
+    if (auto pond = virtual_cast<df::building_civzonest>(r->dfbuilding()))
     {
         for (auto j : pond->jobs)
         {
