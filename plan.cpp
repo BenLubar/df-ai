@@ -3215,6 +3215,14 @@ bool Plan::monitor_farm_irrigation(color_ostream & out, room *r, std::ostream & 
         return true;
     }
 
+    if (auto pond = virtual_cast<df::building_civzonest *>(r->dfbuilding()))
+    {
+        for (auto j : pond->jobs)
+        {
+            j->flags.bits.do_now = 1;
+        }
+    }
+
     return false;
 }
 
