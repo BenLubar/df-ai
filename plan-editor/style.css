@@ -1,0 +1,165 @@
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	display: flex;
+	flex-direction: row;
+	font-family: sans-serif;
+	overflow: hidden;
+}
+
+html, body, #main, #side {
+	height: 100%;
+	transition: 0.5s box-shadow;
+}
+
+#main:hover, #side:hover {
+	box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
+}
+
+#loading {
+	font-size: 3.5em;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	margin: 0;
+	z-index: 10000;
+}
+
+#main {
+	padding: 10px;
+	flex-grow: 2;
+	flex-basis: 400px;
+	overflow-y: auto;
+}
+
+#side {
+	padding: 10px;
+	min-width: 250px;
+	flex-grow: 1;
+	flex-basis: 250px;
+	overflow-y: auto;
+}
+
+h1 {
+	margin-top: 0;
+}
+
+#save-load {
+	margin-top: 0;
+	display: flex;
+	padding: 0 1.5em;
+	flex-direction: row;
+}
+
+#save-load button {
+	flex-grow: 1;
+	margin: 0 0.5em;
+	font-size: 1.75em;
+}
+
+h2 {
+	margin-bottom: 0;
+}
+
+ul {
+	margin-top: 0;
+	padding-left: 0;
+}
+
+#plans > li, #rooms > li {
+	margin-bottom: 1rem;
+}
+
+li ul {
+	padding-left: 0;
+}
+
+button.add {
+	color: #888;
+	font-size: 1.5rem;
+	line-height: 1rem;
+	background: transparent;
+	border: none;
+	vertical-align: middle;
+}
+
+button.add:hover {
+	color: #080;
+}
+
+button.del {
+	color: #888;
+	font-size: 1.5rem;
+	line-height: 1rem;
+	background: transparent;
+	border: none;
+	vertical-align: middle;
+	width: 1.5rem;
+}
+
+button.del:hover {
+	color: #f00;
+}
+
+#rooms i {
+	margin-left: 1.5rem;
+	display: inline-block;
+}
+
+.in-editor {
+	font-weight: bold;
+}
+
+input[type="number"] {
+	width: 100px;
+	text-align: right;
+}
+
+.field {
+	line-height: 1.5rem;
+	margin-bottom: 0.25rem;
+}
+
+.field:after {
+	display: table;
+	content: '';
+	clear: left;
+}
+
+.field > label {
+	float: left;
+	width: 300px;
+	text-align: right;
+	font-weight: bold;
+	padding-right: 0.5rem;
+	word-wrap: break-word;
+}
+
+.field > br, .field > p, .field > .field {
+	clear: left;
+}
+
+.field > br + input, .field > .field + input, .field > p {
+	margin-left: 300px;
+}
+
+.field > .field > label {
+	margin-left: -200px;
+	width: 400px;
+}
+
+.field > .field, .field > .field > br + input, .field > .field > .field + input, .field > .field > p {
+	margin-left: 200px;
+}
+
+.field > .field > .field {
+	margin-left: 100px;
+}
+
+.field > p {
+	font-style: italic;
+}
