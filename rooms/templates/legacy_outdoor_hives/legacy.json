@@ -1,0 +1,63 @@
+{
+	"f": [
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 1,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 3,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 3,
+			"y": 2,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [0, 0, 0],
+			"max": [3, 2, 0],
+			"outdoor": true,
+			"comment": "hives",
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7]
+		}
+	]
+}
