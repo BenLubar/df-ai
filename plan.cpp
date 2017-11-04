@@ -5847,7 +5847,11 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
         }
         break;
     case tile_dig_designation::DownStair:
-        if (ts != tiletype_shape::STAIR_DOWN)
+        if (ts == tiletype_shape::FLOOR)
+        {
+            dig_tile(t, tile_dig_designation::DownStair);
+        }
+        else if (ts != tiletype_shape::STAIR_DOWN)
         {
             fixup_open_helper(out, r, t, construction_type::DownStair, f, *tt);
         }
