@@ -10,6 +10,7 @@
 
 #include "df/activity_event_conflictst.h"
 #include "df/creature_interaction_effect_body_transformationst.h"
+#include "df/creature_raw.h"
 #include "df/graphic.h"
 #include "df/interfacest.h"
 #include "df/job.h"
@@ -111,6 +112,7 @@ void Camera::update(color_ostream &)
         return;
     }
 
+    std::vector<df::unit *> targets0;
     std::vector<df::unit *> targets1;
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
@@ -118,8 +120,23 @@ void Camera::update(color_ostream &)
         df::tile_designation *td = Maps::getTileDesignation(Units::getPosition(u));
         if (u->flags1.bits.dead || !td || td->bits.hidden)
             continue;
-        if (u->flags1.bits.marauder ||
+        df::creature_raw *race = df::creature_raw::find(u->race);
+        if (race &&
+            (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
+                race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
+                race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
+                race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
+                race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
+                race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
+                race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))
+        {
+            targets0.push_back(u);
+        }
+        else if (u->flags1.bits.marauder ||
+            u->flags1.bits.zombie ||
+            u->flags1.bits.skeleton ||
             u->flags1.bits.active_invader ||
+            u->flags2.bits.underworld ||
             u->flags2.bits.visitor_uninvited ||
             AI::is_in_conflict(u, [](df::activity_event_conflictst *c) -> bool
             {
@@ -136,18 +153,19 @@ void Camera::update(color_ostream &)
                 return false;
             }) ||
             std::find_if(u->syndromes.active.begin(), u->syndromes.active.end(), [](df::unit_syndrome *us) -> bool
-        {
-            auto & s = df::syndrome::find(us->type)->ce;
-            return std::find_if(s.begin(), s.end(), [](df::creature_interaction_effect *ce) -> bool
             {
-                return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
-            }) != s.end();
-        }) != u->syndromes.active.end())
+                auto & s = df::syndrome::find(us->type)->ce;
+                return std::find_if(s.begin(), s.end(), [](df::creature_interaction_effect *ce) -> bool
+                {
+                    return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
+                }) != s.end();
+            }) != u->syndromes.active.end())
         {
             targets1.push_back(u);
         }
     }
     auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(0, n - 1)(ai->rng); };
+    std::random_shuffle(targets0.begin(), targets0.end(), rnd_shuffle);
     std::random_shuffle(targets1.begin(), targets1.end(), rnd_shuffle);
     std::vector<df::unit *> targets2;
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
@@ -233,13 +251,14 @@ void Camera::update(color_ostream &)
     }
 
     targets1.erase(targets1.begin(), targets1.begin() + targets1_count);
-    targets1.insert(targets1.end(), targets2.begin(), targets2.end());
+    targets0.insert(targets0.end(), targets1.begin(), targets1.end());
+    targets0.insert(targets0.end(), targets2.begin(), targets2.end());
 
     df::unit *following_unit = nullptr;
     following = -1;
-    if (!targets1.empty())
+    if (!targets0.empty())
     {
-        for (auto it = targets1.begin(); it != targets1.end(); it++)
+        for (auto it = targets0.begin(); it != targets0.end(); it++)
         {
             df::unit *u = *it;
             if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end() && !u->flags1.bits.caged)
@@ -251,7 +270,7 @@ void Camera::update(color_ostream &)
         }
         if (following == -1)
         {
-            following_unit = targets1[std::uniform_int_distribution<size_t>(0, targets1.size() - 1)(ai->rng)];
+            following_unit = targets0[std::uniform_int_distribution<size_t>(0, targets0.size() - 1)(ai->rng)];
             following = following_unit->id;
         }
     }
