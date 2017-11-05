@@ -53,7 +53,7 @@
 			"min": [0, 0, 0],
 			"max": [2, 2, 0],
 			"accesspath": [4],
-			"has_users": true,
+			"has_users": 13,
 			"require_walls": false,
 			"exits": [
 				["legacy_underground_farms_cloth", 3, 0, 0]
@@ -65,7 +65,7 @@
 			"min": [0, 3, 0],
 			"max": [2, 5, 0],
 			"accesspath": [0, 6],
-			"has_users": true,
+			"has_users": 13,
 			"require_walls": false
 		},
 		{
@@ -74,7 +74,7 @@
 			"min": [0, 6, 0],
 			"max": [2, 8, 0],
 			"accesspath": [1, 8],
-			"has_users": true,
+			"has_users": 13,
 			"require_walls": false
 		},
 		{

@@ -749,7 +749,7 @@ void Plan::save(std::ostream & out)
         r["stock_disable"] = r_stock_disable;
         r["stock_specific1"] = (*it)->stock_specific1;
         r["stock_specific2"] = (*it)->stock_specific2;
-        r["has_users"] = (*it)->has_users;
+        r["has_users"] = Json::LargestUInt((*it)->has_users);
         r["furnished"] = (*it)->furnished;
         r["queue_dig"] = (*it)->queue_dig;
         r["temporary"] = (*it)->temporary;
@@ -782,7 +782,7 @@ void Plan::save(std::ostream & out)
             f_users.append(Json::Int(*it_));
         }
         f["users"] = f_users;
-        f["has_users"] = (*it)->has_users;
+        f["has_users"] = Json::LargestUInt((*it)->has_users);
         f["ignore"] = (*it)->ignore;
         f["makeroom"] = (*it)->makeroom;
         f["internal"] = (*it)->internal;
@@ -1030,7 +1030,29 @@ void Plan::load(std::istream & in)
         }
         (*it)->stock_specific1 = r["stock_specific1"].asBool();
         (*it)->stock_specific2 = r["stock_specific2"].asBool();
-        (*it)->has_users = r["has_users"].asBool();
+        if (r["has_users"].isBool())
+        {
+            if (r["has_users"].asBool())
+            {
+                switch ((*it)->type)
+                {
+                    case room_type::farmplot:
+                        (*it)->has_users = 13;
+                        break;
+                    default:
+                        (*it)->has_users = 1;
+                        break;
+                }
+            }
+            else
+            {
+                (*it)->has_users = 0;
+            }
+        }
+        else
+        {
+            (*it)->has_users = size_t(r["has_users"].asLargestUInt());
+        }
         (*it)->furnished = r["furnished"].asBool();
         (*it)->queue_dig = r["queue_dig"].asBool();
         (*it)->temporary = r["temporary"].asBool();
@@ -1175,7 +1197,38 @@ void Plan::load(std::istream & in)
             ai->pop->citizen.insert(it_->asInt());
             (*it)->users.insert(it_->asInt());
         }
-        (*it)->has_users = f["has_users"].asBool();
+        if (f["has_users"].isBool())
+        {
+            if (f["has_users"].asBool())
+            {
+                switch ((*it)->type)
+                {
+                    case layout_type::archery_target:
+                        (*it)->has_users = 10;
+                        break;
+                    case layout_type::weapon_rack:
+                        (*it)->has_users = 4;
+                        break;
+                    case layout_type::chair:
+                        (*it)->has_users = 2;
+                        break;
+                    case layout_type::table:
+                        (*it)->has_users = 2;
+                        break;
+                    default:
+                        (*it)->has_users = 1;
+                        break;
+                }
+            }
+            else
+            {
+                (*it)->has_users = 0;
+            }
+        }
+        else
+        {
+            (*it)->has_users = size_t(f["has_users"].asLargestUInt());
+        }
         (*it)->ignore = f["ignore"].asBool();
         (*it)->makeroom = f["makeroom"].asBool();
         (*it)->internal = f["internal"].asBool();
@@ -1706,11 +1759,9 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
 
     if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
     {
-        df::coord size = r_->size();
         return r_->farm_type == farm_type::food &&
             !r_->outdoor &&
-            int32_t(r_->users.size()) < size.x * size.y *
-            dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+            r_->users.size() < r_->has_users;
     }))
     {
         wantdig(out, r);
@@ -1719,11 +1770,9 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
 
     if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
     {
-        df::coord size = r_->size();
         return r_->farm_type == farm_type::cloth &&
             !r_->outdoor &&
-            int32_t(r_->users.size()) < size.x * size.y *
-            dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+            r_->users.size() < r_->has_users;
     }))
     {
         wantdig(out, r);
@@ -1732,11 +1781,9 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
 
     if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
     {
-        df::coord size = r_->size();
         return r_->farm_type == farm_type::food &&
             r_->outdoor &&
-            int32_t(r_->users.size()) < size.x * size.y *
-            dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+            r_->users.size() < r_->has_users;
     }))
     {
         wantdig(out, r);
@@ -1745,11 +1792,9 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
 
     if (room *r = find_room(room_type::farmplot, [](room *r_) -> bool
     {
-        df::coord size = r_->size();
         return r_->farm_type == farm_type::cloth &&
             r_->outdoor &&
-            int32_t(r_->users.size()) < size.x * size.y *
-            dwarves_per_farmtile_num / dwarves_per_farmtile_den;
+            r_->users.size() < r_->has_users;
     }))
     {
         wantdig(out, r);
@@ -1761,7 +1806,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         for (auto it = r_->layout.begin(); it != r_->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->has_users && f->users.size() < dwarves_per_table)
+            if (f->has_users && f->users.size() < f->has_users)
                 return true;
         }
         return false;
@@ -1771,7 +1816,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->type == layout_type::table && f->users.size() < dwarves_per_table)
+            if (f->type == layout_type::table && f->users.size() < f->has_users)
             {
                 f->ignore = false;
                 f->users.insert(id);
@@ -1781,7 +1826,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
-            if (f->type == layout_type::chair && f->users.size() < dwarves_per_table)
+            if (f->type == layout_type::chair && f->users.size() < f->has_users)
             {
                 f->ignore = false;
                 f->users.insert(id);
@@ -1870,7 +1915,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         }
         for (auto f : r->layout)
         {
-            if (f->type == type && (type == layout_type::archery_target || f->users.size() < (type == layout_type::weapon_rack ? 4 : 1)))
+            if (f->type == type && f->users.size() < f->has_users)
             {
                 f->users.insert(id);
                 f->ignore = false;
@@ -1933,7 +1978,7 @@ void Plan::getcoffin(color_ostream & out)
             furniture *f = *it;
             if (f->type == layout_type::coffin && f->users.empty())
             {
-                f->users.insert(0);
+                f->users.insert(-1);
                 f->ignore = false;
                 break;
             }
@@ -5481,12 +5526,21 @@ std::string Plan::describe_room(room *r, bool html)
 
     if (r->has_users)
     {
-        s << " (" << r->users.size() << " users";
-        if (!r->users.empty() && html)
+        size_t users_count = r->users.size();
+        if (r->users.count(-1))
+        {
+            users_count--;
+        }
+        s << " (" << users_count << " users";
+        if (users_count != 0 && html)
         {
             bool first = true;
             for (auto u : r->users)
             {
+                if (u == -1)
+                {
+                    continue;
+                }
                 if (first)
                 {
                     s << ": ";
@@ -5549,12 +5603,21 @@ std::string Plan::describe_furniture(furniture *f, bool html)
 
     if (f->has_users)
     {
-        s << " (" << f->users.size() << " users";
-        if (!f->users.empty() && html)
+        size_t users_count = f->users.size();
+        if (f->users.count(-1))
+        {
+            users_count--;
+        }
+        s << " (" << users_count << " users";
+        if (users_count != 0 && html)
         {
             bool first = true;
             for (auto u : f->users)
             {
+                if (u == -1)
+                {
+                    continue;
+                }
                 if (first)
                 {
                     s << ": ";

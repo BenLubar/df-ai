@@ -5,6 +5,7 @@
 			"min": [-5, -5, 0],
 			"max": [5, 5, 0],
 			"outdoor": true,
+			"has_users": 9999,
 			"require_grass": 64
 		}
 	]

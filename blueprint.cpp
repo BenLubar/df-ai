@@ -108,7 +108,7 @@ static bool apply_enum_set(std::set<enum_t> & var, Json::Value & data, const std
 }
 
 template<typename int_t>
-static bool apply_int(int_t & var, Json::Value & data, const std::string & name, std::string & error)
+static bool apply_int(int_t & var, Json::Value & data, const std::string & name, std::string & error, int_t min_value = std::numeric_limits<int_t>::min(), int_t max_value = std::numeric_limits<int_t>::max())
 {
     Json::Value value = data.removeMember(name);
     if (!value.isIntegral())
@@ -119,7 +119,13 @@ static bool apply_int(int_t & var, Json::Value & data, const std::string & name,
 
     if (std::is_unsigned<int_t>::value)
     {
-        if (value.asLargestUInt() > std::numeric_limits<int_t>::max())
+        if (value.asLargestUInt() < min_value)
+        {
+            error = name + " is too small!";
+            return false;
+        }
+
+        if (value.asLargestUInt() > max_value)
         {
             error = name + " is too big!";
             return false;
@@ -129,13 +135,13 @@ static bool apply_int(int_t & var, Json::Value & data, const std::string & name,
     }
     else
     {
-        if (value.asLargestInt() < std::numeric_limits<int_t>::min())
+        if (value.asLargestInt() < min_value)
         {
             error = name + " is too small!";
             return false;
         }
 
-        if (value.asLargestInt() > std::numeric_limits<int_t>::max())
+        if (value.asLargestInt() > max_value)
         {
             error = name + " is too big!";
             return false;
@@ -304,7 +310,7 @@ room_base::furniture_t::furniture_t() :
     pos(0, 0, 0),
     has_target(false),
     target(),
-    has_users(false),
+    has_users(0),
     ignore(false),
     makeroom(false),
     internal(false),
@@ -354,7 +360,7 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
         return false;
     }
 
-    if (data.isMember("has_users") && !apply_bool(has_users, data, "has_users", error))
+    if (data.isMember("has_users") && !apply_int(has_users, data, "has_users", error))
     {
         return false;
     }
@@ -443,7 +449,7 @@ room_base::room_t::room_t() :
     stock_disable(),
     stock_specific1(false),
     stock_specific2(false),
-    has_users(false),
+    has_users(0),
     temporary(false),
     outdoor(false),
     single_biome(false),
@@ -651,7 +657,7 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
 
-    if (data.isMember("has_users") && !apply_bool(has_users, data, "has_users", error))
+    if (data.isMember("has_users") && !apply_int(has_users, data, "has_users", error))
     {
         return false;
     }

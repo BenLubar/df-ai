@@ -316,7 +316,7 @@ room::room(room_type::type type, df::coord mins, df::coord maxs, std::string com
     stock_disable(),
     stock_specific1(false),
     stock_specific2(false),
-    has_users(false),
+    has_users(0),
     furnished(false),
     queue_dig(false),
     temporary(false),

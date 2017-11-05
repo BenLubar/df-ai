@@ -75,7 +75,7 @@ struct room_base
         bool has_target;
         layoutindex_t target;
 
-        bool has_users;
+        size_t has_users;
         bool ignore;
         bool makeroom;
         bool internal;
@@ -127,7 +127,7 @@ struct room_base
         bool stock_specific1;
         bool stock_specific2;
 
-        bool has_users;
+        size_t has_users;
         bool temporary;
         bool outdoor;
         bool single_biome;

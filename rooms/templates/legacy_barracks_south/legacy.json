@@ -11,7 +11,7 @@
 			"x": 5,
 			"y": 0,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -19,7 +19,7 @@
 			"x": 6,
 			"y": 0,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -27,7 +27,7 @@
 			"x": 0,
 			"y": 0,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -35,7 +35,7 @@
 			"x": 1,
 			"y": 0,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -43,7 +43,7 @@
 			"x": 5,
 			"y": 1,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -51,7 +51,7 @@
 			"x": 6,
 			"y": 1,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -59,7 +59,7 @@
 			"x": 0,
 			"y": 1,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -67,7 +67,7 @@
 			"x": 1,
 			"y": 1,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -75,7 +75,7 @@
 			"x": 5,
 			"y": 2,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -83,7 +83,7 @@
 			"x": 6,
 			"y": 2,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -91,7 +91,7 @@
 			"x": 0,
 			"y": 2,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -99,7 +99,7 @@
 			"x": 1,
 			"y": 2,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -107,7 +107,7 @@
 			"x": 5,
 			"y": 3,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -115,7 +115,7 @@
 			"x": 6,
 			"y": 3,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -123,7 +123,7 @@
 			"x": 0,
 			"y": 3,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -131,7 +131,7 @@
 			"x": 1,
 			"y": 3,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -139,7 +139,7 @@
 			"x": 5,
 			"y": 4,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -147,7 +147,7 @@
 			"x": 6,
 			"y": 4,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -155,7 +155,7 @@
 			"x": 0,
 			"y": 4,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -163,7 +163,7 @@
 			"x": 1,
 			"y": 4,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -171,7 +171,7 @@
 			"x": 5,
 			"y": 5,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -179,7 +179,7 @@
 			"x": 6,
 			"y": 5,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -187,7 +187,7 @@
 			"x": 0,
 			"y": 5,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -195,7 +195,7 @@
 			"x": 1,
 			"y": 5,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -203,7 +203,7 @@
 			"x": 5,
 			"y": 6,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -211,7 +211,7 @@
 			"x": 6,
 			"y": 6,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -219,7 +219,7 @@
 			"x": 0,
 			"y": 6,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -227,7 +227,7 @@
 			"x": 1,
 			"y": 6,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -235,7 +235,7 @@
 			"x": 5,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -243,7 +243,7 @@
 			"x": 6,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -251,7 +251,7 @@
 			"x": 0,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -259,7 +259,7 @@
 			"x": 1,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 1,
 			"ignore": true
 		},
 		{
@@ -267,7 +267,7 @@
 			"x": 4,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 5,
 			"makeroom": true
 		},
 		{
@@ -275,7 +275,7 @@
 			"x": 2,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 5,
 			"ignore": true
 		},
 		{
@@ -283,7 +283,7 @@
 			"x": 3,
 			"y": 7,
 			"z": 0,
-			"has_users": true,
+			"has_users": 10,
 			"ignore": true
 		}
 	],

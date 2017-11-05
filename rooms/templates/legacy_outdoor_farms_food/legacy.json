@@ -5,7 +5,7 @@
 			"farm_type": "food",
 			"min": [-1, -1, 0],
 			"max": [1, 1, 0],
-			"has_users": true,
+			"has_users": 13,
 			"outdoor": true,
 			"single_biome": true,
 			"require_grass": 9

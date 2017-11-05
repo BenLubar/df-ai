@@ -31,10 +31,10 @@ static furniture *new_furniture(layout_type::type type, int16_t x, int16_t y)
     return f;
 }
 
-static furniture *new_furniture_with_users(layout_type::type type, int16_t x, int16_t y, bool ignore = false)
+static furniture *new_furniture_with_users(layout_type::type type, int16_t x, int16_t y, int32_t users_count, bool ignore = false)
 {
     furniture *f = new_furniture(type, x, y);
-    f->has_users = true;
+    f->has_users = users_count;
     f->ignore = ignore;
     return f;
 }
@@ -1020,8 +1020,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tmp->temporary = true;
     for (int16_t dy = 0; dy <= 2; dy++)
     {
-        tmp->layout.push_back(new_furniture_with_users(layout_type::table, 0, dy));
-        tmp->layout.push_back(new_furniture_with_users(layout_type::chair, 1, dy));
+        tmp->layout.push_back(new_furniture_with_users(layout_type::table, 0, dy, 2));
+        tmp->layout.push_back(new_furniture_with_users(layout_type::chair, 1, dy, 2));
     }
     tmp->layout[0]->makeroom = true;
     tmp->accesspath.push_back(old_cor);
@@ -1056,8 +1056,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             {
                 for (int16_t sy = -1; sy <= 1; sy += 2)
                 {
-                    dinner->layout.push_back(new_furniture_with_users(layout_type::table, *dx, 3 + dy * sy * 1, true));
-                    dinner->layout.push_back(new_furniture_with_users(layout_type::chair, *dx, 3 + dy * sy * 2, true));
+                    dinner->layout.push_back(new_furniture_with_users(layout_type::table, *dx, 3 + dy * sy * 1, 2, true));
+                    dinner->layout.push_back(new_furniture_with_users(layout_type::chair, *dx, 3 + dy * sy * 2, 2, true));
                 }
             }
             for (auto f = dinner->layout.begin(); f != dinner->layout.end(); f++)
@@ -1185,7 +1185,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t dy = -1; dy <= 1; dy += 2)
             {
                 room *r = new room(dy > 0 ? farm_type::cloth : farm_type::food, df::coord(cx + farm_w * dx, cy + dy * 2 + dy * ddy * farm_h, cz2), df::coord(cx + farm_w * dx + farm_w - 1, cy + dy * (2 + farm_h - 1) + dy * ddy * farm_h, cz2));
-                r->has_users = true;
+                r->has_users = 13;
                 if (dx == 0 && ddy == 0)
                 {
                     r->layout.push_back(new_door(1, dy > 0 ? -1 : farm_h));
@@ -1319,7 +1319,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                 {
                     for (int16_t dy = 0; dy < 2; dy++)
                     {
-                        cemetary->layout.push_back(new_furniture_with_users(layout_type::coffin, dx + 1 - rx, dy + 1, true));
+                        cemetary->layout.push_back(new_furniture_with_users(layout_type::coffin, dx + 1 - rx, dy + 1, 1, true));
                     }
                 }
                 if (rx == 0 && ry == 0 && rrx == 0)
@@ -1355,15 +1355,15 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t dy_ = 0; dy_ < 8; dy_++)
             {
                 int16_t dy = ry < 0 ? 7 - dy_ : dy_;
-                barracks->layout.push_back(new_furniture_with_users(layout_type::armor_stand, 5, dy, true));
-                barracks->layout.push_back(new_furniture_with_users(layout_type::bed, 6, dy, true));
-                barracks->layout.push_back(new_furniture_with_users(layout_type::cabinet, 0, dy, true));
-                barracks->layout.push_back(new_furniture_with_users(layout_type::chest, 1, dy, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::armor_stand, 5, dy, 1, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::bed, 6, dy, 1, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::cabinet, 0, dy, 1, true));
+                barracks->layout.push_back(new_furniture_with_users(layout_type::chest, 1, dy, 1, true));
             }
-            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 4, ry > 0 ? 7 : 0, false));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 4, ry > 0 ? 7 : 0, 5, false));
             barracks->layout.back()->makeroom = true;
-            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 2, ry > 0 ? 7 : 0, true));
-            barracks->layout.push_back(new_furniture_with_users(layout_type::archery_target, 3, ry > 0 ? 7 : 0, true));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 2, ry > 0 ? 7 : 0, 5, true));
+            barracks->layout.push_back(new_furniture_with_users(layout_type::archery_target, 3, ry > 0 ? 7 : 0, 10, true));
             barracks->accesspath.push_back(cor);
             rooms.push_back(barracks);
         }
@@ -1587,7 +1587,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
         if (ok && floortile >= 9 * 9 && grasstile >= 8 * 8)
         {
             room *r = new room(room_type::pasture, sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
-            r->has_users = true;
+            r->has_users = 10000;
             rooms.push_back(r);
             want--;
         }
@@ -1640,7 +1640,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
             }
         }
         room *r = new room(want % 2 == 0 ? farm_type::food : farm_type::cloth, sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
-        r->has_users = true;
+        r->has_users = 13;
         r->outdoor = true;
         rooms.push_back(r);
         want--;

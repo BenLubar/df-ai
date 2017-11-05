@@ -303,7 +303,7 @@ struct room
     std::set<df::stockpile_list> stock_disable;
     bool stock_specific1;
     bool stock_specific2;
-    bool has_users;
+    size_t has_users;
     bool furnished;
     bool queue_dig;
     bool temporary;
@@ -358,7 +358,7 @@ struct furniture
     df::coord pos;
     furniture *target;
     std::set<int32_t> users;
-    bool has_users;
+    size_t has_users;
     bool ignore;
     bool makeroom;
     bool internal;
@@ -372,7 +372,7 @@ struct furniture
         pos(0, 0, 0),
         target(nullptr),
         users(),
-        has_users(false),
+        has_users(0),
         ignore(false),
         makeroom(false),
         internal(false),
