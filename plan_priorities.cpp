@@ -114,6 +114,11 @@ PLAN_PRIORITY_ENUMS
 
 bool plan_priority_t::room_filter_t::is_match(room * const & obj) const
 {
+    if (!obj)
+    {
+        return false;
+    }
+
     ROOM_FILTER_PROPERTIES
 
     return true;
@@ -121,6 +126,11 @@ bool plan_priority_t::room_filter_t::is_match(room * const & obj) const
 
 bool plan_priority_t::furniture_filter_t::is_match(furniture * const & obj) const
 {
+    if (!obj)
+    {
+        return false;
+    }
+
     FURNITURE_FILTER_PROPERTIES
 
     return true;

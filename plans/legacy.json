@@ -481,7 +481,7 @@
 				"status": "plan",
 				"type": "stockpile",
 				"level": 1,
-				"workshop": null
+				"workshop_not": {}
 			}
 		},
 		{
@@ -490,7 +490,7 @@
 				"status": "plan",
 				"type": "stockpile",
 				"level": 2,
-				"workshop": null
+				"workshop_not": {}
 			}
 		},
 		{
@@ -523,7 +523,7 @@
 				"match": {
 					"status_not": "plan",
 					"type": "dininghall",
-					"layout_count": {
+					"layout": {
 						"match": {
 							"has_users": [1, null],
 							"users": 0
@@ -536,7 +536,7 @@
 			"match": {
 				"status": "plan",
 				"type": "dininghall",
-				"layout_count": {
+				"layout": {
 					"match": {
 						"has_users": [1, null],
 						"users": 0
@@ -551,7 +551,7 @@
 				"match": {
 					"status_not": "plan",
 					"type": "barracks",
-					"layout_count": {
+					"layout": {
 						"match": {
 							"has_users": [1, null],
 							"users": 0
@@ -564,7 +564,7 @@
 			"match": {
 				"status": "plan",
 				"type": "barracks",
-				"layout_count": {
+				"layout": {
 					"match": {
 						"has_users": [1, null],
 						"users": 0
