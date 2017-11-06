@@ -20,6 +20,7 @@
 #include "df/world_data.h"
 
 REQUIRE_GLOBAL(cur_year);
+REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(standing_orders_gather_refuse_outside);
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
@@ -290,12 +291,14 @@ bool Embark::update(color_ostream & out)
                 return false;
             }
             ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
-            for (int32_t i = 0; i < *cur_year; i++)
-            {
-                // Don't embark on the same region every time.
-                ai->rng();
-            }
-            df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(ai->rng)];
+            // Don't embark on the same region every time.
+            std::vector<std::seed_seq::result_type> seeds;
+            seeds.push_back(std::seed_seq::result_type(ai->rng()));
+            seeds.push_back(std::seed_seq::result_type(*cur_year));
+            seeds.push_back(std::seed_seq::result_type(*cur_year_tick));
+            std::seed_seq seeds_seq(seeds.begin(), seeds.end());
+            std::mt19937 rng(seeds_seq);
+            df::coord2d site = sites[std::uniform_int_distribution<size_t>(0, sites.size() - 1)(rng)];
             df::coord2d diff = site - start;
 
             if (diff.x >= 0)
