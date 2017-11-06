@@ -113,13 +113,13 @@ static bool apply_int(int_t & var, Json::Value & data, const std::string & name,
 
     if (std::is_unsigned<int_t>::value)
     {
-        if (value.asLargestUInt() < min_value)
+        if (value.asLargestUInt() < Json::LargestUInt(min_value))
         {
             error = name + " is too small!";
             return false;
         }
 
-        if (value.asLargestUInt() > max_value)
+        if (value.asLargestUInt() > Json::LargestUInt(max_value))
         {
             error = name + " is too big!";
             return false;
@@ -129,13 +129,13 @@ static bool apply_int(int_t & var, Json::Value & data, const std::string & name,
     }
     else
     {
-        if (value.asLargestInt() < min_value)
+        if (value.asLargestInt() < Json::LargestInt(min_value))
         {
             error = name + " is too small!";
             return false;
         }
 
-        if (value.asLargestInt() > max_value)
+        if (value.asLargestInt() > Json::LargestInt(max_value))
         {
             error = name + " is too big!";
             return false;
