@@ -36,7 +36,7 @@ SET(PROJECT_SRCS
     hooks.cpp
     population.cpp
     plan.cpp
-    plan_blueprint.cpp
+    plan_legacy.cpp
     plan_priorities.cpp
     blueprint.cpp
     stocks.cpp
@@ -54,7 +54,6 @@ SET(PROJECT_HDRS
     hooks.h
     population.h
     plan.h
-    plan_blueprint.h
     plan_priorities.h
     blueprint.h
     stocks.h
@@ -83,5 +82,5 @@ ENDIF()
 
 DFHACK_PLUGIN(df-ai ${PROJECT_SRCS} LINK_LIBRARIES ${PROJECT_LIBS} COMPILE_FLAGS_GCC "-Wall -Wextra -Werror" COMPILE_FLAGS_MSVC "/W3")
 
-INSTALL(DIRECTORY rooms/ DESTINATION df-ai-blueprints/rooms)
-INSTALL(DIRECTORY plans/ DESTINATION df-ai-blueprints/plans)
+INSTALL(DIRECTORY rooms/ DESTINATION df-ai-blueprints/rooms FILES_MATCHING PATTERN "*.json")
+INSTALL(DIRECTORY plans/ DESTINATION df-ai-blueprints/plans FILES_MATCHING PATTERN "*.json")

@@ -106,6 +106,7 @@ public:
     void del_citizen(color_ostream & out, int32_t uid);
 
     bool checkidle(color_ostream & out, std::ostream & reason);
+    void checkidle_legacy(color_ostream & out, std::ostream & reason);
     void idleidle(color_ostream & out);
 
     void checkrooms(color_ostream & out);
@@ -201,7 +202,26 @@ public:
         return spiral_search(t, 100, 0, 1, b);
     }
 
-#include "plan_blueprint.h"
+    command_result setup_ready(color_ostream & out);
+    command_result setup_blueprint(color_ostream & out);
+    command_result setup_blueprint_legacy(color_ostream & out);
+
+    command_result scan_fort_entrance(color_ostream & out);
+    command_result scan_fort_body(color_ostream & out);
+    command_result setup_blueprint_rooms(color_ostream & out);
+    command_result setup_blueprint_workshops(color_ostream & out, df::coord f, const std::vector<room *> & entr);
+    command_result setup_blueprint_stockpiles(color_ostream & out, df::coord f, const std::vector<room *> & entr);
+    command_result setup_blueprint_pitcage(color_ostream & out);
+    command_result setup_blueprint_utilities(color_ostream & out, df::coord f, const std::vector<room *> & entr);
+    command_result setup_blueprint_cistern_fromsource(color_ostream & out, df::coord src, df::coord f, room *tavern);
+    command_result setup_blueprint_pastures(color_ostream & out);
+    command_result setup_blueprint_outdoor_farms(color_ostream & out, size_t want);
+    command_result setup_blueprint_bedrooms(color_ostream & out, df::coord f, const std::vector<room *> & entr, int level);
+    command_result setup_outdoor_gathering_zones(color_ostream & out);
+    command_result setup_blueprint_caverns(color_ostream & out);
+    command_result setup_blueprint_stockpiles_overflow(color_ostream & out, df::coord f, const std::vector<room *> & entr);
+
+    std::vector<room *> find_corridor_tosurface(color_ostream & out, corridor_type::type type, df::coord origin);
 
     bool map_tile_in_rock(df::coord tile);
     bool map_tile_nocavern(df::coord tile);
@@ -245,12 +265,5 @@ struct farm_allowed_materials_t
     farm_allowed_materials_t();
 };
 extern farm_allowed_materials_t farm_allowed_materials;
-
-extern const size_t dwarves_per_table;
-extern const int32_t dwarves_per_farmtile_num;
-extern const int32_t dwarves_per_farmtile_den;
-extern const size_t wantdig_max;
-extern const int32_t spare_bedroom;
-extern const int32_t extra_farms;
 
 // vim: et:sw=4:ts=4
