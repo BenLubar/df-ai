@@ -465,7 +465,7 @@
 				"match": {
 					"status_not": "plan",
 					"type": "bedroom",
-					"owned": false
+					"has_owner": false
 				},
 				"is": [0, 2]
 			},
