@@ -1,6 +1,7 @@
 #include "ai.h"
 #include "blueprint.h"
 #include "plan.h"
+#include "apply.h"
 
 #include "modules/Filesystem.h"
 #include "modules/Maps.h"
@@ -12,160 +13,6 @@
 #include "df/world.h"
 
 REQUIRE_GLOBAL(world);
-
-template<typename idx_t>
-static bool apply_index(bool & has_idx, idx_t & idx, Json::Value & data, const std::string & name, std::string & error)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isInt())
-    {
-        error = name + " has wrong type (should be integer)";
-        return false;
-    }
-
-    if (value.asInt() < 0)
-    {
-        error = name + " cannot be negative";
-        return false;
-    }
-
-    has_idx = true;
-    idx = idx_t(value.asInt());
-
-    return true;
-}
-
-template<typename idx_t>
-static bool apply_indexes(std::vector<idx_t> & idx, Json::Value & data, const std::string & name, std::string & error)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isInt(); }) != value.end())
-    {
-        error = name + " has wrong type (should be array of integers)";
-        return false;
-    }
-
-    for (auto & i : value)
-    {
-        if (i.asInt() < 0)
-        {
-            error = name + " cannot be negative";
-            return false;
-        }
-
-        idx.push_back(idx_t(i.asInt()));
-    }
-
-    return true;
-}
-
-template<typename enum_t>
-static bool apply_enum(enum_t & var, Json::Value & data, const std::string & name, std::string & error)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isString())
-    {
-        error = name + " has wrong type (should be string)";
-        return false;
-    }
-
-    if (find_enum_item(&var, value.asString()))
-    {
-        return true;
-    }
-
-    error = "invalid " + name + " (" + value.asString() + ")";
-    return false;
-}
-
-template<typename enum_t>
-static bool apply_enum_set(std::set<enum_t> & var, Json::Value & data, const std::string & name, std::string & error)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isString(); }) != value.end())
-    {
-        error = name + " has wrong type (should be array of strings)";
-        return false;
-    }
-
-    for (auto & i : value)
-    {
-        enum_t e;
-        if (!find_enum_item(&e, i.asString()))
-        {
-            error = "invalid " + name + " (" + i.asString() + ")";
-            return false;
-        }
-
-        if (!var.insert(e).second)
-        {
-            error = "duplicate " + name + " (" + i.asString() + ")";
-            return false;
-        }
-    }
-
-    return true;
-}
-
-template<typename int_t>
-static bool apply_int(int_t & var, Json::Value & data, const std::string & name, std::string & error, int_t min_value = std::numeric_limits<int_t>::min(), int_t max_value = std::numeric_limits<int_t>::max())
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isIntegral())
-    {
-        error = name + " has wrong type (should be integer)";
-        return false;
-    }
-
-    if (std::is_unsigned<int_t>::value)
-    {
-        if (value.asLargestUInt() < min_value)
-        {
-            error = name + " is too small!";
-            return false;
-        }
-
-        if (value.asLargestUInt() > max_value)
-        {
-            error = name + " is too big!";
-            return false;
-        }
-
-        var = int_t(value.asLargestUInt());
-    }
-    else
-    {
-        if (value.asLargestInt() < min_value)
-        {
-            error = name + " is too small!";
-            return false;
-        }
-
-        if (value.asLargestInt() > max_value)
-        {
-            error = name + " is too big!";
-            return false;
-        }
-
-        var = int_t(value.asLargestInt());
-    }
-
-    return true;
-}
-
-static bool apply_bool(bool & var, Json::Value & data, const std::string & name, std::string & error)
-{
-    Json::Value value = data.removeMember(name);
-    if (!value.isBool())
-    {
-        error = name + " has wrong type (should be true or false)";
-        return false;
-    }
-
-    var = value.asBool();
-
-    return true;
-}
 
 static bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append = false)
 {
@@ -385,22 +232,7 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
         return false;
     }
 
-    std::vector<std::string> remaining_members(data.getMemberNames());
-    if (remaining_members.empty())
-    {
-        return true;
-    }
-
-    error = "";
-    const char *before = "unhandled furniture properties: ";
-    for (auto & m : remaining_members)
-    {
-        error += before;
-        error += m;
-        before = ", ";
-    }
-
-    return false;
+    return apply_unhandled_properties(data, "furniture", error);
 }
 
 void room_base::furniture_t::shift(room_base::layoutindex_t layout_start, room_base::roomindex_t)
@@ -691,22 +523,7 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
 
-    std::vector<std::string> remaining_members(data.getMemberNames());
-    if (remaining_members.empty())
-    {
-        return true;
-    }
-
-    error = "";
-    const char *before = "unhandled room properties: ";
-    for (auto & m : remaining_members)
-    {
-        error += before;
-        error += m;
-        before = ", ";
-    }
-
-    return false;
+    return apply_unhandled_properties(data, "room", error);
 }
 
 void room_base::room_t::shift(room_base::layoutindex_t layout_start, room_base::roomindex_t room_start)
@@ -817,22 +634,7 @@ bool room_base::apply(Json::Value data, std::string & error, bool allow_placehol
         return false;
     }
 
-    std::vector<std::string> remaining_members(data.getMemberNames());
-    if (remaining_members.empty())
-    {
-        return true;
-    }
-
-    error = "";
-    const char *before = "unhandled properties: ";
-    for (auto & m : remaining_members)
-    {
-        error += before;
-        error += m;
-        before = ", ";
-    }
-
-    return false;
+    return apply_unhandled_properties(data, "", error);
 }
 
 bool room_template::apply(Json::Value data, std::string & error)
@@ -1387,6 +1189,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
 
             if (build(out, ai, blueprints, plan))
             {
+                priorities = plan.priorities;
                 ai->debug(out, stl_sprintf("Successfully created a blueprint using plan: %s", plan.name.c_str()));
                 return true;
             }
@@ -1400,10 +1203,9 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     return false;
 }
 
-void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const
+void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_rooms_and_corridors, std::vector<plan_priority_t> & real_priorities) const
 {
     std::vector<furniture *> real_layout;
-    std::vector<room *> real_rooms_and_corridors;
 
     for (size_t i = 0; i < layout.size(); i++)
     {
@@ -1574,7 +1376,7 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_c
         }
         return false;
     });
-    std::partition_copy(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), std::back_inserter(real_corridors), std::back_inserter(real_rooms), [](room *r) -> bool { return r->type == room_type::corridor; });
+    real_priorities = priorities;
 }
 
 bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb, std::string & error, df::coord exit_location)
@@ -2540,21 +2342,16 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
         padding_y = std::make_pair((int16_t)value[0].asInt(), (int16_t)value[1].asInt());
     }
 
-    std::vector<std::string> remaining_members(data.getMemberNames());
-    if (remaining_members.empty())
+    if (data.isMember("priorities"))
     {
-        return true;
+        Json::Value p = data.removeMember("priorities");
+        if (!priorities_from_json(priorities, p, error))
+        {
+            return false;
+        }
     }
 
-    error = "";
-    const char *before = "unhandled properties: ";
-    for (auto & m : remaining_members)
-    {
-        error += before;
-        error += m;
-        before = ", ";
-    }
-    return false;
+    return apply_unhandled_properties(data, "", error);
 }
 
 bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI *ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const

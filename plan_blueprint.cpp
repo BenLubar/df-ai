@@ -149,7 +149,7 @@ command_result Plan::setup_blueprint(color_ostream & out)
     blueprint_plan plan;
     if (plan.build(out, ai, blueprints))
     {
-        plan.create(fort_entrance, corridors, rooms);
+        plan.create(fort_entrance, rooms_and_corridors, priorities);
     }
     else if (!config.plan_allow_legacy)
     {
@@ -401,7 +401,7 @@ command_result Plan::scan_fort_body(color_ostream & out)
 command_result Plan::setup_blueprint_rooms(color_ostream & out)
 {
     // hardcoded layout
-    corridors.push_back(fort_entrance);
+    rooms_and_corridors.push_back(fort_entrance);
 
     df::coord f = fort_entrance->pos();
 
@@ -456,13 +456,13 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
-    corridors.push_back(corridor_center0);
+    rooms_and_corridors.push_back(corridor_center0);
 
     room *corridor_center2 = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east workshops");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
-    corridors.push_back(corridor_center2);
+    rooms_and_corridors.push_back(corridor_center2);
 
     // add minimal stockpile in front of workshop
     const static struct sptypes
@@ -660,7 +660,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             int16_t cx = f.x + dirx * 4 * dx;
             room *cor_x = new room(corridor_type::corridor, df::coord(ocx, f.y - 1, f.z), df::coord(cx + (dx <= 5 ? 0 : dirx), f.y + 1, f.z), stl_sprintf("%s workshops - segment %d", dirx == 1 ? "east" : "west", dx));
             cor_x->accesspath.push_back(prev_corx);
-            corridors.push_back(cor_x);
+            rooms_and_corridors.push_back(cor_x);
             prev_corx = cor_x;
             ocx = cx + dirx;
 
@@ -671,19 +671,19 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 room *r = new room(workshop_type::Quern, c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 0;
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
 
                 c.x = cx - 6;
                 r = new room(workshop_type::Quern, c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 1;
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
 
                 c.x = cx + 2;
                 r = new room(workshop_type::Quern, c, c);
                 r->accesspath.push_back(cor_x);
                 r->level = 2;
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
 
                 c.x = cx - 2;
                 c.y = f.y - 1;
@@ -691,7 +691,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 r->raw_type = "SCREW_PRESS";
                 r->accesspath.push_back(cor_x);
                 r->level = 0;
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
             }
             else if (dirx == -1 && dx == 6)
             {
@@ -709,12 +709,12 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                     r->layout.push_back(new_furniture(layout_type::bookcase, i + 1, 3));
                 }
                 r->accesspath.push_back(cor_x);
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
 
                 r = new room(location_type::temple, df::coord(cx - 12, f.y + 1, f.z), df::coord(cx - 3, f.y + 5, f.z));
                 r->layout.push_back(new_door(10, 0));
                 r->accesspath.push_back(cor_x);
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
             }
 
             auto make_room = *type_it++;
@@ -727,7 +727,8 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             {
                 r->layout.push_back(new_furniture(layout_type::nest_box, -1, 4));
             }
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            room *prev_room = r;
 
             if (sptypes.count(r) > 0)
             {
@@ -738,29 +739,33 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 sp->stock_specific2 = std::get<3>(stock);
                 sp->workshop = r;
                 sp->level = 0;
-                rooms.push_back(sp);
+                prev_room->accesspath.push_back(sp);
+                rooms_and_corridors.push_back(sp);
             }
 
             r = make_room(df::coord(cx - 1, f.y - 8, f.z), df::coord(cx + 1, f.y - 6, f.z), "");
-            r->accesspath.push_back(rooms.back());
+            r->accesspath.push_back(prev_room);
             r->level = 1;
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
 
             r = make_room(df::coord(cx - 1, f.y - 11, f.z), df::coord(cx + 1, f.y - 9, f.z), "");
-            r->accesspath.push_back(rooms.back());
+            r->accesspath.push_back(prev_room);
             r->level = 2;
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
 
             make_room = *type_it++;
             r = make_room(df::coord(cx - 1, f.y + 3, f.z), df::coord(cx + 1, f.y + 5, f.z), "");
             r->accesspath.push_back(cor_x);
             r->layout.push_back(new_door(1, -1));
             r->level = 0;
+            prev_room = r;
             if (dirx == -1 && dx == 1)
             {
                 r->layout.push_back(new_furniture(layout_type::nest_box, -1, -2));
             }
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
 
             if (sptypes.count(r))
             {
@@ -771,18 +776,21 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 sp->stock_specific2 = std::get<3>(stock);
                 sp->workshop = r;
                 sp->level = 0;
-                rooms.push_back(sp);
+                prev_room->accesspath.push_back(sp);
+                rooms_and_corridors.push_back(sp);
             }
 
             r = make_room(df::coord(cx - 1, f.y + 6, f.z), df::coord(cx + 1, f.y + 8, f.z), "");
-            r->accesspath.push_back(rooms.back());
+            r->accesspath.push_back(prev_room);
             r->level = 1;
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
 
             r = make_room(df::coord(cx - 1, f.y + 9, f.z), df::coord(cx + 1, f.y + 11, f.z), "");
-            r->accesspath.push_back(rooms.back());
+            r->accesspath.push_back(prev_room);
             r->level = 2;
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
         }
     }
 
@@ -825,7 +833,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 1));
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 2));
         r->layout.push_back(new_dig(tile_dig_designation::Ramp, depot_center.x < f.x ? -1 : 5, 3));
-        rooms.push_back(r);
+        rooms_and_corridors.push_back(r);
     }
     else
     {
@@ -838,7 +846,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 r->layout.push_back(new_construction(construction_type::Floor, x, y));
             }
         }
-        rooms.push_back(r);
+        rooms_and_corridors.push_back(r);
     }
     return CR_OK;
 }
@@ -849,13 +857,13 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
-    corridors.push_back(corridor_center0);
+    rooms_and_corridors.push_back(corridor_center0);
 
     room *corridor_center2 = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east stockpiles");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
-    corridors.push_back(corridor_center2);
+    rooms_and_corridors.push_back(corridor_center2);
 
     std::vector<stockpile_type::type> types;
     types.push_back(stockpile_type::food);
@@ -887,7 +895,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
             int16_t cx = f.x + dirx * (8 * dx - 4);
             room *cor_x = new room(corridor_type::corridor, df::coord(ocx, f.y - 1, f.z), df::coord(cx + dirx, f.y + 1, f.z), stl_sprintf("%s stockpiles - segment %d", dirx == 1 ? "east" : "west", dx));
             cor_x->accesspath.push_back(prev_corx);
-            corridors.push_back(cor_x);
+            rooms_and_corridors.push_back(cor_x);
             prev_corx = cor_x;
             ocx = cx + 2 * dirx;
 
@@ -903,25 +911,25 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
             r0->layout.push_back(new_door(4, 2));
             r1->layout.push_back(new_door(2, -1));
             r1->layout.push_back(new_door(4, -1));
-            rooms.push_back(r0);
-            rooms.push_back(r1);
+            rooms_and_corridors.push_back(r0);
+            rooms_and_corridors.push_back(r1);
 
             r0 = new room(t0, df::coord(cx - 3, f.y - 11, f.z), df::coord(cx + 3, f.y - 5, f.z));
             r1 = new room(t1, df::coord(cx - 3, f.y + 5, f.z), df::coord(cx + 3, f.y + 11, f.z));
             r0->level = 2;
             r1->level = 2;
-            rooms.push_back(r0);
-            rooms.push_back(r1);
+            rooms_and_corridors.push_back(r0);
+            rooms_and_corridors.push_back(r1);
 
             r0 = new room(t0, df::coord(cx - 3, f.y - 20, f.z), df::coord(cx + 3, f.y - 12, f.z));
             r1 = new room(t1, df::coord(cx - 3, f.y + 12, f.z), df::coord(cx + 3, f.y + 20, f.z));
             r0->level = 3;
             r1->level = 3;
-            rooms.push_back(r0);
-            rooms.push_back(r1);
+            rooms_and_corridors.push_back(r0);
+            rooms_and_corridors.push_back(r1);
         }
     }
-    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    for (auto it = rooms_and_corridors.begin(); it != rooms_and_corridors.end(); it++)
     {
         room *r = *it;
         if (r->type == room_type::stockpile && r->stockpile_type == stockpile_type::coins && r->level > 1)
@@ -985,14 +993,14 @@ command_result Plan::setup_blueprint_pitcage(color_ostream &)
     room *r = new room(room_type::pitcage, gdump->min + df::coord(-1, -1, 10), gdump->min + df::coord(1, 1, 10));
     layout(r);
     r->layout.push_back(new_hive_floor(3, 1));
-    rooms.push_back(r);
+    rooms_and_corridors.push_back(r);
 
     room *stockpile = new room(stockpile_type::animals, r->min, r->max, "pitting queue");
     stockpile->level = 0;
     stockpile->stock_specific1 = true; // no empty cages
     stockpile->stock_specific2 = true; // no empty animal traps
     layout(stockpile);
-    rooms.push_back(stockpile);
+    rooms_and_corridors.push_back(stockpile);
 
     return CR_OK;
 }
@@ -1003,13 +1011,13 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
-    corridors.push_back(corridor_center0);
+    rooms_and_corridors.push_back(corridor_center0);
 
     room *corridor_center2 = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east utilities");
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
-    corridors.push_back(corridor_center2);
+    rooms_and_corridors.push_back(corridor_center2);
 
     // dining halls
     int16_t ocx = f.x - 2;
@@ -1025,14 +1033,14 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     }
     tmp->layout[0]->makeroom = true;
     tmp->accesspath.push_back(old_cor);
-    rooms.push_back(tmp);
+    rooms_and_corridors.push_back(tmp);
 
     // dininghalls x 4 (54 users each)
     for (int16_t ax = 0; ax <= 1; ax++)
     {
         room *cor = new room(corridor_type::corridor, df::coord(ocx - 1, f.y - 1, f.z), df::coord(f.x - ax * 12 - 5, f.y + 1, f.z), stl_sprintf("west utilities - segment %d", ax + 1));
         cor->accesspath.push_back(old_cor);
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         ocx = f.x - ax * 12 - 4;
         old_cor = cor;
 
@@ -1069,14 +1077,14 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                 }
             }
             dinner->accesspath.push_back(cor);
-            rooms.push_back(dinner);
+            rooms_and_corridors.push_back(dinner);
         }
     }
 
     // tavern
     room *cor = new room(corridor_type::corridor, f + df::coord(-18, -1, 0), f + df::coord(-26, 1, 0), "tavern entrance");
-    cor->accesspath.push_back(corridors.back());
-    corridors.push_back(cor);
+    cor->accesspath.push_back(old_cor);
+    rooms_and_corridors.push_back(cor);
 
     df::coord tavern_center = f - df::coord(32, 0, 0);
     room *tavern = new room(location_type::tavern, tavern_center - df::coord(4, 4, 0), tavern_center + df::coord(4, 4, 0));
@@ -1084,7 +1092,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tavern->layout.push_back(new_door(9, 5));
     tavern->layout.push_back(new_furniture(layout_type::chest, 8, 0));
     tavern->accesspath.push_back(cor);
-    rooms.push_back(tavern);
+    rooms_and_corridors.push_back(tavern);
 
     room *booze = new room(stockpile_type::food, tavern_center + df::coord(-2, -4, 0), tavern_center + df::coord(3, -4, 0), "tavern booze");
     booze->stock_disable.insert(stockpile_list::FoodMeat);
@@ -1108,7 +1116,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     booze->workshop = tavern;
     booze->level = 0;
     tavern->accesspath.push_back(booze);
-    rooms.push_back(booze);
+    rooms_and_corridors.push_back(booze);
 
     if (allow_ice)
     {
@@ -1137,10 +1145,10 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     int16_t cy = f.y;
     int16_t cz = find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Farmers; })->min.z;
     room *ws_cor = new room(corridor_type::corridor, df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz), "farm access corridor"); // ws_corr->accesspath ...
-    corridors.push_back(ws_cor);
+    rooms_and_corridors.push_back(ws_cor);
     room *farm_stairs = new room(corridor_type::corridor, df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz), "farm stairs");
     farm_stairs->accesspath.push_back(ws_cor);
-    corridors.push_back(farm_stairs);
+    rooms_and_corridors.push_back(farm_stairs);
     cx += 3;
     int16_t cz2 = cz;
     int32_t soilcnt = 0;
@@ -1176,8 +1184,9 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     farm_stairs->max.z = cz2;
     cor = new room(corridor_type::corridor, df::coord(cx, cy, cz2), df::coord(cx + 1, cy, cz2), "farm corridor");
     cor->accesspath.push_back(farm_stairs);
-    corridors.push_back(cor);
+    rooms_and_corridors.push_back(cor);
     room *first_farm = nullptr;
+    room *prev_farm = nullptr;
     for (int16_t dx = 0; dx < nrfarms / 3; dx++)
     {
         for (int16_t ddy = 0; ddy < 3; ddy++)
@@ -1193,9 +1202,10 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                 }
                 else
                 {
-                    r->accesspath.push_back(rooms.back());
+                    r->accesspath.push_back(prev_farm);
                 }
-                rooms.push_back(r);
+                prev_farm = r;
+                rooms_and_corridors.push_back(r);
                 if (first_farm == nullptr)
                 {
                     first_farm = r;
@@ -1228,7 +1238,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     r->stock_specific1 = true; // no prepared meals
     r->workshop = first_farm;
     r->accesspath.push_back(cor);
-    rooms.push_back(r);
+    rooms_and_corridors.push_back(r);
 
     // garbage dump
     // TODO ensure flat space, no pools/tree, ...
@@ -1253,19 +1263,19 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     tile = surface_tile_at(tile.x, tile.y);
     r->min = r->max = tile;
     garbagedump->layout.push_back(new_dig(tile_dig_designation::Channel, 0, 0));
-    rooms.push_back(r);
+    rooms_and_corridors.push_back(r);
     r = new room(corridor_type::corridor, tile + df::coord(-5, -5, 0), tile + df::coord(5, 5, 0));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 5, 5));
     r->layout.push_back(new_dig(tile_dig_designation::Channel, 6, 5));
     r->layout.push_back(new_construction(construction_type::Floor, 5, 5, -1));
     garbagedump->accesspath.push_back(r);
-    corridors.push_back(r);
+    rooms_and_corridors.push_back(r);
 
     // infirmary
     old_cor = corridor_center2;
     cor = new room(corridor_type::corridor, f + df::coord(3, -1, 0), f + df::coord(5, 1, 0), "east utilities - infirmary access");
     cor->accesspath.push_back(old_cor);
-    corridors.push_back(cor);
+    rooms_and_corridors.push_back(cor);
     old_cor = cor;
 
     room *infirmary = new room(room_type::infirmary, f + df::coord(2, -3, 0), f + df::coord(6, -7, 0));
@@ -1282,12 +1292,12 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     infirmary->layout.push_back(new_furniture(layout_type::chest, 4, 2));
     infirmary->layout.push_back(new_furniture(layout_type::chest, 4, 3));
     infirmary->accesspath.push_back(cor);
-    rooms.push_back(infirmary);
+    rooms_and_corridors.push_back(infirmary);
 
     // cemetary lots (160 spots)
     cor = new room(corridor_type::corridor, f + df::coord(6, -1, 0), f + df::coord(14, 1, 0), "east utilities - cemetary access");
     cor->accesspath.push_back(old_cor);
-    corridors.push_back(cor);
+    rooms_and_corridors.push_back(cor);
     old_cor = cor;
 
     for (int16_t ry = 0; ry < 500; ry++)
@@ -1327,7 +1337,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
                     cemetary->layout.push_back(new_door(4, 4));
                     cemetary->accesspath.push_back(cor);
                 }
-                rooms.push_back(cemetary);
+                rooms_and_corridors.push_back(cemetary);
             }
         }
     }
@@ -1341,7 +1351,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     {
         cor = new room(corridor_type::corridor, df::coord(oldcx, f.y - 1, f.z), df::coord(f.x + 5 + 10 * rx, f.y + 1, f.z), stl_sprintf("east utilities - segment %d", rx + 1));
         cor->accesspath.push_back(old_cor);
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         old_cor = cor;
         oldcx = cor->max.x + 1;
 
@@ -1365,7 +1375,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             barracks->layout.push_back(new_furniture_with_users(layout_type::weapon_rack, 2, ry > 0 ? 7 : 0, 5, true));
             barracks->layout.push_back(new_furniture_with_users(layout_type::archery_target, 3, ry > 0 ? 7 : 0, 10, true));
             barracks->accesspath.push_back(cor);
-            rooms.push_back(barracks);
+            rooms_and_corridors.push_back(barracks);
         }
     }
 
@@ -1419,8 +1429,8 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 
     // cisterns are dug in order
     // try to dig reserve first, so we have liquid water even if river freezes
-    rooms.push_back(reserve);
-    rooms.push_back(cistern);
+    rooms_and_corridors.push_back(reserve);
+    rooms_and_corridors.push_back(cistern);
 
     // link the cistern reserve to the water source
 
@@ -1462,7 +1472,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
         // the tunnel should walk around other blueprint rooms
         df::coord p2 = p1 + df::coord(0, src.y >= p1.y ? 26 : -26, 0);
         room *cor = new room(corridor_type::aqueduct, p1, p2);
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         reserve->accesspath.push_back(cor);
         move_river(p2);
         p = p2;
@@ -1523,7 +1533,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     if (dst.x != output.x)
     {
         room *cor = new room(corridor_type::aqueduct, df::coord(dst.x, dst.y, dst.z), df::coord(output.x, dst.y, dst.z));
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         r->accesspath.push_back(cor);
         r = cor;
     }
@@ -1531,7 +1541,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     if (dst.y != output.y)
     {
         room *cor = new room(corridor_type::aqueduct, df::coord(output.x, dst.y, dst.z), df::coord(output.x, output.y, dst.z));
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         r->accesspath.push_back(cor);
         r = cor;
     }
@@ -1588,7 +1598,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
         {
             room *r = new room(room_type::pasture, sf - df::coord(5, 5, 0), sf + df::coord(5, 5, 0));
             r->has_users = 10000;
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
             want--;
         }
         return want == 0;
@@ -1642,7 +1652,7 @@ command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t w
         room *r = new room(want % 2 == 0 ? farm_type::food : farm_type::cloth, sf - df::coord(1, 1, 0), sf + df::coord(1, 1, 0));
         r->has_users = 13;
         r->outdoor = true;
-        rooms.push_back(r);
+        rooms_and_corridors.push_back(r);
         want--;
         return want == 0;
     });
@@ -1655,13 +1665,13 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
     corridor_center0->layout.push_back(new_door(-1, 0));
     corridor_center0->layout.push_back(new_door(-1, 2));
     corridor_center0->accesspath = entr;
-    corridors.push_back(corridor_center0);
+    rooms_and_corridors.push_back(corridor_center0);
 
     room *corridor_center2 = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), stl_sprintf("main staircase - east %s bedrooms", level == 0 ? "upper" : "lower"));
     corridor_center2->layout.push_back(new_door(1, 0));
     corridor_center2->layout.push_back(new_door(1, 2));
     corridor_center2->accesspath = entr;
-    corridors.push_back(corridor_center2);
+    rooms_and_corridors.push_back(corridor_center2);
 
     for (int16_t dirx = -1; dirx <= 1; dirx += 2)
     {
@@ -1673,7 +1683,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             int16_t cx = f.x + dirx * (9 * dx - 4);
             room *cor_x = new room(corridor_type::corridor, df::coord(ocx, f.y - 1, f.z), df::coord(cx, f.y + 1, f.z), stl_sprintf("%s %s bedrooms - segment %d", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx));
             cor_x->accesspath.push_back(prev_corx);
-            corridors.push_back(cor_x);
+            rooms_and_corridors.push_back(cor_x);
             prev_corx = cor_x;
             ocx = cx + dirx;
 
@@ -1686,7 +1696,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                     int16_t cy = f.y + diry * 3 * dy;
                     room *cor_y = new room(corridor_type::corridor, df::coord(cx, ocy, f.z), df::coord(cx - dirx, cy, f.z), stl_sprintf("%s %s %s bedrooms - segment %d-%d", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy));
                     cor_y->accesspath.push_back(prev_cory);
-                    corridors.push_back(cor_y);
+                    rooms_and_corridors.push_back(cor_y);
                     prev_cory = cor_y;
                     ocy = cy + diry;
 
@@ -1700,7 +1710,7 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
                         r->layout.push_back(new_furniture(layout_type::chest, r->min.x < cx ? 1 : 0, diry < 0 ? 0 : 1));
                         r->layout.back()->ignore = true;
                         r->layout.push_back(new_door(r->min.x < cx ? 2 : -1, diry < 0 ? 1 : 0));
-                        rooms.push_back(r);
+                        rooms_and_corridors.push_back(r);
                     };
                     bedroom(new room(room_type::bedroom, df::coord(cx - dirx * 4, cy, f.z), df::coord(cx - dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d A", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
                     bedroom(new room(room_type::bedroom, df::coord(cx + dirx * 2, cy, f.z), df::coord(cx + dirx * 3, cy + diry, f.z), stl_sprintf("%s %s %s bedrooms - room %d-%d B", diry == -1 ? "north" : "south", dirx == -1 ? "west" : "east", level == 0 ? "upper" : "lower", dx, dy)));
@@ -1714,8 +1724,8 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
         room *cor_x2 = new room(corridor_type::corridor, df::coord(ocx - dirx, f.y, f.z), df::coord(f.x + dirx * 3, f.y, f.z));
         cor_x->accesspath.push_back(cor_x2);
         cor_x2->accesspath.push_back(dirx < 0 ? corridor_center0 : corridor_center2);
-        corridors.push_back(cor_x);
-        corridors.push_back(cor_x2);
+        rooms_and_corridors.push_back(cor_x);
+        rooms_and_corridors.push_back(cor_x2);
 
         for (int16_t diry = -1; diry <= 1; diry += 2)
         {
@@ -1732,7 +1742,8 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             r->layout.push_back(new_furniture(layout_type::cabinet, 1 + dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry));
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
+            room *prev_room = r;
 
             r = new room(nobleroom_type::bedroom, df::coord(cx - 1, f.y + diry * 7, f.z), df::coord(cx + 1, f.y + diry * 9, f.z));
             r->noblesuite = noblesuite;
@@ -1743,8 +1754,9 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             r->layout.push_back(new_furniture(layout_type::weapon_rack, 1 - dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
-            r->accesspath.push_back(rooms.back());
-            rooms.push_back(r);
+            r->accesspath.push_back(prev_room);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
 
             r = new room(nobleroom_type::dining, df::coord(cx - 1, f.y + diry * 11, f.z), df::coord(cx + 1, f.y + diry * 13, f.z));
             r->noblesuite = noblesuite;
@@ -1756,16 +1768,17 @@ command_result Plan::setup_blueprint_bedrooms(color_ostream &, df::coord f, cons
             r->layout.push_back(new_furniture(layout_type::chest, 1 - dirx, 2));
             r->layout.back()->ignore = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
-            r->accesspath.push_back(rooms.back());
-            rooms.push_back(r);
+            r->accesspath.push_back(prev_room);
+            rooms_and_corridors.push_back(r);
+            prev_room = r;
 
             r = new room(nobleroom_type::tomb, df::coord(cx - 1, f.y + diry * 15, f.z), df::coord(cx + 1, f.y + diry * 17, f.z));
             r->noblesuite = noblesuite;
             r->layout.push_back(new_furniture(layout_type::coffin, 1, 1));
             r->layout.back()->makeroom = true;
             r->layout.push_back(new_door(1, 1 - 2 * diry, true));
-            r->accesspath.push_back(rooms.back());
-            rooms.push_back(r);
+            r->accesspath.push_back(prev_room);
+            rooms_and_corridors.push_back(r);
         }
     }
     return CR_OK;
@@ -1777,20 +1790,20 @@ command_result Plan::setup_blueprint_stockpiles_overflow(color_ostream &, df::co
     access_west->layout.push_back(new_door(-1, 0));
     access_west->layout.push_back(new_door(-1, 2));
     access_west->accesspath = entr;
-    corridors.push_back(access_west);
+    rooms_and_corridors.push_back(access_west);
 
     room *access_east = new room(corridor_type::corridor, f + df::coord(1, -1, 0), f + df::coord(1, 1, 0), "main staircase - east stockpile overflow");
     access_east->layout.push_back(new_door(1, 0));
     access_east->layout.push_back(new_door(1, 2));
     access_east->accesspath = entr;
-    corridors.push_back(access_east);
+    rooms_and_corridors.push_back(access_east);
 
     for (int32_t dx = 0; dx < 4; dx++)
     {
         room *r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, -2, 0), f + df::coord(-dx * 10 - 3, 2, 0), stl_sprintf("stockpile overflow - west %d", dx + 1));
         r->level = 4 + dx * 3;
         r->accesspath.push_back(access_west);
-        rooms.push_back(r);
+        rooms_and_corridors.push_back(r);
         access_west = r;
         room *access_northwest = access_west;
         room *access_southwest = access_west;
@@ -1798,7 +1811,7 @@ command_result Plan::setup_blueprint_stockpiles_overflow(color_ostream &, df::co
         r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, -2, 0), f + df::coord(dx * 10 + 12, 2, 0), stl_sprintf("stockpile overflow - east %d", dx + 1));
         r->level = 4 + dx * 3;
         r->accesspath.push_back(access_east);
-        rooms.push_back(r);
+        rooms_and_corridors.push_back(r);
         access_east = r;
         room *access_northeast = access_east;
         room *access_southeast = access_east;
@@ -1808,25 +1821,25 @@ command_result Plan::setup_blueprint_stockpiles_overflow(color_ostream &, df::co
             r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, -dy * 10 - 12, 0), f + df::coord(-dx * 10 - 3, -dy * 10 - 3, 0), stl_sprintf("stockpile overflow - north %d west %d", dy + 1, dx + 1));
             r->level = 4 + dx * 3 + 1 + dy;
             r->accesspath.push_back(access_northwest);
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
             access_northwest = r;
 
             r = new room(stockpile_type::food, f + df::coord(-dx * 10 - 12, dy * 10 + 3, 0), f + df::coord(-dx * 10 - 3, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d west %d", dy + 1, dx + 1));
             r->level = 4 + dx * 3 + 1 + dy;
             r->accesspath.push_back(access_southwest);
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
             access_southwest = r;
 
             r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, -dy * 10 - 12, 0), f + df::coord(dx * 10 + 12, -dy * 10 - 3, 0), stl_sprintf("stockpile overflow - north %d east %d", dy + 1, dx + 1));
             r->level = 4 + dx * 3 + 1 + dy;
             r->accesspath.push_back(access_northeast);
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
             access_northeast = r;
 
             r = new room(stockpile_type::food, f + df::coord(dx * 10 + 3, dy * 10 + 3, 0), f + df::coord(dx * 10 + 12, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d east %d", dy + 1, dx + 1));
             r->level = 4 + dx * 3 + 1 + dy;
             r->accesspath.push_back(access_southeast);
-            rooms.push_back(r);
+            rooms_and_corridors.push_back(r);
             access_southeast = r;
 
             if (dx == 0)
@@ -1835,13 +1848,13 @@ command_result Plan::setup_blueprint_stockpiles_overflow(color_ostream &, df::co
                 r->level = 4 + 2 + dy;
                 r->accesspath.push_back(access_northwest);
                 r->accesspath.push_back(access_northeast);
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
 
                 r = new room(stockpile_type::food, f + df::coord(-2, dy * 10 + 3, 0), f + df::coord(2, dy * 10 + 12, 0), stl_sprintf("stockpile overflow - south %d", dy + 1));
                 r->level = 4 + 2 + dy;
                 r->accesspath.push_back(access_southwest);
                 r->accesspath.push_back(access_southeast);
-                rooms.push_back(r);
+                rooms_and_corridors.push_back(r);
             }
         }
     }
@@ -1975,14 +1988,14 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
     if (wall.x != target.x)
     {
         room *cor = new room(corridor_type::outpost, df::coord(wall.x, wall.y, wall.z), df::coord(target.x, wall.y, wall.z));
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         r->accesspath.push_back(cor);
     }
 
     if (wall.y != target.y)
     {
         room *cor = new room(corridor_type::outpost, df::coord(target.x, wall.y, wall.z), df::coord(target.x, target.y, wall.z));
-        corridors.push_back(cor);
+        rooms_and_corridors.push_back(cor);
         r->accesspath.push_back(cor);
     }
 
@@ -1993,7 +2006,7 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
     ai->debug(out, stl_sprintf("outpost: target (%d, %d, %d)", target.x, target.y, target.z));
     ai->debug(out, stl_sprintf("outpost: up (%d, %d, %d)", up.back()->max.x, up.back()->max.y, up.back()->max.z));
 
-    rooms.push_back(r);
+    rooms_and_corridors.push_back(r);
 
     return CR_OK;
 }
@@ -2091,6 +2104,6 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
 
         origin = out2;
     }
-    corridors.insert(corridors.end(), cors.begin(), cors.end());
+    rooms_and_corridors.insert(rooms_and_corridors.end(), cors.begin(), cors.end());
     return cors;
 }

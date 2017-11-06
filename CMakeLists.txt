@@ -37,6 +37,7 @@ SET(PROJECT_SRCS
     population.cpp
     plan.cpp
     plan_blueprint.cpp
+    plan_priorities.cpp
     blueprint.cpp
     stocks.cpp
     camera.cpp
@@ -54,6 +55,7 @@ SET(PROJECT_HDRS
     population.h
     plan.h
     plan_blueprint.h
+    plan_priorities.h
     blueprint.h
     stocks.h
     camera.h
@@ -63,6 +65,7 @@ SET(PROJECT_HDRS
     event_manager.h
     dfhack_shared.h
     df-ai-git-describe.h
+    apply.h
 )
 
 ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)

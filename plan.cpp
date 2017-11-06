@@ -100,54 +100,6 @@ farm_allowed_materials_t::farm_allowed_materials_t()
 
 farm_allowed_materials_t farm_allowed_materials;
 
-std::ostream & operator <<(std::ostream & stream, task_type::type type)
-{
-    switch (type)
-    {
-    case task_type::check_construct:
-        return stream << "check_construct";
-    case task_type::check_furnish:
-        return stream << "check_furnish";
-    case task_type::check_idle:
-        return stream << "check_idle";
-    case task_type::check_rooms:
-        return stream << "check_rooms";
-    case task_type::construct_activityzone:
-        return stream << "construct_activityzone";
-    case task_type::construct_farmplot:
-        return stream << "construct_farmplot";
-    case task_type::construct_furnace:
-        return stream << "construct_furnace";
-    case task_type::construct_stockpile:
-        return stream << "construct_stockpile";
-    case task_type::construct_tradedepot:
-        return stream << "construct_tradedepot";
-    case task_type::construct_workshop:
-        return stream << "construct_workshop";
-    case task_type::dig_cistern:
-        return stream << "dig_cistern";
-    case task_type::dig_garbage:
-        return stream << "dig_garbage";
-    case task_type::dig_room:
-        return stream << "dig_room";
-    case task_type::furnish:
-        return stream << "furnish";
-    case task_type::monitor_cistern:
-        return stream << "monitor_cistern";
-    case task_type::monitor_farm_irrigation:
-        return stream << "monitor_farm_irrigation";
-    case task_type::setup_farmplot:
-        return stream << "setup_farmplot";
-    case task_type::want_dig:
-        return stream << "want_dig";
-
-    case task_type::_task_type_count:
-        return stream << "???";
-    }
-    return stream << "???";
-}
-
-
 Plan::Plan(AI *ai) :
     ai(ai),
     onupdate_handle(nullptr),
@@ -156,10 +108,10 @@ Plan::Plan(AI *ai) :
     tasks_furniture(),
     bg_idx_generic(tasks_generic.end()),
     bg_idx_furniture(tasks_furniture.end()),
-    rooms(),
+    rooms_and_corridors(),
+    priorities(),
     room_category(),
     room_by_z(),
-    corridors(),
     cache_nofurnish(),
     fort_entrance(nullptr),
     map_veins(),
@@ -182,6 +134,7 @@ Plan::Plan(AI *ai) :
     should_search_for_metal(false),
     past_initial_phase(false),
     cistern_channel_requested(false),
+    deconstructed_wagons(false),
     last_update_year(-1),
     last_update_tick(-1)
 {
@@ -214,11 +167,7 @@ Plan::~Plan()
     {
         delete *it;
     }
-    for (auto it = rooms.begin(); it != rooms.end(); it++)
-    {
-        delete *it;
-    }
-    for (auto it = corridors.begin(); it != corridors.end(); it++)
+    for (auto it = rooms_and_corridors.begin(); it != rooms_and_corridors.end(); it++)
     {
         delete *it;
     }
@@ -526,7 +475,7 @@ void Plan::update(color_ostream &)
 
 command_result Plan::persist(color_ostream &)
 {
-    if (corridors.empty())
+    if (rooms_and_corridors.empty())
     {
         // we haven't initialized yet.
         return CR_OK;
@@ -571,11 +520,7 @@ void Plan::save(std::ostream & out)
         }
     };
 
-    for (auto it = corridors.begin(); it != corridors.end(); it++)
-    {
-        add_room(*it);
-    }
-    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    for (auto it = rooms_and_corridors.begin(); it != rooms_and_corridors.end(); it++)
     {
         add_room(*it);
     }
@@ -794,6 +739,7 @@ void Plan::save(std::ostream & out)
     all["r"] = converted_rooms;
     all["f"] = converted_furniture;
     all["entrance"] = Json::Int(room_index.at(fort_entrance));
+    all["p"] = priorities_to_json(priorities);
 
     out << all;
 }
@@ -810,16 +756,12 @@ void Plan::load(std::istream & in)
         delete *it;
     }
     tasks_furniture.clear();
-    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    for (auto it = rooms_and_corridors.begin(); it != rooms_and_corridors.end(); it++)
     {
         delete *it;
     }
-    rooms.clear();
-    for (auto it = corridors.begin(); it != corridors.end(); it++)
-    {
-        delete *it;
-    }
-    corridors.clear();
+    rooms_and_corridors.clear();
+    priorities.clear();
 
     Json::Value all(Json::objectValue);
     in >> all;
@@ -1059,14 +1001,7 @@ void Plan::load(std::istream & in)
         (*it)->outdoor = r["outdoor"].asBool();
         (*it)->channeled = r["channeled"].asBool();
 
-        if ((*it)->type == room_type::corridor)
-        {
-            corridors.push_back(*it);
-        }
-        else
-        {
-            rooms.push_back(*it);
-        }
+        rooms_and_corridors.push_back(*it);
     }
 
     for (auto it = all_furniture.begin(); it != all_furniture.end(); it++)
@@ -1249,9 +1184,15 @@ void Plan::load(std::istream & in)
     }
     else
     {
-        fort_entrance = corridors.at(0);
+        fort_entrance = rooms_and_corridors.at(0);
     }
     categorize_all();
+
+    if (all.isMember("p"))
+    {
+        std::string error;
+        priorities_from_json(priorities, all["p"], error);
+    }
 }
 
 uint16_t Plan::getTileWalkable(df::coord t)
@@ -1310,6 +1251,28 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
             reason << "already have queued room: " << describe_room(t->r);
             return false;
         }
+    }
+
+    if (last_idle_year != *cur_year)
+    {
+        if (last_idle_year != -1)
+        {
+            idleidle(out);
+            reason << "smoothing fortress; ";
+        }
+        last_idle_year = *cur_year;
+    }
+
+    if (!priorities.empty())
+    {
+        for (auto & priority : priorities)
+        {
+            if (priority.act(ai, out, reason))
+            {
+                break;
+            }
+        }
+        return false;
     }
 
     // if nothing better to do, order the miners to dig remaining
@@ -1394,6 +1357,7 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
         {
             Buildings::deconstruct(wagon);
         }
+        deconstructed_wagons = true;
     }
     int32_t need_food = extra_farms;
     int32_t need_cloth = extra_farms;
@@ -1549,16 +1513,6 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
     FIND_ROOM(true, room_type::nobleroom, ifplan);
     FIND_ROOM(true, room_type::bedroom, ifplan);
     FIND_ROOM(true, room_type::cemetary, ifplan);
-
-    if (r == nullptr && last_idle_year != *cur_year)
-    {
-        if (last_idle_year != -1)
-        {
-            idleidle(out);
-            reason << "smoothing fortress";
-        }
-        last_idle_year = *cur_year;
-    }
 #undef FIND_ROOM
 
     if (r)
@@ -1573,7 +1527,7 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
             {
                 (*it)->ignore = false;
             }
-            out << " (for finishing)";
+            reason << " (for finishing)";
             furnish_room(out, r);
             smooth_room(out, r);
         }
@@ -1594,9 +1548,8 @@ void Plan::idleidle(color_ostream & out)
     }
 
     idleidle_tab.clear();
-    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    for (auto r : rooms_and_corridors)
     {
-        room *r = *it;
         if (r->status != room_status::plan && r->status != room_status::dig && !r->temporary &&
             (r->type == room_type::nobleroom ||
                 r->type == room_type::bedroom ||
@@ -1608,9 +1561,8 @@ void Plan::idleidle(color_ostream & out)
                 r->type == room_type::stockpile))
             idleidle_tab.push_back(r);
     }
-    for (auto it = corridors.begin(); it != corridors.end(); it++)
+    for (auto r : room_category[room_type::corridor])
     {
-        room *r = *it;
         if (r->status != room_status::plan && r->status != room_status::dig && r->corridor_type == corridor_type::corridor)
             idleidle_tab.push_back(r);
     }
@@ -1654,24 +1606,19 @@ void Plan::idleidle(color_ostream & out)
 
 void Plan::checkrooms(color_ostream & out)
 {
-    size_t ncheck = 4;
+    size_t ncheck = 8;
     for (size_t i = ncheck * 4; i > 0; i--)
     {
-        if (checkroom_idx < corridors.size() && corridors[checkroom_idx]->status != room_status::plan)
+        if (checkroom_idx < rooms_and_corridors.size() && rooms_and_corridors.at(checkroom_idx)->status != room_status::plan)
         {
-            checkroom(out, corridors[checkroom_idx]);
-        }
-
-        if (checkroom_idx < rooms.size() && rooms[checkroom_idx]->status != room_status::plan)
-        {
-            checkroom(out, rooms[checkroom_idx]);
+            checkroom(out, rooms_and_corridors.at(checkroom_idx));
             ncheck--;
         }
         checkroom_idx++;
         if (ncheck <= 0)
             break;
     }
-    if (checkroom_idx >= rooms.size() && checkroom_idx >= corridors.size())
+    if (checkroom_idx >= rooms_and_corridors.size())
         checkroom_idx = 0;
 }
 
@@ -2168,20 +2115,21 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
 }
 
 // queue a room for digging when other dig jobs are finished
-void Plan::wantdig(color_ostream & out, room *r)
+bool Plan::wantdig(color_ostream & out, room *r)
 {
     if (r->queue_dig || r->status != room_status::plan)
-        return;
+        return false;
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
     r->dig(true);
     add_task(task_type::want_dig, r);
+    return true;
 }
 
-void Plan::digroom(color_ostream & out, room *r)
+bool Plan::digroom(color_ostream & out, room *r)
 {
     if (r->status != room_status::plan)
-        return;
+        return false;
     ai->debug(out, "digroom " + describe_room(r));
     r->queue_dig = false;
     r->status = room_status::dig;
@@ -2226,6 +2174,8 @@ void Plan::digroom(color_ostream & out, room *r)
         if (size.x * size.y * size.z >= 10)
             nrdig[r->queue]++;
     }
+
+    return true;
 }
 
 bool Plan::construct_room(color_ostream & out, room *r)
@@ -3405,7 +3355,7 @@ void Plan::move_dininghall_fromtemp(color_ostream &, room *r, room *t)
             }
         }
     }
-    rooms.erase(std::remove(rooms.begin(), rooms.end(), t), rooms.end());
+    rooms_and_corridors.erase(std::remove(rooms_and_corridors.begin(), rooms_and_corridors.end(), t), rooms_and_corridors.end());
     for (auto it = tasks_generic.begin(); it != tasks_generic.end(); )
     {
         if ((*it)->r == t)
@@ -3867,7 +3817,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
     }
     else if (f->type == layout_type::floodgate)
     {
-        for (auto rr : rooms)
+        for (auto rr : rooms_and_corridors)
         {
             if (rr->status == room_status::plan)
                 continue;
@@ -4600,9 +4550,10 @@ command_result Plan::make_map_walkable(color_ostream &)
 
         for (auto c = cor.begin(); c != cor.end(); c++)
         {
-            corridors.push_back(*c);
+            rooms_and_corridors.push_back(*c);
             digroom(out, *c); // skip the queue
         }
+        categorize_all();
         return true;
     });
     return CR_OK;
@@ -4750,13 +4701,14 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
     ai->debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
     int32_t count = 0;
     int16_t fort_minz = 0x7fff;
-    for (auto c = corridors.begin(); c != corridors.end(); c++)
+    find_room(room_type::corridor, [&fort_minz](room *c) -> bool
     {
-        if ((*c)->corridor_type != corridor_type::veinshaft)
+        if (c->corridor_type != corridor_type::veinshaft)
         {
-            fort_minz = std::min(fort_minz, (*c)->min.z);
+            fort_minz = std::min(fort_minz, c->min.z);
         }
-    }
+        return false;
+    });
     if (b.z >= fort_minz)
     {
         int16_t y = fort_entrance->pos().y;
@@ -5368,20 +5320,9 @@ void Plan::categorize_all()
 {
     room_category.clear();
     room_by_z.clear();
-    for (auto r : rooms)
+    for (auto r : rooms_and_corridors)
     {
         room_category[r->type].push_back(r);
-        for (int32_t z = r->min.z; z <= r->max.z; z++)
-        {
-            room_by_z[z].insert(r);
-        }
-        for (auto f : r->layout)
-        {
-            room_by_z[r->min.z + f->pos.z].insert(r);
-        }
-    }
-    for (auto r : corridors)
-    {
         for (int32_t z = r->min.z; z <= r->max.z; z++)
         {
             room_by_z[z].insert(r);
@@ -5662,7 +5603,7 @@ room *Plan::find_room(room_type::type type)
 {
     if (room_category.empty())
     {
-        for (auto r = rooms.begin(); r != rooms.end(); r++)
+        for (auto r = rooms_and_corridors.begin(); r != rooms_and_corridors.end(); r++)
         {
             if ((*r)->type == type)
             {
@@ -5684,7 +5625,7 @@ room *Plan::find_room(room_type::type type, std::function<bool(room *)> b)
 {
     if (room_category.empty())
     {
-        for (auto r = rooms.begin(); r != rooms.end(); r++)
+        for (auto r = rooms_and_corridors.begin(); r != rooms_and_corridors.end(); r++)
         {
             if ((*r)->type == type && b(*r))
             {
@@ -5713,14 +5654,7 @@ room *Plan::find_room_at(df::coord t)
 {
     if (room_by_z.empty())
     {
-        for (auto r = rooms.begin(); r != rooms.end(); r++)
-        {
-            if ((*r)->safe_include(t))
-            {
-                return *r;
-            }
-        }
-        for (auto r = corridors.begin(); r != corridors.end(); r++)
+        for (auto r = rooms_and_corridors.begin(); r != rooms_and_corridors.end(); r++)
         {
             if ((*r)->safe_include(t))
             {
@@ -5954,24 +5888,24 @@ void Plan::add_task(task_type::type type, room *r, furniture *f)
 // XXX
 bool Plan::corridor_include_hack(const room *r, df::coord t1, df::coord t2)
 {
-    for (auto c = corridors.begin(); c != corridors.end(); c++)
+    return find_room(room_type::corridor, [r, t1, t2](room *c) -> bool
     {
-        if (!(*c)->include(t1) || !(*c)->include(t2))
+        if (!c->include(t1) || !c->include(t2))
         {
-            continue;
+            return false;
         }
 
-        if ((*c)->min.z != (*c)->max.z)
+        if (c->min.z != c->max.z)
         {
             return true;
         }
-        for (auto a = (*c)->accesspath.begin(); a != (*c)->accesspath.end(); a++)
+        for (auto a : c->accesspath)
         {
-            if (*a == r)
+            if (a == r)
             {
                 return true;
             }
         }
-    }
-    return false;
+        return false;
+    }) != nullptr;
 }

@@ -3,6 +3,7 @@
 #include "event_manager.h"
 #include "room.h"
 #include "stocks.h"
+#include "plan_priorities.h"
 
 #include <functional>
 #include <list>
@@ -23,35 +24,6 @@ namespace df
 }
 
 class AI;
-
-namespace task_type
-{
-    enum type
-    {
-        check_construct,
-        check_furnish,
-        check_idle,
-        check_rooms,
-        construct_activityzone,
-        construct_farmplot,
-        construct_furnace,
-        construct_stockpile,
-        construct_tradedepot,
-        construct_workshop,
-        dig_cistern,
-        dig_garbage,
-        dig_room,
-        furnish,
-        monitor_cistern,
-        monitor_farm_irrigation,
-        setup_farmplot,
-        want_dig,
-
-        _task_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, task_type::type type);
 
 struct task
 {
@@ -75,10 +47,10 @@ class Plan
     std::list<task *> tasks_furniture;
     std::list<task *>::iterator bg_idx_generic;
     std::list<task *>::iterator bg_idx_furniture;
-    std::vector<room *> rooms;
+    std::vector<room *> rooms_and_corridors;
+    std::vector<plan_priority_t> priorities;
     std::map<room_type::type, std::vector<room *>> room_category;
     std::map<int32_t, std::set<room *>> room_by_z;
-    std::vector<room *> corridors;
     std::set<stock_item::item> cache_nofurnish;
 public:
     room *fort_entrance;
@@ -105,6 +77,7 @@ public:
     bool past_initial_phase;
 private:
     bool cistern_channel_requested;
+    bool deconstructed_wagons;
     int32_t last_update_year;
     int32_t last_update_tick;
 
@@ -158,8 +131,8 @@ public:
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
     static void dig_tile(df::coord t, df::tile_dig_designation dig = tile_dig_designation::Default);
-    void wantdig(color_ostream & out, room *r);
-    void digroom(color_ostream & out, room *r);
+    bool wantdig(color_ostream & out, room *r);
+    bool digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
     bool furnish_room(color_ostream & out, room *r);
     bool try_furnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
@@ -263,6 +236,7 @@ private:
 protected:
     bool corridor_include_hack(const room *r, df::coord t1, df::coord t2);
     friend struct room;
+    friend struct plan_priority_t;
 };
 
 struct farm_allowed_materials_t

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "apply.h"
+
 #include <iostream>
 #include <map>
 #include <string>
@@ -20,258 +22,150 @@ namespace df
 
 struct furniture;
 
-template<typename T>
-inline bool df_ai_find_enum_item(T *var, const std::string & name, T count)
-{
-    std::ostringstream scratch;
-    for (T i = T(); i < count; i = (T)(i + 1))
-    {
-        scratch.str(std::string());
-        scratch << i;
-        if (scratch.str() == name)
-        {
-            *var = i;
-            return true;
-        }
-    }
-    return false;
-}
+#define ROOM_ENUMS \
+BEGIN_ENUM(room, status) \
+    ENUM_ITEM(plan) \
+    ENUM_ITEM(dig) \
+    ENUM_ITEM(dug) \
+    ENUM_ITEM(finished) \
+END_ENUM(room, status) \
+\
+BEGIN_ENUM(room, type) \
+    ENUM_ITEM(corridor) \
+\
+    ENUM_ITEM(barracks) \
+    ENUM_ITEM(bedroom) \
+    ENUM_ITEM(cemetary) \
+    ENUM_ITEM(cistern) \
+    ENUM_ITEM(dininghall) \
+    ENUM_ITEM(farmplot) \
+    ENUM_ITEM(furnace) \
+    ENUM_ITEM(garbagedump) \
+    ENUM_ITEM(infirmary) \
+    ENUM_ITEM(location) \
+    ENUM_ITEM(nobleroom) \
+    ENUM_ITEM(outpost) \
+    ENUM_ITEM(pasture) \
+    ENUM_ITEM(pitcage) \
+    ENUM_ITEM(pond) \
+    ENUM_ITEM(stockpile) \
+    ENUM_ITEM(tradedepot) \
+    ENUM_ITEM(workshop) \
+END_ENUM(room, type) \
+\
+BEGIN_ENUM(corridor, type) \
+    ENUM_ITEM(corridor) \
+    ENUM_ITEM(veinshaft) \
+    ENUM_ITEM(aqueduct) \
+    ENUM_ITEM(outpost) \
+    ENUM_ITEM(walkable) \
+END_ENUM(corridor, type) \
+\
+BEGIN_ENUM(farm, type) \
+    ENUM_ITEM(food) \
+    ENUM_ITEM(cloth) \
+END_ENUM(farm, type) \
+\
+BEGIN_ENUM(stockpile, type) \
+    ENUM_ITEM(food) \
+    ENUM_ITEM(furniture) \
+    ENUM_ITEM(wood) \
+    ENUM_ITEM(stone) \
+    ENUM_ITEM(refuse) \
+    ENUM_ITEM(animals) \
+    ENUM_ITEM(corpses) \
+    ENUM_ITEM(gems) \
+    ENUM_ITEM(finished_goods) \
+    ENUM_ITEM(cloth) \
+    ENUM_ITEM(bars_blocks) \
+    ENUM_ITEM(leather) \
+    ENUM_ITEM(ammo) \
+    ENUM_ITEM(armor) \
+    ENUM_ITEM(weapons) \
+    ENUM_ITEM(coins) \
+    ENUM_ITEM(sheets) \
+    ENUM_ITEM(fresh_raw_hide) \
+END_ENUM(stockpile, type) \
+\
+BEGIN_ENUM(nobleroom, type) \
+    ENUM_ITEM(tomb) \
+    ENUM_ITEM(dining) \
+    ENUM_ITEM(bedroom) \
+    ENUM_ITEM(office) \
+END_ENUM(nobleroom, type) \
+\
+BEGIN_ENUM(outpost, type) \
+    ENUM_ITEM(cavern) \
+END_ENUM(outpost, type) \
+\
+BEGIN_ENUM(location, type) \
+    ENUM_ITEM(tavern) \
+    ENUM_ITEM(library) \
+    ENUM_ITEM(temple) \
+END_ENUM(location, type) \
+\
+BEGIN_ENUM(cistern, type) \
+    ENUM_ITEM(well) \
+    ENUM_ITEM(reserve) \
+END_ENUM(cistern, type) \
+\
+BEGIN_ENUM(layout, type) \
+    ENUM_ITEM(none) \
+\
+    ENUM_ITEM(archery_target) \
+    ENUM_ITEM(armor_stand) \
+    ENUM_ITEM(bed) \
+    ENUM_ITEM(bookcase) \
+    ENUM_ITEM(cabinet) \
+    ENUM_ITEM(cage_trap) \
+    ENUM_ITEM(chair) \
+    ENUM_ITEM(chest) \
+    ENUM_ITEM(coffin) \
+    ENUM_ITEM(door) \
+    ENUM_ITEM(floodgate) \
+    ENUM_ITEM(gear_assembly) \
+    ENUM_ITEM(hatch) \
+    ENUM_ITEM(hive) \
+    ENUM_ITEM(lever) \
+    ENUM_ITEM(nest_box) \
+    ENUM_ITEM(roller) \
+    ENUM_ITEM(table) \
+    ENUM_ITEM(track_stop) \
+    ENUM_ITEM(traction_bench) \
+    ENUM_ITEM(vertical_axle) \
+    ENUM_ITEM(weapon_rack) \
+    ENUM_ITEM(well) \
+    ENUM_ITEM(windmill) \
+END_ENUM(layout, type) \
+\
+BEGIN_ENUM(task, type) \
+    ENUM_ITEM(check_construct) \
+    ENUM_ITEM(check_furnish) \
+    ENUM_ITEM(check_idle) \
+    ENUM_ITEM(check_rooms) \
+    ENUM_ITEM(construct_activityzone) \
+    ENUM_ITEM(construct_farmplot) \
+    ENUM_ITEM(construct_furnace) \
+    ENUM_ITEM(construct_stockpile) \
+    ENUM_ITEM(construct_tradedepot) \
+    ENUM_ITEM(construct_workshop) \
+    ENUM_ITEM(dig_cistern) \
+    ENUM_ITEM(dig_garbage) \
+    ENUM_ITEM(dig_room) \
+    ENUM_ITEM(furnish) \
+    ENUM_ITEM(monitor_cistern) \
+    ENUM_ITEM(monitor_farm_irrigation) \
+    ENUM_ITEM(setup_farmplot) \
+    ENUM_ITEM(want_dig) \
+END_ENUM(task, type)
 
-namespace room_status
-{
-    enum status
-    {
-        plan,
-        dig,
-        dug,
-        finished,
-
-        _room_status_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, room_status::status status);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<room_status::status>(room_status::status *var, const std::string & name) { return df_ai_find_enum_item(var, name, room_status::_room_status_count); }
-}
-
-namespace room_type
-{
-    enum type
-    {
-        corridor,
-
-        barracks,
-        bedroom,
-        cemetary,
-        cistern,
-        dininghall,
-        farmplot,
-        furnace,
-        garbagedump,
-        infirmary,
-        location,
-        nobleroom,
-        outpost,
-        pasture,
-        pitcage,
-        pond,
-        stockpile,
-        tradedepot,
-        workshop,
-
-        _room_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, room_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<room_type::type>(room_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, room_type::_room_type_count); }
-}
-
-namespace corridor_type
-{
-    enum type
-    {
-        corridor,
-        veinshaft,
-        aqueduct,
-        outpost,
-        walkable,
-
-        _corridor_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, corridor_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<corridor_type::type>(corridor_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, corridor_type::_corridor_type_count); }
-}
-
-namespace farm_type
-{
-    enum type
-    {
-        food,
-        cloth,
-
-        _farm_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, farm_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<farm_type::type>(farm_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, farm_type::_farm_type_count); }
-}
-
-namespace stockpile_type
-{
-    enum type
-    {
-        food,
-        furniture,
-        wood,
-        stone,
-        refuse,
-        animals,
-        corpses,
-        gems,
-        finished_goods,
-        cloth,
-        bars_blocks,
-        leather,
-        ammo,
-        armor,
-        weapons,
-        coins,
-        sheets,
-        fresh_raw_hide,
-
-        _stockpile_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, stockpile_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<stockpile_type::type>(stockpile_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, stockpile_type::_stockpile_type_count); }
-}
-
-namespace nobleroom_type
-{
-    enum type
-    {
-        tomb,
-        dining,
-        bedroom,
-        office,
-
-        _nobleroom_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, nobleroom_type::type type);
-
-namespace DFHack
-{
-    template<> inline bool find_enum_item<nobleroom_type::type>(nobleroom_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, nobleroom_type::_nobleroom_type_count); }
-}
-
-namespace outpost_type
-{
-    enum type
-    {
-        cavern,
-
-        _outpost_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, outpost_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<outpost_type::type>(outpost_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, outpost_type::_outpost_type_count); }
-}
-
-namespace location_type
-{
-    enum type
-    {
-        tavern,
-        library,
-        temple,
-
-        _location_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, location_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<location_type::type>(location_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, location_type::_location_type_count); }
-}
-
-namespace cistern_type
-{
-    enum type
-    {
-        well,
-        reserve,
-
-        _cistern_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, cistern_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<cistern_type::type>(cistern_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, cistern_type::_cistern_type_count); }
-}
-
-namespace layout_type
-{
-    enum type
-    {
-        none,
-
-        archery_target,
-        armor_stand,
-        bed,
-        bookcase,
-        cabinet,
-        cage_trap,
-        chair,
-        chest,
-        coffin,
-        door,
-        floodgate,
-        gear_assembly,
-        hatch,
-        hive,
-        lever,
-        nest_box,
-        roller,
-        table,
-        track_stop,
-        traction_bench,
-        vertical_axle,
-        weapon_rack,
-        well,
-        windmill,
-
-        _layout_type_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, layout_type::type type);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<layout_type::type>(layout_type::type *var, const std::string & name) { return df_ai_find_enum_item(var, name, layout_type::_layout_type_count); }
-}
+#define BEGIN_ENUM BEGIN_DECLARE_ENUM
+#define ENUM_ITEM DECLARE_ENUM_ITEM
+#define END_ENUM END_DECLARE_ENUM
+ROOM_ENUMS
+#undef BEGIN_ENUM
+#undef ENUM_ITEM
+#undef END_ENUM
 
 struct room
 {

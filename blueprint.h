@@ -2,6 +2,7 @@
 
 #include "dfhack_shared.h"
 #include "room.h"
+#include "plan_priorities.h"
 
 #include "jsoncpp.h"
 
@@ -208,6 +209,7 @@ struct blueprint_plan
 
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
+    std::vector<plan_priority_t> priorities;
 
     int32_t next_noblesuite;
     std::map<df::coord, std::pair<room_base::roomindex_t, std::map<std::string, variable_string::context_t>>> room_connect;
@@ -217,7 +219,7 @@ struct blueprint_plan
     std::map<df::coord, std::string> no_corridor;
 
     bool build(color_ostream & out, AI *ai, const blueprints_t & blueprints);
-    void create(room * & fort_entrance, std::vector<room *> & real_corridors, std::vector<room *> & real_rooms) const;
+    void create(room * & fort_entrance, std::vector<room *> & real_rooms_and_corridors, std::vector<plan_priority_t> & real_priorities) const;
 
 private:
     typedef void (blueprint_plan::*find_fn)(color_ostream &, AI *, std::vector<const room_blueprint *> &, const std::map<std::string, size_t> &, const std::map<std::string, std::map<std::string, size_t>> &, const blueprints_t &, const blueprint_plan_template &);
@@ -259,6 +261,7 @@ struct blueprint_plan_template
     variable_string::context_t context;
     std::pair<int16_t, int16_t> padding_x;
     std::pair<int16_t, int16_t> padding_y;
+    std::vector<plan_priority_t> priorities;
 
     bool apply(Json::Value data, std::string & error);
     bool have_minimum_requirements(color_ostream & out, AI *ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const;
