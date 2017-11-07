@@ -65,6 +65,11 @@ h2 {
 	margin-bottom: 0;
 }
 
+#side h2 + p {
+	margin-top: 0.5rem;
+	font-style: italic;
+}
+
 ul {
 	margin-top: 0;
 	padding-left: 0;
@@ -130,7 +135,7 @@ input[type="number"] {
 	clear: left;
 }
 
-.field > label {
+.field > label:not(.inline) {
 	float: left;
 	width: 300px;
 	text-align: right;
@@ -147,7 +152,7 @@ input[type="number"] {
 	margin-left: 300px;
 }
 
-.field > .field > label {
+.field > .field > label:not(.inline) {
 	margin-left: -200px;
 	width: 400px;
 }
@@ -158,6 +163,20 @@ input[type="number"] {
 
 .field > .field > .field {
 	margin-left: 100px;
+}
+
+.field.thin > label:not(.inline) {
+	float: left;
+	width: 50px;
+	text-align: right;
+	font-weight: bold;
+	margin-left: 0;
+	padding-right: 0.5rem;
+	word-wrap: break-word;
+}
+
+.field.thin > .field, .field.thin > br + input, .field.thin > .field + input, .field.thin > p {
+	margin-left: 50px;
 }
 
 .field > p {

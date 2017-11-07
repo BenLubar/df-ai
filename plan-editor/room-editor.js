@@ -61,7 +61,7 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
 		return false;
 	}
 
-	if (data.isMember("has_users") && !apply_bool(has_users, data, "has_users", error))
+	if (data.isMember("has_users") && !apply_int(has_users, data, "has_users", error))
 	{
 		return false;
 	}
@@ -298,7 +298,7 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
 		return false;
 	}
 
-	if (data.isMember("has_users") && !apply_bool(has_users, data, "has_users", error))
+	if (data.isMember("has_users") && !apply_int(has_users, data, "has_users", error))
 	{
 		return false;
 	}
