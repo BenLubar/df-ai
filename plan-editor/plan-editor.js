@@ -1124,8 +1124,13 @@
 				};
 				index.push(state);
 				state.el.classList.add('field', 'thin');
+				while (last && last.parentNode != parent) {
+					last = last.parentNode;
+				}
 				parent.insertBefore(state.el, last);
-				parent.insertBefore(last, state.el);
+				if (last) {
+					parent.insertBefore(last, state.el);
+				}
 				last = state.el;
 
 				var label = document.createElement('label');
