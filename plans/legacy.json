@@ -106,6 +106,15 @@
 		{
 			"continue": true,
 			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Masons",
+					"level": 0
+				},
+				"is": 0
+			},
 			"match": {
 				"type": "workshop",
 				"workshop_type": "Masons",
@@ -115,6 +124,15 @@
 		{
 			"continue": true,
 			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Carpenters",
+					"level": 0
+				},
+				"is": 0
+			},
 			"match": {
 				"type": "workshop",
 				"workshop_type": "Carpenters",
