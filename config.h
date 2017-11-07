@@ -37,7 +37,7 @@ struct Config
     int32_t world_size;
     bool camera;
     bool fps_meter;
-    bool manage_labors;
+    std::string manage_labors;
     bool manage_nobles;
     uint8_t cancel_announce;
     volatile bool lockstep;

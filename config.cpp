@@ -20,7 +20,7 @@ Config::Config() :
     world_size(1),
     camera(true),
     fps_meter(true),
-    manage_labors(true),
+    manage_labors("autolabor"),
     manage_nobles(true),
     cancel_announce(0),
     lockstep(false),
@@ -103,7 +103,21 @@ void Config::load(color_ostream & out)
             }
             if (v.isMember("manage_labors"))
             {
-                manage_labors = v["manage_labors"].asBool();
+                if (v["manage_labors"].isBool())
+                {
+                    if (v["manage_labors"].asBool())
+                    {
+                        manage_labors = "autolabor";
+                    }
+                    else
+                    {
+                        manage_labors = "";
+                    }
+                }
+                else
+                {
+                    manage_labors = v["manage_labors"].asString();
+                }
             }
             if (v.isMember("manage_nobles"))
             {

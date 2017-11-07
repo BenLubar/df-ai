@@ -407,8 +407,8 @@ void AI::event(const std::string & name, const Json::Value & payload)
 command_result AI::startup(color_ostream & out)
 {
     command_result res = Core::getInstance().runCommand(out, "disable confirm");;
-    if (res == CR_OK && config.manage_labors)
-        res = Core::getInstance().runCommand(out, "enable autolabor");
+    if (res == CR_OK && !config.manage_labors.empty())
+        res = Core::getInstance().runCommand(out, "enable " + config.manage_labors);
     if (res == CR_OK)
         res = pop->startup(out);
     if (res == CR_OK)
