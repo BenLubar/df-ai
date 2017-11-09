@@ -567,12 +567,21 @@ Json::Value plan_priority_t::furniture_filter_t::to_json() const
 
 bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) const
 {
-    for (auto & c : count)
+    auto check_count = [this, ai]() -> bool
     {
-        if (!c.is_match(ai->plan->rooms_and_corridors))
+        for (auto & c : count)
         {
-            return false;
+            if (!c.is_match(ai->plan->rooms_and_corridors))
+            {
+                return false;
+            }
         }
+        return true;
+    };
+
+    if (!check_count())
+    {
+        return false;
     }
 
     switch (action)
@@ -615,7 +624,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                         if (do_dig(ai, out, r))
                         {
                             reason << "want dig: " << ai->plan->describe_room(r);
-                            if (!keep_going)
+                            if (!keep_going || !check_count())
                             {
                                 return true;
                             }
@@ -626,7 +635,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                         if (do_dig_immediate(ai, out, r))
                         {
                             reason << "dig room: " << ai->plan->describe_room(r);
-                            if (!keep_going)
+                            if (!keep_going || !check_count())
                             {
                                 return true;
                             }
@@ -637,7 +646,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                         if (do_unignore_furniture(ai, out, r))
                         {
                             reason << "furnishing: " << ai->plan->describe_room(r);
-                            if (!keep_going)
+                            if (!keep_going || !check_count())
                             {
                                 return true;
                             }
@@ -648,7 +657,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                         if (do_finish(ai, out, r))
                         {
                             reason << "finishing: " << ai->plan->describe_room(r);
-                            if (!keep_going)
+                            if (!keep_going || !check_count())
                             {
                                 return true;
                             }
