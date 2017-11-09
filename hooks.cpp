@@ -41,6 +41,7 @@ DFhackCExport void SDL_Quit(void);
 static volatile uint32_t lockstep_tick_count = 0;
 static volatile bool lockstep_hooked = false;
 static volatile bool lockstep_want_shutdown = false;
+static volatile bool lockstep_want_shutdown_now = false;
 
 #ifdef _WIN32
 static uint8_t Real_GetTickCount[6];
@@ -527,8 +528,7 @@ static void lockstep_loop()
         if (lockstep_mainloop())
         {
             LOCKSTEP_DEBUG("want shutdown (A)");
-            SDL_Quit();
-            exit(0);
+            Hook_Shutdown_Now();
             return;
         }
         LOCKSTEP_DEBUG("calling DFHack (A)");
@@ -545,8 +545,7 @@ static void lockstep_loop()
             if (lockstep_mainloop())
             {
                 LOCKSTEP_DEBUG("want shutdown (B)");
-                SDL_Quit();
-                exit(0);
+                Hook_Shutdown_Now();
                 return;
             }
             LOCKSTEP_DEBUG("calling DFHack (B)");
@@ -707,7 +706,7 @@ void Hook_Update()
         lockstep_want_shutdown = false;
         Hook_Shutdown();
     }
-    else if (!lockstep_hooked && config.lockstep)
+    else if (!lockstep_hooked && config.lockstep && !lockstep_want_shutdown_now)
     {
         LOCKSTEP_DEBUG("trying to hook");
         if (init->display.flag.is_set(init_display_flags::TEXT))
@@ -807,4 +806,18 @@ void Hook_Shutdown()
     lockstep_renderer = nullptr;
 
     lockstep_hooked = false;
+
+    if (lockstep_want_shutdown_now)
+    {
+        if (df::viewscreen *screen = Gui::getCurViewscreen(true))
+        {
+            screen->breakdown_level = interface_breakdown_types::QUIT;
+        }
+    }
+}
+
+void Hook_Shutdown_Now()
+{
+    lockstep_want_shutdown = true;
+    lockstep_want_shutdown_now = true;
 }

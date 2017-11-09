@@ -2,6 +2,7 @@
 #include "camera.h"
 #include "embark.h"
 #include "event_manager.h"
+#include "hooks.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
@@ -77,9 +78,12 @@ void Embark::register_restart_timer(color_ostream & out)
             {
                 if (config.lockstep)
                 {
-                    exit(0);
+                    Hook_Shutdown_Now();
                 }
-                Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
+                else
+                {
+                    Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
+                }
                 return true;
             }
 
