@@ -50,6 +50,8 @@
 #include "df/item_weaponst.h"
 #include "df/itemdef_weaponst.h"
 #include "df/job.h"
+#include "df/job_item.h"
+#include "df/job_item_ref.h"
 #include "df/manager_order.h"
 #include "df/occupation.h"
 #include "df/reaction.h"
@@ -2696,6 +2698,8 @@ void Population::report(std::ostream & out, bool html)
         }
     }
 
+    std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & s) -> std::string { return s; };
+
     if (html)
     {
         out << "</ul><h2 id=\"Population_Jobs\">Jobs</h2><ul>";
@@ -2714,14 +2718,139 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "- " << AI::describe_job(j->item) << "\n";
         }
-        for (auto ref : j->item->general_refs)
+        std::set<size_t> handled_items;
+        for (auto & item : j->item->items)
         {
-            std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & s) -> std::string { return s; };
+            handled_items.insert(size_t(item->job_item_idx));
             if (html)
             {
                 out << "<br/>";
             }
-            out << toLower(enum_item_key(ref->getType())) << ": ";
+            else
+            {
+                out << "  ";
+            }
+            out << "item (" << enum_item_key(item->role) << "): ";
+            out << escape(AI::describe_item(item->item));
+            if (item->is_fetching)
+            {
+                out << " (fetching)";
+            }
+            if (!html)
+            {
+                out << "\n";
+            }
+        }
+        for (size_t i = 0; i < j->item->job_items.size(); i++)
+        {
+            if (handled_items.count(i))
+            {
+                continue;
+            }
+            auto & item = j->item->job_items.at(i);
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "  ";
+            }
+            out << "item (not yet selected): ";
+            MaterialInfo mat(item);
+            ItemTypeInfo typ(item);
+            if (mat.isValid())
+            {
+                out << escape(mat.toString()) << " ";
+            }
+            if (typ.isValid())
+            {
+                out << escape(typ.toString()) << " ";
+            }
+            if (!item->has_material_reaction_product.empty())
+            {
+                out << "(has product: " << escape(item->has_material_reaction_product) << ") ";
+            }
+            if (item->has_tool_use != tool_uses::NONE)
+            {
+                out << "(has tool use: " << enum_item_key(item->has_tool_use) << ") ";
+            }
+            if (auto ore = df::inorganic_raw::find(item->metal_ore))
+            {
+                out << "(ore of " << escape(ore->material.state_name[matter_state::Solid]) << ") ";
+            }
+            std::vector<std::string> flags;
+            bitfield_to_string(&flags, item->flags1);
+            bitfield_to_string(&flags, item->flags2);
+            bitfield_to_string(&flags, item->flags3);
+            //bitfield_to_string(&flags, item->flags4);
+            //bitfield_to_string(&flags, item->flags5);
+            if (!flags.empty())
+            {
+                out << "(";
+                bool first = true;
+                for (auto & flag : flags)
+                {
+                    if (first)
+                    {
+                        first = false;
+                    }
+                    else
+                    {
+                        out << ", ";
+                    }
+                    out << flag;
+                }
+                out << ") ";
+            }
+            if (item->quantity != 1)
+            {
+                out << "(quantity: " << item->quantity << ") ";
+            }
+            if (!html)
+            {
+                out << "\n";
+            }
+        }
+        for (auto & ref : j->item->general_refs)
+        {
+            if (html)
+            {
+                out << "<br/>";
+            }
+            else
+            {
+                out << "  ";
+            }
+            switch (ref->getType())
+            {
+            case general_ref_type::UNIT_WORKER:
+                out << "Worker: ";
+                break;
+            case general_ref_type::BUILDING_HOLDER:
+                if (j->item->job_type == job_type::StoreItemInStockpile)
+                {
+                    out << "Stockpile: ";
+                }
+                else
+                {
+                    out << "Workshop: ";
+                }
+                break;
+            case general_ref_type::BUILDING_USE_TARGET_1:
+                if (ref->getBuilding()->getType() == building_type::Bed)
+                {
+                    out << "Bedroom: ";
+                }
+                else
+                {
+                    out << "Building: ";
+                }
+                break;
+            default:
+                out << toLower(enum_item_key(ref->getType())) << ": ";
+                break;
+            }
             if (auto item = ref->getItem())
             {
                 out << escape(AI::describe_item(item));
@@ -2737,8 +2866,21 @@ void Population::report(std::ostream & out, bool html)
             }
             if (auto building = ref->getBuilding())
             {
-                out << "[not yet implemented]";
-                // TODO: describe buildings
+                room *r = nullptr;
+                furniture *f = nullptr;
+                if (ai->plan->find_building(building, r, f))
+                {
+                    if (f)
+                    {
+                        out << ai->plan->describe_furniture(f, html);
+                        out << " in ";
+                    }
+                    out << ai->plan->describe_room(r, html);
+                }
+                else
+                {
+                    out << toLower(enum_item_key(building->getType()));
+                }
             }
             if (auto entity = ref->getEntity())
             {

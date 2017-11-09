@@ -5935,6 +5935,85 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
     return cors;
 }
 
+bool Plan::find_building(df::building *bld, room * & r, furniture * & f)
+{
+    if (room_by_z.empty())
+    {
+        for (auto r_ : rooms_and_corridors)
+        {
+            if (bld->getType() == building_type::Construction)
+            {
+                for (auto f_ : r_->layout)
+                {
+                    if (r_->min.z + f_->pos.z == bld->z && f_->construction == bld->getSubtype() && r_->min.x + f_->pos.x == bld->x1 && r_->min.y + f_->pos.y == bld->y1)
+                    {
+                        r = r_;
+                        f = f_;
+                        return true;
+                    }
+                }
+                continue;
+            }
+
+            if (r_->bld_id == bld->id)
+            {
+                r = r_;
+                return true;
+            }
+
+            for (auto f_ : r_->layout)
+            {
+                if (f_->bld_id == bld->id)
+                {
+                    r = r_;
+                    f = f_;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    auto by_z = room_by_z.find(bld->z);
+    if (by_z == room_by_z.end())
+    {
+        return false;
+    }
+    for (auto r_ : by_z->second)
+    {
+        if (bld->getType() == building_type::Construction)
+        {
+            for (auto f_ : r_->layout)
+            {
+                if (f_->construction == bld->getSubtype() && r_->min.x + f_->pos.x == bld->x1 && r_->min.y + f_->pos.y == bld->y1)
+                {
+                    r = r_;
+                    f = f_;
+                    return true;
+                }
+            }
+            continue;
+        }
+
+        if (r_->bld_id == bld->id)
+        {
+            r = r_;
+            return true;
+        }
+
+        for (auto f_ : r_->layout)
+        {
+            if (f_->bld_id == bld->id)
+            {
+                r = r_;
+                f = f_;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 // XXX
 bool Plan::corridor_include_hack(const room *r, df::coord t1, df::coord t2)
 {

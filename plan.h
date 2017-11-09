@@ -244,6 +244,7 @@ public:
     bool map_tile_intersects_room(df::coord t);
 
     void weblegends_write_svg(std::ostream & out);
+    bool find_building(df::building *bld, room * & r, furniture * & f);
 
     static df::coord find_tree_base(df::coord t, df::plant **ptree = nullptr);
 
