@@ -1416,8 +1416,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
         r = find_room(room_type::bedroom, [](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig; });
     if (r)
     {
-        r->queue = 1;
-        wantdig(out, r);
+        wantdig(out, r, -1);
         set_owner(out, r, id);
         ai->debug(out, "assign " + describe_room(r), r->pos());
         if (r->status == room_status::finished)
@@ -1449,7 +1448,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
             r_->users.size() < r_->has_users;
     }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -3);
         r->users.insert(id);
     }
 
@@ -1460,7 +1459,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
             r_->users.size() < r_->has_users;
     }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -3);
         r->users.insert(id);
     }
 
@@ -1471,7 +1470,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
             r_->users.size() < r_->has_users;
     }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -3);
         r->users.insert(id);
     }
 
@@ -1482,7 +1481,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
             r_->users.size() < r_->has_users;
     }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -3);
         r->users.insert(id);
     }
 
@@ -1497,7 +1496,7 @@ void Plan::getdiningroom(color_ostream & out, int32_t id)
         return false;
     }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -2);
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
@@ -1548,8 +1547,7 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
 #define DIG_ROOM_IF(type, req) \
             if (r->nobleroom_type == nobleroom_type::type && std::find_if(entpos.begin(), entpos.end(), [](Units::NoblePosition np) -> bool { return np.position->required_ ## req > 0; }) != entpos.end()) \
             { \
-                r->queue = 2; \
-                wantdig(out, r); \
+                wantdig(out, r, -2); \
             }
             DIG_ROOM_IF(tomb, tomb);
             DIG_ROOM_IF(dining, dining);
@@ -1581,7 +1579,7 @@ void Plan::getsoldierbarrack(color_ostream & out, int32_t id)
         }
         r->squad_id = squad_id;
         ai->debug(out, stl_sprintf("squad %d assign %s", squad_id, describe_room(r).c_str()));
-        wantdig(out, r);
+        wantdig(out, r, -2);
         if (df::building *bld = r->dfbuilding())
         {
             assign_barrack_squad(out, bld, squad_id);
@@ -1657,7 +1655,7 @@ void Plan::getcoffin(color_ostream & out)
 {
     if (room *r = find_room(room_type::cemetary, [](room *r_) -> bool { return std::find_if(r_->layout.begin(), r_->layout.end(), [](furniture *f) -> bool { return f->has_users && f->users.empty(); }) != r_->layout.end(); }))
     {
-        wantdig(out, r);
+        wantdig(out, r, -1);
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
             furniture *f = *it;
@@ -1853,10 +1851,17 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
 }
 
 // queue a room for digging when other dig jobs are finished
-bool Plan::wantdig(color_ostream & out, room *r)
+bool Plan::wantdig(color_ostream & out, room *r, int32_t queue)
 {
     if (r->queue_dig || r->status != room_status::plan)
+    {
         return false;
+    }
+
+    if (queue != 0)
+    {
+        r->queue = queue;
+    }
     ai->debug(out, "wantdig " + describe_room(r));
     r->queue_dig = true;
     r->dig(true);
