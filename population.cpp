@@ -2695,6 +2695,45 @@ void Population::report(std::ostream & out, bool html)
             out << "- " << AI::describe_event(d) << "\n";
         }
     }
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Jobs\">Jobs</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Jobs\n";
+    }
+    for (auto j = world->job_list.next; j; j = j->next)
+    {
+        df::unit *u = Job::getWorker(j->item);
+        if (html)
+        {
+            out << "<li>" << html_escape(AI::describe_job(j->item)) << "<br/>";
+            if (u)
+            {
+                out << AI::describe_unit(u, true);
+            }
+            else
+            {
+                out << "<i>(no worker)</i>";
+            }
+            out << "</li>";
+        }
+        else
+        {
+            out << "- " << AI::describe_job(j->item) << "\n";
+            if (u)
+            {
+                out << "  " << AI::describe_unit(u) << "\n";
+            }
+            else
+            {
+                out << "  (no worker)\n";
+            }
+        }
+    }
+
     if (html)
     {
         out << "</ul>";
