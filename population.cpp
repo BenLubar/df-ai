@@ -2706,31 +2706,68 @@ void Population::report(std::ostream & out, bool html)
     }
     for (auto j = world->job_list.next; j; j = j->next)
     {
-        df::unit *u = Job::getWorker(j->item);
         if (html)
         {
-            out << "<li>" << html_escape(AI::describe_job(j->item)) << "<br/>";
-            if (u)
-            {
-                out << AI::describe_unit(u, true);
-            }
-            else
-            {
-                out << "<i>(no worker)</i>";
-            }
-            out << "</li>";
+            out << "<li>" << html_escape(AI::describe_job(j->item));
         }
         else
         {
             out << "- " << AI::describe_job(j->item) << "\n";
-            if (u)
+        }
+        for (auto ref : j->item->general_refs)
+        {
+            std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & s) -> std::string { return s; };
+            if (html)
             {
-                out << "  " << AI::describe_unit(u) << "\n";
+                out << "<br/>";
             }
-            else
+            out << toLower(enum_item_key(ref->getType())) << ": ";
+            if (auto item = ref->getItem())
             {
-                out << "  (no worker)\n";
+                out << escape(AI::describe_item(item));
             }
+            if (auto unit = ref->getUnit())
+            {
+                out << AI::describe_unit(unit, html);
+            }
+            if (auto projectile = ref->getProjectile())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe projectiles
+            }
+            if (auto building = ref->getBuilding())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe buildings
+            }
+            if (auto entity = ref->getEntity())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe entities
+            }
+            if (auto artifact = ref->getArtifact())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe artifacts
+            }
+            if (auto nemesis = ref->getNemesis())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe nemeses
+            }
+            if (auto event = ref->getEvent())
+            {
+                out << "[not yet implemented]";
+                // TODO: describe events
+            }
+            if (!html)
+            {
+                out << "\n";
+            }
+        }
+        if (html)
+        {
+            out << "</li>";
         }
     }
 
