@@ -8,7 +8,7 @@
 		"legacy_outdoor_farms_cloth",
 		"legacy_pasture",
 		"legacy_pitting_tower",
-		"legacy_hives"
+		"legacy_outdoor_hives"
 	],
 	"limits": {
 		"legacy_fort_entrance": [1, 1],
@@ -642,40 +642,29 @@
 		{
 			"continue": true,
 			"action": "unignore_furniture",
-			"match": {
+			"match": [{
 				"type": "dininghall"
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
+			}, {
 				"type": "barracks"
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
+			}, {
 				"type": "nobleroom"
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
+			}, {
 				"type": "bedroom"
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
+			}, {
 				"type": "cemetary"
-			}
+			}]
 		},
 		{
 			"action": "dig_next_cavern_outpost"
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "corridor",
+				"outdoor": true,
+				"comment": "hives"
+			}
 		},
 		{
 			"action": "dig",
