@@ -182,3 +182,15 @@ input[type="number"] {
 .field > p {
 	font-style: italic;
 }
+
+.inactive .empty, .inactive .empty + br {
+	display: none;
+}
+
+.field.thin > .field {
+	clear: none;
+}
+
+.field.thin + br {
+	display: none;
+}

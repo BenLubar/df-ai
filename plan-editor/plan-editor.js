@@ -1096,12 +1096,12 @@
 			return el;
 		}
 
-		function makePropertyVector(labelText, parent, filter, name, obj) {
+		function makePropertyVector(labelText, parent, filter, name, obj, isMain) {
 			var index = [];
 
-			var label = document.createElement('label');
-			label.textContent = labelText;
-			parent.appendChild(label);
+			var mainLabel = document.createElement('label');
+			mainLabel.textContent = labelText;
+			parent.appendChild(mainLabel);
 
 			var addButton = document.createElement('button');
 			addButton.classList.add('add');
@@ -1113,9 +1113,10 @@
 				markPlanDirty();
 				add().focus();
 			}, false);
-			label.appendChild(addButton);
+			mainLabel.appendChild(addButton);
+			mainLabel.classList.add('empty');
 
-			var last = label;
+			var last = mainLabel;
 
 			function add() {
 				var state = {
@@ -1128,6 +1129,7 @@
 					last = last.parentNode;
 				}
 				parent.insertBefore(state.el, last);
+				mainLabel.classList.remove('empty');
 				if (last) {
 					parent.insertBefore(last, state.el);
 				}
@@ -1152,6 +1154,7 @@
 					obj[name].splice(state.i, 1);
 					if (index.length === 0) {
 						delete obj[name];
+						mainLabel.classList.add('empty');
 					}
 
 					if (state.el === last) {
@@ -1165,21 +1168,38 @@
 				wrapper.classList.add('field');
 				state.el.appendChild(wrapper);
 
+				if (isMain) {
+					state.el.classList.add('inactive');
+					state.el.addEventListener('focus', function() {
+						state.el.classList.remove('inactive');
+					}, true);
+					state.el.addEventListener('blur', function() {
+						state.el.classList.add('inactive');
+					}, true);
+				}
+
 				return filter(wrapper, function() {
 					return obj[name][state.i];
 				}, function(value) {
 					obj[name][state.i] = value;
-				});
+				}, state.el);
 			}
+
+			var firstElement = addButton;
 
 			if (Object.prototype.hasOwnProperty.call(obj, name)) {
 				if (!Array.isArray(obj[name])) {
 					obj[name] = [obj[name]];
 				}
 				obj[name].forEach(function() {
-					add();
+					var el = add();
+					if (firstElement === addButton) {
+						firstElement = el;
+					}
 				});
 			}
+
+			return firstElement;
 		}
 
 		function makeStringFilter(parent, get, set) {
@@ -1267,17 +1287,42 @@
 			max.value = Object.prototype.hasOwnProperty.call(obj, name) ? obj[name][1] : '';
 			max.disabled = !hasMax.checked;
 
+			var container = document.createElement('span');
+			parent.appendChild(container);
+
+			container.appendChild(document.createTextNode('between '));
+			container.appendChild(hasMin);
+			container.appendChild(min);
+			container.appendChild(document.createTextNode(' and '));
+			container.appendChild(hasMax);
+			container.appendChild(max);
+
+			function setEmpty() {
+				label.classList.add('empty');
+				container.classList.add('empty');
+			}
+			function clearEmpty() {
+				label.classList.remove('empty');
+				container.classList.remove('empty');
+			}
+
+			if (!hasMin.checked && !hasMax.checked) {
+				setEmpty();
+			}
+
 			hasMin.addEventListener('change', function() {
 				markPlanDirty();
 				min.disabled = !hasMin.checked;
 				if (hasMin.checked) {
 					obj[name] = obj[name] || [null, null];
 					obj[name][0] = isNaN(min.value) ? 0 : parseInt(min.value, 10);
+					clearEmpty();
 				} else {
 					min.value = '';
 					obj[name][0] = null;
 					if (obj[name][1] === null) {
 						delete obj[name];
+						setEmpty();
 					}
 				}
 			}, false);
@@ -1300,11 +1345,13 @@
 				if (hasMax.checked) {
 					obj[name] = obj[name] || [null, null];
 					obj[name][1] = isNaN(max.value) ? (obj[name][0] || 0) : parseInt(max.value, 10);
+					clearEmpty();
 				} else {
 					max.value = '';
 					obj[name][1] = null;
 					if (obj[name][0] === null) {
 						delete obj[name];
+						setEmpty();
 					}
 				}
 			}, false);
@@ -1320,13 +1367,6 @@
 					max.value = obj[name][1];
 				}
 			}, false);
-
-			parent.appendChild(document.createTextNode('between '));
-			parent.appendChild(hasMin);
-			parent.appendChild(min);
-			parent.appendChild(document.createTextNode(' and '));
-			parent.appendChild(hasMax);
-			parent.appendChild(max);
 
 			return hasMin;
 		}
@@ -1404,18 +1444,30 @@
 			option.textContent = 'No';
 			select.appendChild(option);
 
-			select.value = Object.prototype.hasOwnProperty.call(obj, name) ? Boolean(obj[name]).toString() : '';
+			if (Object.prototype.hasOwnProperty.call(obj, name)) {
+				select.value = Boolean(obj[name]).toString();
+			} else {
+				select.value = '';
+				label.classList.add('empty');
+				select.classList.add('empty');
+			}
 			select.addEventListener('change', function() {
 				markPlanDirty();
 				switch (select.value) {
 					case 'true':
 						obj[name] = true;
+						label.classList.remove('empty');
+						select.classList.remove('empty');
 						break;
 					case 'false':
 						obj[name] = false;
+						label.classList.remove('empty');
+						select.classList.remove('empty');
 						break;
 					default:
 						delete obj[name];
+						label.classList.add('empty');
+						select.classList.add('empty');
 						break;
 				}
 			}, false);
@@ -1541,7 +1593,7 @@
 		var prioritiesList = document.createElement('div');
 		mainPanel.appendChild(prioritiesList);
 
-		makePropertyVector('Priorities', prioritiesList, makePriority, 'priorities', plan);
+		makePropertyVector('Priorities', prioritiesList, makePriority, 'priorities', plan, true);
 
 		var prioritiesLabel = prioritiesList.querySelector('label');
 		prioritiesList.removeChild(prioritiesLabel);
