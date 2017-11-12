@@ -2,19 +2,19 @@
 	"f": [
 		{
 			"dig": "Channel",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "Channel",
 			"x": 1,
 			"y": 0,
 			"z": 0
 		},
 		{
+			"dig": "Channel",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
 			"construction": "Floor",
-			"x": 0,
+			"x": 1,
 			"y": 0,
 			"z": -1
 		},
@@ -216,8 +216,8 @@
 	"r": [
 		{
 			"type": "garbagedump",
-			"min": [0, 0, 0],
-			"max": [0, 0, 0],
+			"min": [-1, 0, 0],
+			"max": [-1, 0, 0],
 			"layout": [0, 1, 2],
 			"outdoor": true
 		},
