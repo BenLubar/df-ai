@@ -736,6 +736,7 @@ void Population::update_military(color_ostream & out)
             maydraft.push_back(u);
         }
     }
+
     size_t axes = 0, picks = 0;
     for (auto it = world->items.other[items_other_id::WEAPON].begin(); it != world->items.other[items_other_id::WEAPON].end(); it++)
     {
@@ -764,6 +765,40 @@ void Population::update_military(color_ostream & out)
         military[ns->id] = ns->military.squad_id;
         ai->plan->getsoldierbarrack(out, ns->id);
     }
+
+    // Check barracks construction status.
+    ai->plan->find_room(room_type::barracks, [](room *r) -> bool
+    {
+        if (r->status < room_status::dug)
+        {
+            return false;
+        }
+
+        df::squad *squad = df::squad::find(r->squad_id);
+        if (!squad)
+        {
+            return false;
+        }
+
+        df::building *training_equipment = df::building::find(r->bld_id);
+        if (!training_equipment)
+        {
+            return false;
+        }
+
+        if (training_equipment->getBuildStage() < training_equipment->getMaxBuildStage())
+        {
+            return false;
+        }
+
+        // Barracks is ready to train soldiers. Send the squad to training.
+        if (!squad->cur_alert_idx)
+        {
+            squad->cur_alert_idx = 1; // training
+        }
+
+        return false;
+    });
 }
 
 // with a population of 200:
@@ -1182,7 +1217,7 @@ int32_t Population::military_find_free_squad()
     int32_t squad_id = ui->main.fortress_entity->squads.back();
     df::squad *squad = df::squad::find(squad_id);
 
-    squad->cur_alert_idx = 1; // train
+    squad->cur_alert_idx = 0; // off-duty, will be changed when the barracks is ready
     squad->uniform_priority = 2;
     squad->carry_food = 2;
     squad->carry_water = 2;
