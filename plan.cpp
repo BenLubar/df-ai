@@ -820,6 +820,7 @@ void Plan::load(std::istream & in)
 
     ENUM_NAMES(room_status, status);
     ENUM_NAMES(room_type, type);
+    room_type_names["cemetary"] = room_type::cemetery;
     room_type_names["garbagepit"] = room_type::corridor;
     ENUM_NAMES(corridor_type, type);
     corridor_type_names[""] = corridor_type::corridor;
@@ -1292,7 +1293,7 @@ void Plan::idleidle(color_ostream & out)
             (r->type == room_type::nobleroom ||
                 r->type == room_type::bedroom ||
                 r->type == room_type::dininghall ||
-                r->type == room_type::cemetary ||
+                r->type == room_type::cemetery ||
                 r->type == room_type::infirmary ||
                 r->type == room_type::barracks ||
                 r->type == room_type::location ||
@@ -1653,7 +1654,7 @@ void Plan::assign_barrack_squad(color_ostream &, df::building *bld, int32_t squa
 
 void Plan::getcoffin(color_ostream & out)
 {
-    if (room *r = find_room(room_type::cemetary, [](room *r_) -> bool { return std::find_if(r_->layout.begin(), r_->layout.end(), [](furniture *f) -> bool { return f->has_users && f->users.empty(); }) != r_->layout.end(); }))
+    if (room *r = find_room(room_type::cemetery, [](room *r_) -> bool { return std::find_if(r_->layout.begin(), r_->layout.end(), [](furniture *f) -> bool { return f->has_users && f->users.empty(); }) != r_->layout.end(); }))
     {
         wantdig(out, r, -1);
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
@@ -1966,7 +1967,7 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return construct_cistern(out, r);
     }
 
-    if (r->type == room_type::cemetary)
+    if (r->type == room_type::cemetery)
     {
         return furnish_room(out, r);
     }

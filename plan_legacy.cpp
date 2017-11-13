@@ -1269,8 +1269,8 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     infirmary->accesspath.push_back(cor);
     rooms_and_corridors.push_back(infirmary);
 
-    // cemetary lots (160 spots)
-    cor = new room(corridor_type::corridor, f + df::coord(6, -1, 0), f + df::coord(14, 1, 0), "east utilities - cemetary access");
+    // cemetery lots (160 spots)
+    cor = new room(corridor_type::corridor, f + df::coord(6, -1, 0), f + df::coord(14, 1, 0), "east utilities - cemetery access");
     cor->accesspath.push_back(old_cor);
     rooms_and_corridors.push_back(cor);
     old_cor = cor;
@@ -1299,20 +1299,20 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             for (int16_t rx = 0; rx < 2; rx++)
             {
                 df::coord o = f + df::coord(10 + 5 * rx + 9 * rrx, -3 - 3 * ry, 0);
-                room *cemetary = new room(room_type::cemetary, o, o + df::coord(4, -3, 0));
+                room *cemetery = new room(room_type::cemetery, o, o + df::coord(4, -3, 0));
                 for (int16_t dx = 0; dx < 4; dx++)
                 {
                     for (int16_t dy = 0; dy < 2; dy++)
                     {
-                        cemetary->layout.push_back(new_furniture_with_users(layout_type::coffin, dx + 1 - rx, dy + 1, 1, true));
+                        cemetery->layout.push_back(new_furniture_with_users(layout_type::coffin, dx + 1 - rx, dy + 1, 1, true));
                     }
                 }
                 if (rx == 0 && ry == 0 && rrx == 0)
                 {
-                    cemetary->layout.push_back(new_door(4, 4));
-                    cemetary->accesspath.push_back(cor);
+                    cemetery->layout.push_back(new_door(4, 4));
+                    cemetery->accesspath.push_back(cor);
                 }
-                rooms_and_corridors.push_back(cemetary);
+                rooms_and_corridors.push_back(cemetery);
             }
         }
     }
@@ -1332,7 +1332,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
         for (int16_t ry = -1; ry <= 1; ry += 2)
         {
-            if (ry == -1 && rx < 3) // infirmary/cemetary
+            if (ry == -1 && rx < 3) // infirmary/cemetery
                 continue;
 
             room *barracks = new room(room_type::barracks, df::coord(f.x + 2 + 10 * rx, f.y + 3 * ry, f.z), df::coord(f.x + 2 + 10 * rx + 6, f.y + 10 * ry, f.z), stl_sprintf("barracks %c", barracksLetter++));
@@ -1872,7 +1872,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     FIND_ROOM(true, room_type::tradedepot, ifplan);
     FIND_ROOM(true, room_type::cistern, ifplan);
     FIND_ROOM(true, room_type::infirmary, ifplan);
-    FIND_ROOM(!find_room(room_type::cemetary, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetary, ifplan);
+    FIND_ROOM(!find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetery, ifplan);
     FIND_ROOM(!important_workshops2.empty(), room_type::furnace, [this](room *r) -> bool
     {
         if (r->furnace_type == important_workshops2.back() &&
@@ -2048,7 +2048,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
             find_room(room_type::barracks, unignore_all_furniture);
             find_room(room_type::nobleroom, unignore_all_furniture);
             find_room(room_type::bedroom, unignore_all_furniture);
-            find_room(room_type::cemetary, unignore_all_furniture);
+            find_room(room_type::cemetery, unignore_all_furniture);
         }
 
         bool any_outpost = false;
@@ -2076,7 +2076,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     FIND_ROOM(true, room_type::barracks, ifplan);
     FIND_ROOM(true, room_type::nobleroom, ifplan);
     FIND_ROOM(true, room_type::bedroom, ifplan);
-    FIND_ROOM(true, room_type::cemetary, ifplan);
+    FIND_ROOM(true, room_type::cemetery, ifplan);
 #undef FIND_ROOM
 
     if (r)

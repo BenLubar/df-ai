@@ -131,24 +131,24 @@
 	],
 	"r": [
 		{
-			"type": "cemetary",
+			"type": "cemetery",
 			"min": [0, -3, 0],
 			"max": [4, 0, 0],
 			"require_walls": false,
 			"layout": [0, 1, 2, 3, 4, 5, 6, 7],
 			"exits": [
-				["legacy_cemetary_west", 0, -1, 0]
+				["legacy_cemetery_west", 0, -1, 0]
 			]
 		},
 		{
-			"type": "cemetary",
+			"type": "cemetery",
 			"min": [5, -3, 0],
 			"max": [9, 0, 0],
 			"require_walls": false,
 			"layout": [8, 9, 10, 11, 12, 13, 14, 15],
 			"accesspath": [0],
 			"exits": [
-				["legacy_cemetary_east", 5, 3, 0]
+				["legacy_cemetery_east", 5, 3, 0]
 			]
 		}
 	]

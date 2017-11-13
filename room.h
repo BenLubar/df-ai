@@ -35,7 +35,7 @@ BEGIN_ENUM(room, type) \
 \
     ENUM_ITEM(barracks) \
     ENUM_ITEM(bedroom) \
-    ENUM_ITEM(cemetary) \
+    ENUM_ITEM(cemetery) \
     ENUM_ITEM(cistern) \
     ENUM_ITEM(dininghall) \
     ENUM_ITEM(farmplot) \

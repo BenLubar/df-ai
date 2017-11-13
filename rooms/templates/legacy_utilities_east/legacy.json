@@ -25,7 +25,7 @@
 			"accesspath": [0],
 			"layout": [0],
 			"exits": [
-				["legacy_cemetary_west", 5, -2, 0]
+				["legacy_cemetery_west", 5, -2, 0]
 			]
 		},
 		{
