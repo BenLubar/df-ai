@@ -9,7 +9,13 @@
 		plans = {};
 		rooms = {};
 		var file = e.target.files[0];
-		zip.createReader(new zip.BlobReader(file), function(reader) {
+		doReadZip(new zip.BlobReader(file));
+	}, false);
+	document.body.appendChild(fileUpload);
+
+	window.doReadZip = function doReadZip(dataFactory, callback) {
+		callback = callback || function() {};
+		zip.createReader(dataFactory, function(reader) {
 			reader.getEntries(function(entries) {
 				var i = 0;
 				function next() {
@@ -20,6 +26,7 @@
 							document.getElementById('loading').style.display = 'none';
 							resetUI();
 							dirty = false;
+							callback(null);
 						});
 					}
 					if (e.directory) {
@@ -57,9 +64,9 @@
 			console.error(error);
 			document.getElementById('loading').style.display = 'none';
 			alert('Error: ' + error);
+			callback(error || 'unknown error');
 		});
-	}, false);
-	document.body.appendChild(fileUpload);
+	};
 
 	window.doLoad = function doLoad() {
 		if (dirty && !confirm('You have not saved your changes. Do you still want to load a different set of blueprints?')) {

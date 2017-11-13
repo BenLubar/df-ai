@@ -56,6 +56,22 @@
 	var downloadLink = document.createElement('a');
 	downloadLink.href = 'https://github.com/BenLubar/df-ai/archive/master.zip';
 	downloadLink.textContent = 'latest development version of df-ai\'s built-in plans';
+	downloadLink.addEventListener('click', function readZipDirectly(e) {
+		e.preventDefault();
+		if (dirty && !confirm('You have not saved your changes. Do you still want to load a different set of blueprints?')) {
+			return;
+		}
+
+		document.getElementById('loading').style.display = 'block';
+		lastModified = {};
+		plans = {};
+		rooms = {};
+		doReadZip(new zip.HttpReader('https://cors-anywhere.herokuapp.com/https://github.com/BenLubar/df-ai/archive/master.zip'), function(err) {
+			if (err) {
+				downloadLink.removeEventListener('click', readZipDirectly);
+			}
+		});
+	}, false);
 	downloadBlurb.appendChild(downloadLink);
 
 	downloadBlurb.appendChild(document.createTextNode(' as a starting point!'));
