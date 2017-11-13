@@ -130,6 +130,12 @@
 			lastModified['df-ai-blueprints/rooms/templates/' + name + '/' + tmpl + '.json'] = new Date();
 		}
 
+		gtag('event', 'dfai_edit_room', {
+			room_name: name,
+			room_inst: inst,
+			room_tmpl: tmpl
+		});
+
 		var header = document.createElement('h1');
 		header.textContent = 'Editing room: ' + name + ' (i:\u00a0' + inst + ', t:\u00a0' + tmpl + ')';
 		mainPanel.appendChild(header);
@@ -139,6 +145,12 @@
 		var template = room.templates[tmpl];
 
 		if (Object.prototype.hasOwnProperty.call(instance, 'p') && Array.isArray(instance.p) && instance.p.length) {
+			gtag('event', 'dfai_debug_room_has_placeholders', {
+				room_name: name,
+				room_inst: inst,
+				room_tmpl: tmpl
+			});
+
 			alert('Warning: The room editor does not currently support placeholders. Editing this room may corrupt it.');
 		}
 
@@ -213,9 +225,7 @@
 			var a = document.createElement('a');
 			a.href = '#';
 			a.textContent = '[room]';
-			a.addEventListener('click', function(e) {
-				e.preventDefault();
-
+			function click() {
 				[].forEach.call(svg.querySelectorAll('.active'), function(el) {
 					el.classList.remove('active');
 				});
@@ -233,6 +243,18 @@
 				containerSide.insertBefore(layoutList, addLayout);
 				containerSide.insertBefore(addLayout, layoutList);
 				updateSelected();
+			}
+			a.addEventListener('click', function(e) {
+				e.preventDefault();
+
+				gtag('event', 'dfai_select_room', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					method: 'link'
+				});
+
+				click();
 			}, false);
 			item.appendChild(a);
 
@@ -345,7 +367,15 @@
 				pathA.appendChild(path);
 				pathA.addEventListener('click', function(e) {
 					e.preventDefault();
-					a.click();
+
+					gtag('event', 'dfai_select_room', {
+						room_name: name,
+						room_inst: inst,
+						room_tmpl: tmpl,
+						method: 'path'
+					});
+
+					click();
 				}, false);
 				g.appendChild(pathA);
 
@@ -394,14 +424,25 @@
 			}) || enums.layout_type[0];
 			a.textContent = lt.n;
 			a.href = '#';
-			a.addEventListener('click', function(e) {
-				e.preventDefault();
+			function click() {
 				[].forEach.call(svgG.querySelectorAll('.active'), function(el) {
 					el.classList.remove('active');
 				});
 				g.classList.add('active');
 				selectedLayout = f;
 				updateSelected();
+			}
+			a.addEventListener('click', function(e) {
+				e.preventDefault();
+
+				gtag('event', 'dfai_select_layout', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					method: 'link'
+				});
+
+				click();
 			}, false);
 			li.appendChild(a);
 
@@ -409,6 +450,14 @@
 			pathA.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#');
 			pathA.addEventListener('click', function(e) {
 				e.preventDefault();
+
+				gtag('event', 'dfai_select_layout', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					method: 'path'
+				});
+
 				a.click();
 			}, false);
 			g.appendChild(pathA);
@@ -442,6 +491,12 @@
 		add.textContent = '+';
 		add.id = 'room-add-inst';
 		add.addEventListener('click', function() {
+			gtag('event', 'dfai_add_room_to_instance', {
+				room_name: name,
+				room_inst: inst,
+				room_tmpl: tmpl
+			});
+
 			var r = {};
 			instance.r = instance.r || [];
 			instance.r.push(r);
@@ -468,6 +523,12 @@
 		add.textContent = '+';
 		add.id = 'room-add-tmpl';
 		add.addEventListener('click', function() {
+			gtag('event', 'dfai_add_room_to_template', {
+				room_name: name,
+				room_inst: inst,
+				room_tmpl: tmpl
+			});
+
 			var r = {};
 			template.r = template.r || [];
 			template.r.push(r);
@@ -490,6 +551,13 @@
 		add.textContent = '+';
 		add.id = 'room-add-layout';
 		add.addEventListener('click', function() {
+			gtag('event', 'dfai_add_layout_to_room', {
+				room_name: name,
+				room_inst: inst,
+				room_tmpl: tmpl,
+				room_desc: svg.querySelector('.room > .active > title').textContent
+			});
+
 			var f = {};
 			selectedFile.f = selectedFile.f || [];
 			selectedRoom.layout = selectedRoom.layout || [];
@@ -545,6 +613,13 @@
 			field.appendChild(label);
 
 			if (Object.prototype.hasOwnProperty.call(obj, fieldName)) {
+				gtag('event', 'dfai_debug_room_todo', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: fieldName
+				});
+
 				var input = document.createElement('input');
 				input.type = 'text';
 				input.value = JSON.stringify(obj[fieldName]);
@@ -601,6 +676,14 @@
 				if (typeSelect.value === enums.layout_type[0].e) {
 					delete selectedLayout.type;
 				} else {
+					gtag('event', 'dfai_edit_layout_field', {
+						room_name: name,
+						room_inst: inst,
+						room_tmpl: tmpl,
+						field: 'type',
+						mode: 'edit'
+					});
+
 					selectedLayout.type = typeSelect.value;
 				}
 				doUpdate();
@@ -643,6 +726,15 @@
 			constructionSelect.value = prevConstruction;
 			constructionSelect.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'construction',
+					mode: 'edit'
+				});
+
 				selectedLayout.construction = constructionSelect.value;
 				doUpdate();
 			}, false);
@@ -684,6 +776,15 @@
 			digSelect.value = prevDig;
 			digSelect.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'dig',
+					mode: 'edit'
+				});
+
 				selectedLayout.dig = digSelect.value;
 				doUpdate();
 			}, false);
@@ -728,16 +829,43 @@
 
 			posX.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedLayout.x = Number(posX.value);
 				doUpdate();
 			}, false);
 			posY.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedLayout.y = Number(posY.value);
 				doUpdate();
 			}, false);
 			posZ.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedLayout.z = Number(posZ.value);
 				doUpdate();
 			}, false);
@@ -765,6 +893,15 @@
 			commentInput.value = concatVariableString(selectedLayout.comment || '');
 			commentInput.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'comment',
+					mode: 'edit'
+				});
+
 				if (commentInput.value === '') {
 					delete selectedLayout.comment;
 				} else {
@@ -822,6 +959,14 @@
 			});
 			typeSelect.value = prevType;
 			typeSelect.addEventListener('change', function() {
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'type',
+					mode: 'edit'
+				});
+
 				onTypeChanged();
 			}, false);
 			typeField.appendChild(typeSelect);
@@ -855,6 +1000,15 @@
 			subtypeSelect.id = 'edit-room-subtype';
 			initSubtypeSelect();
 			subtypeSelect.addEventListener('change', function() {
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'subtype',
+					mode: 'edit'
+				});
+
 				onTypeChanged();
 			}, false);
 			subtypeField.appendChild(subtypeSelect);
@@ -870,6 +1024,16 @@
 			rawtypeInput.value = concatVariableString(selectedRoom.raw_type || '');
 			rawtypeInput.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'raw_type',
+					mode: 'edit'
+				});
+
 				selectedRoom.raw_type = maybeSplitVariableString(rawtypeInput.value);
 				doUpdate();
 			}, false);
@@ -906,18 +1070,48 @@
 
 			posX.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedRoom.min[0] = Number(posX.value);
 				selectedRoom.max[0] = selectedRoom.min[0] - 1 + Number(sizeX.value);
 				doUpdate();
 			}, false);
 			posY.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedRoom.min[1] = Number(posY.value);
 				selectedRoom.max[1] = selectedRoom.min[1] - 1 + Number(sizeY.value);
 				doUpdate();
 			}, false);
 			posZ.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'pos',
+					mode: 'edit'
+				});
+
 				selectedRoom.min[2] = Number(posZ.value);
 				selectedRoom.max[2] = selectedRoom.min[2] - 1 + Number(sizeZ.value);
 				doUpdate();
@@ -970,16 +1164,46 @@
 
 			sizeX.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'size',
+					mode: 'edit'
+				});
+
 				selectedRoom.max[0] = selectedRoom.min[0] - 1 + Number(sizeX.value);
 				doUpdate();
 			}, false);
 			sizeY.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'size',
+					mode: 'edit'
+				});
+
 				selectedRoom.max[1] = selectedRoom.min[1] - 1 + Number(sizeY.value);
 				doUpdate();
 			}, false);
 			sizeZ.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'size',
+					mode: 'edit'
+				});
+
 				selectedRoom.max[2] = selectedRoom.min[2] - 1 + Number(sizeZ.value);
 				doUpdate();
 			}, false);
@@ -1001,6 +1225,16 @@
 			commentInput.value = concatVariableString(selectedRoom.comment || '');
 			commentInput.addEventListener('change', function() {
 				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'comment',
+					mode: 'edit'
+				});
+
 				if (commentInput.value === '') {
 					delete selectedRoom.comment;
 				} else {
@@ -1101,6 +1335,15 @@
 								checkbox.id = 'edit-room-stock_disable-' + spl.e;
 								checkbox.checked = Array.isArray(selectedRoom.stock_disable) && selectedRoom.stock_disable.indexOf(spl.e) !== -1;
 								checkbox.addEventListener('change', function() {
+									gtag('event', 'dfai_edit_room_field', {
+										room_name: name,
+										room_inst: inst,
+										room_tmpl: tmpl,
+										stock_type: selectedRoom.stockpile_type,
+										field: 'stock_disable',
+										mode: 'edit'
+									});
+
 									var i = Array.isArray(selectedRoom.stock_disable) ? selectedRoom.stock_disable.indexOf(spl.e) : -1;
 									if (checkbox.checked) {
 										if (i === -1) {
@@ -1145,6 +1388,15 @@
 								checkbox.id = 'edit-room-stock_specific' + ss;
 								checkbox.checked = Boolean(selectedRoom['stock_specific' + ss]);
 								checkbox.addEventListener('change', function() {
+									gtag('event', 'dfai_edit_room_field', {
+										room_name: name,
+										room_inst: inst,
+										room_tmpl: tmpl,
+										stock_type: selectedRoom.stockpile_type,
+										field: 'stock_specific' + ss,
+										mode: 'edit'
+									});
+
 									markDirty();
 									if (checkbox.checked) {
 										selectedRoom['stock_specific' + ss] = true;

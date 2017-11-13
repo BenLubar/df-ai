@@ -248,3 +248,27 @@ svg .entrance {
 .container .field > br + input, .container .field > .field + input, .container .field > p {
 	margin-left: 150px;
 }
+
+#update-available {
+	display: none;
+	position: absolute;
+	width: 25%;
+	min-width: 450px;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: #fff;
+	color: #000;
+	text-align: center;
+	padding: 10px;
+	box-shadow: 0 0 15px rgba(0, 0, 0, .25);
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#update-available a {
+	color: #00a;
+}
+
+#update-available:hover a {
+	color: #00f;
+}

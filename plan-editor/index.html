@@ -4,21 +4,48 @@
 <meta charset="utf-8"/>
 <title>df-ai plan editor</title>
 <link rel="canonical" href="https://benlubar.github.io/df-ai/plan-editor/"/>
-<link rel="stylesheet" href="style.css"/>
-</head>
-<body>
-<p id="loading">Loading...</p>
-<noscript>JavaScript is required.</noscript>
+<script>
+// service worker
+if ('serviceWorker' in navigator) {
+	navigator.serviceWorker.register('sw.js').then(function(registration) {
+		console.log('Service Worker registration successful with scope: ', registration.scope);
+	}).catch(function(err) {
+		console.log('Service Worker registration failed: ', err);
+	});
+}
+if ('BroadcastChannel' in window) {
+	var updateChan = new BroadcastChannel('precache-updates');
+	updateChan.addEventListener('message', function(e) {
+		var ua = document.querySelector('#update-available');
+		if (ua) {
+			ua.style.display = 'block';
+		} else {
+			window.addEventListener('load', function() {
+				document.querySelector('#update-available').style.display = 'block';
+			}, false);
+		}
+		console.log('Update available: ', e);
+	}, false);
+}
+</script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-41367436-1"></script>
-<script src="zipjs/WebContent/zip.js"></script>
-<script src="zipjs/WebContent/zip-ext.js"></script>
 <script>
 // analytics
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'UA-41367436-1');
-
+</script>
+<meta name="theme-color" content="#fff" />
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<p id="update-available" onclick="location.reload();">An updated version of the DF-AI plan editor is available. <a href="">Refresh the page</a> to use the latest version.</p>
+<p id="loading">Loading...</p>
+<noscript>JavaScript is required.</noscript>
+<script src="zipjs/WebContent/zip.js"></script>
+<script src="zipjs/WebContent/zip-ext.js"></script>
+<script>
 // zip library
 zip.workerScriptsPath = 'zipjs/WebContent/';
 

@@ -8,6 +8,7 @@
 		lastModified = {};
 		plans = {};
 		rooms = {};
+		gtag('event', 'dfai_load_file', {});
 		var file = e.target.files[0];
 		doReadZip(new zip.BlobReader(file));
 	}, false);
@@ -100,6 +101,7 @@
 	}
 
 	window.doSave = function doSave() {
+		gtag('event', 'dfai_save_file', {});
 		zip.createWriter(new zip.BlobWriter(), function(writer) {
 			var directories = ['df-ai-blueprints/', 'df-ai-blueprints/plans/', 'df-ai-blueprints/rooms/', 'df-ai-blueprints/rooms/instances/', 'df-ai-blueprints/rooms/templates/'];
 			var files = [].concat.apply(Object.keys(plans).map(function(p) {

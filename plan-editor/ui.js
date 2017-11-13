@@ -62,11 +62,14 @@
 			return;
 		}
 
+		gtag('event', 'dfai_load_existing', {
+			url: downloadLink.href
+		});
 		document.getElementById('loading').style.display = 'block';
 		lastModified = {};
 		plans = {};
 		rooms = {};
-		doReadZip(new zip.HttpReader('https://cors-anywhere.herokuapp.com/https://github.com/BenLubar/df-ai/archive/master.zip'), function(err) {
+		doReadZip(new zip.HttpReader('https://cors-anywhere.herokuapp.com/' + downloadLink.href), function(err) {
 			if (err) {
 				downloadLink.removeEventListener('click', readZipDirectly);
 			}
@@ -105,6 +108,10 @@
 		dirty = true;
 		lastModified['df-ai-blueprints/plans/' + name + '.json'] = new Date();
 
+		gtag('event', 'dfai_create_plan', {
+			plan_name: name
+		});
+
 		plans[name] = {};
 		addPlan(name);
 		findPlan(name).querySelector('a').click();
@@ -132,6 +139,10 @@
 		dirty = true;
 		lastModified['df-ai-blueprints/rooms/instances/' + name + '/default.json'] = new Date();
 		lastModified['df-ai-blueprints/rooms/templates/' + name + '/default.json'] = new Date();
+
+		gtag('event', 'dfai_create_room', {
+			room_name: name
+		});
 
 		rooms[name] = {
 			instances: {'default': {}},
@@ -210,6 +221,9 @@
 		if (confirm('Are you sure you want to delete the "' + name + '" plan?')) {
 			dirty = true;
 			delete lastModified['df-ai-blueprints/plans/' + name + '.json'];
+			gtag('event', 'dfai_delete_plan', {
+				plan_name: name
+			});
 			delete plans[name];
 			var li = findPlan(name);
 			if (lastSelectedPlan == li) {
@@ -271,6 +285,11 @@
 			Object.keys(rooms[name].templates).forEach(function(tmpl) {
 				delete lastModified['df-ai-blueprints/rooms/templates/' + name + '/' + tmpl + '.json'];
 			});
+			gtag('event', 'dfai_delete_room', {
+				room_name: name,
+				room_inst: Object.keys(rooms[name].instances),
+				room_tmpl: Object.keys(rooms[name].templates)
+			});
 			delete rooms[name];
 			var li = findRoom(name);
 			if (selectedRoom === li) {
@@ -300,6 +319,10 @@
 		if (confirm('Are you sure you want to delete the "' + inst + '" instance of the "' + name + '" room?')) {
 			dirty = true;
 			delete lastModified['df-ai-blueprints/rooms/instances/' + name + '/' + inst + '.json'];
+			gtag('event', 'dfai_delete_room_instance', {
+				room_name: name,
+				room_inst: inst
+			});
 			delete rooms[name].instances[inst];
 			var li = findRoomInstance(name, inst);
 			if (selectedInstance === li) {
@@ -317,6 +340,10 @@
 		if (confirm('Are you sure you want to delete the "' + tmpl + '" template of the "' + name + '" room?')) {
 			dirty = true;
 			delete lastModified['df-ai-blueprints/rooms/templates/' + name + '/' + tmpl + '.json'];
+			gtag('event', 'dfai_delete_room_template', {
+				room_name: name,
+				room_tmpl: tmpl
+			});
 			delete rooms[name].templates[tmpl];
 			var li = findRoomTemplate(name, tmpl);
 			if (selectedTemplate === li) {
@@ -398,6 +425,10 @@
 
 			dirty = true;
 			lastModified['df-ai-blueprints/rooms/instances/' + name + '/' + inst + '.json'] = new Date();
+			gtag('event', 'dfai_create_room_instance', {
+				room_name: name,
+				room_inst: inst
+			});
 			rooms[name].instances[inst] = {};
 			addRoomInstance(name, inst);
 			findRoomInstance(name, inst).querySelector('a').click();
@@ -423,6 +454,10 @@
 
 			dirty = true;
 			lastModified['df-ai-blueprints/rooms/templates/' + name + '/' + tmpl + '.json'] = new Date();
+			gtag('event', 'dfai_create_room_template', {
+				room_name: name,
+				room_tmpl: tmpl
+			});
 			rooms[name].templates[tmpl] = {};
 			addRoomTemplate(name, tmpl);
 			findRoomTemplate(name, tmpl).querySelector('a').click();

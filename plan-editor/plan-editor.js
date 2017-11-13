@@ -5,6 +5,10 @@
 			lastModified['df-ai-blueprints/plans/' + name + '.json'] = new Date();
 		}
 
+		gtag('event', 'dfai_edit_plan', {
+			plan_name: name
+		});
+
 		var plan = plans[name];
 
 		var h1 = document.createElement('h1');
@@ -30,6 +34,12 @@
 		max_retries.min = 1;
 		max_retries.value = isNaN(plan.max_retries) ? 25 : parseInt(plan.max_retries, 10);
 		max_retries.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'max_retries',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.max_retries = isNaN(max_retries.value) ? 25 : Math.max(parseInt(max_retries.value, 10), 1);
 		}, false);
@@ -50,6 +60,12 @@
 		max_failures.min = 1;
 		max_failures.value = isNaN(plan.max_failures) ? 100 : parseInt(plan.max_failures, 10);
 		max_failures.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'max_failures',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.max_failures = isNaN(max_failures.value) ? 100 : Math.max(parseInt(max_failures.value, 10), 1);
 		}, false);
@@ -69,6 +85,12 @@
 		padding_x_min.max = 0;
 		padding_x_min.value = !plan.padding_x || isNaN(plan.padding_x[0]) ? 0 : parseInt(plan.padding_x[0], 10);
 		padding_x_min.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'padding_x_min',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.padding_x = [isNaN(padding_x_min.value) ? 0 : Math.min(parseInt(padding_x_min.value, 10), 0), !plan.padding_x || isNaN(plan.padding_x[1]) ? 0 : Math.max(parseInt(plan.padding_x[1], 10), 0)];
 		}, false);
@@ -81,6 +103,12 @@
 		padding_x_max.min = 0;
 		padding_x_max.value = !plan.padding_x || isNaN(plan.padding_x[1]) ? 0 : parseInt(plan.padding_x[1], 10);
 		padding_x_max.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'padding_x_max',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.padding_x = [!plan.padding_x || isNaN(plan.padding_x[0]) ? 0 : Math.min(parseInt(plan.padding_x[0], 10), 0), isNaN(padding_x_max.value) ? 0 : Math.max(parseInt(padding_x_max.value, 10), 0)];
 		}, false);
@@ -94,6 +122,12 @@
 		padding_y_min.max = 0;
 		padding_y_min.value = !plan.padding_y || isNaN(plan.padding_y[0]) ? 0 : parseInt(plan.padding_y[0], 10);
 		padding_y_min.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'padding_y_min',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.padding_y = [isNaN(padding_y_min.value) ? 0 : Math.min(parseInt(padding_y_min.value, 10), 0), !plan.padding_y || isNaN(plan.padding_y[1]) ? 0 : Math.max(parseInt(plan.padding_y[1], 10), 0)];
 		}, false);
@@ -106,6 +140,12 @@
 		padding_y_max.min = 0;
 		padding_y_max.value = !plan.padding_y || isNaN(plan.padding_y[1]) ? 0 : parseInt(plan.padding_y[1], 10);
 		padding_y_max.addEventListener('change', function() {
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'padding_y_max',
+				mode: 'edit'
+			});
+
 			markPlanDirty();
 			plan.padding_y = [!plan.padding_y || isNaN(plan.padding_y[0]) ? 0 : Math.min(parseInt(plan.padding_y[0], 10), 0), isNaN(padding_y_max.value) ? 0 : Math.max(parseInt(padding_y_max.value, 10), 0)];
 		}, false);
@@ -123,15 +163,22 @@
 		addTagButton.addEventListener('click', function() {
 			plan.tags = plan.tags || {};
 
-			var name = promptName('tag', plan.tags);
-			if (name === null) {
+			var tag = promptName('tag', plan.tags);
+			if (tag === null) {
 				return;
 			}
 
 			markPlanDirty();
-			plan.tags[name] = [];
+			plan.tags[tag] = [];
+
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'tags',
+				mode: 'create_category'
+			});
+
 			setTags(Object.keys(plan.tags));
-			addTag(name);
+			addTag(tag);
 		}, false);
 		tagsHeading.appendChild(addTagButton);
 
@@ -156,6 +203,13 @@
 				if (confirm('Are you sure you want to delete the "' + tag + '" tag?')) {
 					markPlanDirty();
 					tagList.removeChild(tagField);
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'tags',
+						mode: 'delete_category'
+					});
+
 					delete plan.tags[tag];
 					setTags(Object.keys(plan.tags));
 				}
@@ -170,6 +224,13 @@
 			newTag.addEventListener('change', function() {
 				if (newTag.value.length) {
 					tagData.push(newTag.value);
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'tags',
+						mode: 'create_element'
+					});
+
 					var t = addTagEntry(newTag.value);
 					if (newTag === document.activeElement) {
 						t.focus();
@@ -194,11 +255,24 @@
 							i++;
 						}
 					}
+					markPlanDirty();
 					if (t.value.length) {
+						gtag('event', 'dfai_edit_plan_field', {
+							plan_name: name,
+							field: 'tags',
+							mode: 'edit_element'
+						});
+
 						tagData[i] = t.value;
-						markPlanDirty();
 						return;
 					}
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'tags',
+						mode: 'delete_element'
+					});
+
 					tagData.splice(i, 1);
 					t.parentNode.removeChild(t.nextSibling);
 					t.parentNode.removeChild(t);
@@ -240,6 +314,13 @@
 		start.value = Object.prototype.hasOwnProperty.call(plan, 'start') ? plan.start : '';
 		start.addEventListener('change', function() {
 			markPlanDirty();
+
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'start',
+				mode: 'edit'
+			});
+
 			plan.start = start.value;
 		}, false);
 		div.appendChild(start);
@@ -263,6 +344,13 @@
 			if (newOutdoorRoom.value.length) {
 				plan.outdoor = plan.outdoor || [];
 				plan.outdoor.push(newOutdoorRoom.value);
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'outdoor',
+					mode: 'create_element'
+				});
+
 				var r = addOutdoorRoomEntry(newOutdoorRoom.value);
 				if (newOutdoorRoom === document.activeElement) {
 					r.focus();
@@ -287,11 +375,27 @@
 						i++;
 					}
 				}
+
+				markPlanDirty();
+
 				if (t.value.length) {
 					plan.outdoor[i] = r.value;
-					markPlanDirty();
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'outdoor',
+						mode: 'edit_element'
+					});
+
 					return;
 				}
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'outdoor',
+					mode: 'delete_element'
+				});
+
 				plan.outdoor.splice(i, 1);
 				r.parentNode.removeChild(r.nextSibling);
 				r.parentNode.removeChild(r);
@@ -350,6 +454,13 @@
 			del.innerHTML = '&times;';
 			del.addEventListener('click', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'limits',
+					mode: 'delete_element'
+				});
+
 				roomLimitsList.removeChild(field);
 				delete plan.limits[room];
 			}, false);
@@ -369,6 +480,13 @@
 				markPlanDirty();
 				var minN = Math.max(parseInt(min.value, 10), 0);
 				var maxN = Math.max(parseInt(max.value, 10), Math.max(minN, 1));
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'limits',
+					mode: 'edit_element'
+				});
+
 				plan.limits[room] = [minN, maxN];
 			}
 			min.addEventListener('change', change, false);
@@ -397,9 +515,16 @@
 		addButton.classList.add('add');
 		addButton.textContent = '+';
 		addButton.addEventListener('click', function() {
-			if (newRoomLimit.value) {
+			if (newRoomLimit.value && !Object.prototype.hasOwnProperty.call(plan.limits, newRoomLimit.value)) {
 				markPlanDirty();
 				plan.limits = plan.limits || {};
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'limits',
+					mode: 'create_element'
+				});
+
 				plan.limits[newRoomLimit.value] = plan.limits[newRoomLimit.value] || [1, 1];
 				addRoomLimit(newRoomLimit.value).querySelector('input').focus();
 				newRoomLimit.value = '';
@@ -450,6 +575,13 @@
 			del.innerHTML = '&times;';
 			del.addEventListener('click', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'instance_limits',
+					mode: 'delete_category'
+				});
+
 				roomInstanceLimitsList.removeChild(list);
 				delete plan.instance_limits[room];
 			}, false);
@@ -468,8 +600,15 @@
 			addButton.classList.add('add');
 			addButton.textContent = '+';
 			addButton.addEventListener('click', function() {
-				if (newInstanceLimit.value) {
+				if (newInstanceLimit.value && !Object.prototype.hasOwnProperty.call(limits, newInstanceLimit.value)) {
 					markPlanDirty();
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'instance_limits',
+						mode: 'create_element'
+					});
+
 					limits[newInstanceLimit.value] = limits[newInstanceLimit.value] || [1, 1];
 					addInstanceLimit(newInstanceLimit.value).querySelector('input').focus();
 					newInstanceLimit.value = '';
@@ -502,6 +641,13 @@
 				del.innerHTML = '&times;';
 				del.addEventListener('click', function() {
 					markPlanDirty();
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'instance_limits',
+						mode: 'delete_element'
+					});
+
 					list.removeChild(field);
 					delete limits[inst];
 				}, false);
@@ -521,6 +667,13 @@
 					markPlanDirty();
 					var minN = Math.max(parseInt(min.value, 10), 0);
 					var maxN = Math.max(parseInt(max.value, 10), minN);
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'instance_limits',
+						mode: 'edit_element'
+					});
+
 					limits[inst] = [minN, maxN];
 				}
 				min.addEventListener('change', change, false);
@@ -556,8 +709,15 @@
 		addButton.classList.add('add');
 		addButton.textContent = '+';
 		addButton.addEventListener('click', function() {
-			if (newRoomInstanceLimit.value) {
+			if (newRoomInstanceLimit.value && (!plan.instance_limits || !Object.prototype.hasOwnProperty.call(plan.instance_limits, newRoomInstanceLimit.value))) {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'instance_limits',
+					mode: 'create_category'
+				});
+
 				plan.instance_limits = plan.instance_limits || {};
 				plan.instance_limits[newRoomInstanceLimit.value] = plan.instance_limits[newRoomInstanceLimit.value] || {};
 				addRoomInstanceLimits(newRoomInstanceLimit.value).querySelector('input').focus();
@@ -582,6 +742,13 @@
 			}
 
 			markPlanDirty();
+
+			gtag('event', 'dfai_edit_plan_field', {
+				plan_name: name,
+				field: 'variables',
+				mode: 'create_element'
+			});
+
 			plan.variables[name] = '';
 			addVariable(name);
 		}, false);
@@ -606,6 +773,13 @@
 			del.addEventListener('click', function() {
 				if (confirm('Are you sure you want to delete the "' + variable + '" variable?')) {
 					markPlanDirty();
+
+					gtag('event', 'dfai_edit_plan_field', {
+						plan_name: name,
+						field: 'variables',
+						mode: 'delete_element'
+					});
+
 					variableList.removeChild(varField);
 					delete plan.variables[variable];
 				}
@@ -618,6 +792,13 @@
 			varValue.value = plan.variables[variable];
 			varValue.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_field', {
+					plan_name: name,
+					field: 'variables',
+					mode: 'create_element'
+				});
+
 				plan.variables[variable] = varValue.value;
 			}, false);
 			varValue.appendChild(varValue);
@@ -628,6 +809,8 @@
 				addVariable(variable);
 			});
 		}
+
+		var planName = name;
 
 		var uniquePriorityID = 0;
 
@@ -797,7 +980,7 @@
 			return el;
 		}
 
-		function makePropertyVector(labelText, parent, filter, name, obj, isMain) {
+		function makePropertyVector(labelText, parent, filter, name, obj, field, isMain) {
 			var index = [];
 
 			var mainLabel = document.createElement('label');
@@ -809,7 +992,13 @@
 			addButton.textContent = '+';
 			addButton.addEventListener('click', function() {
 				obj[name] = obj[name] || [];
-				obj[name].push({});
+				obj[name].push(undefined);
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field,
+					mode: 'create'
+				});
 
 				markPlanDirty();
 				add().focus();
@@ -844,6 +1033,12 @@
 				del.innerHTML = '&times;';
 				del.addEventListener('click', function() {
 					markPlanDirty();
+
+					gtag('event', 'dfai_edit_plan_priority_field', {
+						plan_name: planName,
+						field: field,
+						mode: 'delete'
+					});
 
 					index.forEach(function(s) {
 						if (s.i > state.i) {
@@ -882,8 +1077,17 @@
 				return filter(wrapper, function() {
 					return obj[name][state.i];
 				}, function(value) {
+					if (obj[name][state.i] !== value) {
+						markPlanDirty();
+
+						gtag('event', 'dfai_edit_plan_priority_field', {
+							plan_name: planName,
+							field: field,
+							mode: 'edit'
+						});
+					}
 					obj[name][state.i] = value;
-				}, state.el);
+				}, state.el, field);
 			}
 
 			var firstElement = addButton;
@@ -903,12 +1107,11 @@
 			return firstElement;
 		}
 
-		function makeStringFilter(parent, get, set) {
+		function makeStringFilter(parent, get, set, field) {
 			var input = document.createElement('input');
 			input.type = 'text';
 			input.value = get() || '';
 			input.addEventListener('change', function() {
-				markPlanDirty();
 				set(input.value);
 			}, false);
 
@@ -917,42 +1120,42 @@
 			return input;
 		}
 
-		function makeStringProperty(labelText, parent, name, obj) {
-			var add = makePropertyVector(labelText + ' (allowed)', parent, makeStringFilter, name, obj);
+		function makeStringProperty(labelText, parent, name, obj, field) {
+			var add = makePropertyVector(labelText + ' (allowed)', parent, makeStringFilter, name, obj, field + '/' + name);
 
 			parent.appendChild(document.createElement('br'));
 
-			makePropertyVector(labelText + ' (forbidden)', parent, makeStringFilter, name + '_not', obj);
+			makePropertyVector(labelText + ' (forbidden)', parent, makeStringFilter, name + '_not', obj, field + '/' + name + '_not');
 
 			return add;
 		}
 
-		function makeCountProperty(labelText, parent, filter, name, obj) {
-			return makePropertyVector(labelText, parent, function(parent, get, set) {
+		function makeCountProperty(labelText, parent, filter, name, obj, field) {
+			return makePropertyVector(labelText, parent, function(parent, get, set, field) {
 				var obj = get() || {};
 				set(obj);
 
-				var match = makePropertyVector('Match', parent, filter, 'match', obj);
+				var match = makePropertyVector('Match', parent, filter, 'match', obj, field + '/match');
 
 				parent.appendChild(document.createElement('br'));
 
-				makeBetweenProperty('Count is', parent, 'is', true, obj);
+				makeBetweenProperty('Count is', parent, 'is', true, obj, field);
 
 				return match;
-			}, name, obj);
+			}, name, obj, field + '/' + name);
 		}
 
-		function makeFilterProperty(labelText, parent, filter, name, obj) {
-			var add = makePropertyVector(labelText + ' (allowed)', parent, filter, name, obj);
+		function makeFilterProperty(labelText, parent, filter, name, obj, field) {
+			var add = makePropertyVector(labelText + ' (allowed)', parent, filter, name, obj, field + '/' + name);
 
 			parent.appendChild(document.createElement('br'));
 
-			makePropertyVector(labelText + ' (forbidden)', parent, filter, name + '_not', obj);
+			makePropertyVector(labelText + ' (forbidden)', parent, filter, name + '_not', obj, field + '/' + name + '_not');
 
 			return add;
 		}
 
-		function makeBetweenProperty(labelText, parent, name, unsigned, obj) {
+		function makeBetweenProperty(labelText, parent, name, unsigned, obj, field) {
 			if (Object.prototype.hasOwnProperty.call(obj, name) && !Array.isArray(obj[name])) {
 				obj[name] = [obj[name], obj[name]];
 			}
@@ -1013,6 +1216,13 @@
 
 			hasMin.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field + '/' + name,
+					mode: 'edit'
+				});
+
 				min.disabled = !hasMin.checked;
 				if (hasMin.checked) {
 					obj[name] = obj[name] || [null, null];
@@ -1030,6 +1240,13 @@
 
 			min.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field + '/' + name,
+					mode: 'edit'
+				});
+
 				obj[name][0] = isNaN(min.value) ? 0 : parseInt(min.value, 10);
 				if (obj[name][1] !== null && obj[name][0] > obj[name][1]) {
 					var swap = obj[name][0];
@@ -1042,6 +1259,13 @@
 
 			hasMax.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field + '/' + name,
+					mode: 'edit'
+				});
+
 				max.disabled = !hasMax.checked;
 				if (hasMax.checked) {
 					obj[name] = obj[name] || [null, null];
@@ -1059,6 +1283,13 @@
 
 			max.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field + '/' + name,
+					mode: 'edit'
+				});
+
 				obj[name][1] = isNaN(max.value) ? (obj[name][0] || 0) : parseInt(max.value, 10);
 				if (obj[name][0] !== null && obj[name][0] > obj[name][1]) {
 					var swap = obj[name][0];
@@ -1073,7 +1304,7 @@
 		}
 
 		function makeEnum(values) {
-			return function(parent, get, set) {
+			return function(parent, get, set, field) {
 				var select = document.createElement('select');
 
 				var lastGroup = undefined;
@@ -1098,7 +1329,6 @@
 
 				select.value = get();
 				select.addEventListener('change', function() {
-					markPlanDirty();
 					set(select.value);
 				}, false);
 
@@ -1108,31 +1338,31 @@
 			};
 		}
 
-		function makeEnumProperty(labelText, parent, values, name, obj) {
+		function makeEnumProperty(labelText, parent, values, name, obj, field) {
 			var e = makeEnum(values);
 
-			var add = makePropertyVector(labelText + ' (allowed)', parent, e, name, obj);
+			var add = makePropertyVector(labelText + ' (allowed)', parent, e, name, obj, field + '/' + name);
 
 			parent.appendChild(document.createElement('br'));
 
-			makePropertyVector(labelText + ' (forbidden)', parent, e, name + '_not', obj);
+			makePropertyVector(labelText + ' (forbidden)', parent, e, name + '_not', obj, field + '/' + name + '_not');
 
 			return add;
 		}
 
-		function makeEnumSetProperty(labelText, parent, values, name, obj) {
+		function makeEnumSetProperty(labelText, parent, values, name, obj, field) {
 			var e = makeEnum(values);
 
-			var add = makePropertyVector(labelText + ' (required)', parent, e, name, obj);
+			var add = makePropertyVector(labelText + ' (required)', parent, e, name, obj, field + '/' + name);
 
 			parent.appendChild(document.createElement('br'));
 
-			makePropertyVector(labelText + ' (forbidden)', parent, e, name + '_not', obj);
+			makePropertyVector(labelText + ' (forbidden)', parent, e, name + '_not', obj, field + '/' + name + '_not');
 
 			return add;
 		}
 
-		function makeBoolProperty(labelText, parent, name, obj) {
+		function makeBoolProperty(labelText, parent, name, obj, field) {
 			var id = uniquePriorityID++;
 
 			var label = document.createElement('label');
@@ -1167,6 +1397,13 @@
 			}
 			select.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: field + '/' + name,
+					mode: 'edit'
+				});
+
 				switch (select.value) {
 					case 'true':
 						obj[name] = true;
@@ -1190,7 +1427,7 @@
 			return select;
 		}
 
-		function makePriority(parent, get, set) {
+		function makePriority(parent, get, set, field) {
 			var priority = get() || {};
 			set(priority);
 
@@ -1204,8 +1441,16 @@
 			var action = makeEnum(enums.plan_priority_action)(parent, function() {
 				return priority.action;
 			}, function(action) {
+				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: 'priority/action',
+					mode: 'edit'
+				});
+
 				priority.action = action;
-			});
+			}, 'priority/action');
 			action.id = 'priority-select-action-' + id;
 
 			parent.appendChild(document.createElement('br'));
@@ -1221,6 +1466,13 @@
 			keepGoing.checked = Boolean(priority['continue']);
 			keepGoing.addEventListener('change', function() {
 				markPlanDirty();
+
+				gtag('event', 'dfai_edit_plan_priority_field', {
+					plan_name: planName,
+					field: 'priority/continue',
+					mode: 'edit'
+				});
+
 				if (keepGoing.checked) {
 					priority['continue'] = true;
 				} else {
@@ -1237,11 +1489,11 @@
 
 			parent.appendChild(document.createElement('br'));
 
-			makeCountProperty('Required room count', parent, makeRoomFilter, 'count', priority);
+			makeCountProperty('Required room count', parent, makeRoomFilter, 'count', priority, 'priority');
 
 			parent.appendChild(document.createElement('br'));
 
-			makeFilterProperty('Match rooms', parent, makeRoomFilter, 'match', priority);
+			makeFilterProperty('Match rooms', parent, makeRoomFilter, 'match', priority, 'priority');
 
 			parent.appendChild(document.createElement('br'));
 
@@ -1256,7 +1508,7 @@
 		var prioritiesList = document.createElement('div');
 		mainPanel.appendChild(prioritiesList);
 
-		makePropertyVector('Priorities', prioritiesList, makePriority, 'priorities', plan, true);
+		makePropertyVector('Priorities', prioritiesList, makePriority, 'priorities', plan, 'priority', true);
 
 		var prioritiesLabel = prioritiesList.querySelector('label');
 		prioritiesList.removeChild(prioritiesLabel);
