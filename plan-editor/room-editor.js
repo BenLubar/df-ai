@@ -568,10 +568,10 @@
 
 			var typeLabel = document.createElement('label');
 			typeLabel.setAttribute('for', 'edit-layout-type');
-			typeLabel.textContent = 'Type';
+			typeLabel.textContent = 'Furniture';
 			typeField.appendChild(typeLabel);
 
-			var prevType = selectedLayout.type;
+			var prevType = selectedLayout.type || 'none';
 			var typeSelect = document.createElement('select');
 			typeSelect.id = 'edit-layout-type';
 			var lastCategory = undefined;
