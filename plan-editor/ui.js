@@ -10,11 +10,11 @@
 	}, false);
 
 	var mainPanel = document.createElement('div');
-	mainPanel.id = 'main';
+	mainPanel.classList.add('main');
 	document.body.appendChild(mainPanel);
 
 	var sidePanel = document.createElement('div');
-	sidePanel.id = 'side';
+	sidePanel.classList.add('side');
 	document.body.appendChild(sidePanel);
 
 	var lastTags = [];
@@ -149,6 +149,39 @@
 				roomAndTagDataList.appendChild(option);
 			}
 		});
+	};
+
+	window.roomsForTag = function roomsForTag(tag) {
+		var roomNames = [tag];
+		if (lastSelectedPlan) {
+			var planName = lastSelectedPlan.getAttribute('data-plan-name');
+			if (Object.prototype.hasOwnProperty.call(plans, planName)) {
+				var plan = plans[planName];
+				if (Object.prototype.hasOwnProperty.call(plan, 'tags') && Object.prototype.hasOwnProperty.call(plan.tags, tag)) {
+					roomNames = plan.tags[tagName];
+				}
+			}
+		}
+
+		var r = [];
+
+		roomNames.forEach(function(roomName) {
+			if (Object.prototype.hasOwnProperty.call(rooms, roomName)) {
+				Object.keys(rooms[roomName].templates).forEach(function(tmpl) {
+					Object.keys(rooms[roomName].instances).forEach(function(inst) {
+						r.push({
+							roomName: roomName,
+							instName: inst,
+							tmplName: tmpl,
+							inst: rooms[roomName].instances[inst],
+							tmpl: rooms[roomName].templates[tmpl]
+						});
+					});
+				});
+			}
+		});
+
+		return r;
 	};
 
 	function findPlan(name) {
@@ -288,13 +321,13 @@
 	}
 
 	function findRoomInstance(name, inst) {
-		return [].find.call(findRoom(name).querySelector('[data-instance-name]'), function(i) {
+		return [].find.call(findRoom(name).querySelectorAll('[data-instance-name]'), function(i) {
 			return i.getAttribute('data-instance-name') === inst;
 		});
 	}
 
 	function findRoomTemplate(name, tmpl) {
-		return [].find.call(findRoom(name).querySelector('[data-template-name]'), function(t) {
+		return [].find.call(findRoom(name).querySelectorAll('[data-template-name]'), function(t) {
 			return t.getAttribute('data-template-name') === tmpl;
 		});
 	}

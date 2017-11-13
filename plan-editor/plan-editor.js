@@ -1,303 +1,4 @@
 (function() {
-	var enums = {
-		room_status: [
-			"plan",
-			"dig",
-			"dug",
-			"finished"
-		],
-		room_type: [
-			"corridor",
-			"barracks",
-			"bedroom",
-			"cemetary",
-			"cistern",
-			"dininghall",
-			"farmplot",
-			"furnace",
-			"garbagedump",
-			"infirmary",
-			"location",
-			"nobleroom",
-			"outpost",
-			"pasture",
-			"pitcage",
-			"pond",
-			"stockpile",
-			"tradedepot",
-			"workshop"
-		],
-		corridor_type: [
-			"corridor",
-			"veinshaft",
-			"aqueduct",
-			"outpost",
-			"walkable"
-		],
-		farm_type: [
-			"food",
-			"cloth"
-		],
-		stockpile_type: [
-			"food",
-			"furniture",
-			"wood",
-			"stone",
-			"refuse",
-			"animals",
-			"corpses",
-			"gems",
-			"finished_goods",
-			"cloth",
-			"bars_blocks",
-			"leather",
-			"ammo",
-			"armor",
-			"weapons",
-			"coins",
-			"sheets",
-			"fresh_raw_hide"
-		],
-		nobleroom_type: [
-			"tomb",
-			"dining",
-			"bedroom",
-			"office"
-		],
-		outpost_type: [
-			"cavern"
-		],
-		location_type: [
-			"tavern",
-			"library",
-			"temple"
-		],
-		cistern_type: [
-			"well",
-			"reserve"
-		],
-		layout_type: [
-			"none",
-			"archery_target",
-			"armor_stand",
-			"bed",
-			"bookcase",
-			"cabinet",
-			"cage_trap",
-			"chair",
-			"chest",
-			"coffin",
-			"door",
-			"floodgate",
-			"gear_assembly",
-			"hatch",
-			"hive",
-			"lever",
-			"nest_box",
-			"roller",
-			"table",
-			"track_stop",
-			"traction_bench",
-			"vertical_axle",
-			"weapon_rack",
-			"well",
-			"windmill"
-		],
-		workshop_type: [
-			"Carpenters",
-			"Farmers",
-			"Masons",
-			"Craftsdwarfs",
-			"Jewelers",
-			"MetalsmithsForge",
-			"MagmaForge",
-			"Bowyers",
-			"Mechanics",
-			"Siege",
-			"Butchers",
-			"Leatherworks",
-			"Tanners",
-			"Clothiers",
-			"Fishery",
-			"Still",
-			"Loom",
-			"Quern",
-			"Kennels",
-			"Kitchen",
-			"Ashery",
-			"Dyers",
-			"Millstone",
-			"Custom",
-			"Tool"
-		],
-		furnace_type: [
-			"WoodFurnace",
-			"Smelter",
-			"GlassFurnace",
-			"Kiln",
-			"MagmaSmelter",
-			"MagmaGlassFurnace",
-			"MagmaKiln",
-			"Custom"
-		],
-		stockpile_list: [
-			// Animals
-			// Food
-			"FoodMeat",
-			"FoodFish",
-			"FoodUnpreparedFish",
-			"FoodEgg",
-			"FoodPlants",
-			"FoodDrinkPlant",
-			"FoodDrinkAnimal",
-			"FoodCheesePlant",
-			"FoodCheeseAnimal",
-			"FoodSeeds",
-			"FoodLeaves",
-			"FoodMilledPlant",
-			"FoodBoneMeal",
-			"FoodFat",
-			"FoodPaste",
-			"FoodPressedMaterial",
-			"FoodExtractPlant",
-			"FoodExtractAnimal",
-			"FoodMiscLiquid",
-			// Furniture
-			"FurnitureType",
-			"FurnitureStoneClay",
-			"FurnitureMetal",
-			"FurnitureOtherMaterials",
-			// FurnitureCoreQuality
-			// FurnitureTotalQuality
-			// Corpses
-			// Refuse
-			"RefuseItems",
-			"RefuseCorpses",
-			"RefuseParts",
-			"RefuseSkulls",
-			"RefuseBones",
-			"RefuseShells",
-			"RefuseTeeth",
-			"RefuseHorns",
-			"RefuseHair",
-			// Stone
-			"StoneOres",
-			"StoneEconomic",
-			"StoneOther",
-			"StoneClay",
-			// Ammo
-			"AmmoType",
-			"AmmoMetal",
-			"AmmoOther",
-			// AmmoCoreQuality
-			// AmmoTotalQuality
-			// Coins
-			// BarsBlocks
-			"BarsMetal",
-			"BarsOther",
-			"BlocksStone",
-			"BlocksMetal",
-			"BlocksOther",
-			// Gems
-			"RoughGem",
-			"RoughGlass",
-			"CutGem",
-			"CutGlass",
-			"CutStone",
-			// Goods
-			"GoodsType",
-			"GoodsStone",
-			"GoodsMetal",
-			"GoodsGem",
-			"GoodsOther",
-			// GoodsCoreQuality
-			// GoodsTotalQuality
-			// Leather
-			// Cloth
-			"ThreadSilk",
-			"ThreadPlant",
-			"ThreadYarn",
-			"ThreadMetal",
-			"ClothSilk",
-			"ClothPlant",
-			"ClothYarn",
-			"ClothMetal",
-			// Wood
-			// Weapons
-			"WeaponsType",
-			"WeaponsTrapcomp",
-			"WeaponsMetal",
-			"WeaponsStone",
-			"WeaponsOther",
-			// WeaponsCoreQuality
-			// WeaponsTotalQuality
-			// Armor
-			"ArmorBody",
-			"ArmorHead",
-			"ArmorFeet",
-			"ArmorHands",
-			"ArmorLegs",
-			"ArmorShield",
-			"ArmorMetal",
-			"ArmorOther",
-			// ArmorCoreQuality
-			// ArmorTotalQuality
-			// Sheet
-			"SheetPaper",
-			"SheetParchment"
-			// AdditionalOptions
-		],
-		construction_type: [
-			"NONE",
-			"Fortification",
-			"Wall",
-			"Floor",
-			"UpStair",
-			"DownStair",
-			"UpDownStair",
-			"Ramp",
-			"TrackN",
-			"TrackS",
-			"TrackE",
-			"TrackW",
-			"TrackNS",
-			"TrackNE",
-			"TrackNW",
-			"TrackSE",
-			"TrackSW",
-			"TrackEW",
-			"TrackNSE",
-			"TrackNSW",
-			"TrackNEW",
-			"TrackSEW",
-			"TrackNSEW",
-			"TrackRampN",
-			"TrackRampS",
-			"TrackRampE",
-			"TrackRampW",
-			"TrackRampNS",
-			"TrackRampNE",
-			"TrackRampNW",
-			"TrackRampSE",
-			"TrackRampSW",
-			"TrackRampEW",
-			"TrackRampNSE",
-			"TrackRampNSW",
-			"TrackRampNEW",
-			"TrackRampSEW",
-			"TrackRampNSEW"
-		],
-		tile_dig_designation: [
-			"No",
-			"Default",
-			"UpDownStair",
-			"Channel",
-			"Ramp",
-			"DownStair",
-			"UpStair"
-		]
-	};
-
 	window.openPlanEditor = function openPlanEditor(mainPanel, name) {
 		function markPlanDirty() {
 			dirty = true;
@@ -1375,11 +1076,24 @@
 			return function(parent, get, set) {
 				var select = document.createElement('select');
 
+				var lastGroup = undefined;
+				var group = select;
+
 				values.forEach(function(val) {
 					var option = document.createElement('option');
-					option.value = val;
-					option.textContent = val;
-					select.appendChild(option);
+					option.value = val.e;
+					option.textContent = val.n;
+					if (lastGroup !== val.c) {
+						if (val.c === undefined) {
+							group = select;
+						} else {
+							group = document.createElement('optgroup');
+							group.label = val.c;
+							select.appendChild(group);
+						}
+						lastGroup = val.c;
+					}
+					group.appendChild(option);
 				});
 
 				select.value = get();
@@ -1487,63 +1201,12 @@
 			label.textContent = 'Action';
 			parent.appendChild(label);
 
-			var action = document.createElement('select');
+			var action = makeEnum(enums.plan_priority_action)(parent, function() {
+				return priority.action;
+			}, function(action) {
+				priority.action = action;
+			});
 			action.id = 'priority-select-action-' + id;
-			parent.appendChild(action);
-
-			var optgroup = document.createElement('optgroup');
-			optgroup.label = 'Room';
-			action.appendChild(optgroup);
-
-			var option = document.createElement('option');
-			option.textContent = 'Dig (queue)';
-			option.value = 'dig';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Dig (immediate)';
-			option.value = 'dig_immediate';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Build ignored furniture';
-			option.value = 'unignore_furniture';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Build furniture and smooth surfaces';
-			option.value = 'finish';
-			optgroup.appendChild(option);
-
-			optgroup = document.createElement('optgroup');
-			optgroup.label = 'Global';
-			action.appendChild(optgroup);
-
-			option = document.createElement('option');
-			option.textContent = 'Allow mining for metal';
-			option.value = 'start_ore_search';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Stop reclaiming unused furniture';
-			option.value = 'past_initial_phase';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Disassemble wagon';
-			option.value = 'deconstruct_wagons';
-			optgroup.appendChild(option);
-
-			option = document.createElement('option');
-			option.textContent = 'Plan next cavern outpost';
-			option.value = 'dig_next_cavern_outpost';
-			optgroup.appendChild(option);
-
-			action.value = priority.action;
-			action.addEventListener('change', function() {
-				markPlanDirty();
-				priority.action = action.value;
-			}, false);
 
 			parent.appendChild(document.createElement('br'));
 

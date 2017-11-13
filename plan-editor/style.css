@@ -2,7 +2,7 @@
 	box-sizing: border-box;
 }
 
-body {
+body, .container {
 	margin: 0;
 	display: flex;
 	flex-direction: row;
@@ -10,12 +10,12 @@ body {
 	overflow: hidden;
 }
 
-html, body, #main, #side {
+html, body, .main, .side {
 	height: 100%;
 	transition: 0.5s box-shadow;
 }
 
-#main:hover, #side:hover {
+.main:hover, .side:hover {
 	box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
 }
 
@@ -29,14 +29,14 @@ html, body, #main, #side {
 	z-index: 10000;
 }
 
-#main {
+.main {
 	padding: 10px;
 	flex-grow: 2;
 	flex-basis: 400px;
 	overflow-y: auto;
 }
 
-#side {
+.side {
 	padding: 10px;
 	min-width: 250px;
 	flex-grow: 1;
@@ -65,7 +65,7 @@ h2 {
 	margin-bottom: 0;
 }
 
-#side h2 + p {
+.side h2 + p {
 	margin-top: 0.5rem;
 	font-style: italic;
 }
@@ -110,6 +110,11 @@ button.del:hover {
 	color: #f00;
 }
 
+label > button.add:last-child {
+	margin-right: -2rem;
+	padding: 0 0.5rem;
+}
+
 #rooms i {
 	margin-left: 1.5rem;
 	display: inline-block;
@@ -119,9 +124,17 @@ button.del:hover {
 	font-weight: bold;
 }
 
+input {
+	margin: 0;
+}
+
 input[type="number"] {
 	width: 100px;
 	text-align: right;
+}
+
+input[type="number"].mini {
+	width: 50px;
 }
 
 .field {
@@ -146,6 +159,10 @@ input[type="number"] {
 
 .field > br, .field > p, .field > .field {
 	clear: left;
+}
+
+.field > :not(p) + p {
+	margin-top: 0;
 }
 
 .field > br + input, .field > .field + input, .field > p {
@@ -193,4 +210,41 @@ input[type="number"] {
 
 .field.thin + br {
 	display: none;
+}
+
+svg {
+	width: 100%;
+	max-height: 100%;
+}
+
+svg a {
+	fill: inherit;
+}
+
+svg g {
+	fill: #555;
+}
+
+svg g.active {
+	fill: #000;
+}
+
+svg .layout > g.active {
+	fill: #aaa;
+}
+
+svg g:not(.active) > .layout {
+	display: none;
+}
+
+svg .entrance {
+	fill: rgba(200, 200, 255, 0.5);
+}
+
+.container .field > label:not(.inline) {
+	max-width: 150px;
+}
+
+.container .field > br + input, .container .field > .field + input, .container .field > p {
+	margin-left: 150px;
 }
