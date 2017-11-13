@@ -22,7 +22,7 @@ window.enums = {
 		{e: 'location', n: 'Location', c: 'Lifestyle', ste: 'location_type'},
 		{e: 'bedroom', n: 'Bedroom', c: 'Lifestyle'},
 		{e: 'nobleroom', n: 'Noble room', c: 'Lifestyle', ste: 'nobleroom_type'},
-		{e: 'cemetary', n: 'Cemetary', c: 'Lifestyle'},
+		{e: 'cemetery', n: 'Cemetery', c: 'Lifestyle'},
 		{e: 'farmplot', n: 'Farm plot', c: 'Farming', ste: 'farm_type'},
 		{e: 'pasture', n: 'Pasture', c: 'Farming'},
 		{e: 'barracks', n: 'Barracks', c: 'Military'},
