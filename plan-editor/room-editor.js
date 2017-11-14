@@ -1732,7 +1732,7 @@
 					var st = rt && rt.ste && enums[rt.ste].find(function(st) {
 						return st.e === subtypeSelect.value;
 					});
-					if (st.raw) {
+					if (st && st.raw) {
 						rawtypeField.style.display = '';
 						selectedRoom.raw_type = rawtypeInput.value;
 					} else {
