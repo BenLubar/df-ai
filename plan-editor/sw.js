@@ -14,7 +14,7 @@ workboxSW.router.registerRoute('https://cors-anywhere.herokuapp.com/(.*)',
 workboxSW.precache([
   {
     "url": "enums.js",
-    "revision": "7abd0099fb045354bcc4b9b1f275fca6"
+    "revision": "428f69c8836386c34e23137998966dea"
   },
   {
     "url": "file.js",
@@ -30,7 +30,7 @@ workboxSW.precache([
   },
   {
     "url": "room-editor.js",
-    "revision": "9f55d23f7ea378e87bdbd43893f7c11a"
+    "revision": "c2bb8175b1be2ae8806751c482cf7a55"
   },
   {
     "url": "style.css",

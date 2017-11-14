@@ -416,6 +416,9 @@
 			list.appendChild(li);
 
 			var g = svgEl('g');
+			if (selectedLayout === f) {
+				g.classList.add('active');
+			}
 			svgG.appendChild(g);
 
 			var a = document.createElement('a');
@@ -642,6 +645,12 @@
 			typeField.classList.add('field');
 			itemEditorPanel.appendChild(typeField);
 
+			var internalField = document.createElement('div');
+			internalField.classList.add('field');
+			itemEditorPanel.appendChild(internalField);
+
+			var internalInput = document.createElement('input');
+
 			var typeLabel = document.createElement('label');
 			typeLabel.setAttribute('for', 'edit-layout-type');
 			typeLabel.textContent = 'Furniture';
@@ -652,6 +661,7 @@
 			typeSelect.id = 'edit-layout-type';
 			var lastCategory = undefined;
 			var group = typeSelect;
+			var gates = {};
 			enums.layout_type.forEach(function(e) {
 				if (e.nc) {
 					return;
@@ -666,6 +676,9 @@
 					}
 					lastCategory = e.c;
 				}
+				if (e.c === 'Gates') {
+					gates[e.e] = true;
+				}
 				var option = document.createElement('option');
 				option.textContent = e.n;
 				option.value = e.e;
@@ -674,6 +687,15 @@
 			typeSelect.value = prevType;
 			typeSelect.addEventListener('change', function() {
 				markDirty();
+
+				if (gates[typeSelect.value]) {
+					internalField.style.display = '';
+				} else {
+					delete selectedLayout.internal;
+					internalInput.checked = false;
+					internalField.style.display = 'none';
+				}
+
 				if (typeSelect.value === enums.layout_type[0].e) {
 					delete selectedLayout.type;
 				} else {
@@ -688,9 +710,42 @@
 
 					selectedLayout.type = typeSelect.value;
 				}
+
 				doUpdate();
 			}, false);
 			typeField.appendChild(typeSelect);
+
+			if (!gates[typeSelect.value]) {
+				internalField.style.display = 'none';
+			}
+
+			var internalLabel = document.createElement('label');
+			internalLabel.setAttribute('for', 'edit-layout-internal');
+			internalLabel.textContent = 'Internal';
+			internalField.appendChild(internalLabel);
+
+			internalInput.type = 'checkbox';
+			internalInput.checked = Boolean(selectedLayout.internal);
+			internalInput.addEventListener('change', function() {
+				markDirty();
+
+				gtag('event', 'dfai_edit_layout_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					field: 'internal',
+					event_label: 'internal',
+					mode: 'edit'
+				});
+
+				if (internalInput.checked) {
+					selectedLayout.internal = true;
+				} else {
+					delete selectedLayout.internal;
+				}
+				doUpdate();
+			}, false);
+			internalField.appendChild(internalInput);
 
 			var constructionField = document.createElement('div');
 			constructionField.classList.add('field');
@@ -924,7 +979,6 @@
 			TODO(selectedLayout, 'Maximum users', 'has_users');
 			TODO(selectedLayout, 'Ignore', 'ignore');
 			TODO(selectedLayout, 'Make room', 'makeroom');
-			TODO(selectedLayout, 'Internal', 'internal');
 		}
 
 		function buildRoomEditor() {
@@ -1262,6 +1316,173 @@
 			}, false);
 			commentField.appendChild(commentInput);
 
+			var outdoorField = document.createElement('div');
+			outdoorField.classList.add('field');
+			itemEditorPanel.appendChild(outdoorField);
+
+			var requireGrassField = document.createElement('div');
+			requireGrassField.classList.add('field');
+			itemEditorPanel.appendChild(requireGrassField);
+
+			var requireGrassInput = document.createElement('input');
+
+			var outdoorLabel = document.createElement('label');
+			outdoorLabel.setAttribute('for', 'edit-room-outdoor');
+			outdoorLabel.textContent = 'Placement';
+			outdoorField.appendChild(outdoorLabel);
+
+			var outdoorSelect = document.createElement('select');
+			outdoorSelect.id = 'edit-room-outdoor';
+
+			var optgroup = document.createElement('optgroup');
+			optgroup.label = 'Indoor';
+			outdoorSelect.appendChild(optgroup);
+
+			var option = document.createElement('option');
+			option.textContent = 'Indoor (require walls)';
+			option.value = 'indoor';
+			optgroup.appendChild(option);
+
+			option = document.createElement('option');
+			option.textContent = 'Indoor (optional walls)';
+			option.value = 'no_require_walls';
+			optgroup.appendChild(option);
+
+			option = document.createElement('option');
+			option.textContent = 'Indoor (allow placement in corridors)';
+			option.value = 'in_corridor';
+			optgroup.appendChild(option);
+
+			optgroup = document.createElement('optgroup');
+			optgroup.label = 'Outdoor';
+			outdoorSelect.appendChild(optgroup);
+
+			option = document.createElement('option');
+			option.textContent = 'Outdoor';
+			option.value = 'outdoor';
+			optgroup.appendChild(option);
+
+			option = document.createElement('option');
+			option.textContent = 'Outdoor (allow placement off ground)';
+			option.value = 'no_require_floor';
+			optgroup.appendChild(option);
+
+			option = document.createElement('option');
+			option.textContent = 'Outdoor (homogeneous biome)';
+			option.value = 'single_biome';
+			optgroup.appendChild(option);
+
+			if (selectedRoom.outdoor) {
+				if (Object.prototype.hasOwnProperty.call(selectedRoom, 'require_floor') && !selectedRoom.require_floor) {
+					outdoorSelect.value = 'no_require_floor';
+				} else if (selectedRoom.single_biome) {
+					outdoorSelect.value = 'single_biome';
+				} else {
+					outdoorSelect.value = 'outdoor';
+				}
+			} else {
+				if (selectedRoom.in_corridor) {
+					outdoorSelect.value = 'in_corridor';
+				} else if (Object.prototype.hasOwnProperty.call(selectedRoom, 'require_walls') && !selectedRoom.require_walls) {
+					outdoorSelect.value = 'no_require_walls';
+				} else {
+					outdoorSelect.value = 'indoor';
+				}
+			}
+			outdoorSelect.addEventListener('change', function() {
+				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'outdoor',
+					event_label: 'outdoor',
+					mode: 'edit'
+				});
+
+				delete selectedRoom.outdoor;
+				delete selectedRoom.require_floor;
+				delete selectedRoom.require_walls;
+				delete selectedRoom.single_biome;
+				delete selectedRoom.in_corridor;
+
+				switch (outdoorSelect.value) {
+					case 'indoor':
+						requireGrassField.style.display = 'none';
+						requireGrassInput.value = '';
+						delete selectedRoom.require_grass;
+						break;
+					case 'no_require_walls':
+						selectedRoom.require_walls = false;
+						requireGrassField.style.display = 'none';
+						requireGrassInput.value = '';
+						delete selectedRoom.require_grass;
+						break;
+					case 'in_corridor':
+						selectedRoom.in_corridor = true;
+						requireGrassField.style.display = 'none';
+						requireGrassInput.value = '';
+						delete selectedRoom.require_grass;
+						break;
+					case 'outdoor':
+						selectedRoom.outdoor = true;
+						requireGrassField.style.display = '';
+						break;
+					case 'no_require_floor':
+						selectedRoom.outdoor = true;
+						selectedRoom.require_floor = false;
+						requireGrassField.style.display = '';
+						break;
+					case 'single_biome':
+						selectedRoom.outdoor = true;
+						selectedRoom.single_biome = true;
+						requireGrassField.style.display = '';
+						break;
+				}
+
+				doUpdate();
+			}, false);
+			outdoorField.appendChild(outdoorInput);
+
+			if (!selectedRoom.outdoor) {
+				requireGrassField.style.display = 'none';
+			}
+
+			var requireGrassLabel = document.createElement('label');
+			requireGrassLabel.setAttribute('for', 'edit-room-require-grass');
+			requireGrassLabel.textContent = 'Minimum grass tiles';
+			requireGrassField.appendChild(requireGrassLabel);
+
+			requireGrassInput.type = 'number';
+			requireGrassInput.id = 'edit-room-require-grass';
+			requireGrassInput.min = 0;
+			requireGrassInput.value = selectedRoom.require_grass || 0;
+			requireGrassInput.addEventListener('change', function() {
+				markDirty();
+
+				gtag('event', 'dfai_edit_room_field', {
+					room_name: name,
+					room_inst: inst,
+					room_tmpl: tmpl,
+					room_type: selectedRoom.type,
+					field: 'require_grass',
+					event_label: 'require_grass',
+					mode: 'edit'
+				});
+
+				var require_grass = parseInt(requireGrassInput.value, 10);
+				if (require_grass > 0) {
+					selectedRoom.require_grass = require_grass;
+				} else {
+					delete selectedRoom.require_grass;
+				}
+
+				doUpdate();
+			}, false);
+			requireGrassField.appendChild(requireGrassInput);
+
 			// TODO
 			TODO(selectedRoom, 'Access path', 'accesspath');
 			TODO(selectedRoom, 'Level', 'level');
@@ -1270,12 +1491,6 @@
 			TODO(selectedRoom, 'Workshop', 'workshop');
 			TODO(selectedRoom, 'Maximum users', 'has_users');
 			TODO(selectedRoom, 'Temporary', 'temporary');
-			TODO(selectedRoom, 'Outdoor', 'outdoor');
-			TODO(selectedRoom, 'Single biome', 'single_biome');
-			TODO(selectedRoom, 'Requires walls', 'require_walls');
-			TODO(selectedRoom, 'Requires floor', 'require_floor');
-			TODO(selectedRoom, 'Minimum grass tiles', 'require_grass');
-			TODO(selectedRoom, 'Allow placement in corridors', 'in_corridor');
 			TODO(selectedRoom, 'Exits', 'exits');
 
 			function initSubtypeSelect() {

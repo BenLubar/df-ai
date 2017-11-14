@@ -103,13 +103,13 @@ window.enums = {
 		{e: 'well', n: 'Well', c: 'Utilities'},
 		{e: 'door', n: 'Door', c: 'Gates'},
 		{e: 'hatch', n: 'Hatch', c: 'Gates'},
-		{e: 'floodgate', n: 'Floodgate', c: 'Gates'},
-		{e: 'cage_trap', n: 'Cage Trap', c: 'Machines'},
+		{e: 'cage_trap', n: 'Cage Trap', c: 'Traps'},
 		{e: 'lever', n: 'Lever', c: 'Machines'},
 		{e: 'roller', n: 'Roller', c: 'Machines'},
 		{e: 'track_stop', n: 'Track Stop', c: 'Machines'},
 		{e: 'vertical_axle', n: 'Vertical Axle', c: 'Machines'},
 		{e: 'gear_assembly', n: 'Gear Assembly', c: 'Machines'},
+		{e: 'floodgate', n: 'Floodgate', c: 'Machines'},
 		{e: 'windmill', n: 'Windmill', c: 'Machines'}
 	],
 	workshop_type: [
