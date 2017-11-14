@@ -141,13 +141,13 @@ window.enums = {
 	],
 	furnace_type: [
 		{e: 'Custom', n: 'Custom', raw: true},
-		{e: 'WoodFurnace', n: 'WoodFurnace', fh: 3, fw: 3},
+		{e: 'WoodFurnace', n: 'Wood furnace', fh: 3, fw: 3},
 		{e: 'Smelter', n: 'Smelter', c: 'Fueled', fh: 3, fw: 3},
-		{e: 'GlassFurnace', n: 'GlassFurnace', c: 'Fueled', fh: 3, fw: 3},
+		{e: 'GlassFurnace', n: 'Glass furnace', c: 'Fueled', fh: 3, fw: 3},
 		{e: 'Kiln', n: 'Kiln', c: 'Fueled', fh: 3, fw: 3},
-		{e: 'MagmaSmelter', n: 'MagmaSmelter', c: 'Magma', fh: 3, fw: 3},
-		{e: 'MagmaGlassFurnace', n: 'MagmaGlassFurnace', c: 'Magma', fh: 3, fw: 3},
-		{e: 'MagmaKiln', n: 'MagmaKiln', c: 'Magma', fh: 3, fw: 3}
+		{e: 'MagmaSmelter', n: 'Magma smelter', c: 'Magma', fh: 3, fw: 3},
+		{e: 'MagmaGlassFurnace', n: 'Magma glass furnace', c: 'Magma', fh: 3, fw: 3},
+		{e: 'MagmaKiln', n: 'Magma kiln', c: 'Magma', fh: 3, fw: 3}
 	],
 	stockpile_list: [
 		// Animals
