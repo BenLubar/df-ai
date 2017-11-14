@@ -125,6 +125,8 @@
 				});
 			})));
 
+			next();
+
 			function next() {
 				if (directories.length) {
 					var d = directories.shift();
