@@ -26,11 +26,11 @@ workboxSW.precache([
   },
   {
     "url": "plan-editor.js",
-    "revision": "b0dde019722ba8317ae36364c5a27826"
+    "revision": "8f74d1060d27d02f54537731cf973dc8"
   },
   {
     "url": "room-editor.js",
-    "revision": "0e96461d19cc821c7c63f47ea29f17c0"
+    "revision": "9f55d23f7ea378e87bdbd43893f7c11a"
   },
   {
     "url": "style.css",

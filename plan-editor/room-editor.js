@@ -617,7 +617,8 @@
 					room_name: name,
 					room_inst: inst,
 					room_tmpl: tmpl,
-					field: fieldName
+					field: fieldName,
+					event_label: fieldName
 				});
 
 				var input = document.createElement('input');
@@ -681,6 +682,7 @@
 						room_inst: inst,
 						room_tmpl: tmpl,
 						field: 'type',
+						event_label: 'type',
 						mode: 'edit'
 					});
 
@@ -732,6 +734,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'construction',
+					event_label: 'construction',
 					mode: 'edit'
 				});
 
@@ -782,6 +785,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'dig',
+					event_label: 'dig',
 					mode: 'edit'
 				});
 
@@ -835,6 +839,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -849,6 +854,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -863,6 +869,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -899,6 +906,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'comment',
+					event_label: 'comment',
 					mode: 'edit'
 				});
 
@@ -964,6 +972,7 @@
 					room_inst: inst,
 					room_tmpl: tmpl,
 					field: 'type',
+					event_label: 'type',
 					mode: 'edit'
 				});
 
@@ -1006,6 +1015,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'subtype',
+					event_label: 'subtype',
 					mode: 'edit'
 				});
 
@@ -1031,6 +1041,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'raw_type',
+					event_label: 'raw_type',
 					mode: 'edit'
 				});
 
@@ -1077,6 +1088,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -1093,6 +1105,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -1109,6 +1122,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'pos',
+					event_label: 'pos',
 					mode: 'edit'
 				});
 
@@ -1171,6 +1185,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'size',
+					event_label: 'size',
 					mode: 'edit'
 				});
 
@@ -1186,6 +1201,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'size',
+					event_label: 'size',
 					mode: 'edit'
 				});
 
@@ -1201,6 +1217,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'size',
+					event_label: 'size',
 					mode: 'edit'
 				});
 
@@ -1232,6 +1249,7 @@
 					room_tmpl: tmpl,
 					room_type: selectedRoom.type,
 					field: 'comment',
+					event_label: 'comment',
 					mode: 'edit'
 				});
 
@@ -1341,6 +1359,7 @@
 										room_tmpl: tmpl,
 										stock_type: selectedRoom.stockpile_type,
 										field: 'stock_disable',
+										event_label: 'stock_disable',
 										mode: 'edit'
 									});
 
@@ -1394,6 +1413,7 @@
 										room_tmpl: tmpl,
 										stock_type: selectedRoom.stockpile_type,
 										field: 'stock_specific' + ss,
+										event_label: 'stock_specific' + ss,
 										mode: 'edit'
 									});
 

@@ -37,6 +37,7 @@
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
 				field: 'max_retries',
+				event_label: 'max_retries',
 				mode: 'edit'
 			});
 
@@ -63,6 +64,7 @@
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
 				field: 'max_failures',
+				event_label: 'max_failures',
 				mode: 'edit'
 			});
 
@@ -87,7 +89,8 @@
 		padding_x_min.addEventListener('change', function() {
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
-				field: 'padding_x_min',
+				field: 'padding_x',
+				event_label: 'padding_x',
 				mode: 'edit'
 			});
 
@@ -105,7 +108,8 @@
 		padding_x_max.addEventListener('change', function() {
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
-				field: 'padding_x_max',
+				field: 'padding_x',
+				event_label: 'padding_x',
 				mode: 'edit'
 			});
 
@@ -124,7 +128,8 @@
 		padding_y_min.addEventListener('change', function() {
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
-				field: 'padding_y_min',
+				field: 'padding_y',
+				event_label: 'padding_y',
 				mode: 'edit'
 			});
 
@@ -142,7 +147,8 @@
 		padding_y_max.addEventListener('change', function() {
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
-				field: 'padding_y_max',
+				field: 'padding_y',
+				event_label: 'padding_y',
 				mode: 'edit'
 			});
 
@@ -174,6 +180,7 @@
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
 				field: 'tags',
+				event_label: 'tags',
 				mode: 'create_category'
 			});
 
@@ -207,6 +214,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'tags',
+						event_label: 'tags',
 						mode: 'delete_category'
 					});
 
@@ -228,6 +236,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'tags',
+						event_label: 'tags',
 						mode: 'create_element'
 					});
 
@@ -260,6 +269,7 @@
 						gtag('event', 'dfai_edit_plan_field', {
 							plan_name: name,
 							field: 'tags',
+							event_label: 'tags',
 							mode: 'edit_element'
 						});
 
@@ -270,6 +280,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'tags',
+						event_label: 'tags',
 						mode: 'delete_element'
 					});
 
@@ -318,6 +329,7 @@
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
 				field: 'start',
+				event_label: 'start',
 				mode: 'edit'
 			});
 
@@ -348,6 +360,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'outdoor',
+					event_label: 'outdoor',
 					mode: 'create_element'
 				});
 
@@ -384,6 +397,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'outdoor',
+						event_label: 'outdoor',
 						mode: 'edit_element'
 					});
 
@@ -393,6 +407,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'outdoor',
+					event_label: 'outdoor',
 					mode: 'delete_element'
 				});
 
@@ -458,6 +473,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'limits',
+					event_label: 'limits',
 					mode: 'delete_element'
 				});
 
@@ -484,6 +500,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'limits',
+					event_label: 'limits',
 					mode: 'edit_element'
 				});
 
@@ -522,6 +539,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'limits',
+					event_label: 'limits',
 					mode: 'create_element'
 				});
 
@@ -579,6 +597,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'instance_limits',
+					event_label: 'instance_limits',
 					mode: 'delete_category'
 				});
 
@@ -606,6 +625,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'instance_limits',
+						event_label: 'instance_limits',
 						mode: 'create_element'
 					});
 
@@ -645,6 +665,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'instance_limits',
+						event_label: 'instance_limits',
 						mode: 'delete_element'
 					});
 
@@ -671,6 +692,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'instance_limits',
+						event_label: 'instance_limits',
 						mode: 'edit_element'
 					});
 
@@ -715,6 +737,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'instance_limits',
+					event_label: 'instance_limits',
 					mode: 'create_category'
 				});
 
@@ -746,6 +769,7 @@
 			gtag('event', 'dfai_edit_plan_field', {
 				plan_name: name,
 				field: 'variables',
+				event_label: 'variables',
 				mode: 'create_element'
 			});
 
@@ -777,6 +801,7 @@
 					gtag('event', 'dfai_edit_plan_field', {
 						plan_name: name,
 						field: 'variables',
+						event_label: 'variables',
 						mode: 'delete_element'
 					});
 
@@ -796,6 +821,7 @@
 				gtag('event', 'dfai_edit_plan_field', {
 					plan_name: name,
 					field: 'variables',
+					event_label: 'variables',
 					mode: 'create_element'
 				});
 
@@ -997,6 +1023,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field,
+					event_label: field,
 					mode: 'create'
 				});
 
@@ -1037,6 +1064,7 @@
 					gtag('event', 'dfai_edit_plan_priority_field', {
 						plan_name: planName,
 						field: field,
+						event_label: field,
 						mode: 'delete'
 					});
 
@@ -1083,6 +1111,7 @@
 						gtag('event', 'dfai_edit_plan_priority_field', {
 							plan_name: planName,
 							field: field,
+							event_label: field,
 							mode: 'edit'
 						});
 					}
@@ -1220,6 +1249,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field + '/' + name,
+					event_label: field + '/' + name,
 					mode: 'edit'
 				});
 
@@ -1244,6 +1274,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field + '/' + name,
+					event_label: field + '/' + name,
 					mode: 'edit'
 				});
 
@@ -1263,6 +1294,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field + '/' + name,
+					event_label: field + '/' + name,
 					mode: 'edit'
 				});
 
@@ -1287,6 +1319,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field + '/' + name,
+					event_label: field + '/' + name,
 					mode: 'edit'
 				});
 
@@ -1401,6 +1434,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: field + '/' + name,
+					event_label: field + '/' + name,
 					mode: 'edit'
 				});
 
@@ -1446,6 +1480,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: 'priority/action',
+					event_label: 'priority/action',
 					mode: 'edit'
 				});
 
@@ -1470,6 +1505,7 @@
 				gtag('event', 'dfai_edit_plan_priority_field', {
 					plan_name: planName,
 					field: 'priority/continue',
+					event_label: 'priority/continue',
 					mode: 'edit'
 				});
 
