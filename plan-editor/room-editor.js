@@ -1444,7 +1444,7 @@
 
 				doUpdate();
 			}, false);
-			outdoorField.appendChild(outdoorInput);
+			outdoorField.appendChild(outdoorSelect);
 
 			if (!selectedRoom.outdoor) {
 				requireGrassField.style.display = 'none';

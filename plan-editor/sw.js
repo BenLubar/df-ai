@@ -30,7 +30,7 @@ workboxSW.precache([
   },
   {
     "url": "room-editor.js",
-    "revision": "c2bb8175b1be2ae8806751c482cf7a55"
+    "revision": "d513d77c9235779dd532dd2436877756"
   },
   {
     "url": "style.css",
