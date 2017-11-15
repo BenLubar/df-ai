@@ -3038,9 +3038,34 @@ void Population::report(std::ostream & out, bool html)
                 }
                 out << ") ";
             }
-            if (item->quantity != 1)
+            int32_t base_quantity;
+            switch (item->item_type)
             {
-                out << "(quantity: " << item->quantity << ") ";
+                case item_type::BAR:
+                case item_type::POWDER_MISC:
+                case item_type::LIQUID_MISC:
+                case item_type::DRINK:
+                    base_quantity = 150;
+                    break;
+                case item_type::THREAD:
+                    base_quantity = 15000;
+                    break;
+                case item_type::CLOTH:
+                    base_quantity = 10000;
+                    break;
+                default:
+                    base_quantity = 1;
+                    break;
+            }
+            int32_t remainder = item->quantity % base_quantity;
+            if (item->quantity / base_quantity != 1 || remainder != 0)
+            {
+                out << "(quantity: " << (item->quantity / base_quantity);
+                if (remainder != 0)
+                {
+                    out << " and " << remainder << "/" << base_quantity;
+                }
+                out << ") ";
             }
             if (!html)
             {
@@ -3069,7 +3094,7 @@ void Population::report(std::ostream & out, bool html)
                 }
                 else
                 {
-                    out << "Workshop: ";
+                    out << "Building: ";
                 }
                 break;
             case general_ref_type::BUILDING_USE_TARGET_1:
