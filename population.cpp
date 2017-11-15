@@ -877,6 +877,11 @@ void Population::update_crimes(color_ostream & out)
             with_victim = " with " + AI::describe_unit(victim) + " as the victim";
         }
 
+        if (crime->discovered_year > not_before_year || (crime->discovered_year == not_before_year && crime->discovered_time >= not_before_tick))
+        {
+            ai->debug(out, "[Crime] New crime discovered: " + AI::describe_unit(criminal) + " is accused of " + accusation + with_victim + ".");
+        }
+
         for (auto report : crime->reports)
         {
             if (report->report_year > not_before_year || (report->report_year == not_before_year && report->report_time >= not_before_tick))
@@ -979,7 +984,7 @@ void Population::update_crimes(color_ostream & out)
         }
         std::string message("[Crime] Waiting for punishment: ");
         message += AI::describe_unit(p->criminal);
-        message += "\n        Officer:";
+        message += "\n        Officer: ";
         message += AI::describe_unit(p->officer);
         if (p->beating)
         {
