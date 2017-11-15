@@ -2943,8 +2943,14 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Jobs\n";
     }
+    std::map<std::string, size_t> boring_job_count;
     for (auto j = world->job_list.next; j; j = j->next)
     {
+        if (j->item->items.empty() && j->item->job_items.empty() && j->item->general_refs.empty())
+        {
+            boring_job_count[AI::describe_job(j->item)]++;
+            continue;
+        }
         if (html)
         {
             out << "<li>" << html_escape(AI::describe_job(j->item));
@@ -3170,6 +3176,17 @@ void Population::report(std::ostream & out, bool html)
         if (html)
         {
             out << "</li>";
+        }
+    }
+    for (auto & boring : boring_job_count)
+    {
+        if (html)
+        {
+            out << "<li>" << html_escape(boring.first) << " &times;" << boring.second << "</li>";
+        }
+        else
+        {
+            out << "- " << boring.first << " x" << boring.second << "\n";
         }
     }
 
