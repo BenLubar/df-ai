@@ -18,124 +18,123 @@ namespace df
 class AI;
 struct room;
 
-namespace stock_item
-{
-    enum item
-    {
-        anvil,
-        armor_feet,
-        armor_hands,
-        armor_head,
-        armor_legs,
-        armor_shield,
-        armor_stand,
-        armor_torso,
-        ash,
-        axe,
-        backpack,
-        bag,
-        bag_plant,
-        barrel,
-        bed,
-        bin,
-        block,
-        bone,
-        bone_bolts,
-        book_binding,
-        bookcase,
-        bucket,
-        cabinet,
-        cage,
-        chair,
-        chest,
-        clay,
-        cloth,
-        cloth_nodye,
-        clothes_feet,
-        clothes_hands,
-        clothes_head,
-        clothes_legs,
-        clothes_torso,
-        coal,
-        coffin,
-        coffin_bld,
-        coffin_bld_pet,
-        crossbow,
-        crutch,
-        dead_dwarf,
-        door,
-        drink,
-        drink_fruit,
-        drink_plant,
-        dye,
-        dye_plant,
-        dye_seeds,
-        flask,
-        floodgate,
-        food_ingredients,
-        giant_corkscrew,
-        goblet,
-        gypsum,
-        hatch_cover,
-        hive,
-        honey,
-        honeycomb,
-        jug,
-        leather,
-        lye,
-        meal,
-        mechanism,
-        metal_ore,
-        milk,
-        mill_plant,
-        minecart,
-        nest_box,
-        paper,
-        pick,
-        pipe_section,
-        plaster_powder,
-        quern,
-        quire,
-        quiver,
-        raw_adamantine,
-        raw_coke,
-        raw_fish,
-        rock_pot,
-        rope,
-        rough_gem,
-        shell,
-        skull,
-        slab,
-        slurry,
-        slurry_plant,
-        soap,
-        splint,
-        stepladder,
-        stone,
-        table,
-        tallow,
-        thread,
-        thread_plant,
-        thread_seeds,
-        toy,
-        traction_bench,
-        training_weapon,
-        weapon,
-        weapon_rack,
-        wheelbarrow,
-        wood,
-        wool,
-        written_on_quire,
+#define STOCKS_ENUMS \
+BEGIN_ENUM(stock, item) \
+    ENUM_ITEM(anvil) \
+    ENUM_ITEM(armor_feet) \
+    ENUM_ITEM(armor_hands) \
+    ENUM_ITEM(armor_head) \
+    ENUM_ITEM(armor_legs) \
+    ENUM_ITEM(armor_shield) \
+    ENUM_ITEM(armor_stand) \
+    ENUM_ITEM(armor_torso) \
+    ENUM_ITEM(ash) \
+    ENUM_ITEM(axe) \
+    ENUM_ITEM(backpack) \
+    ENUM_ITEM(bag) \
+    ENUM_ITEM(bag_plant) \
+    ENUM_ITEM(barrel) \
+    ENUM_ITEM(bed) \
+    ENUM_ITEM(bin) \
+    ENUM_ITEM(block) \
+    ENUM_ITEM(bone) \
+    ENUM_ITEM(bone_bolts) \
+    ENUM_ITEM(book_binding) \
+    ENUM_ITEM(bookcase) \
+    ENUM_ITEM(bucket) \
+    ENUM_ITEM(cabinet) \
+    ENUM_ITEM(cage) \
+    ENUM_ITEM(cage_metal) \
+    ENUM_ITEM(chair) \
+    ENUM_ITEM(chest) \
+    ENUM_ITEM(clay) \
+    ENUM_ITEM(cloth) \
+    ENUM_ITEM(cloth_nodye) \
+    ENUM_ITEM(clothes_feet) \
+    ENUM_ITEM(clothes_hands) \
+    ENUM_ITEM(clothes_head) \
+    ENUM_ITEM(clothes_legs) \
+    ENUM_ITEM(clothes_torso) \
+    ENUM_ITEM(coal) \
+    ENUM_ITEM(coffin) \
+    ENUM_ITEM(coffin_bld) \
+    ENUM_ITEM(coffin_bld_pet) \
+    ENUM_ITEM(crossbow) \
+    ENUM_ITEM(crutch) \
+    ENUM_ITEM(dead_dwarf) \
+    ENUM_ITEM(door) \
+    ENUM_ITEM(drink) \
+    ENUM_ITEM(drink_fruit) \
+    ENUM_ITEM(drink_plant) \
+    ENUM_ITEM(dye) \
+    ENUM_ITEM(dye_plant) \
+    ENUM_ITEM(dye_seeds) \
+    ENUM_ITEM(flask) \
+    ENUM_ITEM(floodgate) \
+    ENUM_ITEM(food_ingredients) \
+    ENUM_ITEM(giant_corkscrew) \
+    ENUM_ITEM(goblet) \
+    ENUM_ITEM(gypsum) \
+    ENUM_ITEM(hatch_cover) \
+    ENUM_ITEM(hive) \
+    ENUM_ITEM(honey) \
+    ENUM_ITEM(honeycomb) \
+    ENUM_ITEM(jug) \
+    ENUM_ITEM(leather) \
+    ENUM_ITEM(lye) \
+    ENUM_ITEM(meal) \
+    ENUM_ITEM(mechanism) \
+    ENUM_ITEM(metal_ore) \
+    ENUM_ITEM(milk) \
+    ENUM_ITEM(mill_plant) \
+    ENUM_ITEM(minecart) \
+    ENUM_ITEM(nest_box) \
+    ENUM_ITEM(paper) \
+    ENUM_ITEM(pick) \
+    ENUM_ITEM(pipe_section) \
+    ENUM_ITEM(plaster_powder) \
+    ENUM_ITEM(quern) \
+    ENUM_ITEM(quire) \
+    ENUM_ITEM(quiver) \
+    ENUM_ITEM(raw_adamantine) \
+    ENUM_ITEM(raw_coke) \
+    ENUM_ITEM(raw_fish) \
+    ENUM_ITEM(rock_pot) \
+    ENUM_ITEM(rope) \
+    ENUM_ITEM(rough_gem) \
+    ENUM_ITEM(shell) \
+    ENUM_ITEM(skull) \
+    ENUM_ITEM(slab) \
+    ENUM_ITEM(slurry) \
+    ENUM_ITEM(slurry_plant) \
+    ENUM_ITEM(soap) \
+    ENUM_ITEM(splint) \
+    ENUM_ITEM(statue) \
+    ENUM_ITEM(stepladder) \
+    ENUM_ITEM(stone) \
+    ENUM_ITEM(table) \
+    ENUM_ITEM(tallow) \
+    ENUM_ITEM(thread) \
+    ENUM_ITEM(thread_plant) \
+    ENUM_ITEM(thread_seeds) \
+    ENUM_ITEM(toy) \
+    ENUM_ITEM(traction_bench) \
+    ENUM_ITEM(training_weapon) \
+    ENUM_ITEM(weapon) \
+    ENUM_ITEM(weapon_rack) \
+    ENUM_ITEM(wheelbarrow) \
+    ENUM_ITEM(wood) \
+    ENUM_ITEM(wool) \
+    ENUM_ITEM(written_on_quire) \
+END_ENUM(stock, item)
 
-        _stock_item_count
-    };
-}
-
-std::ostream & operator <<(std::ostream & stream, stock_item::item item);
-namespace DFHack
-{
-    template<> inline bool find_enum_item<stock_item::item>(stock_item::item *var, const std::string & name) { return df_ai_find_enum_item(var, name, stock_item::_stock_item_count); }
-}
+#define BEGIN_ENUM BEGIN_DECLARE_ENUM
+#define ENUM_ITEM DECLARE_ENUM_ITEM
+#define END_ENUM END_DECLARE_ENUM
+STOCKS_ENUMS
+#undef BEGIN_ENUM
+#undef ENUM_ITEM
+#undef END_ENUM
 
 class Stocks
 {
@@ -183,6 +182,7 @@ private:
     std::vector<int32_t> metal_weapon_pref;
     std::vector<int32_t> metal_armor_pref;
     std::vector<int32_t> metal_anvil_pref;
+    std::vector<int32_t> metal_furniture_pref;
 
     std::vector<std::set<int32_t>> simple_metal_ores;
 
@@ -219,6 +219,7 @@ public:
     void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
     void queue_need_armor(color_ostream & out, df::items_other_id oidx);
     void queue_need_anvil(color_ostream & out);
+    void queue_need_cage(color_ostream & out);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
     void queue_need_coffin_bld(color_ostream & out, int32_t amount);
     void queue_use(color_ostream & out, stock_item::item what, int32_t amount);

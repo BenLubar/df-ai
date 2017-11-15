@@ -2,6 +2,7 @@
 
 #include "event_manager.h"
 
+#include "df/entity_position.h"
 #include "df/entity_position_responsibility.h"
 #include "df/job_type.h"
 #include "df/occupation_type.h"
@@ -12,7 +13,6 @@ namespace df
     struct abstract_building;
     struct building;
     struct building_civzonest;
-    struct entity_position;
     struct entity_position_assignment;
     struct squad;
     struct unit;
@@ -51,6 +51,7 @@ private:
     std::set<int32_t> medic;
     std::vector<int32_t> workers;
     std::set<df::job_type> seen_badwork;
+    int32_t last_checked_crime_year, last_checked_crime_tick;
     bool did_trade;
 
     int32_t trade_start_x, trade_start_y, trade_start_z;
@@ -85,6 +86,7 @@ public:
     void update_deads(color_ostream & out);
     void update_caged(color_ostream & out);
     void update_military(color_ostream & out);
+    void update_crimes(color_ostream & out);
     void update_locations(color_ostream & out);
 
     void assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ);
@@ -92,7 +94,6 @@ public:
     bool military_random_squad_attack_unit(color_ostream & out, df::unit *u);
     bool military_all_squads_attack_unit(color_ostream & out, df::unit *u);
     bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
-    df::entity_position *military_find_captain_pos();
 
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();
@@ -105,12 +106,17 @@ public:
     bool unit_hasmilitaryduty(df::unit *u);
     int32_t unit_totalxp(df::unit *u);
 
-    static df::entity_position *position_with_responsibility(df::entity_position_responsibility responsibility);
-
     void update_nobles(color_ostream & out);
     void check_noble_appartments(color_ostream & out);
 
-    df::entity_position_assignment *assign_new_noble(color_ostream & out, df::entity_position *pos, df::unit *unit, int32_t squad_id = -1);
+    df::entity_position_assignment *assign_new_noble(color_ostream & out, std::function<bool(df::entity_position *)> filter, df::unit *unit, const std::string & description, int32_t squad_id = -1);
+    df::entity_position_assignment *assign_new_noble(color_ostream & out, df::entity_position_responsibility responsibility, df::unit *unit, int32_t squad_id = -1)
+    {
+        return assign_new_noble(out, [responsibility](df::entity_position *pos) -> bool
+        {
+            return pos->responsibilities[responsibility];
+        }, unit, "position with responsibility " + enum_item_key(responsibility), squad_id);
+    }
 
     void update_pets(color_ostream & out);
 

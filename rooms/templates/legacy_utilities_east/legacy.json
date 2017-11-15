@@ -5,6 +5,18 @@
 			"x": 9,
 			"y": -1,
 			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 0,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 1,
+			"y": 5,
+			"z": 0
 		}
 	],
 	"r": [
@@ -93,6 +105,39 @@
 				["legacy_barracks_south", 7, 3, 0, {
 					"barracks_code": "F"
 				}]
+			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"min": [5, -6, 0],
+			"max": [6, -2, 0],
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodDrinkPlant",
+				"FoodDrinkAnimal",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			],
+			"comment": "jail access and meal storage",
+			"accesspath": [1],
+			"layout": [1, 2],
+			"exits": [
+				["legacy_jail", 1, -1, 0]
 			]
 		}
 	]

@@ -96,224 +96,13 @@ REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-std::ostream & operator <<(std::ostream & stream, stock_item::item item)
-{
-    switch (item)
-    {
-    case stock_item::anvil:
-        return stream << "anvil";
-    case stock_item::armor_feet:
-        return stream << "armor_feet";
-    case stock_item::armor_hands:
-        return stream << "armor_hands";
-    case stock_item::armor_head:
-        return stream << "armor_head";
-    case stock_item::armor_legs:
-        return stream << "armor_legs";
-    case stock_item::armor_shield:
-        return stream << "armor_shield";
-    case stock_item::armor_stand:
-        return stream << "armor_stand";
-    case stock_item::armor_torso:
-        return stream << "armor_torso";
-    case stock_item::ash:
-        return stream << "ash";
-    case stock_item::axe:
-        return stream << "axe";
-    case stock_item::backpack:
-        return stream << "backpack";
-    case stock_item::bag:
-        return stream << "bag";
-    case stock_item::bag_plant:
-        return stream << "bag_plant";
-    case stock_item::barrel:
-        return stream << "barrel";
-    case stock_item::bed:
-        return stream << "bed";
-    case stock_item::bin:
-        return stream << "bin";
-    case stock_item::block:
-        return stream << "block";
-    case stock_item::bone:
-        return stream << "bone";
-    case stock_item::bone_bolts:
-        return stream << "bone_bolts";
-    case stock_item::book_binding:
-        return stream << "book_binding";
-    case stock_item::bookcase:
-        return stream << "bookcase";
-    case stock_item::bucket:
-        return stream << "bucket";
-    case stock_item::cabinet:
-        return stream << "cabinet";
-    case stock_item::cage:
-        return stream << "cage";
-    case stock_item::chair:
-        return stream << "chair";
-    case stock_item::chest:
-        return stream << "chest";
-    case stock_item::clay:
-        return stream << "clay";
-    case stock_item::cloth:
-        return stream << "cloth";
-    case stock_item::cloth_nodye:
-        return stream << "cloth_nodye";
-    case stock_item::clothes_feet:
-        return stream << "clothes_feet";
-    case stock_item::clothes_hands:
-        return stream << "clothes_hands";
-    case stock_item::clothes_head:
-        return stream << "clothes_head";
-    case stock_item::clothes_legs:
-        return stream << "clothes_legs";
-    case stock_item::clothes_torso:
-        return stream << "clothes_torso";
-    case stock_item::coal:
-        return stream << "coal";
-    case stock_item::coffin:
-        return stream << "coffin";
-    case stock_item::coffin_bld:
-        return stream << "coffin_bld";
-    case stock_item::coffin_bld_pet:
-        return stream << "coffin_bld_pet";
-    case stock_item::crossbow:
-        return stream << "crossbow";
-    case stock_item::crutch:
-        return stream << "crutch";
-    case stock_item::dead_dwarf:
-        return stream << "dead_dwarf";
-    case stock_item::door:
-        return stream << "door";
-    case stock_item::drink:
-        return stream << "drink";
-    case stock_item::drink_fruit:
-        return stream << "drink_fruit";
-    case stock_item::drink_plant:
-        return stream << "drink_plant";
-    case stock_item::dye:
-        return stream << "dye";
-    case stock_item::dye_plant:
-        return stream << "dye_plant";
-    case stock_item::dye_seeds:
-        return stream << "dye_seeds";
-    case stock_item::flask:
-        return stream << "flask";
-    case stock_item::floodgate:
-        return stream << "floodgate";
-    case stock_item::food_ingredients:
-        return stream << "food_ingredients";
-    case stock_item::giant_corkscrew:
-        return stream << "giant_corkscrew";
-    case stock_item::goblet:
-        return stream << "goblet";
-    case stock_item::gypsum:
-        return stream << "gypsum";
-    case stock_item::hatch_cover:
-        return stream << "hatch_cover";
-    case stock_item::hive:
-        return stream << "hive";
-    case stock_item::honey:
-        return stream << "honey";
-    case stock_item::honeycomb:
-        return stream << "honeycomb";
-    case stock_item::jug:
-        return stream << "jug";
-    case stock_item::leather:
-        return stream << "leather";
-    case stock_item::lye:
-        return stream << "lye";
-    case stock_item::meal:
-        return stream << "meal";
-    case stock_item::mechanism:
-        return stream << "mechanism";
-    case stock_item::metal_ore:
-        return stream << "metal_ore";
-    case stock_item::milk:
-        return stream << "milk";
-    case stock_item::mill_plant:
-        return stream << "mill_plant";
-    case stock_item::minecart:
-        return stream << "minecart";
-    case stock_item::nest_box:
-        return stream << "nest_box";
-    case stock_item::paper:
-        return stream << "paper";
-    case stock_item::pick:
-        return stream << "pick";
-    case stock_item::pipe_section:
-        return stream << "pipe_section";
-    case stock_item::plaster_powder:
-        return stream << "plaster_powder";
-    case stock_item::quern:
-        return stream << "quern";
-    case stock_item::quire:
-        return stream << "quire";
-    case stock_item::quiver:
-        return stream << "quiver";
-    case stock_item::raw_adamantine:
-        return stream << "raw_adamantine";
-    case stock_item::raw_coke:
-        return stream << "raw_coke";
-    case stock_item::raw_fish:
-        return stream << "raw_fish";
-    case stock_item::rock_pot:
-        return stream << "rock_pot";
-    case stock_item::rope:
-        return stream << "rope";
-    case stock_item::rough_gem:
-        return stream << "rough_gem";
-    case stock_item::shell:
-        return stream << "shell";
-    case stock_item::skull:
-        return stream << "skull";
-    case stock_item::slab:
-        return stream << "slab";
-    case stock_item::slurry:
-        return stream << "slurry";
-    case stock_item::slurry_plant:
-        return stream << "slurry_plant";
-    case stock_item::soap:
-        return stream << "soap";
-    case stock_item::splint:
-        return stream << "splint";
-    case stock_item::stepladder:
-        return stream << "stepladder";
-    case stock_item::stone:
-        return stream << "stone";
-    case stock_item::table:
-        return stream << "table";
-    case stock_item::tallow:
-        return stream << "tallow";
-    case stock_item::thread:
-        return stream << "thread";
-    case stock_item::thread_plant:
-        return stream << "thread_plant";
-    case stock_item::thread_seeds:
-        return stream << "thread_seeds";
-    case stock_item::toy:
-        return stream << "toy";
-    case stock_item::traction_bench:
-        return stream << "traction_bench";
-    case stock_item::training_weapon:
-        return stream << "training_weapon";
-    case stock_item::weapon:
-        return stream << "weapon";
-    case stock_item::weapon_rack:
-        return stream << "weapon_rack";
-    case stock_item::wheelbarrow:
-        return stream << "wheelbarrow";
-    case stock_item::wood:
-        return stream << "wood";
-    case stock_item::wool:
-        return stream << "wool";
-    case stock_item::written_on_quire:
-        return stream << "written_on_quire";
-
-    case stock_item::_stock_item_count:
-        return stream << "???";
-    }
-    return stream << "???";
-}
+#define BEGIN_ENUM BEGIN_IMPLEMENT_ENUM
+#define ENUM_ITEM IMPLEMENT_ENUM_ITEM
+#define END_ENUM END_IMPLEMENT_ENUM
+STOCKS_ENUMS
+#undef BEGIN_ENUM
+#undef ENUM_ITEM
+#undef END_ENUM
 
 const static struct Watch
 {
@@ -324,130 +113,132 @@ const static struct Watch
 
     Watch()
     {
-        Needed[stock_item::door] = 4;
-        Needed[stock_item::hatch_cover] = 2;
+        Needed[stock_item::anvil] = 1;
+        Needed[stock_item::armor_feet] = 2;
+        Needed[stock_item::armor_hands] = 2;
+        Needed[stock_item::armor_head] = 2;
+        Needed[stock_item::armor_legs] = 2;
+        Needed[stock_item::armor_shield] = 2;
+        Needed[stock_item::armor_stand] = 1;
+        Needed[stock_item::armor_torso] = 2;
+        Needed[stock_item::ash] = 1;
+        Needed[stock_item::axe] = 2;
+        Needed[stock_item::backpack] = 2;
+        Needed[stock_item::bag] = 3;
+        Needed[stock_item::barrel] = 4;
         Needed[stock_item::bed] = 4;
         Needed[stock_item::bin] = 4;
-        Needed[stock_item::barrel] = 4;
+        Needed[stock_item::block] = 6;
+        Needed[stock_item::book_binding] = 5;
+        Needed[stock_item::bookcase] = 1;
+        Needed[stock_item::bucket] = 2;
         Needed[stock_item::cabinet] = 4;
-        Needed[stock_item::chest] = 4;
-        Needed[stock_item::mechanism] = 4;
-        Needed[stock_item::bag] = 3;
-        Needed[stock_item::table] = 3;
-        Needed[stock_item::chair] = 3;
         Needed[stock_item::cage] = 3;
+        Needed[stock_item::cage_metal] = 1;
+        Needed[stock_item::chair] = 3;
+        Needed[stock_item::chest] = 4;
+        Needed[stock_item::clothes_feet] = 2;
+        Needed[stock_item::clothes_hands] = 2;
+        Needed[stock_item::clothes_head] = 2;
+        Needed[stock_item::clothes_legs] = 2;
+        Needed[stock_item::clothes_torso] = 2;
+        Needed[stock_item::coal] = 3;
         Needed[stock_item::coffin] = 2;
         Needed[stock_item::coffin_bld] = 3;
         Needed[stock_item::coffin_bld_pet] = 1;
-        Needed[stock_item::meal] = 20;
-        Needed[stock_item::drink] = 20;
-        Needed[stock_item::goblet] = 10;
-        Needed[stock_item::wood] = 16;
-        Needed[stock_item::bucket] = 2;
-        Needed[stock_item::thread_seeds] = 10;
-        Needed[stock_item::dye_seeds] = 10;
-        Needed[stock_item::dye] = 10;
-        Needed[stock_item::weapon] = 2;
-        Needed[stock_item::armor_torso] = 2;
-        Needed[stock_item::clothes_torso] = 2;
-        Needed[stock_item::block] = 6;
-        Needed[stock_item::quiver] = 2;
-        Needed[stock_item::flask] = 2;
-        Needed[stock_item::backpack] = 2;
-        Needed[stock_item::wheelbarrow] = 1;
-        Needed[stock_item::splint] = 1;
         Needed[stock_item::crutch] = 1;
-        Needed[stock_item::rope] = 1;
-        Needed[stock_item::weapon_rack] = 1;
-        Needed[stock_item::armor_stand] = 1;
+        Needed[stock_item::door] = 4;
+        Needed[stock_item::drink] = 20;
+        Needed[stock_item::dye] = 10;
+        Needed[stock_item::dye_seeds] = 10;
+        Needed[stock_item::flask] = 2;
         Needed[stock_item::floodgate] = 1;
-        Needed[stock_item::traction_bench] = 1;
-        Needed[stock_item::soap] = 1;
-        Needed[stock_item::lye] = 1;
-        Needed[stock_item::ash] = 1;
-        Needed[stock_item::plaster_powder] = 1;
-        Needed[stock_item::coal] = 3;
-        Needed[stock_item::raw_coke] = 1;
-        Needed[stock_item::gypsum] = 1;
-        Needed[stock_item::slab] = 1;
         Needed[stock_item::giant_corkscrew] = 1;
-        Needed[stock_item::pipe_section] = 1;
-        Needed[stock_item::anvil] = 1;
-        Needed[stock_item::quern] = 3;
-        Needed[stock_item::minecart] = 1;
-        Needed[stock_item::nest_box] = 1;
+        Needed[stock_item::goblet] = 10;
+        Needed[stock_item::gypsum] = 1;
+        Needed[stock_item::hatch_cover] = 2;
         Needed[stock_item::hive] = 1;
         Needed[stock_item::jug] = 1;
-        Needed[stock_item::stepladder] = 2;
-        Needed[stock_item::pick] = 2;
-        Needed[stock_item::axe] = 2;
-        Needed[stock_item::armor_head] = 2;
-        Needed[stock_item::clothes_head] = 2;
-        Needed[stock_item::armor_legs] = 2;
-        Needed[stock_item::clothes_legs] = 2;
-        Needed[stock_item::armor_hands] = 2;
-        Needed[stock_item::clothes_hands] = 2;
-        Needed[stock_item::armor_feet] = 2;
-        Needed[stock_item::clothes_feet] = 2;
-        Needed[stock_item::armor_shield] = 2;
-        Needed[stock_item::bookcase] = 1;
-        Needed[stock_item::slurry] = 5;
+        Needed[stock_item::lye] = 1;
+        Needed[stock_item::meal] = 20;
+        Needed[stock_item::mechanism] = 4;
+        Needed[stock_item::minecart] = 1;
+        Needed[stock_item::nest_box] = 1;
         Needed[stock_item::paper] = 5;
+        Needed[stock_item::pick] = 2;
+        Needed[stock_item::pipe_section] = 1;
+        Needed[stock_item::plaster_powder] = 1;
+        Needed[stock_item::quern] = 3;
         Needed[stock_item::quire] = 5;
+        Needed[stock_item::quiver] = 2;
+        Needed[stock_item::raw_coke] = 1;
         Needed[stock_item::rock_pot] = 4;
+        Needed[stock_item::rope] = 1;
+        Needed[stock_item::slab] = 1;
+        Needed[stock_item::slurry] = 5;
+        Needed[stock_item::soap] = 1;
+        Needed[stock_item::splint] = 1;
+        Needed[stock_item::stepladder] = 2;
+        Needed[stock_item::table] = 3;
+        Needed[stock_item::thread_seeds] = 10;
         Needed[stock_item::toy] = 2;
-        Needed[stock_item::book_binding] = 5;
+        Needed[stock_item::traction_bench] = 1;
+        Needed[stock_item::weapon] = 2;
+        Needed[stock_item::weapon_rack] = 1;
+        Needed[stock_item::wheelbarrow] = 1;
+        Needed[stock_item::wood] = 16;
 
-        NeededPerDwarf[stock_item::meal] = 100;
-        NeededPerDwarf[stock_item::drink] = 200;
-        NeededPerDwarf[stock_item::slab] = 10;
-        NeededPerDwarf[stock_item::soap] = 20;
-        NeededPerDwarf[stock_item::weapon] = 5;
-        NeededPerDwarf[stock_item::cloth] = 20;
-        NeededPerDwarf[stock_item::clothes_torso] = 20;
-        NeededPerDwarf[stock_item::clothes_legs] = 20;
-        NeededPerDwarf[stock_item::clothes_feet] = 20;
-        NeededPerDwarf[stock_item::clothes_hands] = 20;
-        NeededPerDwarf[stock_item::clothes_head] = 20;
-        NeededPerDwarf[stock_item::armor_shield] = 3;
-        NeededPerDwarf[stock_item::armor_torso] = 3;
-        NeededPerDwarf[stock_item::armor_legs] = 3;
         NeededPerDwarf[stock_item::armor_feet] = 3;
         NeededPerDwarf[stock_item::armor_hands] = 3;
         NeededPerDwarf[stock_item::armor_head] = 3;
+        NeededPerDwarf[stock_item::armor_legs] = 3;
+        NeededPerDwarf[stock_item::armor_shield] = 3;
+        NeededPerDwarf[stock_item::armor_torso] = 3;
+        NeededPerDwarf[stock_item::cloth] = 20;
+        NeededPerDwarf[stock_item::clothes_feet] = 20;
+        NeededPerDwarf[stock_item::clothes_hands] = 20;
+        NeededPerDwarf[stock_item::clothes_head] = 20;
+        NeededPerDwarf[stock_item::clothes_legs] = 20;
+        NeededPerDwarf[stock_item::clothes_torso] = 20;
+        NeededPerDwarf[stock_item::drink] = 200;
+        NeededPerDwarf[stock_item::meal] = 100;
+        NeededPerDwarf[stock_item::slab] = 10;
+        NeededPerDwarf[stock_item::soap] = 20;
         NeededPerDwarf[stock_item::toy] = 5;
+        NeededPerDwarf[stock_item::weapon] = 5;
 
-        WatchStock[stock_item::rough_gem] = 6;
-        WatchStock[stock_item::thread_plant] = 10;
-        WatchStock[stock_item::cloth_nodye] = 10;
-        WatchStock[stock_item::mill_plant] = 4;
         WatchStock[stock_item::bag_plant] = 4;
-        WatchStock[stock_item::milk] = 1;
-        WatchStock[stock_item::metal_ore] = 6;
-        WatchStock[stock_item::raw_coke] = 2;
-        WatchStock[stock_item::raw_adamantine] = 2;
-        WatchStock[stock_item::skull] = 2;
         WatchStock[stock_item::bone] = 8;
-        WatchStock[stock_item::food_ingredients] = 2;
-        WatchStock[stock_item::drink_plant] = 5;
+        WatchStock[stock_item::clay] = 1;
+        WatchStock[stock_item::cloth_nodye] = 10;
         WatchStock[stock_item::drink_fruit] = 5;
+        WatchStock[stock_item::drink_plant] = 5;
+        WatchStock[stock_item::food_ingredients] = 2;
         WatchStock[stock_item::honey] = 1;
         WatchStock[stock_item::honeycomb] = 1;
-        WatchStock[stock_item::wool] = 1;
-        WatchStock[stock_item::tallow] = 1;
-        WatchStock[stock_item::shell] = 1;
+        WatchStock[stock_item::metal_ore] = 6;
+        WatchStock[stock_item::milk] = 1;
+        WatchStock[stock_item::mill_plant] = 4;
+        WatchStock[stock_item::raw_adamantine] = 2;
+        WatchStock[stock_item::raw_coke] = 2;
         WatchStock[stock_item::raw_fish] = 1;
-        WatchStock[stock_item::clay] = 1;
+        WatchStock[stock_item::rough_gem] = 6;
+        WatchStock[stock_item::shell] = 1;
+        WatchStock[stock_item::skull] = 2;
+        WatchStock[stock_item::tallow] = 1;
+        WatchStock[stock_item::thread_plant] = 10;
+        WatchStock[stock_item::wool] = 1;
         WatchStock[stock_item::written_on_quire] = 1;
 
-        AlsoCount.insert(stock_item::dye_plant);
-        AlsoCount.insert(stock_item::cloth);
-        AlsoCount.insert(stock_item::leather);
-        AlsoCount.insert(stock_item::crossbow);
         AlsoCount.insert(stock_item::bone_bolts);
-        AlsoCount.insert(stock_item::stone);
+        AlsoCount.insert(stock_item::cloth);
+        AlsoCount.insert(stock_item::crossbow);
         AlsoCount.insert(stock_item::dead_dwarf);
+        AlsoCount.insert(stock_item::dye_plant);
+        AlsoCount.insert(stock_item::leather);
         AlsoCount.insert(stock_item::slurry_plant);
+        AlsoCount.insert(stock_item::statue);
+        AlsoCount.insert(stock_item::stone);
         AlsoCount.insert(stock_item::thread);
     }
 } Watch;
@@ -1480,6 +1271,11 @@ int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
         }
         break;
     }
+    case stock_item::statue:
+    {
+        add_all(items_other_id::STATUE, yes_i_mean_all);
+        break;
+    }
     case stock_item::stone:
     {
         add_all(items_other_id::BOULDER, [](df::item *i) -> bool
@@ -1707,9 +1503,16 @@ int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
         break;
     }
     case stock_item::cage:
+    case stock_item::cage_metal:
     {
-        add_all(items_other_id::CAGE, [](df::item *i) -> bool
+        add_all(items_other_id::CAGE, [k](df::item *i) -> bool
         {
+            MaterialInfo mat(i);
+            if ((mat.material && mat.material->flags.is_set(material_flags::IS_METAL)) != (k == stock_item::cage_metal))
+            {
+                return false;
+            }
+
             for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
             {
                 if (virtual_cast<df::general_ref_contains_unitst>(*ref))
@@ -2232,6 +2035,11 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::anvil:
     {
         queue_need_anvil(out);
+        return;
+    }
+    case stock_item::cage_metal:
+    {
+        queue_need_cage(out);
         return;
     }
     case stock_item::coffin_bld:
@@ -2852,6 +2660,85 @@ void Stocks::queue_need_anvil(color_ostream & out)
 
         df::manager_order_template tmpl;
         tmpl.job_type = job_type::ForgeAnvil;
+        tmpl.item_type = item_type::NONE;
+        tmpl.item_subtype = -1;
+        tmpl.mat_type = 0;
+        tmpl.mat_index = *mi;
+        add_manager_order(out, tmpl, nw);
+        bars[*mi] -= nw * need_bars;
+        coal_bars -= nw;
+        cnt -= nw;
+        if (may_forge_bars(out, *mi) != -1)
+            break;
+    }
+}
+
+void Stocks::queue_need_cage(color_ostream & out)
+{
+    std::map<int32_t, int32_t> bars;
+    int32_t coal_bars = count.at(stock_item::coal);
+    if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
+        coal_bars = 50000;
+
+    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
+    {
+        df::item_actual *i = virtual_cast<df::item_actual>(*item);
+        if (i->getMaterial() == 0)
+        {
+            bars[i->getMaterialIndex()] += i->stack_size;
+        }
+    }
+
+    // rough account of already queued jobs consumption
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+    {
+        if ((*mo)->mat_type == 0)
+        {
+            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
+            coal_bars -= (*mo)->amount_total;
+        }
+    }
+
+    if (metal_furniture_pref.empty())
+    {
+        for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
+        {
+            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_METAL))
+            {
+                metal_furniture_pref.push_back(int32_t(mi));
+            }
+        }
+    }
+
+    int32_t cnt = Watch.Needed.at(stock_item::cage_metal);
+    cnt -= count.at(stock_item::cage_metal);
+
+    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+    {
+        if ((*mo)->job_type == job_type::MakeCage && !(*mo)->material_category.bits.wood)
+        {
+            cnt -= (*mo)->amount_total;
+        }
+    }
+    if (cnt <= 0)
+        return;
+
+    int32_t need_bars = 1;
+
+    for (auto mi = metal_furniture_pref.begin(); mi != metal_furniture_pref.end(); mi++)
+    {
+        if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
+            break;
+        int32_t nw = bars[*mi] / need_bars;
+        if (nw > coal_bars)
+            nw = coal_bars;
+        if (nw > cnt)
+            nw = cnt;
+        if (nw <= 0)
+            continue;
+
+        df::manager_order_template tmpl;
+        tmpl.job_type = job_type::MakeCage;
         tmpl.item_type = item_type::NONE;
         tmpl.item_subtype = -1;
         tmpl.mat_type = 0;

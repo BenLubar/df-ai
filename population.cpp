@@ -29,6 +29,7 @@
 #include "df/caravan_state.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/crime.h"
 #include "df/entity_buy_prices.h"
 #include "df/entity_position.h"
 #include "df/entity_position_assignment.h"
@@ -54,6 +55,7 @@
 #include "df/job_item_ref.h"
 #include "df/manager_order.h"
 #include "df/occupation.h"
+#include "df/punishment.h"
 #include "df/reaction.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
@@ -70,11 +72,13 @@
 #include "df/unit_skill.h"
 #include "df/unit_soul.h"
 #include "df/unit_wound.h"
+#include "df/viewscreen_justicest.h"
 #include "df/viewscreen_layer_assigntradest.h"
 #include "df/viewscreen_layer_noblelistst.h"
 #include "df/viewscreen_locationsst.h"
-#include "df/viewscreen_tradelistst.h"
+#include "df/viewscreen_overallstatusst.h"
 #include "df/viewscreen_tradegoodsst.h"
+#include "df/viewscreen_tradelistst.h"
 #include "df/world.h"
 #include "df/world_site.h"
 
@@ -200,7 +204,10 @@ Population::Population(AI *ai) :
     deathwatch_handle(nullptr),
     medic(),
     workers(),
-    seen_badwork()
+    seen_badwork(),
+    last_checked_crime_year(-1),
+    last_checked_crime_tick(-1),
+    did_trade(false)
 {
 }
 
@@ -247,6 +254,7 @@ void Population::update(color_ostream & out)
         break;
     case 4:
         update_military(out);
+        update_crimes(out);
         break;
     case 5:
         update_pets(out);
@@ -362,14 +370,14 @@ void Population::update_trading(color_ostream & out)
         return;
     }
 
-    df::entity_position *broker_pos = position_with_responsibility(entity_position_responsibility::TRADE);
-    if (!broker_pos)
+    auto broker_pos = std::find_if(ui->main.fortress_entity->positions.own.begin(), ui->main.fortress_entity->positions.own.end(), [](df::entity_position *pos) -> bool { return pos->responsibilities[entity_position_responsibility::TRADE]; });
+    if (broker_pos == ui->main.fortress_entity->positions.own.end())
     {
         ai->debug(out, "[trade] Could not find broker position!");
         return;
     }
 
-    auto broker_assignment = std::find_if(ui->main.fortress_entity->positions.assignments.begin(), ui->main.fortress_entity->positions.assignments.end(), [broker_pos](df::entity_position_assignment *asn) -> bool { return asn->position_id == broker_pos->id; });
+    auto broker_assignment = std::find_if(ui->main.fortress_entity->positions.assignments.begin(), ui->main.fortress_entity->positions.assignments.end(), [broker_pos](df::entity_position_assignment *asn) -> bool { return asn->position_id == (*broker_pos)->id; });
     if (broker_assignment == ui->main.fortress_entity->positions.assignments.end())
     {
         ai->debug(out, "[trade] Could not find broker assignment!");
@@ -801,6 +809,204 @@ void Population::update_military(color_ostream & out)
     });
 }
 
+void Population::update_crimes(color_ostream & out)
+{
+    // check for criminals, log justice updates
+
+    int32_t not_before_year = last_checked_crime_year;
+    int32_t not_before_tick = last_checked_crime_tick;
+    last_checked_crime_year = *cur_year;
+    last_checked_crime_tick = *cur_year_tick;
+
+    for (auto crime : world->crimes.all)
+    {
+        if (!crime->flags.bits.discovered)
+        {
+            continue;
+        }
+
+        std::string accusation;
+        switch (crime->mode)
+        {
+            case df::crime::ProductionOrderViolation:
+                accusation = "violation of a production order";
+                break;
+            case df::crime::ExportViolation:
+                accusation = "violation of an export ban";
+                break;
+            case df::crime::JobOrderViolation:
+                accusation = "violation of a job order";
+                break;
+            case df::crime::ConspiracyToSlowLabor:
+                accusation = "conspiracy to slow labor";
+                break;
+            case df::crime::Murder:
+                accusation = "murder";
+                break;
+            case df::crime::DisorderlyBehavior:
+                accusation = "disorderly conduct";
+                break;
+            case df::crime::BuildingDestruction:
+                accusation = "building destruction";
+                break;
+            case df::crime::Vandalism:
+                accusation = "vandalism";
+                break;
+            case df::crime::Theft:
+                accusation = "theft";
+                break;
+            case df::crime::Robbery:
+                accusation = "robbery";
+                break;
+            case df::crime::BloodDrinking:
+                accusation = "vampirism";
+                break;
+        }
+        if (accusation.empty())
+        {
+            accusation = enum_item_key(crime->mode);
+        }
+
+        df::unit *criminal = df::unit::find(crime->criminal);
+        df::unit *convicted = df::unit::find(crime->convicted);
+        df::unit *victim = df::unit::find(crime->victim);
+
+        std::string with_victim;
+        if (victim)
+        {
+            with_victim = " with " + AI::describe_unit(victim) + " as the victim";
+        }
+
+        for (auto report : crime->reports)
+        {
+            if (report->report_year > not_before_year || (report->report_year == not_before_year && report->report_time >= not_before_tick))
+            {
+                // TODO: report->unk1
+
+                df::unit *witness = df::unit::find(report->witness);
+                df::unit *accuses = df::unit::find(report->accuses);
+                ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
+                if (accuses == convicted)
+                {
+                    ai->debug(out, "[Crime] The accused has already been convicted.");
+                }
+                else if (accuses != criminal)
+                {
+                    ai->debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
+                }
+            }
+        }
+
+        if (crime->flags.bits.needs_trial && !convicted && AI::is_dwarfmode_viewscreen())
+        {
+            ai->debug(out, "[Crime] Convicting " + AI::describe_unit(criminal) + " of " + accusation + with_victim + ".");
+            AI::feed_key(interface_key::D_STATUS);
+            if (auto screen = virtual_cast<df::viewscreen_overallstatusst>(Gui::getCurViewscreen(true)))
+            {
+                auto page = std::find(screen->visible_pages.begin(), screen->visible_pages.end(), df::viewscreen_overallstatusst::Justice);
+                if (page == screen->visible_pages.end())
+                {
+                    ai->debug(out, "[Crime] [ERROR] Could not find justice tab on status screen.");
+                }
+                else
+                {
+                    while (screen->visible_pages.at(screen->page_cursor) != df::viewscreen_overallstatusst::Justice)
+                    {
+                        AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+                    }
+                    AI::feed_key(interface_key::SELECT);
+                    if (auto justice = virtual_cast<df::viewscreen_justicest>(Gui::getCurViewscreen(true)))
+                    {
+                        auto it = std::find(justice->cases.begin(), justice->cases.end(), crime);
+                        if (it == justice->cases.end())
+                        {
+                            ai->debug(out, "[Crime] Could not find case. Checking " + std::string(justice->cold_cases ? "recent crimes" : "cold cases"));
+                            AI::feed_key(interface_key::CHANGETAB);
+                            it = std::find(justice->cases.begin(), justice->cases.end(), crime);
+                        }
+                        if (it == justice->cases.end())
+                        {
+                            ai->debug(out, "[Crime] [ERROR] Could not find case.");
+                        }
+                        else
+                        {
+                            while (justice->cases.size() <= size_t(justice->sel_idx_current) || justice->cases.at(size_t(justice->sel_idx_current)) != crime)
+                            {
+                                AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                            }
+                            AI::feed_key(interface_key::SELECT);
+                            auto convict = std::find(justice->convict_choices.begin(), justice->convict_choices.end(), criminal);
+                            if (convict == justice->convict_choices.end())
+                            {
+                                ai->debug(out, "[Crime] [ERROR] Criminal is not on list of suspects.");
+                                AI::feed_key(interface_key::LEAVESCREEN);
+                            }
+                            else
+                            {
+                                while (justice->convict_choices.at(justice->cursor_right) != criminal)
+                                {
+                                    AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                                }
+                                AI::feed_key(interface_key::SELECT);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ai->debug(out, "[Crime] [ERROR] Could not open justice tab on status screen.");
+                    }
+                    AI::feed_key(interface_key::LEAVESCREEN);
+                }
+            }
+            else
+            {
+                ai->debug(out, "[Crime] [ERROR] Could not open status screen.");
+            }
+            AI::feed_key(interface_key::LEAVESCREEN);
+        }
+
+        if (convicted && !crime->flags.bits.sentenced)
+        {
+            ai->debug(out, "[Crime] Waiting for sentencing for " + AI::describe_unit(convicted) + ", who was convicted of the crime of " + accusation + with_victim + ".");
+        }
+    }
+
+    for (auto p : ui->punishments)
+    {
+        if (!p->beating && !p->hammer_strikes && !p->prison_counter)
+        {
+            continue;
+        }
+        std::string message("[Crime] Waiting for punishment: ");
+        message += AI::describe_unit(p->criminal);
+        message += "\n        Officer:";
+        message += AI::describe_unit(p->officer);
+        if (p->beating)
+        {
+            message += "\n        Awaiting beating";
+        }
+        if (p->hammer_strikes)
+        {
+            message += "\n        Remaining hammer strikes: " + stl_sprintf("%d", p->hammer_strikes);
+        }
+        if (p->prison_counter)
+        {
+            int32_t days_remaining = (p->prison_counter + 120) / 120;
+            message += "\n        Remaining jail time: ";
+            message += stl_sprintf("%d", days_remaining);
+            if (days_remaining == 1)
+            {
+                message += " day";
+            }
+            else
+            {
+                message += " days";
+            }
+        }
+        ai->debug(out, message);
+    }
+}
+
 // with a population of 200:
 const static int32_t wanted_tavern_keeper = 4;
 const static int32_t wanted_tavern_keeper_min = 1;
@@ -1096,18 +1302,6 @@ bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squa
     return true;
 }
 
-df::entity_position *Population::military_find_captain_pos()
-{
-    for (auto it = ui->main.fortress_entity->positions.own.begin(); it != ui->main.fortress_entity->positions.own.end(); it++)
-    {
-        if ((*it)->flags.is_set(entity_position_flags::MILITARY_SCREEN_ONLY))
-        {
-            return *it;
-        }
-    }
-    return nullptr;
-}
-
 // returns an unit newly assigned to a military squad
 df::unit *Population::military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist)
 {
@@ -1157,11 +1351,14 @@ df::unit *Population::military_find_new_soldier(color_ostream & out, const std::
 
     if (ui->main.fortress_entity->assignments_by_type[entity_position_responsibility::MILITARY_STRATEGY].empty())
     {
-        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::MILITARY_STRATEGY), ns, squad_id);
+        assign_new_noble(out, entity_position_responsibility::MILITARY_STRATEGY, ns, squad_id);
     }
     else
     {
-        assign_new_noble(out, military_find_captain_pos(), ns, squad_id);
+        assign_new_noble(out, [](df::entity_position *pos) -> bool
+        {
+            return pos->flags.is_set(entity_position_flags::MILITARY_SCREEN_ONLY);
+        }, ns, "squad captain", squad_id);
     }
 
     return ns;
@@ -2040,18 +2237,6 @@ int32_t Population::unit_totalxp(df::unit *u)
     return t;
 }
 
-df::entity_position *Population::position_with_responsibility(df::entity_position_responsibility responsibility)
-{
-    for (auto it = ui->main.fortress_entity->positions.own.begin(); it != ui->main.fortress_entity->positions.own.end(); it++)
-    {
-        if ((*it)->responsibilities[responsibility])
-        {
-            return *it;
-        }
-    }
-    return nullptr;
-}
-
 void Population::update_nobles(color_ostream & out)
 {
     if (!config.manage_nobles)
@@ -2080,7 +2265,7 @@ void Population::update_nobles(color_ostream & out)
     {
         ai->debug(out, "assigning new manager: " + AI::describe_unit(cz.back()));
         // TODO do check population caps, ...
-        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::MANAGE_PRODUCTION), cz.back());
+        assign_new_noble(out, entity_position_responsibility::MANAGE_PRODUCTION, cz.back());
         cz.pop_back();
     }
 
@@ -2091,7 +2276,7 @@ void Population::update_nobles(color_ostream & out)
             if (!(*it)->status.labors[unit_labor::MINE])
             {
                 ai->debug(out, "assigning new bookkeeper: " + AI::describe_unit(*it));
-                assign_new_noble(out, position_with_responsibility(entity_position_responsibility::ACCOUNTING), *it);
+                assign_new_noble(out, entity_position_responsibility::ACCOUNTING, *it);
                 ui->bookkeeper_settings = 4;
                 cz.erase(it.base() - 1);
                 break;
@@ -2102,7 +2287,7 @@ void Population::update_nobles(color_ostream & out)
     if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->plan->find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
         ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
-        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::HEALTH_MANAGEMENT), cz.back());
+        assign_new_noble(out, entity_position_responsibility::HEALTH_MANAGEMENT, cz.back());
         cz.pop_back();
     }
 
@@ -2121,7 +2306,21 @@ void Population::update_nobles(color_ostream & out)
     if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty() && !cz.empty())
     {
         ai->debug(out, "assigning new broker: " + AI::describe_unit(cz.back()));
-        assign_new_noble(out, position_with_responsibility(entity_position_responsibility::TRADE), cz.back());
+        assign_new_noble(out, entity_position_responsibility::TRADE, cz.back());
+        cz.pop_back();
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::LAW_ENFORCEMENT].empty() && !cz.empty())
+    {
+        ai->debug(out, "assigning new sheriff: " + AI::describe_unit(cz.back()));
+        assign_new_noble(out, entity_position_responsibility::LAW_ENFORCEMENT, cz.back());
+        cz.pop_back();
+    }
+
+    if (ent->assignments_by_type[entity_position_responsibility::EXECUTIONS].empty() && !cz.empty())
+    {
+        ai->debug(out, "assigning new hammerer: " + AI::describe_unit(cz.back()));
+        assign_new_noble(out, entity_position_responsibility::EXECUTIONS, cz.back());
         cz.pop_back();
     }
 
@@ -2147,16 +2346,11 @@ void Population::check_noble_appartments(color_ostream & out)
     ai->plan->attribute_noblerooms(out, noble_ids);
 }
 
-df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, df::entity_position *pos, df::unit *unit, int32_t squad_id)
+df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::function<bool(df::entity_position *)> filter, df::unit *unit, const std::string & description, int32_t squad_id)
 {
-    if (pos == nullptr)
-    {
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as unknown position");
-        return nullptr;
-    }
     if (!AI::is_dwarfmode_viewscreen())
     {
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": not on dwarfmode viewscreen");
+        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": not on dwarfmode viewscreen");
         return nullptr;
     }
     AI::feed_key(interface_key::D_NOBLES);
@@ -2165,7 +2359,8 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
         for (auto it = view->assignments.begin(); it != view->assignments.end(); it++)
         {
             auto assign = *it;
-            if (assign != nullptr && assign->position_id == pos->id && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && assign->squad_id == squad_id)
+            auto pos = assign ? binsearch_in_vector(ui->main.fortress_entity->positions.own, assign->position_id) : nullptr;
+            if (pos && filter(pos) && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && assign->squad_id == squad_id)
             {
                 AI::feed_key(interface_key::SELECT);
                 for (auto c = view->candidates.begin(); c != view->candidates.end(); c++)
@@ -2186,10 +2381,10 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
             AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
         }
         AI::feed_key(interface_key::LEAVESCREEN);
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": could not find position");
+        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": could not find position");
         return nullptr;
     }
-    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": nobles screen did not appear");
+    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": nobles screen did not appear");
     return nullptr;
 }
 

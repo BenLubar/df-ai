@@ -1230,6 +1230,49 @@ void Plan::new_citizen(color_ostream & out, int32_t uid)
     add_task(task_type::check_idle);
     getdiningroom(out, uid);
     getbedroom(out, uid);
+
+    size_t required_jail_cells = ai->pop->citizen.size() / 10;
+    find_room(room_type::jail, [this, &out, &required_jail_cells](room *r) -> bool
+    {
+        if (required_jail_cells == 0)
+        {
+            return true;
+        }
+
+        if (r->status == room_status::plan)
+        {
+            return false;
+        }
+
+        for (auto f : r->layout)
+        {
+            if (f->type == layout_type::cage || f->type == layout_type::restraint)
+            {
+                if (!f->ignore)
+                {
+                    required_jail_cells--;
+                    if (required_jail_cells == 0)
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    f->ignore = false;
+                    required_jail_cells--;
+                    if (r->status == room_status::finished)
+                    {
+                        furnish_room(out, r);
+                    }
+                    if (required_jail_cells == 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    });
 }
 
 void Plan::del_citizen(color_ostream & out, int32_t uid)
@@ -2073,6 +2116,10 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         building_type = building_type::Cabinet;
         stocks_furniture_type = stock_item::cabinet;
         break;
+    case layout_type::cage:
+        building_type = building_type::Cage;
+        stocks_furniture_type = stock_item::cage_metal;
+        break;
     case layout_type::cage_trap:
         if (ai->stocks->count[stock_item::cage] < 1)
         {
@@ -2135,8 +2182,16 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         building_type = building_type::NestBox;
         stocks_furniture_type = stock_item::nest_box;
         break;
+    case layout_type::restraint:
+        building_type = building_type::Chain;
+        stocks_furniture_type = stock_item::rope;
+        break;
     case layout_type::roller:
         return try_furnish_roller(out, r, f, tgtile, reason);
+    case layout_type::statue:
+        building_type = building_type::Statue;
+        stocks_furniture_type = stock_item::statue;
+        break;
     case layout_type::table:
         building_type = building_type::Table;
         stocks_furniture_type = stock_item::table;
@@ -3528,7 +3583,11 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         return false;
     }
 
-    if (f->type == layout_type::coffin)
+    if (f->type == layout_type::archery_target)
+    {
+        f->makeroom = true;
+    }
+    else if (f->type == layout_type::coffin)
     {
         df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
         coffin->burial_mode.bits.allow_burial = 1;
@@ -3540,6 +3599,21 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         df::building_doorst *door = virtual_cast<df::building_doorst>(bld);
         door->door_flags.bits.pet_passable = 1;
         door->door_flags.bits.internal = f->internal ? 1 : 0;
+    }
+    else if (f->type == layout_type::floodgate)
+    {
+        for (auto rr : rooms_and_corridors)
+        {
+            if (rr->status == room_status::plan)
+                continue;
+            for (auto ff : rr->layout)
+            {
+                if (ff->type == layout_type::lever && ff->target == f)
+                {
+                    link_lever(out, ff, f);
+                }
+            }
+        }
     }
     else if (f->type == layout_type::hatch)
     {
@@ -3559,24 +3633,21 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
     {
         return setup_lever(out, r, f);
     }
-    else if (f->type == layout_type::floodgate)
+
+    if (r->type == room_type::jail && (f->type == layout_type::cage || f->type == layout_type::restraint))
     {
-        for (auto rr : rooms_and_corridors)
+        if (!f->makeroom)
         {
-            if (rr->status == room_status::plan)
-                continue;
-            for (auto ff : rr->layout)
-            {
-                if (ff->type == layout_type::lever && ff->target == f)
-                {
-                    link_lever(out, ff, f);
-                }
-            }
+            delete[] bld->room.extents;
+            bld->room.extents = new uint8_t[1];
+            bld->room.extents[0] = 4;
+            bld->room.x = r->min.x + f->pos.x;
+            bld->room.y = r->min.y + f->pos.y;
+            bld->room.width = 1;
+            bld->room.height = 1;
+            bld->is_room = true;
         }
-    }
-    else if (f->type == layout_type::archery_target)
-    {
-        f->makeroom = true;
+        bld->flags.bits.justice = 1;
     }
 
     if (r->type == room_type::infirmary)

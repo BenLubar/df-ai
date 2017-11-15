@@ -65,6 +65,7 @@
 		"legacy_dininghall_north": [2, 2],
 		"legacy_dininghall_south": [2, 2],
 		"legacy_infirmary": [1, 1],
+		"legacy_jail": [1, 5],
 		"legacy_cemetery_east": [4, 10],
 		"legacy_cemetery_west": [4, 10],
 		"legacy_barracks_north": [1, 1],
@@ -307,6 +308,34 @@
 				"type": "stockpile",
 				"level": 0,
 				"workshop_not": {}
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "jail",
+					"layout": {
+						"match": {
+							"type": ["cage", "restraint"],
+							"ignore": true
+						},
+						"is": [1, null]
+					}
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "jail",
+				"accesspath": {
+					"match": {
+						"status": "plan",
+						"type": "jail"
+					},
+					"is": 0
+				}
 			}
 		},
 		{
@@ -642,17 +671,9 @@
 		{
 			"continue": true,
 			"action": "unignore_furniture",
-			"match": [{
-				"type": "dininghall"
-			}, {
-				"type": "barracks"
-			}, {
-				"type": "nobleroom"
-			}, {
-				"type": "bedroom"
-			}, {
-				"type": "cemetery"
-			}]
+			"match": {
+				"type": ["dininghall", "barracks", "nobleroom", "bedroom", "cemetary", "jail"]
+			}
 		},
 		{
 			"action": "dig_next_cavern_outpost"

@@ -42,6 +42,7 @@ BEGIN_ENUM(room, type) \
     ENUM_ITEM(furnace) \
     ENUM_ITEM(garbagedump) \
     ENUM_ITEM(infirmary) \
+    ENUM_ITEM(jail) \
     ENUM_ITEM(location) \
     ENUM_ITEM(nobleroom) \
     ENUM_ITEM(outpost) \
@@ -117,6 +118,7 @@ BEGIN_ENUM(layout, type) \
     ENUM_ITEM(bed) \
     ENUM_ITEM(bookcase) \
     ENUM_ITEM(cabinet) \
+    ENUM_ITEM(cage) \
     ENUM_ITEM(cage_trap) \
     ENUM_ITEM(chair) \
     ENUM_ITEM(chest) \
@@ -128,7 +130,9 @@ BEGIN_ENUM(layout, type) \
     ENUM_ITEM(hive) \
     ENUM_ITEM(lever) \
     ENUM_ITEM(nest_box) \
+    ENUM_ITEM(restraint) \
     ENUM_ITEM(roller) \
+    ENUM_ITEM(statue) \
     ENUM_ITEM(table) \
     ENUM_ITEM(track_stop) \
     ENUM_ITEM(traction_bench) \
