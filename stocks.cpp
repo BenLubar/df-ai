@@ -831,9 +831,11 @@ static bool has_reaction_product(df::material *m, const std::string & product)
     return false;
 }
 
-void Stocks::update_kitchen(color_ostream & out)
+void Stocks::update_kitchen(color_ostream &)
 {
-    Core::getInstance().runCommand(out, "ban-cooking booze honey tallow seeds");
+    std::ofstream unopened; // unopened file output stream = no output
+    color_ostream_wrapper discard(unopened);
+    Core::getInstance().runCommand(discard, "ban-cooking booze honey tallow seeds");
 }
 
 void Stocks::update_plants(color_ostream &)
