@@ -141,6 +141,7 @@ class Stocks
     AI *ai;
 public:
     std::map<stock_item::item, int32_t> count;
+    std::map<int32_t, int32_t> ingots;
 private:
     OnupdateCallback *onupdate_handle;
     std::vector<stock_item::item> updating;
@@ -156,6 +157,7 @@ private:
     bool updating_plants;
     bool updating_corpses;
     bool updating_slabs;
+    bool updating_ingots;
     std::vector<room *> updating_farmplots;
 public:
     // depends on raws.itemdefs, wait until a world is loaded
@@ -207,6 +209,7 @@ public:
     void count_plants(color_ostream & out);
     void update_corpses(color_ostream & out);
     void update_slabs(color_ostream & out);
+    void update_ingots(color_ostream & out);
 
     int32_t num_needed(stock_item::item key);
     void act(color_ostream & out, stock_item::item key);

@@ -369,6 +369,7 @@ const static struct Manager
 Stocks::Stocks(AI *ai) :
     ai(ai),
     count(),
+    ingots(),
     onupdate_handle(nullptr),
     updating(),
     updating_count(),
@@ -383,6 +384,7 @@ Stocks::Stocks(AI *ai) :
     updating_plants(false),
     updating_corpses(false),
     updating_slabs(false),
+    updating_ingots(false),
     updating_farmplots(),
     manager_subtype(),
     last_treelist([ai](df::coord a, df::coord b) -> bool
@@ -569,6 +571,28 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
+        out << "</ul><h2 id=\"Stocks_Ingots\">Ingots</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Ingots\n";
+    }
+    for (auto t : ingots)
+    {
+        df::inorganic_raw *mat = df::inorganic_raw::find(t.first);
+
+        if (html)
+        {
+            out << "<li><b>" << html_escape(mat->material.state_name[matter_state::Solid]) << ":</b> " << t.second << "</li>";
+        }
+        else
+        {
+            out << "- " << mat->material.state_name[matter_state::Solid] << ": " << t.second << "\n";
+        }
+    }
+
+    if (html)
+    {
         out << "</ul><h2 id=\"Stocks_Orders\">Orders</h2><ul>";
     }
     else
@@ -668,6 +692,7 @@ void Stocks::update(color_ostream & out)
     updating_plants = true;
     updating_corpses = true;
     updating_slabs = true;
+    updating_ingots = true;
     updating_farmplots.clear();
 
     ai->plan->find_room(room_type::farmplot, [this](room *r) -> bool
@@ -725,6 +750,11 @@ void Stocks::update(color_ostream & out)
         if (updating_slabs)
         {
             update_slabs(out);
+            return false;
+        }
+        if (updating_ingots)
+        {
+            update_ingots(out);
             return false;
         }
         if (!updating_count.empty())
@@ -1036,6 +1066,24 @@ void Stocks::update_slabs(color_ostream & out)
         }
     }
     updating_slabs = false;
+}
+
+void Stocks::update_ingots(color_ostream &)
+{
+    // Set to 0 instead of clearing so metals stay in
+    // the report after we use them all up.
+    for (auto & i : ingots)
+    {
+        i.second = 0;
+    }
+    for (auto i : world->items.other[items_other_id::BAR])
+    {
+        if (i->getMaterial() == 0 && is_item_free(i))
+        {
+            ingots[i->getMaterialIndex()] += i->getStackSize();
+        }
+    }
+    updating_ingots = false;
 }
 
 int32_t Stocks::num_needed(stock_item::item key)
