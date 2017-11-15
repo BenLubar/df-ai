@@ -1131,15 +1131,6 @@ int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
         });
         break;
     }
-    case stock_item::rope:
-    {
-        add_all(items_other_id::CHAIN, [](df::item *i) -> bool
-        {
-            MaterialInfo mat(i);
-            return mat.isAnyCloth();
-        });
-        break;
-    }
     case stock_item::bucket:
     {
         add_all(items_other_id::BUCKET, yes_i_mean_all);
@@ -1500,31 +1491,6 @@ int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
     case stock_item::mechanism:
     {
         add_all(items_other_id::TRAPPARTS, yes_i_mean_all);
-        break;
-    }
-    case stock_item::cage:
-    case stock_item::cage_metal:
-    {
-        add_all(items_other_id::CAGE, [k](df::item *i) -> bool
-        {
-            MaterialInfo mat(i);
-            if ((mat.material && mat.material->flags.is_set(material_flags::IS_METAL)) != (k == stock_item::cage_metal))
-            {
-                return false;
-            }
-
-            for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
-            {
-                if (virtual_cast<df::general_ref_contains_unitst>(*ref))
-                    return false;
-                if (virtual_cast<df::general_ref_contains_itemst>(*ref))
-                    return false;
-                df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(*ref);
-                if (bh && virtual_cast<df::building_trapst>(bh->getBuilding()))
-                    return false;
-            }
-            return true;
-        });
         break;
     }
     case stock_item::coffin_bld:
@@ -4117,6 +4083,42 @@ std::function<bool(df::item *)> Stocks::furniture_find(stock_item::item k)
         return [](df::item *i) -> bool
         {
             return virtual_cast<df::item_traction_benchst>(i);
+        };
+    }
+    case stock_item::rope:
+    {
+        return [](df::item *i) -> bool
+        {
+            return i->getType() == item_type::CHAIN;
+        };
+    }
+    case stock_item::cage:
+    case stock_item::cage_metal:
+    {
+        return [k](df::item *i) -> bool
+        {
+            if (i->getType() != item_type::CAGE)
+            {
+                return false;
+            }
+
+            MaterialInfo mat(i);
+            if ((mat.material && mat.material->flags.is_set(material_flags::IS_METAL)) != (k == stock_item::cage_metal))
+            {
+                return false;
+            }
+
+            for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
+            {
+                if (virtual_cast<df::general_ref_contains_unitst>(*ref))
+                    return false;
+                if (virtual_cast<df::general_ref_contains_itemst>(*ref))
+                    return false;
+                df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(*ref);
+                if (bh && virtual_cast<df::building_trapst>(bh->getBuilding()))
+                    return false;
+            }
+            return true;
         };
     }
     default:
