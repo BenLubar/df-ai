@@ -110,8 +110,8 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "food",
-			"min": [5, -6, 0],
-			"max": [6, -2, 0],
+			"min": [5, -7, 0],
+			"max": [6, -3, 0],
 			"stock_disable": [
 				"FoodMeat",
 				"FoodFish",
@@ -136,8 +136,9 @@
 			"comment": "jail access and meal storage",
 			"accesspath": [1],
 			"layout": [1, 2],
+			"require_walls": false,
 			"exits": [
-				["legacy_jail", 1, -1, 0]
+				["legacy_jail", 1, -2, 0]
 			]
 		}
 	]
