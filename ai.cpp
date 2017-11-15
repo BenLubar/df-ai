@@ -412,7 +412,7 @@ command_result AI::startup(color_ostream & out)
     if (res == CR_OK && config.manage_labors == "autolabor")
         res = Core::getInstance().runCommand(out, "multicmd autolabor DETAIL 0 1 ; autolabor PLANT 5 200");
     if (res == CR_OK && config.manage_labors == "labormanager")
-        res = Core::getInstance().runCommand(out, "multicmd labormanager priority DETAIL 10000 ; labormanager max DETAIL 1 ; labormanager priority PLANT 60 ; labormanager priority DIG 30");
+        res = Core::getInstance().runCommand(out, "multicmd labormanager priority DETAIL 10000 ; labormanager max DETAIL 1 ; labormanager priority PLANT 60 ; labormanager priority MINE 30");
     if (res == CR_OK)
         res = pop->startup(out);
     if (res == CR_OK)
