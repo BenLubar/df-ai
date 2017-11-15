@@ -672,7 +672,7 @@
 			"continue": true,
 			"action": "unignore_furniture",
 			"match": {
-				"type": ["dininghall", "barracks", "nobleroom", "bedroom", "cemetary", "jail"]
+				"type": ["dininghall", "barracks", "nobleroom", "bedroom", "cemetery", "jail"]
 			}
 		},
 		{
