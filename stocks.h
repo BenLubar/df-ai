@@ -8,6 +8,7 @@
 #include "df/job_material_category.h"
 #include "df/job_skill.h"
 #include "df/job_type.h"
+#include "df/material_flags.h"
 
 namespace df
 {
@@ -180,12 +181,10 @@ private:
     std::map<int32_t, std::string> raw_coke;
     std::map<std::string, int32_t> raw_coke_inv;
 
-    std::vector<int32_t> metal_digger_pref;
-    std::vector<int32_t> metal_weapon_pref;
-    std::vector<int32_t> metal_armor_pref;
-    std::vector<int32_t> metal_anvil_pref;
-    std::vector<int32_t> metal_furniture_pref;
+public:
+    std::map<df::material_flags, std::set<int32_t>> metal_pref;
 
+private:
     std::vector<std::set<int32_t>> simple_metal_ores;
 
     std::set<std::tuple<farm_type::type, df::biome_type, int8_t>> complained_about_no_plants;
@@ -219,10 +218,11 @@ public:
     int32_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
 
     void queue_need(color_ostream & out, stock_item::item what, int32_t amount);
-    void queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
-    void queue_need_armor(color_ostream & out, df::items_other_id oidx);
+    void queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
+    void queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx);
     void queue_need_anvil(color_ostream & out);
     void queue_need_cage(color_ostream & out);
+    void queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
     void queue_need_coffin_bld(color_ostream & out, int32_t amount);
     void queue_use(color_ostream & out, stock_item::item what, int32_t amount);

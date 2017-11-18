@@ -412,10 +412,7 @@ Stocks::Stocks(AI *ai) :
     clay_stones(),
     raw_coke(),
     raw_coke_inv(),
-    metal_digger_pref(),
-    metal_weapon_pref(),
-    metal_armor_pref(),
-    metal_anvil_pref(),
+    metal_pref(),
     simple_metal_ores(),
     complained_about_no_plants()
 {
@@ -1975,27 +1972,27 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     {
     case stock_item::training_weapon:
     {
-        queue_need_weapon(out, num_needed(stock_item::training_weapon), job_skill::NONE, true);
+        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, true);
         return;
     }
     case stock_item::weapon:
     {
-        queue_need_weapon(out, num_needed(stock_item::weapon));
+        queue_need_weapon(out, what, num_needed(what));
         return;
     }
     case stock_item::pick:
     {
-        queue_need_weapon(out, num_needed(stock_item::pick), job_skill::MINING);
+        queue_need_weapon(out, what, num_needed(what), job_skill::MINING);
         return;
     }
     case stock_item::axe:
     {
-        queue_need_weapon(out, num_needed(stock_item::axe), job_skill::AXE);
+        queue_need_weapon(out, what, num_needed(what), job_skill::AXE);
         return;
     }
     case stock_item::armor_torso:
     {
-        queue_need_armor(out, items_other_id::ARMOR);
+        queue_need_armor(out, what, items_other_id::ARMOR);
         return;
     }
     case stock_item::clothes_torso:
@@ -2005,7 +2002,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_legs:
     {
-        queue_need_armor(out, items_other_id::PANTS);
+        queue_need_armor(out, what, items_other_id::PANTS);
         return;
     }
     case stock_item::clothes_legs:
@@ -2015,7 +2012,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_head:
     {
-        queue_need_armor(out, items_other_id::HELM);
+        queue_need_armor(out, what, items_other_id::HELM);
         return;
     }
     case stock_item::clothes_head:
@@ -2025,7 +2022,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_hands:
     {
-        queue_need_armor(out, items_other_id::GLOVES);
+        queue_need_armor(out, what, items_other_id::GLOVES);
         return;
     }
     case stock_item::clothes_hands:
@@ -2035,7 +2032,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_feet:
     {
-        queue_need_armor(out, items_other_id::SHOES);
+        queue_need_armor(out, what, items_other_id::SHOES);
         return;
     }
     case stock_item::clothes_feet:
@@ -2045,7 +2042,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_shield:
     {
-        queue_need_armor(out, items_other_id::SHIELD);
+        queue_need_armor(out, what, items_other_id::SHIELD);
         return;
     }
     case stock_item::anvil:
@@ -2318,75 +2315,16 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
 }
 
 // forge weapons
-void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skill skill, bool training)
+void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill, bool training)
 {
     if (skill == job_skill::NONE && !training && (count.at(stock_item::pick) == 0 || count.at(stock_item::axe) == 0))
         return;
 
-    std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at(stock_item::coal);
-
-    if (!training)
+    auto search = [this, &out, stock_item, needed, skill, training](const std::vector<int16_t> & idefs, df::material_flags pref)
     {
-        if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
-            coal_bars = 50000;
-
-        for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
+        for (auto id : idefs)
         {
-            df::item_actual *i = virtual_cast<df::item_actual>(*item);
-            if (i->getMaterial() == 0)
-            {
-                bars[i->getMaterialIndex()] += i->stack_size;
-            }
-        }
-
-        // rough account of already queued jobs consumption
-        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
-        {
-            if ((*mo)->mat_type == 0 && (*mo)->mat_index != -1)
-            {
-                bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
-                coal_bars -= (*mo)->amount_total;
-            }
-        }
-
-        if (metal_digger_pref.empty())
-        {
-            for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
-            {
-                if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_DIGGER))
-                {
-                    metal_digger_pref.push_back(int32_t(mi));
-                }
-            }
-            std::sort(metal_digger_pref.begin(), metal_digger_pref.end(), [](int32_t a, int32_t b) -> bool
-            {
-                // should roughly order metals by effectiveness
-                return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
-            });
-        }
-
-        if (metal_weapon_pref.empty())
-        {
-            for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
-            {
-                if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_WEAPON))
-                {
-                    metal_weapon_pref.push_back(int32_t(mi));
-                }
-            }
-            std::sort(metal_weapon_pref.begin(), metal_weapon_pref.end(), [](int32_t a, int32_t b) -> bool
-            {
-                return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
-            });
-        }
-    }
-
-    auto search = [this, &out, needed, skill, training, &bars, &coal_bars](const std::vector<int16_t> & idefs, std::vector<int32_t> & pref)
-    {
-        for (auto id = idefs.begin(); id != idefs.end(); id++)
-        {
-            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(*id);
+            df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
             if (skill != job_skill::NONE && idef->skill_melee != skill)
                 continue;
             if (idef->flags.is_set(weapon_flags::TRAINING) != training)
@@ -2427,40 +2365,39 @@ void Stocks::queue_need_weapon(color_ostream & out, int32_t needed, df::job_skil
             if (need_bars < 1)
                 need_bars = 1;
 
-            for (auto mi = pref.begin(); mi != pref.end(); mi++)
+            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, pref, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
             {
-                if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
-                    break;
-                int32_t nw = bars[*mi] / need_bars;
-                if (nw > coal_bars)
-                    nw = coal_bars;
-                if (nw > cnt)
-                    nw = cnt;
-                if (nw <= 0)
-                    continue;
+                std::vector<int32_t> best;
+                best.insert(best.end(), metal_pref.at(pref).begin(), metal_pref.at(pref).end());
+                std::sort(best.begin(), best.end(), [need_bars](int32_t a, int32_t b) -> bool
+                {
+                    // should roughly order metals by effectiveness
+                    return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
+                });
 
-                df::manager_order_template tmpl;
-                tmpl.job_type = job_type::MakeWeapon;
-                tmpl.item_type = item_type::NONE;
-                tmpl.item_subtype = idef->subtype;
-                tmpl.mat_type = 0;
-                tmpl.mat_index = *mi;
-                add_manager_order(out, tmpl, nw);
-                bars[*mi] -= nw * need_bars;
-                coal_bars -= nw;
-                cnt -= nw;
-                if (may_forge_bars(out, *mi) != -1) // dont use lesser metal
-                    break;
-            }
+                for (auto mi : best)
+                {
+                    if (bars.count(mi))
+                    {
+                        chosen_type = mi;
+                        return true;
+                    }
+                    if (may_forge_bars(out, mi, need_bars) > 0)
+                    {
+                        return false;
+                    }
+                }
+                return false;
+            }, item_type::NONE, idef->subtype);
         }
     };
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
-    search(ue.digger_id, metal_digger_pref);
-    search(ue.weapon_id, metal_weapon_pref);
+    search(ue.digger_id, material_flags::ITEMS_DIGGER);
+    search(ue.weapon_id, material_flags::ITEMS_WEAPON);
 }
 
 template<typename D, typename I>
-static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_pref, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, std::map<int32_t, int32_t> & bars, int32_t & coal_bars, int32_t div = 1, std::function<bool(D *)> pred = is_armor_metal<D>)
+static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::item what, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, int32_t div = 1, std::function<bool(D *)> pred = is_armor_metal<D>)
 {
     for (auto id = idefs.begin(); id != idefs.end(); id++)
     {
@@ -2471,37 +2408,23 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
             continue;
         }
 
-        const static struct armor_needed
-        {
-            std::map<df::items_other_id, stock_item::item> map;
-
-            armor_needed()
-            {
-                map[items_other_id::ARMOR] = stock_item::armor_torso;
-                map[items_other_id::SHIELD] = stock_item::armor_shield;
-                map[items_other_id::HELM] = stock_item::armor_head;
-                map[items_other_id::PANTS] = stock_item::armor_legs;
-                map[items_other_id::GLOVES] = stock_item::armor_hands;
-                map[items_other_id::SHOES] = stock_item::armor_feet;
-            }
-        } needed;
-        int32_t cnt = Watch.Needed.at(needed.map.at(oidx));
+        int32_t cnt = ai->stocks->num_needed(what);
         int32_t have = 0;
-        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
+        for (auto item : world->items.other[oidx])
         {
-            I *i = virtual_cast<I>(*item);
-            if (i->subtype->subtype == idef->subtype && i->mat_type == 0 && ai->stocks->is_item_free(i))
+            I *i = virtual_cast<I>(item);
+            if (i && i->subtype->subtype == idef->subtype && i->mat_type == 0 && ai->stocks->is_item_free(i))
             {
                 have++;
             }
         }
         cnt -= have / div;
 
-        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+        for (auto mo : world->manager_orders)
         {
-            if ((*mo)->job_type == job && (*mo)->item_subtype == idef->subtype)
+            if (mo->job_type == job && mo->item_subtype == idef->subtype)
             {
-                cnt -= (*mo)->amount_total;
+                cnt -= mo->amount_total;
             }
         }
         if (cnt <= 0)
@@ -2513,258 +2436,189 @@ static void queue_need_armor_helper(AI *ai, std::vector<int32_t> & metal_armor_p
         if (need_bars < 1)
             need_bars = 1;
 
-        for (auto mi = metal_armor_pref.begin(); mi != metal_armor_pref.end(); mi++)
+        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
         {
-            if (bars[*mi] < need_bars && ai->stocks->may_forge_bars(out, *mi) != -1)
-                break;
-            int32_t nw = bars[*mi] / need_bars;
-            if (nw > coal_bars)
-                nw = coal_bars;
-            if (nw > cnt)
-                nw = cnt;
-            if (nw <= 0)
-                continue;
+            std::vector<int32_t> best;
+            const auto & pref = ai->stocks->metal_pref.at(material_flags::ITEMS_ARMOR);
+            best.insert(best.end(), pref.begin(), pref.end());
+            std::sort(best.begin(), best.end(), [](int32_t a, int32_t b) -> bool
+            {
+                // should roughly order metals by effectiveness
+                return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
+            });
 
-            df::manager_order_template tmpl;
-            tmpl.job_type = job;
-            tmpl.item_type = item_type::NONE;
-            tmpl.item_subtype = idef->subtype;
-            tmpl.mat_type = 0;
-            tmpl.mat_index = *mi;
-            ai->stocks->add_manager_order(out, tmpl, nw);
-            bars[*mi] -= nw * need_bars;
-            coal_bars -= nw;
-            cnt -= nw;
-            if (ai->stocks->may_forge_bars(out, *mi) != -1)
-                break;
-        }
+            for (auto mi : best)
+            {
+                if (bars.count(mi))
+                {
+                    chosen_type = mi;
+                    return true;
+                }
+                if (ai->stocks->may_forge_bars(out, mi, need_bars) > 0)
+                {
+                    return false;
+                }
+            }
+            return false;
+        }, item_type::NONE, idef->subtype);
     }
 }
 
 // forge armor pieces
-void Stocks::queue_need_armor(color_ostream & out, df::items_other_id oidx)
+void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx)
 {
-    std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at(stock_item::coal);
-    if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
-        coal_bars = 50000;
-
-    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
-    {
-        df::item_actual *i = virtual_cast<df::item_actual>(*item);
-        if (i->getMaterial() == 0)
-        {
-            bars[i->getMaterialIndex()] += i->stack_size;
-        }
-    }
-
-    // rough account of already queued jobs consumption
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
-    {
-        if ((*mo)->mat_type == 0)
-        {
-            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
-            coal_bars -= (*mo)->amount_total;
-        }
-    }
-
-    if (metal_armor_pref.empty())
-    {
-        for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
-        {
-            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_ARMOR))
-            {
-                metal_armor_pref.push_back(int32_t(mi));
-            }
-        }
-        std::sort(metal_armor_pref.begin(), metal_armor_pref.end(), [](int32_t a, int32_t b) -> bool
-        {
-            return world->raws.inorganics[a]->material.strength.yield[strain_type::IMPACT] > world->raws.inorganics[b]->material.strength.yield[strain_type::IMPACT];
-        });
-    }
-
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
 
     switch (oidx)
     {
     case items_other_id::ARMOR:
-        queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, metal_armor_pref, out, oidx, ue.armor_id, job_type::MakeArmor, bars, coal_bars);
+        queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, out, what, oidx, ue.armor_id, job_type::MakeArmor);
         return;
     case items_other_id::SHIELD:
-        queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, metal_armor_pref, out, oidx, ue.shield_id, job_type::MakeShield, bars, coal_bars, 1, [](df::itemdef_shieldst *) -> bool { return true; });
+        queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, out, what, oidx, ue.shield_id, job_type::MakeShield, 1, [](df::itemdef_shieldst *) -> bool { return true; });
         return;
     case items_other_id::HELM:
-        queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, metal_armor_pref, out, oidx, ue.helm_id, job_type::MakeHelm, bars, coal_bars);
+        queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, out, what, oidx, ue.helm_id, job_type::MakeHelm);
         return;
     case items_other_id::PANTS:
-        queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, metal_armor_pref, out, oidx, ue.pants_id, job_type::MakePants, bars, coal_bars);
+        queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, what, oidx, ue.pants_id, job_type::MakePants);
         return;
     case items_other_id::GLOVES:
-        queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, metal_armor_pref, out, oidx, ue.gloves_id, job_type::MakeGloves, bars, coal_bars, 2);
+        queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, what, oidx, ue.gloves_id, job_type::MakeGloves, 2);
         return;
     case items_other_id::SHOES:
-        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, metal_armor_pref, out, oidx, ue.shoes_id, job_type::MakeGloves, bars, coal_bars, 2);
+        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, what, oidx, ue.shoes_id, job_type::MakeGloves, 2);
         return;
     default:
         return;
     }
 }
 
+static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)
+{
+    // pick the metal we have the most of
+    chosen_type = std::max_element(bars.begin(), bars.end(), [](std::pair<const int32_t, int32_t> a, std::pair<const int32_t, int32_t> b) -> bool
+    {
+        return a.second < b.second;
+    })->first;
+    return true;
+}
+
 void Stocks::queue_need_anvil(color_ostream & out)
 {
-    std::map<int32_t, int32_t> bars;
-    int32_t coal_bars = count.at(stock_item::coal);
-    if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
-        coal_bars = 50000;
-
-    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
-    {
-        df::item_actual *i = virtual_cast<df::item_actual>(*item);
-        if (i->getMaterial() == 0)
-        {
-            bars[i->getMaterialIndex()] += i->stack_size;
-        }
-    }
-
-    // rough account of already queued jobs consumption
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
-    {
-        if ((*mo)->mat_type == 0)
-        {
-            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
-            coal_bars -= (*mo)->amount_total;
-        }
-    }
-
-    if (metal_anvil_pref.empty())
-    {
-        for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
-        {
-            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_ANVIL))
-            {
-                metal_anvil_pref.push_back(int32_t(mi));
-            }
-        }
-    }
-
-    int32_t cnt = Watch.Needed.at(stock_item::anvil);
-    cnt -= count.at(stock_item::anvil);
-
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
-    {
-        if ((*mo)->job_type == job_type::ForgeAnvil)
-        {
-            cnt -= (*mo)->amount_total;
-        }
-    }
-    if (cnt <= 0)
-        return;
-
-    int32_t need_bars = 1;
-
-    for (auto mi = metal_anvil_pref.begin(); mi != metal_anvil_pref.end(); mi++)
-    {
-        if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
-            break;
-        int32_t nw = bars[*mi] / need_bars;
-        if (nw > coal_bars)
-            nw = coal_bars;
-        if (nw > cnt)
-            nw = cnt;
-        if (nw <= 0)
-            continue;
-
-        df::manager_order_template tmpl;
-        tmpl.job_type = job_type::ForgeAnvil;
-        tmpl.item_type = item_type::NONE;
-        tmpl.item_subtype = -1;
-        tmpl.mat_type = 0;
-        tmpl.mat_index = *mi;
-        add_manager_order(out, tmpl, nw);
-        bars[*mi] -= nw * need_bars;
-        coal_bars -= nw;
-        cnt -= nw;
-        if (may_forge_bars(out, *mi) != -1)
-            break;
-    }
+    queue_need_forge(out, material_flags::ITEMS_ANVIL, 3, stock_item::anvil, job_type::ForgeAnvil, &select_most_abundant_metal);
 }
 
 void Stocks::queue_need_cage(color_ostream & out)
 {
-    std::map<int32_t, int32_t> bars;
+    queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal);
+}
+
+void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype)
+{
+    std::map<int32_t, int32_t> bars = ingots;
     int32_t coal_bars = count.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
-    for (auto item = world->items.other[items_other_id::BAR].begin(); item != world->items.other[items_other_id::BAR].end(); item++)
-    {
-        df::item_actual *i = virtual_cast<df::item_actual>(*item);
-        if (i->getMaterial() == 0)
-        {
-            bars[i->getMaterialIndex()] += i->stack_size;
-        }
-    }
-
     // rough account of already queued jobs consumption
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+    for (auto mo : world->manager_orders)
     {
-        if ((*mo)->mat_type == 0)
+        if (mo->mat_type == 0 && bars.count(mo->mat_index))
         {
-            bars[(*mo)->mat_index] -= 4 * (*mo)->amount_total;
-            coal_bars -= (*mo)->amount_total;
+            bars[mo->mat_index] -= 4 * mo->amount_left;
+            coal_bars -= mo->amount_left;
         }
     }
 
-    if (metal_furniture_pref.empty())
+    if (!metal_pref.count(preference))
     {
+        auto & pref = metal_pref[preference];
         for (size_t mi = 0; mi < world->raws.inorganics.size(); mi++)
         {
-            if (world->raws.inorganics[mi]->material.flags.is_set(material_flags::ITEMS_METAL))
+            if (world->raws.inorganics[mi]->material.flags.is_set(preference))
             {
-                metal_furniture_pref.push_back(int32_t(mi));
+                pref.insert(int32_t(mi));
+            }
+        }
+    }
+    const auto & pref = metal_pref.at(preference);
+
+    int32_t cnt = Watch.Needed.at(item);
+    cnt -= count.at(item);
+
+    for (auto mo : world->manager_orders)
+    {
+        if (mo->job_type == job && mo->item_type == item_type && mo->item_subtype == item_subtype && mo->material_category.whole == 0)
+        {
+            cnt -= mo->amount_left;
+        }
+    }
+
+    if (ai->plan->should_search_for_metal)
+    {
+        for (auto mi : pref)
+        {
+            if (!bars.count(mi) || bars.at(mi) < bars_per_item)
+            {
+                for (auto & k : ai->plan->map_veins)
+                {
+                    if (simple_metal_ores.at(mi).count(k.first))
+                    {
+                        may_forge_bars(out, mi, bars_per_item);
+                        break;
+                    }
+                }
             }
         }
     }
 
-    int32_t cnt = Watch.Needed.at(stock_item::cage_metal);
-    cnt -= count.at(stock_item::cage_metal);
+    std::map<int32_t, int32_t> to_queue;
 
-    for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+    while (cnt > 0)
     {
-        if ((*mo)->job_type == job_type::MakeCage && !(*mo)->material_category.bits.wood)
+        if (coal_bars < 1)
         {
-            cnt -= (*mo)->amount_total;
+            break;
         }
+
+        for (auto it = bars.begin(); it != bars.end(); )
+        {
+            if (!pref.count(it->first) || it->second < bars_per_item)
+            {
+                it = bars.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+        }
+
+        if (bars.empty())
+        {
+            break;
+        }
+
+        int32_t mat_index;
+        if (!decide(bars, mat_index))
+        {
+            break;
+        }
+
+        to_queue[mat_index]++;
+        bars[mat_index] -= bars_per_item;
+        coal_bars--;
     }
-    if (cnt <= 0)
-        return;
 
-    int32_t need_bars = 1;
-
-    for (auto mi = metal_furniture_pref.begin(); mi != metal_furniture_pref.end(); mi++)
+    for (auto q : to_queue)
     {
-        if (bars[*mi] < need_bars && may_forge_bars(out, *mi) != -1)
-            break;
-        int32_t nw = bars[*mi] / need_bars;
-        if (nw > coal_bars)
-            nw = coal_bars;
-        if (nw > cnt)
-            nw = cnt;
-        if (nw <= 0)
-            continue;
-
         df::manager_order_template tmpl;
-        tmpl.job_type = job_type::MakeCage;
-        tmpl.item_type = item_type::NONE;
-        tmpl.item_subtype = -1;
+        tmpl.job_type = job;
+        tmpl.item_type = item_type;
+        tmpl.item_subtype = item_subtype;
         tmpl.mat_type = 0;
-        tmpl.mat_index = *mi;
-        add_manager_order(out, tmpl, nw);
-        bars[*mi] -= nw * need_bars;
-        coal_bars -= nw;
-        cnt -= nw;
-        if (may_forge_bars(out, *mi) != -1)
-            break;
+        tmpl.mat_index = q.first;
+        add_manager_order(out, tmpl, q.second);
     }
 }
 
