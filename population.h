@@ -94,6 +94,7 @@ public:
     bool military_random_squad_attack_unit(color_ostream & out, df::unit *u);
     bool military_all_squads_attack_unit(color_ostream & out, df::unit *u);
     bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
+    bool military_cancel_attack_order(color_ostream & out, df::unit *u);
 
     df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
     int32_t military_find_free_squad();

@@ -678,10 +678,15 @@ void Population::update_caged(color_ostream & out)
                             ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
                             military_random_squad_attack_unit(out, u);
                         }
+                        else
+                        {
+                            military_cancel_attack_order(out, u);
+                        }
                     }
                     else
                     {
                         ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), waiting_items));
+                        military_cancel_attack_order(out, u);
                     }
                 }
             }
@@ -1305,6 +1310,37 @@ bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squa
     squad->orders.push_back(so);
     ai->debug(out, "sending " + AI::describe_name(squad->name, true) + " to attack " + AI::describe_unit(u));
     return true;
+}
+
+bool Population::military_cancel_attack_order(color_ostream & out, df::unit *u)
+{
+    bool any = false;
+    for (auto sqid : ui->main.fortress_entity->squads)
+    {
+        if (auto squad = df::squad::find(sqid))
+        {
+            squad->orders.erase(std::remove_if(squad->orders.begin(), squad->orders.end(), [this, &out, u, &any, squad](df::squad_order *order) -> bool
+            {
+                if (auto kill = strict_virtual_cast<df::squad_order_kill_listst>(order))
+                {
+                    auto it = std::find(kill->units.begin(), kill->units.end(), u->id);
+                    if (it != kill->units.end())
+                    {
+                        ai->debug(out, "pop: Cancelling squad order for " + AI::describe_name(squad->name, true) + " to attack " + AI::describe_unit(u) + ".");
+                        any = true;
+                        kill->units.erase(it);
+                        if (kill->units.empty())
+                        {
+                            delete kill;
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }), squad->orders.end());
+        }
+    }
+    return any;
 }
 
 // returns an unit newly assigned to a military squad
