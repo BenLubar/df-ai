@@ -1038,9 +1038,15 @@ void Population::update_locations(color_ostream & out)
     // accept all petitions
     while (!ui->petitions.empty())
     {
+        size_t petitions_before = ui->petitions.size();
         AI::feed_key(interface_key::D_PETITIONS);
         AI::feed_key(interface_key::OPTION1);
         AI::feed_key(interface_key::LEAVESCREEN);
+        if (petitions_before <= ui->petitions.size())
+        {
+            // FIXME
+            break;
+        }
     }
 
 #define INIT_NEED(name) int32_t need_##name = std::max(wanted_##name * int32_t(citizen.size()) / 200, wanted_##name##_min)
