@@ -1345,7 +1345,7 @@ void Plan::idleidle(color_ostream & out)
     }
     for (auto r : room_category[room_type::corridor])
     {
-        if (r->status != room_status::plan && r->status != room_status::dig && r->corridor_type == corridor_type::corridor)
+        if (r->status != room_status::plan && r->status != room_status::dig && r->corridor_type == corridor_type::corridor && !r->outdoor)
             idleidle_tab.push_back(r);
     }
     if (idleidle_tab.empty())
