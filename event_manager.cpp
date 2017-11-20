@@ -256,7 +256,7 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
     }
 }
 
-ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) : description(description), wait_multiplier(wait_multiplier), wait_frames(0)
+ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) : wait_multiplier(wait_multiplier), wait_frames(0), description(description)
 {
     if (wait_multiplier < 1)
     {
