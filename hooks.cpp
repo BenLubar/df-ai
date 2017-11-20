@@ -813,6 +813,8 @@ void Hook_Shutdown()
         {
             screen->breakdown_level = interface_breakdown_types::QUIT;
         }
+
+        egg_shutdown();
     }
 }
 
