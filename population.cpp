@@ -2021,51 +2021,62 @@ void PerformTradeExclusive::Run(color_ostream & out)
                             {
                                 ten_percent = std::max(request_value / 10, 1);
                                 ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", ten_percent));
+                                want_items_it = want_items.end();
                             });
 
-                            While([&]() -> bool { return ten_percent > 0; }, [&]()
+                            While([&]() -> bool { return ten_percent > 0 && want_items_it != want_items.begin(); }, [&]()
                             {
                                 Do([&]()
                                 {
-                                    for (auto it = want_items.rbegin(); it != want_items.rend() && ten_percent > 0; it++)
+                                    want_items_it--;
+
+                                    df::item *item = trade->trader_items.at(*want_items_it);
+
+                                    int32_t current_count = trade->trader_selected.at(*want_items_it) ? trade->trader_count.at(*want_items_it) == 0 ? trade->trader_items.at(*want_items_it)->getStackSize() : trade->trader_count.at(*want_items_it) : 0;
+
+                                    if (current_count == 0)
                                     {
-                                        df::item *item = trade->trader_items.at(*it);
+                                        remove_item = -1;
+                                        return;
+                                    }
 
-                                        int32_t current_count = trade->trader_selected.at(*it) ? trade->trader_count.at(*it) == 0 ? trade->trader_items.at(*it)->getStackSize() : trade->trader_count.at(*it) : 0;
+                                    int32_t max_count = current_count;
+                                    int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                                    int32_t remove_count = max_count;
+                                    int32_t remove_value = max_value;
+                                    int32_t less_count = 0;
+                                    int32_t less_value = 0;
+                                    while (max_value - less_value > ten_percent && less_count < max_count)
+                                    {
+                                        remove_count = max_count - less_count;
+                                        remove_value = max_value - less_value;
+                                        less_count++;
+                                        less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                                    }
 
-                                        if (current_count == 0)
-                                        {
-                                            continue;
-                                        }
+                                    remove_item = int32_t(*want_items_it);
+                                    remove_qty = stl_sprintf("%d", current_count - remove_count);
+                                    request_value -= remove_value;
+                                    ten_percent -= remove_value;
+                                    ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), ten_percent));
 
-                                        int32_t max_count = current_count;
-                                        int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
-                                        int32_t remove_count = max_count;
-                                        int32_t remove_value = max_value;
-                                        int32_t less_count = 0;
-                                        int32_t less_value = 0;
-                                        while (max_value - less_value > ten_percent && less_count < max_count)
-                                        {
-                                            remove_count = max_count - less_count;
-                                            remove_value = max_value - less_value;
-                                            less_count++;
-                                            less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
-                                        }
-
-                                        remove_item = int32_t(*it);
-                                        remove_qty = stl_sprintf("%d", current_count - remove_count);
-                                        request_value -= remove_value;
-                                        ten_percent -= remove_value;
-                                        ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), ten_percent));
+                                    if (current_count == remove_count)
+                                    {
+                                        want_items.erase(want_items_it);
                                     }
                                 });
 
-                                ScrollTo(trade, false, trade->trader_cursor, remove_item);
-                                EnterCount(trade, remove_qty);
+                                If([&]() -> bool { return remove_item != -1; }, [&]()
+                                {
+                                    ScrollTo(trade, false, trade->trader_cursor, remove_item);
+                                    EnterCount(trade, remove_qty);
+                                });
                             });
                         });
 
                         ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+
+                        Key(interface_key::TRADE_TRADE);
                     });
                 });
             });
