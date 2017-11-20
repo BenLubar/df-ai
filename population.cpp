@@ -893,16 +893,24 @@ void Population::update_crimes(color_ostream & out)
             {
                 // TODO: report->unk1
 
-                df::unit *witness = df::unit::find(report->witness);
-                df::unit *accuses = df::unit::find(report->accuses);
-                ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
-                if (accuses == convicted)
+                if (report->unk1)
                 {
-                    ai->debug(out, "[Crime] The accused has already been convicted.");
+                    df::unit *witness = df::unit::find(report->witness);
+                    ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " found evidence of " + accusation + with_victim + ".");
                 }
-                else if (accuses != criminal)
+                else
                 {
-                    ai->debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
+                    df::unit *witness = df::unit::find(report->witness);
+                    df::unit *accuses = df::unit::find(report->accuses);
+                    ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
+                    if (accuses == convicted)
+                    {
+                        ai->debug(out, "[Crime] The accused has already been convicted.");
+                    }
+                    else if (accuses != criminal)
+                    {
+                        ai->debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
+                    }
                 }
             }
         }
