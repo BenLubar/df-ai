@@ -2516,20 +2516,9 @@ void Stocks::queue_need_cage(color_ostream & out)
 
 void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype)
 {
-    std::map<int32_t, int32_t> bars = ingots;
     int32_t coal_bars = count.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
-
-    // rough account of already queued jobs consumption
-    for (auto mo : world->manager_orders)
-    {
-        if (mo->mat_type == 0 && bars.count(mo->mat_index))
-        {
-            bars[mo->mat_index] -= 4 * mo->amount_left;
-            coal_bars -= mo->amount_left;
-        }
-    }
 
     if (!metal_pref.count(preference))
     {
@@ -2555,21 +2544,24 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         }
     }
 
+    std::map<int32_t, int32_t> bars = ingots;
+
+    // rough account of already queued jobs consumption
+    for (auto mo : world->manager_orders)
+    {
+        if (mo->mat_type == 0 && bars.count(mo->mat_index))
+        {
+            bars[mo->mat_index] -= 4 * mo->amount_left;
+            coal_bars -= mo->amount_left;
+        }
+    }
+
+    std::map<int32_t, int32_t> potential_bars = bars;
     if (ai->plan->should_search_for_metal)
     {
         for (auto mi : pref)
         {
-            if (!bars.count(mi) || bars.at(mi) < bars_per_item)
-            {
-                for (auto & k : ai->plan->map_veins)
-                {
-                    if (simple_metal_ores.at(mi).count(k.first))
-                    {
-                        may_forge_bars(out, mi, bars_per_item);
-                        break;
-                    }
-                }
-            }
+            potential_bars[mi] += may_forge_bars(out, mi);
         }
     }
 
@@ -2582,11 +2574,11 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
             break;
         }
 
-        for (auto it = bars.begin(); it != bars.end(); )
+        for (auto it = potential_bars.begin(); it != potential_bars.end(); )
         {
             if (!pref.count(it->first) || it->second < bars_per_item)
             {
-                it = bars.erase(it);
+                it = potential_bars.erase(it);
             }
             else
             {
@@ -2594,18 +2586,24 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
             }
         }
 
-        if (bars.empty())
+        if (potential_bars.empty())
         {
             break;
         }
 
         int32_t mat_index;
-        if (!decide(bars, mat_index))
+        if (!decide(potential_bars, mat_index))
+        {
+            break;
+        }
+
+        if (!bars.count(mat_index) || bars.at(mat_index) < bars_per_item)
         {
             break;
         }
 
         to_queue[mat_index]++;
+        potential_bars[mat_index] -= bars_per_item;
         bars[mat_index] -= bars_per_item;
         coal_bars--;
     }
