@@ -825,7 +825,7 @@ void Population::update_crimes(color_ostream & out)
 
     for (auto crime : world->crimes.all)
     {
-        if (!crime->flags.bits.discovered)
+        if (!crime->flags.bits.discovered || crime->site != ui->site_id)
         {
             continue;
         }
@@ -915,7 +915,7 @@ void Population::update_crimes(color_ostream & out)
             }
         }
 
-        if (crime->flags.bits.needs_trial && !convicted && AI::is_dwarfmode_viewscreen())
+        if (crime->flags.bits.needs_trial && criminal && !convicted && AI::is_dwarfmode_viewscreen())
         {
             ai->debug(out, "[Crime] Convicting " + AI::describe_unit(criminal) + " of " + accusation + with_victim + ".");
             AI::feed_key(interface_key::D_STATUS);
