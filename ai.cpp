@@ -147,7 +147,14 @@ std::string AI::describe_unit(df::unit *u, bool html)
 
     std::string s = describe_name(u->name);
     if (!s.empty())
+    {
         s += ", ";
+    }
+    if (!u->curse.name.empty())
+    {
+        s += u->curse.name;
+        s += " ";
+    }
     s += Units::getProfessionName(u);
     if (html)
     {
@@ -238,7 +245,7 @@ std::string AI::describe_event(df::history_event *event)
         return "(unknown event)";
     }
 
-    static df::history_event_context context;
+    df::history_event_context context;
     context.anon_1 = 0;
     context.anon_2 = 0;
     context.histfig_id_talker = -1;
@@ -251,8 +258,7 @@ std::string AI::describe_event(df::history_event *event)
 
 bool AI::feed_key(df::viewscreen *view, df::interface_key key)
 {
-    static interface_key_set keys; // protected by CoreSuspender
-    keys.clear();
+    interface_key_set keys;
     keys.insert(key);
     view->feed(&keys);
     return !keys.count(key);
