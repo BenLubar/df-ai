@@ -1,26 +1,32 @@
 #pragma once
 
-#include "dfhack_shared.h"
+#include "event_manager.h"
 
 class AI;
 
-class Embark
+class EmbarkExclusive : public ExclusiveCallback
 {
-    AI *ai;
-    bool selected_embark;
-    bool embarking;
+    AI * const ai;
+    df::coord2d selected_site_diff;
 
 public:
-    Embark(AI *ai);
-    ~Embark();
+    EmbarkExclusive(AI *ai);
+    virtual ~EmbarkExclusive();
 
-    command_result startup(color_ostream & out);
-    command_result onupdate_register(color_ostream & out);
-    command_result onupdate_unregister(color_ostream & out);
-    void register_restart_timer(color_ostream & out);
+    virtual void Run(color_ostream & out);
 
-    inline bool is_embarking() { return embarking; }
+private:
+    void SelectVerticalMenuItem(volatile int32_t & current, int32_t target);
+    void SelectHorizontalMenuItem(volatile int32_t & current, int32_t target);
+};
 
-    bool update(color_ostream & out);
-    void found_site_step(color_ostream & out);
+class RestartWaitExclusive : public ExclusiveCallback
+{
+    AI * const ai;
+
+public:
+    RestartWaitExclusive(AI *ai);
+    virtual ~RestartWaitExclusive();
+
+    virtual void Run(color_ostream & out);
 };

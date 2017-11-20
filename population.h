@@ -53,18 +53,7 @@ private:
     std::set<df::job_type> seen_badwork;
     int32_t last_checked_crime_year, last_checked_crime_tick;
     bool did_trade;
-
     int32_t trade_start_x, trade_start_y, trade_start_z;
-    std::vector<size_t> trade_want_items;
-    std::vector<size_t>::iterator trade_want_items_it;
-    std::string trade_want_qty;
-    int32_t trade_step;
-    int32_t trade_offer_value, trade_request_value, trade_max_offer_value;
-    int32_t trade_broker_item;
-    std::string trade_broker_qty;
-    int32_t trade_ten_percent;
-    int32_t trade_remove_item;
-    std::string trade_remove_qty;
 
 public:
     Population(AI *ai);
@@ -101,8 +90,7 @@ public:
 
     bool set_up_trading(color_ostream & out, bool should_be_trading, bool allow_any_dwarf = false);
     bool perform_trade(color_ostream & out);
-    bool perform_trade(color_ostream & out, df::viewscreen_tradegoodsst *trade);
-    bool perform_trade_step(color_ostream & out);
+    friend class PerformTradeExclusive;
 
     bool unit_hasmilitaryduty(df::unit *u);
     int32_t unit_totalxp(df::unit *u);

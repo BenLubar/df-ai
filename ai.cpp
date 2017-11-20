@@ -57,7 +57,6 @@ AI::AI() :
     plan(new Plan(this)),
     stocks(new Stocks(this)),
     camera(new Camera(this)),
-    embark(new Embark(this)),
     trade(new Trade(this)),
     status_onupdate(nullptr),
     pause_onupdate(nullptr),
@@ -78,12 +77,16 @@ AI::AI() :
             lockstep_log_buffer[y][x] = ' ';
         }
     }
+
+    if (config.random_embark)
+    {
+        events.register_exclusive(new EmbarkExclusive(this));
+    }
 }
 
 AI::~AI()
 {
     delete trade;
-    delete embark;
     delete camera;
     delete stocks;
     delete plan;
@@ -427,8 +430,6 @@ command_result AI::startup(color_ostream & out)
         res = stocks->startup(out);
     if (res == CR_OK)
         res = camera->startup(out);
-    if (res == CR_OK)
-        res = embark->startup(out);
     return res;
 }
 
@@ -629,7 +630,10 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 unpersist(out);
                 skip_persist = true;
 
-                embark->register_restart_timer(out);
+                if (config.random_embark)
+                {
+                    events.register_exclusive(new RestartWaitExclusive(this));
+                }
 
                 // don't unpause, to allow for 'die'
             }
@@ -852,8 +856,6 @@ command_result AI::onupdate_register(color_ostream & out)
     if (res == CR_OK)
         res = camera->onupdate_register(out);
     if (res == CR_OK)
-        res = embark->onupdate_register(out);
-    if (res == CR_OK)
     {
         status_onupdate = events.onupdate_register("df-ai status", 3 * 28 * 1200, 3 * 28 * 1200, [this](color_ostream & out) { debug(out, status()); });
         time_paused = 0;
@@ -896,8 +898,6 @@ command_result AI::onupdate_unregister(color_ostream & out)
 {
     command_result res = CR_OK;
     if (res == CR_OK)
-        res = embark->onupdate_unregister(out);
-    if (res == CR_OK)
         res = camera->onupdate_unregister(out);
     if (res == CR_OK)
         res = stocks->onupdate_unregister(out);
@@ -916,7 +916,7 @@ command_result AI::onupdate_unregister(color_ostream & out)
 
 std::string AI::status()
 {
-    if (embark->is_embarking())
+    if (events.has_exclusive<EmbarkExclusive>())
     {
         return "(embarking)";
     }
@@ -949,7 +949,7 @@ static void report_section(std::ostringstream & out, const std::string & name, M
 
 std::string AI::report(bool html)
 {
-    if (embark->is_embarking())
+    if (events.has_exclusive<EmbarkExclusive>())
     {
         if (html)
         {

@@ -69,8 +69,6 @@ OnstatechangeCallback::OnstatechangeCallback(const std::string & descr, std::fun
 
 EventManager::EventManager() :
     exclusive(),
-    exclusive_cur(0),
-    exclusive_ticks(0),
     onupdate_list(),
     onstatechange_list()
 {
@@ -82,6 +80,9 @@ EventManager::~EventManager()
 
 void EventManager::clear()
 {
+    TICK_DEBUG("clearing exclusive callback");
+    delete exclusive;
+    exclusive = nullptr;
     TICK_DEBUG("clearing event listeners");
     for (auto it = onupdate_list.begin(); it != onupdate_list.end(); it++)
     {
@@ -174,17 +175,17 @@ void EventManager::onstatechange_unregister(OnstatechangeCallback *&b)
     b = nullptr;
 }
 
-bool EventManager::register_exclusive(const std::string & descr, std::function<bool(color_ostream &)> b, int32_t ticks)
+bool EventManager::register_exclusive(ExclusiveCallback *cb)
 {
-    TICK_DEBUG("register_exclusive: " << descr << " ticks " << ticks);
+    TICK_DEBUG("register_exclusive: " << cb->description);
     if (exclusive)
     {
         TICK_DEBUG("already have an exclusive");
+        delete cb;
         return false;
     }
     TICK_DEBUG("exclusive registered");
-    exclusive = b;
-    exclusive_ticks = ticks;
+    exclusive = cb;
     return true;
 }
 
@@ -192,21 +193,11 @@ void EventManager::onupdate(color_ostream & out)
 {
     if (exclusive)
     {
-        exclusive_cur++;
-        if (exclusive_cur >= exclusive_ticks)
+        if (exclusive->run(out))
         {
-            if (exclusive(out))
-            {
-                TICK_DEBUG("onupdate: exclusive completed");
-                exclusive = nullptr;
-                exclusive_cur = 0;
-                exclusive_ticks = 0;
-            }
-            else
-            {
-                TICK_DEBUG("onupdate: exclusive called");
-                exclusive_cur = 0;
-            }
+            TICK_DEBUG("onupdate: exclusive completed");
+            delete exclusive;
+            exclusive = nullptr;
         }
         else
         {
@@ -246,8 +237,6 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
                 dwarfAI->camera->check_record_status();
             }
         }
-        TICK_DEBUG("onstatechange: ignoring due to exclusive");
-        return;
     }
 
     // make a copy
@@ -265,6 +254,191 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
             TICK_DEBUG("onstatechange: called: " << (*it)->description);
         }
     }
+}
+
+ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) : description(description), wait_multiplier(wait_multiplier), wait_frames(0)
+{
+    if (wait_multiplier < 1)
+    {
+        wait_multiplier = 1;
+    }
+}
+
+ExclusiveCallback::~ExclusiveCallback()
+{
+}
+
+void ExclusiveCallback::Do(std::function<void()> step)
+{
+    if (step_in())
+    {
+        step();
+        step_out();
+    }
+}
+
+void ExclusiveCallback::If(std::function<bool()> cond, std::function<void()> step_true, std::function<void()> step_false)
+{
+    if (step_in())
+    {
+        bool ok = cond();
+        step_out();
+
+        if (!ok)
+        {
+            step_skip();
+        }
+    }
+
+    if (step_in())
+    {
+        step_true();
+        step_out();
+
+        step_skip();
+    }
+
+    if (step_in())
+    {
+        step_false();
+        step_out();
+    }
+}
+
+void ExclusiveCallback::While(std::function<bool()> cond, std::function<void()> step)
+{
+    if (step_in())
+    {
+        for (;;)
+        {
+            if (step_in())
+            {
+                bool ok = cond();
+                step_out();
+                if (!ok)
+                {
+                    break;
+                }
+            }
+
+            if (step_in())
+            {
+                step();
+                step_out();
+            }
+
+            step_reset();
+        }
+
+        step_out();
+    }
+}
+
+void ExclusiveCallback::Key(df::interface_key key)
+{
+    if (step_in())
+    {
+        AI::feed_key(key);
+        step_out();
+        throw wait_for_next_frame();
+    }
+}
+
+void ExclusiveCallback::Char(std::function<char()> ch)
+{
+    if (step_in())
+    {
+        AI::feed_char(ch());
+        step_out();
+        throw wait_for_next_frame();
+    }
+}
+
+void ExclusiveCallback::Delay(size_t frames)
+{
+    for (size_t i = 0; i < frames; i++)
+    {
+        if (step_in())
+        {
+            step_out();
+            throw wait_for_next_frame();
+        }
+    }
+}
+
+bool ExclusiveCallback::run(color_ostream & out)
+{
+    if (wait_frames)
+    {
+        wait_frames--;
+        return false;
+    }
+
+    current_step.clear();
+    current_step.push_back(0);
+
+    try
+    {
+        Run(out);
+        return true;
+    }
+    catch (wait_for_next_frame)
+    {
+        wait_frames = wait_multiplier - 1;
+        last_step = current_step;
+        return false;
+    }
+}
+
+bool ExclusiveCallback::step_in()
+{
+    size_t & step = current_step.back();
+    step++;
+
+    if (!last_step.empty())
+    {
+        for (size_t i = 0; i < current_step.size(); i++)
+        {
+            if (current_step.at(i) != last_step.at(i))
+            {
+                if (i == last_step.size() - 1 && current_step.at(i) == last_step.at(i) + 1)
+                {
+                    // we exited between step_out() and the next step_in().
+                    break;
+                }
+
+                step++;
+                return false;
+            }
+        }
+
+        if (current_step.size() == last_step.size())
+        {
+            last_step.clear();
+        }
+    }
+
+    current_step.push_back(0);
+
+    return true;
+}
+
+void ExclusiveCallback::step_out()
+{
+    current_step.pop_back();
+    current_step.back()++;
+}
+
+void ExclusiveCallback::step_reset()
+{
+    last_step.clear();
+    current_step.back() = 0;
+}
+
+void ExclusiveCallback::step_skip(size_t steps)
+{
+    last_step = current_step;
+    last_step.back() += steps * 2;
 }
 
 // vim: et:sw=4:ts=4

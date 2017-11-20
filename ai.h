@@ -33,7 +33,6 @@ class Population;
 class Plan;
 class Stocks;
 class Camera;
-class Embark;
 class Trade;
 
 std::string html_escape(const std::string & str);
@@ -50,7 +49,6 @@ public:
     Plan *plan;
     Stocks *stocks;
     Camera *camera;
-    Embark *embark;
     Trade *trade;
 
     OnupdateCallback *status_onupdate;

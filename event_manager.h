@@ -4,6 +4,8 @@
 
 #include <functional>
 
+#include "df/interface_key.h"
+
 struct OnupdateCallback
 {
     std::function<bool(color_ostream &)> callback;
@@ -27,6 +29,42 @@ struct OnstatechangeCallback
     OnstatechangeCallback(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> cb);
 };
 
+class ExclusiveCallback
+{
+protected:
+    ExclusiveCallback(const std::string & description, size_t wait_multiplier = 1);
+    virtual ~ExclusiveCallback();
+
+    void Do(std::function<void()> step);
+    void If(std::function<bool()> cond, std::function<void()> step_true, std::function<void()> step_false = []() {});
+    void While(std::function<bool()> cond, std::function<void()> step);
+    void Key(df::interface_key key);
+    void Char(std::function<char()> ch);
+    void Delay(size_t frames = 1);
+
+    virtual void Run(color_ostream & out) = 0;
+
+    struct wait_for_next_frame {};
+
+private:
+    size_t wait_multiplier;
+    size_t wait_frames;
+    std::vector<size_t> current_step;
+    std::vector<size_t> last_step;
+
+    bool run(color_ostream & out);
+
+    bool step_in();
+    void step_out();
+    void step_reset();
+    void step_skip(size_t steps = 1);
+
+    friend struct EventManager;
+
+public:
+    const std::string description;
+};
+
 struct EventManager
 {
 public:
@@ -43,17 +81,18 @@ public:
     OnstatechangeCallback *onstatechange_register_once(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> b);
     void onstatechange_unregister(OnstatechangeCallback *&b);
 
-    bool register_exclusive(const std::string & descr, std::function<bool(color_ostream &)> b, int32_t ticks = 1);
+    bool register_exclusive(ExclusiveCallback *cb);
+    inline bool has_exclusive() const { return exclusive != nullptr; }
+    template<typename E>
+    inline bool has_exclusive() const { return dynamic_cast<E *>(exclusive) != nullptr; }
 
     void onstatechange(color_ostream & out, state_change_event event);
     void onupdate(color_ostream & out);
-protected:
+private:
     friend class AI;
     void clear();
-private:
-    std::function<bool(color_ostream &)> exclusive;
-    int32_t exclusive_cur;
-    int32_t exclusive_ticks;
+
+    ExclusiveCallback *exclusive;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
 };
