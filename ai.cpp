@@ -712,7 +712,7 @@ bool AI::tag_enemies(color_ostream & out)
     {
         df::unit *u = *it;
         df::creature_raw *race = df::creature_raw::find(u->race);
-        if (Units::isAlive(u) && Units::getPosition(u).isValid() &&
+        if (!Units::isDead(u) && Units::getPosition(u).isValid() &&
             !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
             !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
         {
@@ -730,9 +730,8 @@ bool AI::tag_enemies(color_ostream & out)
                     found = true;
                 }
             }
-            else if (u->flags1.bits.marauder ||
-                    u->flags1.bits.zombie ||
-                    u->flags1.bits.skeleton ||
+            else if (Units::isUndead(u) ||
+                    u->flags1.bits.marauder ||
                     u->flags1.bits.active_invader ||
                     u->flags2.bits.underworld ||
                     u->flags2.bits.visitor_uninvited ||
