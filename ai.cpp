@@ -774,7 +774,7 @@ bool AI::is_attacking_citizen(df::unit *u)
                 {
                     if (auto enemy = df::unit::find(enemy_id))
                     {
-                        if (Units::isCitizen(enemy))
+                        if (Units::isSane(enemy) && Units::isCitizen(enemy))
                         {
                             return true;
                         }
