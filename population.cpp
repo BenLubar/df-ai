@@ -3039,7 +3039,7 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << AI::describe_unit(unit, html);
             }
-            if (auto projectile = ref->getProjectile())
+            if (/*auto projectile =*/ ref->getProjectile())
             {
                 out << "[not yet implemented]";
                 // TODO: describe projectiles
@@ -3062,22 +3062,22 @@ void Population::report(std::ostream & out, bool html)
                     out << toLower(enum_item_key(building->getType()));
                 }
             }
-            if (auto entity = ref->getEntity())
+            if (/*auto entity =*/ ref->getEntity())
             {
                 out << "[not yet implemented]";
                 // TODO: describe entities
             }
-            if (auto artifact = ref->getArtifact())
+            if (/*auto artifact =*/ ref->getArtifact())
             {
                 out << "[not yet implemented]";
                 // TODO: describe artifacts
             }
-            if (auto nemesis = ref->getNemesis())
+            if (/*auto nemesis =*/ ref->getNemesis())
             {
                 out << "[not yet implemented]";
                 // TODO: describe nemeses
             }
-            if (auto event = ref->getEvent())
+            if (/*auto event =*/ ref->getEvent())
             {
                 out << "[not yet implemented]";
                 // TODO: describe events
