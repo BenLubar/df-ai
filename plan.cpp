@@ -2907,6 +2907,12 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
         return false;
     }
 
+    if (r->type == room_type::pond && r->workshop && !r->workshop->is_dug())
+    {
+        reason << "waiting for pond target to be dug";
+        return false;
+    }
+
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
 
