@@ -117,7 +117,7 @@ inline static void swap3(T & a, T & b, T & c)
 static void lockstep_swap_arrays() {
     auto & r = enabler->renderer;
     swap3(r->screen, r->screen_old, gps->screen);
-    swap3(r->screentexpos, r->screentexpos_old, reinterpret_cast<int32_t * &>(gps->screentexpos));
+    swap3(r->screentexpos, r->screentexpos_old, gps->screentexpos);
     swap3(r->screentexpos_addcolor, r->screentexpos_addcolor_old, gps->screentexpos_addcolor);
     swap3(r->screentexpos_grayscale, r->screentexpos_grayscale_old, gps->screentexpos_grayscale);
     swap3(r->screentexpos_cf, r->screentexpos_cf_old, gps->screentexpos_cf);
