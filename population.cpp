@@ -386,7 +386,7 @@ void Population::update_trading(color_ostream & out)
 
     df::unit *broker = nullptr;
 
-    for (auto j = world->job_list.next; j; j = j->next)
+    for (auto j = world->jobs.list.next; j; j = j->next)
     {
         if (j->item->job_type == job_type::TradeAtDepot)
         {
@@ -443,7 +443,7 @@ void Population::update_trading(color_ostream & out)
     }
 
     int32_t waiting_for_items = 0;
-    for (auto j = world->job_list.next; j; j = j->next)
+    for (auto j = world->jobs.list.next; j; j = j->next)
     {
         if (j->item->job_type == job_type::BringItemToDepot)
         {
@@ -596,7 +596,7 @@ void Population::update_citizenlist(color_ostream & out)
 
 void Population::update_jobs(color_ostream &)
 {
-    for (auto j = world->job_list.next; j; j = j->next)
+    for (auto j = world->jobs.list.next; j; j = j->next)
     {
         if (j->item->flags.bits.suspend && !j->item->flags.bits.repeat)
         {
@@ -2858,7 +2858,7 @@ void Population::report(std::ostream & out, bool html)
         out << "\n## Jobs\n";
     }
     std::map<std::string, size_t> boring_job_count;
-    for (auto j = world->job_list.next; j; j = j->next)
+    for (auto j = world->jobs.list.next; j; j = j->next)
     {
         if (j->item->items.empty() && j->item->job_items.empty() && j->item->general_refs.empty())
         {

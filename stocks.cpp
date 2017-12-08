@@ -3159,7 +3159,7 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
 {
     std::set<df::coord> jobs;
 
-    for (auto job = world->job_list.next; job; job = job->next)
+    for (auto job = world->jobs.list.next; job; job = job->next)
     {
         if (job->item->job_type == job_type::FellTree)
         {

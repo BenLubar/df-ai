@@ -1875,7 +1875,7 @@ void Plan::dig_tile(df::coord t, df::tile_dig_designation dig)
     df::tile_designation *des = Maps::getTileDesignation(t);
     if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No && !des->bits.hidden)
     {
-        for (auto job = world->job_list.next; job != nullptr; job = job->next)
+        for (auto job = world->jobs.list.next; job != nullptr; job = job->next)
         {
             if ((ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging || ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Gathering) && job->item->pos == t)
             {
@@ -3412,7 +3412,7 @@ bool Plan::smooth(std::set<df::coord> tiles, bool engrave)
     }
 
     // remove tiles that are already being smoothed
-    for (auto j = world->job_list.next; j != nullptr; j = j->next)
+    for (auto j = world->jobs.list.next; j != nullptr; j = j->next)
     {
         if (j->item->job_type == job_type::DetailWall ||
             j->item->job_type == job_type::DetailFloor)

@@ -17,8 +17,8 @@
 #include "df/activity_event.h"
 #include "df/activity_event_conflictst.h"
 #include "df/activity_event_participants.h"
-#include "df/announcements.h"
 #include "df/creature_raw.h"
+#include "df/d_init.h"
 #include "df/enabler.h"
 #include "df/history_event.h"
 #include "df/history_event_context.h"
@@ -41,9 +41,9 @@
 
 #include <sstream>
 
-REQUIRE_GLOBAL(announcements);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
+REQUIRE_GLOBAL(d_init);
 REQUIRE_GLOBAL(enabler);
 REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
@@ -538,7 +538,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     }
     }
 
-    if (announcements->flags[announce->type].bits.DO_MEGA)
+    if (d_init->announcements.flags[announce->type].bits.DO_MEGA)
     {
         timeout_sameview([this](color_ostream &) { unpause(); });
     }
@@ -555,7 +555,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
     {
         auto la = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), [](df::report *a) -> bool
         {
-            return announcements->flags[a->type].bits.PAUSE;
+            return d_init->announcements.flags[a->type].bits.PAUSE;
         });
         if (la != world->status.announcements.rend() &&
             (*la)->year == *cur_year &&
