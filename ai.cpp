@@ -644,13 +644,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         }
         else if (df::viewscreen_topicmeetingst *meeting = strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
         {
-            std::string message("exit diplomat topicmeetingst:");
-            for (auto it = meeting->text.begin(); it != meeting->text.end(); it++)
-            {
-                message += "\n";
-                message += **it;
-            }
-            debug(out, message);
+            debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream &)
             {
                 AI::feed_key(interface_key::OPTION1);
