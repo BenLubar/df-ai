@@ -514,17 +514,6 @@ void Population::update_citizenlist(color_ostream & out)
                     ai->event("new citizen", payload);
                 }
             }
-
-            df::coord pos = Units::getPosition(u);
-            if (pos.isValid() && ENUM_ATTR(tiletype, material, *Maps::getTileType(pos)) == tiletype_material::TREE && Plan::getTileWalkable(pos) != Plan::getTileWalkable(ai->plan->fort_entrance->pos()) && (u->job.current_job == nullptr || u->job.current_job->job_type != job_type::GatherPlants))
-            {
-                df::coord tpos = Plan::find_tree_base(pos);
-                if (tpos.isValid())
-                {
-                    ai->debug(out, AI::describe_unit(u) + " appears to be stuck in a tree.");
-                    Plan::dig_tile(tpos);
-                }
-            }
         }
         else if (Units::isCitizen(u) && Units::isBaby(u))
         {
