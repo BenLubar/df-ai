@@ -155,36 +155,43 @@ void Config::load(color_ostream & out)
     }
 }
 
+template<typename T>
+inline void setComment(Json::Value & value, const T & t, const std::string & comment, Json::CommentPlacement placement = Json::commentBefore)
+{
+    value = t;
+    value.setComment(comment, placement);
+}
+
 void Config::save(color_ostream & out)
 {
     Json::Value v(Json::objectValue);
-    v["random_embark"] = random_embark;
-    v["random_embark_world"] = random_embark_world;
-    v["write_console"] = write_console;
-    v["write_log"] = write_log;
-    v["record_movie"] = record_movie;
-    v["no_quit"] = no_quit;
+    setComment(v["random_embark"], random_embark, "// true or false: should the AI automatically pick an embark location?");
+    setComment(v["random_embark_world"], random_embark_world, "// the name of the region to embark on, between quotes, or \"\" to generate a new world.");
+    setComment(v["write_console"], write_console, "// true or false: should the AI say what it's thinking in the DFHack console?");
+    setComment(v["write_log"], write_log, "// true or false: should the AI say what it's thinking in df-ai.log?");
+    setComment(v["record_movie"], record_movie, "// true or false: should the AI automatically record CMV files while it plays?");
+    setComment(v["no_quit"], no_quit, "// true or false: should the AI keep the game running after it loses?");
 
     Json::Value options(Json::objectValue);
     FOR_ENUM_ITEMS(embark_finder_option, o)
     {
         options[ENUM_KEY_STR(embark_finder_option, o)] = Json::Int(embark_options[o]);
     }
-    v["embark_options"] = options;
+    setComment(v["embark_options"], options, "// site finder options. -1 is \"N/A\", 0 is the first option, 1 is the second, and so on.");
 
-    v["world_size"] = Json::Int(world_size);
-    v["camera"] = camera;
-    v["fps_meter"] = fps_meter;
-    v["manage_labors"] = manage_labors;
-    v["manage_nobles"] = manage_nobles;
-    v["cancel_announce"] = cancel_announce;
-    v["lockstep"] = lockstep;
+    setComment(v["world_size"], Json::Int(world_size), "// 0: pocket, 1: smaller, 2: small, 3: medium, 4: large");
+    setComment(v["camera"], camera, "// true or false: should the AI automatically follow dwarves it thinks are interesting?");
+    setComment(v["fps_meter"], fps_meter, "// true or false: should the AI hide the FPS meter when in a menu? (the FPS meter is always hidden in lockstep mode)");
+    setComment(v["manage_labors"], manage_labors, "// the name of a DFHack plugin that manages labors, in quotes, or \"\" for no automated labor management. \"autolabor\" and \"labormanger\" are specifically supported.");
+    setComment(v["manage_nobles"], manage_nobles, "// true or false: should the AI assign administrators in the fortress?");
+    setComment(v["cancel_announce"], Json::Int(cancel_announce), "// how many job cancellation notices to show. 0: none, 1: some, 2: most, 3: all");
+    setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
     if (lockstep_debug) // hide from config if not set
-        v["lockstep_debug"] = true;
-    v["plan_verbosity"] = plan_verbosity;
+        setComment(v["lockstep_debug"], true, "// hidden option: write a LOT of information about lockstep mode to the DFHack console.");
+    setComment(v["plan_verbosity"], Json::Int(plan_verbosity), "// number from -1 to 3: how much information about the blueprint should the AI write to the log? -1: none, 0: summary, 1: room placement summary, 2: placements that succeeded, 3: placements that failed");
     if (tick_debug) // hide from config if not set
-        v["tick_debug"] = true;
-    v["plan_allow_legacy"] = plan_allow_legacy;
+        setComment(v["tick_debug"], tick_debug, "// hidden option: write a LOT of information about exclusive mode to the DFHack console.");
+    setComment(v["plan_allow_legacy"], plan_allow_legacy, "// true or false: should the AI use the legacy floor plan generator if it fails to generate a floor plan using blueprints?");
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;

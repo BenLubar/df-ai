@@ -1531,27 +1531,27 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     std::map<std::string, size_t> counts;
     std::map<std::string, std::map<std::string, size_t>> instance_counts;
 
-    if (config.plan_verbosity >= 2)
+    if (config.plan_verbosity >= 0)
     {
         ai->debug(out, "Placing starting room...");
     }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_start);
     if (rooms.empty())
     {
-        if (config.plan_verbosity >= 1)
+        if (config.plan_verbosity >= 0)
         {
             ai->debug(out, "No rooms placed by initial phase. Cannot continue building.");
         }
         return false;
     }
 
-    if (config.plan_verbosity >= 2)
+    if (config.plan_verbosity >= 0)
     {
         ai->debug(out, "Placing outdoor rooms...");
     }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_outdoor, &blueprint_plan::try_add_room_outdoor);
 
-    if (config.plan_verbosity >= 2)
+    if (config.plan_verbosity >= 0)
     {
         ai->debug(out, "Building remainder of fortress...");
     }
@@ -1559,7 +1559,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
 
     if (!plan.have_minimum_requirements(out, ai, counts, instance_counts))
     {
-        if (config.plan_verbosity >= 1)
+        if (config.plan_verbosity >= 0)
         {
             ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
         }
@@ -1615,7 +1615,7 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
         }
         if (failures >= plan.max_failures)
         {
-            if (config.plan_verbosity >= 1)
+            if (config.plan_verbosity >= 0)
             {
                 ai->debug(out, "Failed too many times in a row.");
             }
@@ -2387,7 +2387,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
         {
             if (limit.second.first > 0)
             {
-                if (config.plan_verbosity >= 0)
+                if (config.plan_verbosity >= 1)
                 {
                     ai->debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %d and %d.", limit.first.c_str(), limit.second.first, limit.second.second));
                 }
@@ -2395,7 +2395,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             }
             else
             {
-                if (config.plan_verbosity >= 0)
+                if (config.plan_verbosity >= 1)
                 {
                     ai->debug(out, stl_sprintf("have 0 %s (want between %d and %d)", limit.first.c_str(), limit.second.first, limit.second.second));
                 }
@@ -2405,7 +2405,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
         {
             if (limit.second.first > type->second)
             {
-                if (config.plan_verbosity >= 0)
+                if (config.plan_verbosity >= 1)
                 {
                     ai->debug(out, stl_sprintf("Requirement not met: have %d %s but want between %d and %d.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
                 }
@@ -2413,7 +2413,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             }
             else
             {
-                if (config.plan_verbosity >= 0)
+                if (config.plan_verbosity >= 1)
                 {
                     ai->debug(out, stl_sprintf("have %d %s (want between %d and %d)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
                 }
@@ -2430,7 +2430,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (limit.second.first > 0)
                 {
-                    if (config.plan_verbosity >= 0)
+                    if (config.plan_verbosity >= 1)
                     {
                         ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                     }
@@ -2438,7 +2438,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 }
                 else
                 {
-                    if (config.plan_verbosity >= 0)
+                    if (config.plan_verbosity >= 1)
                     {
                         ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                     }
@@ -2454,7 +2454,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (limit.second.first > 0)
                     {
-                        if (config.plan_verbosity >= 0)
+                        if (config.plan_verbosity >= 1)
                         {
                             ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
@@ -2462,7 +2462,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     }
                     else
                     {
-                        if (config.plan_verbosity >= 0)
+                        if (config.plan_verbosity >= 1)
                         {
                             ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
@@ -2472,7 +2472,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (limit.second.first > count->second)
                     {
-                        if (config.plan_verbosity >= 0)
+                        if (config.plan_verbosity >= 1)
                         {
                             ai->debug(out, stl_sprintf("Requirement not met: have %d %s/%s but want between %d and %d.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
@@ -2480,7 +2480,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     }
                     else
                     {
-                        if (config.plan_verbosity >= 0)
+                        if (config.plan_verbosity >= 1)
                         {
                             ai->debug(out, stl_sprintf("have %d %s/%s (want between %d and %d)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
