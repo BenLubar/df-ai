@@ -642,7 +642,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "[ERROR] paused in unknown textviewerst:" + text.str());
             }
         }
-        else if (df::viewscreen_topicmeetingst *meeting = strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
+        else if (strict_virtual_cast<df::viewscreen_topicmeetingst>(curview))
         {
             debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream &)
