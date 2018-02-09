@@ -595,7 +595,9 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
                 stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos ||
                 stripped.find("Greetings," "noble" "dwarf." "There" "is" "much" "to" "discuss.") != std::string::npos ||
-                (stripped.find("It" "has" "been" "an" "honor," "noble") != std::string::npos && stripped.find("." "I" "bid" "you" "farewell.") != std::string::npos))
+                (stripped.find("It" "has" "been" "an" "honor," "noble") != std::string::npos && stripped.find("." "I" "bid" "you" "farewell.") != std::string::npos) ||
+                (stripped.find("On" "behalf" "of" "the") != std::string::npos && stripped.find("Guild," "let" "me" "extend" "greetings" "to" "your" "people." "There" "is" "much" "to" "discuss.") != std::string::npos) ||
+                (stripped.find("Again" "on" "behalf" "of" "the") != std::string::npos && stripped.find("Guild," "let" "me" "bid" "farewell" "to" "you" "and" "your" "stout" "dwarves.") != std::string::npos))
             {
                 debug(out, "exit diplomat textviewerst:" + text.str());
                 timeout_sameview([](color_ostream &)
