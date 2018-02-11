@@ -46,6 +46,9 @@ SET(PROJECT_SRCS
     trade.cpp
     event_manager.cpp
     weblegends.cpp
+    military.cpp
+    pause.cpp
+    log.cpp
 )
 
 SET(PROJECT_HDRS
