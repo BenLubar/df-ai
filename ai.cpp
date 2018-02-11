@@ -575,53 +575,72 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         df::viewscreen_textviewerst *view = strict_virtual_cast<df::viewscreen_textviewerst>(curview);
         if (view)
         {
+            bool space = false;
             std::ostringstream text;
-            for (auto it = view->formatted_text.begin(); it != view->formatted_text.end(); it++)
+            for (auto span : view->formatted_text)
             {
-                if ((*it)->text)
+                if (span->text)
                 {
-                    text << " " << (*it)->text;
+                    if (!space && !span->flags.bits.no_newline)
+                    {
+                        space = true;
+                        text << ' ';
+                    }
+                    for (char *c = span->text; *c; c++)
+                    {
+                        if (*c == ' ')
+                        {
+                            if (!space)
+                            {
+                                text << ' ';
+                                space = true;
+                            }
+                        }
+                        else
+                        {
+                            text << *c;
+                            space = false;
+                        }
+                    }
                 }
             }
+            std::string stripped(text.str());
 
-            std::string stripped = text.str();
-            stripped.erase(std::remove(stripped.begin(), stripped.end(), ' '), stripped.end());
-
-            if (stripped.find("I" "am" "your" "liaison" "from" "the" "Mountainhomes." "Let's" "discuss" "your" "situation.") != std::string::npos ||
-                stripped.find("I" "look" "forward" "to" "our" "meeting" "next" "year.") != std::string::npos ||
-                stripped.find("A" "diplomat" "has" "left" "unhappy.") != std::string::npos ||
-                stripped.find("What" "a" "pleasant" "surprise!" "Not" "a" "single" "tree" "here" "weeps" "from" "the" "abuses" "meted" "out" "with" "such" "ease" "by" "your" "people." "Joy!" "The" "dwarves" "have" "turned" "a" "page," "not" "that" "we" "would" "make" "paper." "A" "travesty!" "Perhaps" "it" "is" "better" "said" "that" "the" "dwarves" "have" "turned" "over" "a" "new" "leaf," "and" "the" "springtime" "for" "our" "two" "races" "has" "only" "just" "begun.") != std::string::npos ||
-                stripped.find("You" "have" "disrespected" "the" "trees" "in" "this" "area," "but" "this" "is" "what" "we" "have" "come" "to" "expect" "from" "your" "stunted" "kind." "Further" "abuse" "cannot" "be" "tolerated." "Let" "this" "be" "a" "warning" "to" "you.") != std::string::npos ||
-                stripped.find("Greetings" "from" "the" "woodlands." "We" "have" "much" "to" "discuss.") != std::string::npos ||
-                stripped.find("Although" "we" "do" "not" "always" "see" "eye" "to" "eye" "(ha!)," "I" "bid" "you" "farewell." "May" "you" "someday" "embrace" "nature" "as" "you" "embrace" "the" "rocks" "and" "mud.") != std::string::npos ||
-                stripped.find("Greetings," "noble" "dwarf." "There" "is" "much" "to" "discuss.") != std::string::npos ||
-                (stripped.find("It" "has" "been" "an" "honor," "noble") != std::string::npos && stripped.find("." "I" "bid" "you" "farewell.") != std::string::npos) ||
-                (stripped.find("On" "behalf" "of" "the") != std::string::npos && stripped.find("Guild," "let" "me" "extend" "greetings" "to" "your" "people." "There" "is" "much" "to" "discuss.") != std::string::npos) ||
-                (stripped.find("Again" "on" "behalf" "of" "the") != std::string::npos && stripped.find("Guild," "let" "me" "bid" "farewell" "to" "you" "and" "your" "stout" "dwarves.") != std::string::npos))
+            if (stripped.find("I am your liaison from the Mountainhomes. Let's discuss your situation.") != std::string::npos ||
+                stripped.find("I look forward to our meeting next year.") != std::string::npos ||
+                stripped.find("A diplomat has left unhappy.") != std::string::npos ||
+                stripped.find("What a pleasant surprise! Not a single tree here weeps from the abuses meted out with such ease by your people. Joy! The dwarves have turned a page, not that we would make paper. A travesty! Perhaps it is better said that the dwarves have turned over a new leaf, and the springtime for our two races has only just begun.") != std::string::npos ||
+                stripped.find("You have disrespected the trees in this area, but this is what we have come to expect from your stunted kind. Further abuse cannot be tolerated. Let this be a warning to you.") != std::string::npos ||
+                stripped.find("Greetings from the woodlands. We have much to discuss.") != std::string::npos ||
+                stripped.find("Although we do not always see eye to eye (ha!), I bid you farewell. May you someday embrace nature as you embrace the rocks and mud.") != std::string::npos ||
+                stripped.find("Greetings, noble dwarf. There is much to discuss.") != std::string::npos ||
+                (stripped.find("It has been an honor, noble") != std::string::npos && stripped.find(". I bid you farewell.") != std::string::npos) ||
+                (stripped.find("On behalf of the") != std::string::npos && stripped.find("Guild, let me extend greetings to your people. There is much to discuss.") != std::string::npos) ||
+                (stripped.find("Again on behalf of the") != std::string::npos && stripped.find("Guild, let me bid farewell to you and your stout dwarves.") != std::string::npos))
             {
-                debug(out, "exit diplomat textviewerst:" + text.str());
+                debug(out, "exit diplomat textviewerst:" + stripped);
                 timeout_sameview([](color_ostream &)
                 {
                     AI::feed_key(interface_key::LEAVESCREEN);
                 });
             }
-            else if (stripped.find("A" "vile" "force" "of" "darkness" "has" "arrived!") != std::string::npos ||
-                stripped.find("have" "brought" "the" "full" "forces" "of" "their" "lands" "against" "you.") != std::string::npos ||
-                stripped.find("The" "enemy" "have" "come" "and" "are" "laying" "siege" "to" "the" "fortress.") != std::string::npos ||
-                stripped.find("The" "dead" "walk." "Hide" "while" "you" "still" "can!") != std::string::npos)
+            else if (stripped.find("A vile force of darkness has arrived!") != std::string::npos ||
+                stripped.find("have brought the full forces of their lands against you.") != std::string::npos ||
+                stripped.find("The enemy have come and are laying siege to the fortress.") != std::string::npos ||
+                stripped.find("The dead walk. Hide while you still can!") != std::string::npos)
             {
-                debug(out, "exit siege textviewerst:" + text.str());
+                debug(out, "exit siege textviewerst:" + stripped);
                 timeout_sameview([this](color_ostream &)
                 {
                     AI::feed_key(interface_key::LEAVESCREEN);
                     unpause();
                 });
             }
-            else if (stripped.find("Your" "strength" "has" "been" "broken.") != std::string::npos ||
-                stripped.find("Your" "settlement" "has" "crumbled" "to" "its" "end.") != std::string::npos ||
-                stripped.find("Your" "settlement" "has" "been" "abandoned.") != std::string::npos)
+            else if (stripped.find("Your strength has been broken.") != std::string::npos ||
+                stripped.find("Your settlement has crumbled to its end.") != std::string::npos ||
+                stripped.find("Your settlement has been abandoned.") != std::string::npos)
             {
-                debug(out, "you just lost the game:" + text.str());
+                debug(out, "you just lost the game:" + stripped);
                 debug(out, "Exiting AI");
                 onupdate_unregister(out);
 
