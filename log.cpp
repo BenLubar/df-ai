@@ -13,7 +13,11 @@
 #include "df/activity_event_participants.h"
 #include "df/history_event.h"
 #include "df/history_event_context.h"
+#include "df/interface_button_building_new_jobst.h"
 #include "df/item.h"
+#include "df/job.h"
+#include "df/manager_order.h"
+#include "df/manager_order_template.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
