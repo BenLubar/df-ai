@@ -25,7 +25,7 @@
 #include <sys/time.h>
 #endif
 
-#define LOCKSTEP_DEBUG(msg) do { if (config.lockstep_debug) { Core::getInstance().getConsole() << "[df-ai] LOCKSTEP DEBUG: " << msg << std::endl; } } while (0)
+#define LOCKSTEP_DEBUG(msg) do { if (!is_release() && config.lockstep_debug) { Core::getInstance().getConsole() << "[df-ai] LOCKSTEP DEBUG: " << msg << std::endl; } } while (0)
 
 REQUIRE_GLOBAL(enabler);
 REQUIRE_GLOBAL(gps);
