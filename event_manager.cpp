@@ -12,7 +12,11 @@ REQUIRE_GLOBAL(cur_year_tick);
 
 EventManager events;
 
-#define TICK_DEBUG(msg) do { if (!is_release() && config.tick_debug) { Core::getInstance().getConsole() << "[df-ai] TICK DEBUG: " << msg << std::endl; } } while (0)
+#ifdef DFAI_RELEASE
+#define TICK_DEBUG(msg)
+#else
+#define TICK_DEBUG(msg) do { if (config.tick_debug) { Core::getInstance().getConsole() << "[df-ai] TICK DEBUG: " << msg << std::endl; } } while (0)
+#endif
 
 OnupdateCallback::OnupdateCallback(const std::string & descr, std::function<bool(color_ostream &)> cb) :
     callback(cb),
