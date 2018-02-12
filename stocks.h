@@ -58,11 +58,8 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(clothes_torso) \
     ENUM_ITEM(coal) \
     ENUM_ITEM(coffin) \
-    ENUM_ITEM(coffin_bld) \
-    ENUM_ITEM(coffin_bld_pet) \
     ENUM_ITEM(crossbow) \
     ENUM_ITEM(crutch) \
-    ENUM_ITEM(dead_dwarf) \
     ENUM_ITEM(door) \
     ENUM_ITEM(drink) \
     ENUM_ITEM(drink_fruit) \
@@ -162,7 +159,7 @@ private:
     std::vector<room *> updating_farmplots;
 public:
     // depends on raws.itemdefs, wait until a world is loaded
-    std::map<std::string, int16_t> manager_subtype;
+    std::map<stock_item::item, int16_t> manager_subtype;
 private:
     std::set<df::coord, std::function<bool(df::coord, df::coord)>> last_treelist;
     df::coord last_cutpos;
@@ -213,9 +210,6 @@ public:
     int32_t num_needed(stock_item::item key);
     void act(color_ostream & out, stock_item::item key);
     int32_t count_stocks(color_ostream & out, stock_item::item k);
-    int32_t count_stocks_weapon(color_ostream & out, df::job_skill skill = job_skill::NONE, bool training = false);
-    int32_t count_stocks_armor(color_ostream & out, df::items_other_id oidx);
-    int32_t count_stocks_clothes(color_ostream & out, df::items_other_id oidx);
 
     void queue_need(color_ostream & out, stock_item::item what, int32_t amount);
     void queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
@@ -224,7 +218,6 @@ public:
     void queue_need_cage(color_ostream & out);
     void queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1);
     void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
-    void queue_need_coffin_bld(color_ostream & out, int32_t amount);
     void queue_use(color_ostream & out, stock_item::item what, int32_t amount);
     void queue_use_gems(color_ostream & out, int32_t amount);
     void queue_use_metal_ore(color_ostream & out, int32_t amount);
@@ -247,14 +240,15 @@ public:
     void init_manager_subtype();
 
     int32_t count_manager_orders_matcat(const df::job_material_category & matcat, df::job_type order = job_type::NONE);
-    void legacy_add_manager_order(color_ostream & out, std::string order, int32_t amount = 1, int32_t maxmerge = 30);
     int32_t count_manager_orders(color_ostream & out, const df::manager_order_template & tmpl);
     void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount = 1);
 
-    std::string furniture_order(stock_item::item k);
-    std::function<bool(df::item *)> furniture_find(stock_item::item k);
-    df::item *find_furniture_item(stock_item::item itm);
-    int32_t find_furniture_itemcount(stock_item::item itm);
+    df::item *find_free_item(stock_item::item k);
+    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper(stock_item::item k);
+    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_weapon(df::job_skill skill = job_skill::NONE, bool training = false);
+    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_armor(df::items_other_id oidx);
+    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_clothes(df::items_other_id oidx);
+    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_tool(stock_item::item k);
 
     void farmplot(color_ostream & out, room *r, bool initial = true);
     void queue_slab(color_ostream & out, int32_t histfig_id);

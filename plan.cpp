@@ -2248,7 +2248,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         return false;
     }
 
-    if (df::item *itm = ai->stocks->find_furniture_item(stocks_furniture_type))
+    if (df::item *itm = ai->stocks->find_free_item(stocks_furniture_type))
     {
         std::ostringstream str;
         str << "furnish " << describe_furniture(f) << " in " << describe_room(r);

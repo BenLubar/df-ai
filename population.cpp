@@ -22,10 +22,12 @@
 #include "df/activity_event_participants.h"
 #include "df/assign_trade_status.h"
 #include "df/building_civzonest.h"
+#include "df/building_coffinst.h"
 #include "df/building_farmplotst.h"
 #include "df/building_stockpilest.h"
 #include "df/building_tradedepotst.h"
 #include "df/building_workshopst.h"
+#include "df/buildings_other_id.h"
 #include "df/caravan_state.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
@@ -54,6 +56,7 @@
 #include "df/job_item.h"
 #include "df/job_item_ref.h"
 #include "df/manager_order.h"
+#include "df/manager_order_template.h"
 #include "df/occupation.h"
 #include "df/punishment.h"
 #include "df/reaction.h"
@@ -93,51 +96,14 @@ REQUIRE_GLOBAL(world);
 
 const static struct LaborInfo
 {
-    std::vector<df::unit_labor> list;
     std::set<df::unit_labor> tool;
-    std::map<df::unit_labor, df::job_skill> skill;
-    std::set<df::unit_labor> idle;
     std::set<df::unit_labor> medical;
-    std::map<df::unit_labor, std::set<std::string>> stocks;
-    std::set<df::unit_labor> hauling;
-    std::map<df::unit_labor, int32_t> min, max, min_pct, max_pct;
-    std::set<df::job_type> wont_work_job;
 
     LaborInfo()
     {
-        FOR_ENUM_ITEMS(unit_labor, ul)
-        {
-            if (ul != unit_labor::NONE)
-            {
-                list.push_back(ul);
-                min[ul] = 2;
-                max[ul] = 8;
-                min_pct[ul] = 0;
-                max_pct[ul] = 40;
-                if (ENUM_KEY_STR(unit_labor, ul).find("HAUL") != std::string::npos)
-                {
-                    hauling.insert(ul);
-                }
-            }
-        }
-
         tool.insert(unit_labor::MINE);
         tool.insert(unit_labor::CUTWOOD);
         tool.insert(unit_labor::HUNT);
-
-        FOR_ENUM_ITEMS(job_skill, js)
-        {
-            df::unit_labor ul = ENUM_ATTR(job_skill, labor, js);
-            if (ul != unit_labor::NONE)
-            {
-                skill[ul] = js;
-            }
-        }
-
-        idle.insert(unit_labor::PLANT);
-        idle.insert(unit_labor::HERBALIST);
-        idle.insert(unit_labor::FISH);
-        idle.insert(unit_labor::DETAIL);
 
         medical.insert(unit_labor::DIAGNOSE);
         medical.insert(unit_labor::SURGERY);
@@ -145,43 +111,6 @@ const static struct LaborInfo
         medical.insert(unit_labor::SUTURING);
         medical.insert(unit_labor::DRESSING_WOUNDS);
         medical.insert(unit_labor::FEED_WATER_CIVILIANS);
-
-        stocks[unit_labor::PLANT].insert("food");
-        stocks[unit_labor::PLANT].insert("drink");
-        stocks[unit_labor::PLANT].insert("cloth");
-        stocks[unit_labor::HERBALIST].insert("food");
-        stocks[unit_labor::HERBALIST].insert("drink");
-        stocks[unit_labor::HERBALIST].insert("cloth");
-        stocks[unit_labor::FISH].insert("food");
-
-        hauling.insert(unit_labor::FEED_WATER_CIVILIANS);
-        hauling.insert(unit_labor::RECOVER_WOUNDED);
-
-        wont_work_job.insert(job_type::AttendParty);
-        wont_work_job.insert(job_type::Rest);
-        wont_work_job.insert(job_type::UpdateStockpileRecords);
-
-        min[unit_labor::DETAIL] = 4;
-        min[unit_labor::PLANT] = 4;
-        min[unit_labor::HERBALIST] = 1;
-
-        max[unit_labor::FISH] = 1;
-
-        min_pct[unit_labor::DETAIL] = 5;
-        min_pct[unit_labor::PLANT] = 30;
-        min_pct[unit_labor::FISH] = 1;
-        min_pct[unit_labor::HERBALIST] = 10;
-
-        max_pct[unit_labor::DETAIL] = 60;
-        max_pct[unit_labor::PLANT] = 80;
-        max_pct[unit_labor::FISH] = 10;
-        max_pct[unit_labor::HERBALIST] = 30;
-
-        for (auto it = hauling.begin(); it != hauling.end(); it++)
-        {
-            min_pct[*it] = 30;
-            max_pct[*it] = 100;
-        }
     }
 } labors;
 
@@ -596,12 +525,72 @@ void Population::update_jobs(color_ostream &)
 
 void Population::update_deads(color_ostream & out)
 {
-    for (auto it = world->units.all.begin(); it != world->units.all.end(); it++)
+    int32_t want_coffin = 3;
+    int32_t want_pet_coffin = 1;
+
+    for (auto u : world->units.all)
     {
-        df::unit *u = *it;
         if (u->flags3.bits.ghostly)
         {
             ai->stocks->queue_slab(out, u->hist_figure_id);
+        }
+        else if (Units::isCitizen(u) && Units::isDead(u) && std::find_if(u->owned_buildings.begin(), u->owned_buildings.end(),
+            [](df::building *bld) -> bool { return bld->getType() == building_type::Coffin; }) != u->owned_buildings.end())
+        {
+            want_coffin++;
+        }
+    }
+
+    for (auto bld : world->buildings.other[buildings_other_id::COFFIN])
+    {
+        if (!bld->owner)
+        {
+            want_coffin--;
+
+            df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
+            if (!coffin->burial_mode.bits.no_pets)
+            {
+                want_pet_coffin--;
+            }
+        }
+    }
+
+    if (want_coffin > 0)
+    {
+        // dont dig too early
+        if (!ai->plan->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }))
+        {
+            want_coffin = 0;
+        }
+
+        // count actually allocated (plan wise) coffin buildings
+        ai->plan->find_room(room_type::cemetery, [&want_coffin](room *r) -> bool
+        {
+            for (auto f : r->layout)
+            {
+                if (f->type == layout_type::coffin && f->bld_id == -1 && !f->ignore)
+                    want_coffin--;
+            }
+            return want_coffin <= 0;
+        });
+
+        for (int32_t i = 0; i < want_coffin; i++)
+        {
+            ai->plan->getcoffin(out);
+        }
+    }
+    else if (want_pet_coffin > 0)
+    {
+        for (auto bld : world->buildings.other[buildings_other_id::COFFIN])
+        {
+            df::building_coffinst *coffin = virtual_cast<df::building_coffinst>(bld);
+            if (!coffin->owner && coffin->burial_mode.bits.no_pets)
+            {
+                coffin->burial_mode.bits.no_pets = 0;
+
+                // convert at most one per cycle
+                break;
+            }
         }
     }
 }
@@ -2471,15 +2460,21 @@ void Population::update_pets(color_ostream & out)
         }
     }
 
-    if (needmilk > 30)
-        needmilk = 30;
     if (needmilk > 0)
-        ai->stocks->legacy_add_manager_order(out, "MilkCreature", needmilk);
+    {
+        df::manager_order_template tmpl;
+        tmpl.job_type = job_type::MilkCreature;
 
-    if (needshear > 30)
-        needshear = 30;
+        ai->stocks->add_manager_order(out, tmpl, std::min(needmilk, 30));
+    }
+
     if (needshear > 0)
-        ai->stocks->legacy_add_manager_order(out, "ShearCreature", needshear);
+    {
+        df::manager_order_template tmpl;
+        tmpl.job_type = job_type::ShearCreature;
+
+        ai->stocks->add_manager_order(out, tmpl, std::min(needshear, 30));
+    }
 }
 
 void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
