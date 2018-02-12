@@ -998,30 +998,22 @@ void Stocks::act(color_ostream & out, stock_item::item key)
 }
 
 // count unused stocks of one type of item
-int32_t Stocks::count_stocks(color_ostream & out, stock_item::item k)
+int32_t Stocks::count_stocks(color_ostream &, stock_item::item k)
 {
+    auto helper = find_item_helper(k);
+
     int32_t n = 0;
-    auto add = [this, &n](df::item *i)
+    for (auto i : world->items.other[helper.first])
     {
-        if (is_item_free(i))
+        if (helper.second(i))
         {
-            n += virtual_cast<df::item_actual>(i)->stack_size;
-        }
-    };
-    auto yes_i_mean_all = [](df::item *) -> bool { return true; };
-    auto add_all = [add](df::items_other_id id, std::function<bool(df::item *)> pred)
-    {
-        for (auto it = world->items.other[id].begin(); it != world->items.other[id].end(); it++)
-        {
-            if (pred(*it))
+            if (is_item_free(i))
             {
-                add(*it);
+                n += virtual_cast<df::item_actual>(i)->stack_size;
             }
         }
-    };
+    }
 
-    auto helper = find_item_helper(k);
-    add_all(helper.first, helper.second);
     return n;
 }
 
@@ -3774,6 +3766,10 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
         {
             return i->getSubtype() == manager_subtype.at(stock_item::quire) && i->hasSpecificImprovements(improvement_type::WRITING);
         });
+    }
+    case stock_item::_stock_item_count:
+    {
+        break;
     }
     }
 
