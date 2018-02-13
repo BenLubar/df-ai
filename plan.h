@@ -216,8 +216,8 @@ public:
 
     void categorize_all();
 
-    friend static std::string AI::describe_room(room *r, bool html);
-    friend static std::string AI::describe_furniture(furniture *f, bool html);
+    friend std::string AI::describe_room(room *r, bool html);
+    friend std::string AI::describe_furniture(furniture *f, bool html);
 
     friend df::coord AI::fort_entrance_pos();
     friend room *AI::find_room(room_type::type type);
