@@ -264,7 +264,7 @@ public:
         find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count) : find_item_info(oidx, pred, count, [](df::item *i) -> bool { return is_item_free(i); })
         {
         }
-        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), do_count(count), free(free), init_count(-1)
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1)
         {
         }
 
