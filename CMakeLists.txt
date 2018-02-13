@@ -35,6 +35,12 @@ SET(PROJECT_SRCS
     config.cpp
     hooks.cpp
     population.cpp
+    population_death.cpp
+    population_justice.cpp
+    population_military.cpp
+    population_nobles.cpp
+    population_occupations.cpp
+    population_pets.cpp
     plan.cpp
     plan_legacy.cpp
     plan_priorities.cpp
@@ -57,7 +63,8 @@ SET(PROJECT_SRCS
     camera.cpp
     embark.cpp
     room.cpp
-    trade.cpp
+    trade_helpers.cpp
+    trade_manager.cpp
     event_manager.cpp
     weblegends.cpp
     military.cpp

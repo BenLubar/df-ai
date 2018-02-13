@@ -113,6 +113,8 @@ public:
 
     std::string status();
     void report(std::ostream & out, bool html);
+
+    static int32_t days_since(int32_t year, int32_t tick);
 };
 
 // vim: et:sw=4:ts=4
