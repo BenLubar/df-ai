@@ -824,7 +824,7 @@ template<typename D>
 static bool is_armor_metal(D *def) { return def->props.flags.is_set(armor_general_flags::METAL); }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, std::function<bool(decltype(I::subtype))> pred = &is_armor_metal<std::remove_pointer<decltype(I::subtype)>::type>, uint8_t div = 1)
+static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, std::function<bool(decltype(I::subtype))> pred = &is_armor_metal<typename std::remove_pointer<decltype(I::subtype)>::type>, uint8_t div = 1)
 {
     typedef typename std::remove_pointer<decltype(I::subtype)>::type D;
     std::set<int16_t> idefs;
