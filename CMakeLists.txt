@@ -45,6 +45,15 @@ SET(PROJECT_SRCS
     blueprint_plan.cpp
     blueprint_template.cpp
     stocks.cpp
+    stocks_detect.cpp
+    stocks_equipment.cpp
+    stocks_farm.cpp
+    stocks_find.cpp
+    stocks_forge.cpp
+    stocks_manager.cpp
+    stocks_queue.cpp
+    stocks_trade.cpp
+    stocks_update.cpp
     camera.cpp
     embark.cpp
     room.cpp

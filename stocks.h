@@ -134,6 +134,16 @@ STOCKS_ENUMS
 #undef ENUM_ITEM
 #undef END_ENUM
 
+const struct Watch
+{
+    std::map<stock_item::item, int32_t> Needed;
+    std::map<stock_item::item, int32_t> NeededPerDwarf; // per 100 dwarves, actually
+    std::map<stock_item::item, int32_t> WatchStock;
+    std::set<stock_item::item> AlsoCount;
+
+    Watch();
+} Watch;
+
 class Stocks
 {
     AI *ai;
