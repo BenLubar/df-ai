@@ -3,52 +3,13 @@
 #include "dfhack_shared.h"
 #include "room.h"
 #include "plan_priorities.h"
+#include "variable_string.h"
 
 #include "jsoncpp.h"
 
+#include <functional>
+
 class AI;
-
-struct variable_string
-{
-    struct element_t
-    {
-        std::string text;
-        bool variable;
-
-        explicit element_t(const std::string & text);
-        explicit element_t(const std::string & text, bool variable);
-    };
-
-    struct context_t
-    {
-        std::map<std::string, std::string> variables;
-
-        context_t() = default;
-        context_t(const context_t &) = default;
-        context_t(const context_t &, const std::map<std::string, variable_string> &);
-
-        template<typename K>
-        static inline std::map<K, context_t> map(const context_t & parent, const std::map<K, std::map<std::string, variable_string>> & contexts)
-        {
-            std::map<K, context_t> out;
-            for (auto ctx : contexts)
-            {
-                out[ctx.first] = context_t(parent, ctx.second);
-            }
-            return out;
-        }
-
-    private:
-        friend struct variable_string;
-        std::string operator[](const std::string &) const;
-    };
-
-    std::vector<element_t> contents;
-    variable_string() = default;
-    explicit variable_string(const std::string & text);
-    explicit variable_string(const Json::Value & value);
-    std::string operator()(const context_t &) const;
-};
 
 struct room_blueprint;
 

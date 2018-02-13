@@ -39,6 +39,11 @@ SET(PROJECT_SRCS
     plan_legacy.cpp
     plan_priorities.cpp
     blueprint.cpp
+    blueprint_furniture.cpp
+    blueprint_room.cpp
+    blueprint_merge.cpp
+    blueprint_plan.cpp
+    blueprint_template.cpp
     stocks.cpp
     camera.cpp
     embark.cpp
@@ -49,6 +54,7 @@ SET(PROJECT_SRCS
     military.cpp
     pause.cpp
     log.cpp
+    variable_string.cpp
 )
 
 SET(PROJECT_HDRS
@@ -68,6 +74,7 @@ SET(PROJECT_HDRS
     dfhack_shared.h
     df-ai-git-describe.h
     apply.h
+    variable_string.h
 )
 
 ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)

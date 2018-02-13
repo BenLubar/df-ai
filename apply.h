@@ -194,6 +194,22 @@ static bool apply_optional_vector(std::vector<element_t> & vec, Json::Value & da
     return true;
 }
 
+static inline bool apply_coord(df::coord & var, Json::Value & data, const std::string & name, std::string & error)
+{
+    Json::Value value = data.removeMember(name);
+    if (!value.isArray() || value.size() != 3 || !value[0].isInt() || !value[1].isInt() || !value[2].isInt())
+    {
+        error = name + " has the wrong type (should be an array of three integers)";
+        return false;
+    }
+
+    var.x = int16_t(value[0].asInt());
+    var.y = int16_t(value[1].asInt());
+    var.z = int16_t(value[2].asInt());
+
+    return true;
+}
+
 static inline bool apply_unhandled_properties(Json::Value & data, const std::string & name, std::string & error)
 {
     std::vector<std::string> remaining_members(data.getMemberNames());
