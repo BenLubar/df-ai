@@ -52,8 +52,8 @@ class Plan
     std::map<room_type::type, std::vector<room *>> room_category;
     std::map<int32_t, std::set<room *>> room_by_z;
     std::set<stock_item::item> cache_nofurnish;
-public:
     room *fort_entrance;
+public:
     std::map<int32_t, std::set<df::coord>> map_veins;
 private:
     std::vector<df::workshop_type> important_workshops;
@@ -97,8 +97,6 @@ public:
     void save(std::ostream & out);
     void load(std::istream & in);
 
-    static uint16_t getTileWalkable(df::coord t);
-
     task *is_digging();
     bool is_idle();
 
@@ -131,7 +129,6 @@ public:
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
-    static void dig_tile(df::coord t, df::tile_dig_designation dig = tile_dig_designation::Default);
     bool wantdig(color_ostream & out, room *r, int32_t queue = 0);
     bool digroom(color_ostream & out, room *r);
     bool construct_room(color_ostream & out, room *r);
@@ -167,8 +164,6 @@ public:
     bool is_smooth(df::coord t, bool engrave = false);
 
     bool try_digcistern(color_ostream & out, room *r);
-    void dig_garbagedump(color_ostream & out);
-    bool try_diggarbage(color_ostream & out, room *r);
     bool try_setup_farmplot(color_ostream & out, room *r, std::ostream & reason);
     bool try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
 
@@ -187,20 +182,6 @@ public:
 
     int32_t dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders = 1);
     int32_t do_dig_vein(color_ostream & out, int32_t mat, df::coord b);
-
-    static df::coord spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b);
-    static inline df::coord spiral_search(df::coord t, int16_t max, int16_t min, std::function<bool(df::coord)> b)
-    {
-        return spiral_search(t, max, min, 1, b);
-    }
-    static inline df::coord spiral_search(df::coord t, int16_t max, std::function<bool(df::coord)> b)
-    {
-        return spiral_search(t, max, 0, 1, b);
-    }
-    static inline df::coord spiral_search(df::coord t, std::function<bool(df::coord)> b)
-    {
-        return spiral_search(t, 100, 0, 1, b);
-    }
 
     command_result setup_ready(color_ostream & out);
     command_result setup_blueprint(color_ostream & out);
@@ -235,13 +216,13 @@ public:
 
     void categorize_all();
 
-    std::string describe_room(room *r, bool html = false);
-    std::string describe_furniture(furniture *f, bool html = false);
+    friend static std::string AI::describe_room(room *r, bool html);
+    friend static std::string AI::describe_furniture(furniture *f, bool html);
 
-    room *find_room(room_type::type type);
-    room *find_room(room_type::type type, std::function<bool(room *)> b);
-    room *find_room_at(df::coord t);
-    bool map_tile_intersects_room(df::coord t);
+    friend df::coord AI::fort_entrance_pos();
+    friend room *AI::find_room(room_type::type type);
+    friend room *AI::find_room(room_type::type type, std::function<bool(room *)> b);
+    friend room *AI::find_room_at(df::coord t);
 
     void weblegends_write_svg(std::ostream & out);
     bool find_building(df::building *bld, room * & r, furniture * & f);
@@ -254,7 +235,6 @@ private:
     void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f, df::tiletype tt);
     void add_task(task_type::type type, room *r = nullptr, furniture *f = nullptr);
 
-protected:
     bool corridor_include_hack(const room *r, df::coord t1, df::coord t2);
     friend struct room;
     friend struct plan_priority_t;

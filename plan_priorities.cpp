@@ -623,7 +623,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                     case plan_priority_action::dig:
                         if (do_dig(ai, out, r))
                         {
-                            reason << "want dig: " << ai->plan->describe_room(r);
+                            reason << "want dig: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
                                 return true;
@@ -634,7 +634,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                     case plan_priority_action::dig_immediate:
                         if (do_dig_immediate(ai, out, r))
                         {
-                            reason << "dig room: " << ai->plan->describe_room(r);
+                            reason << "dig room: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
                                 return true;
@@ -645,7 +645,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                     case plan_priority_action::unignore_furniture:
                         if (do_unignore_furniture(ai, out, r))
                         {
-                            reason << "furnishing: " << ai->plan->describe_room(r);
+                            reason << "furnishing: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
                                 return true;
@@ -656,7 +656,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
                     case plan_priority_action::finish:
                         if (do_finish(ai, out, r))
                         {
-                            reason << "finishing: " << ai->plan->describe_room(r);
+                            reason << "finishing: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
                                 return true;

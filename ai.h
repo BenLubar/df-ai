@@ -2,6 +2,7 @@
 
 #include "dfhack_shared.h"
 #include "config.h"
+#include "room.h"
 
 #include <ctime>
 #include <fstream>
@@ -26,6 +27,14 @@ namespace df
     struct report;
     struct unit;
     struct viewscreen;
+}
+
+namespace DFHack
+{
+    namespace Maps
+    {
+        uint16_t getTileWalkable(df::coord t);
+    }
 }
 
 struct OnupdateCallback;
@@ -103,6 +112,35 @@ public:
     void timeout_sameview(std::function<void(color_ostream &)> cb)
     {
         timeout_sameview(5, cb);
+    }
+    void ignore_pause(int32_t x, int32_t y, int32_t z);
+
+    static std::string describe_room(room *r, bool html = false);
+    static std::string describe_furniture(furniture *f, bool html = false);
+
+    static void dig_tile(df::coord t, df::tile_dig_designation dig = tile_dig_designation::Default);
+
+    df::coord fort_entrance_pos();
+    room *find_room(room_type::type type);
+    room *find_room(room_type::type type, std::function<bool(room *)> b);
+    room *find_room_at(df::coord t);
+    inline bool map_tile_intersects_room(df::coord t)
+    {
+        return find_room_at(t) != nullptr;
+    }
+
+    static df::coord spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b);
+    static inline df::coord spiral_search(df::coord t, int16_t max, int16_t min, std::function<bool(df::coord)> b)
+    {
+        return spiral_search(t, max, min, 1, b);
+    }
+    static inline df::coord spiral_search(df::coord t, int16_t max, std::function<bool(df::coord)> b)
+    {
+        return spiral_search(t, max, 0, 1, b);
+    }
+    static inline df::coord spiral_search(df::coord t, std::function<bool(df::coord)> b)
+    {
+        return spiral_search(t, 100, 0, 1, b);
     }
 
     command_result onupdate_register(color_ostream & out);

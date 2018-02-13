@@ -1,7 +1,6 @@
 #include "ai.h"
-#include "camera.h"
-#include "plan.h"
 #include "population.h"
+#include "stocks.h"
 #include "trade.h"
 
 #include "modules/Gui.h"
@@ -135,7 +134,7 @@ void Population::update_trading(color_ostream & out)
 
         if (!broker->job.current_job || broker->job.current_job->job_type != job_type::TradeAtDepot)
         {
-            ai->debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_unit(broker) + "(currently: " + AI::describe_job(broker) + ") " + ai->plan->describe_room(ai->plan->find_room_at(Units::getPosition(broker))));
+            ai->debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_unit(broker) + "(currently: " + AI::describe_job(broker) + ") " + AI::describe_room(ai->find_room_at(Units::getPosition(broker))));
             if (caravan->time_remaining < 1000 && set_up_trading(out, true, true))
             {
                 ai->debug(out, "[trade] Broker took too long. Allowing any dwarf to trade this season.");
@@ -144,10 +143,10 @@ void Population::update_trading(color_ostream & out)
         }
     }
 
-    room *depot = ai->plan->find_room(room_type::tradedepot, [broker](room *r) -> bool { return r->include(Units::getPosition(broker)); });
+    room *depot = ai->find_room(room_type::tradedepot, [broker](room *r) -> bool { return r->include(Units::getPosition(broker)); });
     if (!depot)
     {
-        ai->debug(out, "[trade] Broker en route to depot: " + AI::describe_unit(broker) + " (Currently at " + ai->plan->describe_room(ai->plan->find_room_at(Units::getPosition(broker))) + ")");
+        ai->debug(out, "[trade] Broker en route to depot: " + AI::describe_unit(broker) + " (Currently at " + AI::describe_room(ai->find_room_at(Units::getPosition(broker))) + ")");
         return;
     }
 
@@ -186,7 +185,7 @@ void Population::update_trading(color_ostream & out)
 
 bool Population::set_up_trading(color_ostream & out, bool should_be_trading, bool allow_any_dwarf)
 {
-    room *r = ai->plan->find_room(room_type::tradedepot);
+    room *r = ai->find_room(room_type::tradedepot);
     if (!r)
     {
         return false;
@@ -256,7 +255,7 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
     }
     AI::feed_key(interface_key::LEAVESCREEN);
 
-    ai->camera->ignore_pause(start_x, start_y, start_z);
+    ai->ignore_pause(start_x, start_y, start_z);
 
     return true;
 }
@@ -290,7 +289,7 @@ class PerformTradeExclusive : public ExclusiveCallback
 
 bool Population::perform_trade(color_ostream & out)
 {
-    room *r = ai->plan->find_room(room_type::tradedepot);
+    room *r = ai->find_room(room_type::tradedepot);
     if (!r)
     {
         return false;
@@ -344,7 +343,7 @@ bool Population::perform_trade(color_ostream & out)
         AI::feed_key(interface_key::LEAVESCREEN);
     }
 
-    ai->camera->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
+    ai->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
 
     return false;
 }
@@ -725,7 +724,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
         AI::feed_key(trade, interface_key::LEAVESCREEN);
         AI::feed_key(interface_key::LEAVESCREEN);
 
-        ai->camera->ignore_pause(ai->pop->trade_start_x, ai->pop->trade_start_y, ai->pop->trade_start_z);
+        ai->ignore_pause(ai->pop->trade_start_x, ai->pop->trade_start_y, ai->pop->trade_start_z);
         ai->pop->did_trade = true;
 
         if (ai->pop->set_up_trading(out, false))

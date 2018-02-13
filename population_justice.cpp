@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "population.h"
-#include "plan.h"
 
 #include "modules/Gui.h"
 #include "modules/Units.h"
@@ -76,8 +75,8 @@ void Population::update_caged(color_ostream & out)
 
                     if (!waiting_items)
                     {
-                        room *r = ai->plan->find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
-                        if (r && ai->plan->spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
+                        room *r = ai->find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
+                        if (r && AI::spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
                         {
                             assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
                             ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");

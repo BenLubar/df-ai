@@ -3,7 +3,6 @@
 
 #include "ai.h"
 #include "trade.h"
-#include "plan.h"
 
 #include "modules/Items.h"
 #include "modules/Job.h"
@@ -59,7 +58,7 @@ Trade::~Trade()
 
 bool Trade::can_trade()
 {
-    auto room = ai->plan->find_room(room_type::tradedepot);
+    auto room = ai->find_room(room_type::tradedepot);
     auto bld = room ? room->dfbuilding() : nullptr;
 
     for (auto & caravan : ui->caravans)

@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "population.h"
-#include "plan.h"
 
 #include "modules/Gui.h"
 #include "modules/Units.h"
@@ -58,7 +57,7 @@ void Population::update_locations(color_ostream & out)
     INIT_NEED(temple_performer);
 #undef INIT_NEED
 
-    if (room *tavern = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern && r->dfbuilding(); }))
+    if (room *tavern = ai->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern && r->dfbuilding(); }))
     {
         df::building *bld = tavern->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_inn_tavernst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
@@ -88,7 +87,7 @@ void Population::update_locations(color_ostream & out)
         }
     }
 
-    if (room *library = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::library && r->dfbuilding(); }))
+    if (room *library = ai->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::library && r->dfbuilding(); }))
     {
         df::building *bld = library->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_libraryst>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))
@@ -118,7 +117,7 @@ void Population::update_locations(color_ostream & out)
         }
     }
 
-    if (room *temple = ai->plan->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::temple && r->dfbuilding(); }))
+    if (room *temple = ai->find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::temple && r->dfbuilding(); }))
     {
         df::building *bld = temple->dfbuilding();
         if (auto loc = virtual_cast<df::abstract_building_templest>(binsearch_in_vector(df::world_site::find(bld->site_id)->buildings, bld->location_id)))

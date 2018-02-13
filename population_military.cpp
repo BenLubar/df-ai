@@ -92,7 +92,7 @@ void Population::update_military(color_ostream & out)
     }
 
     // Check barracks construction status.
-    ai->plan->find_room(room_type::barracks, [](room *r) -> bool
+    ai->find_room(room_type::barracks, [](room *r) -> bool
     {
         if (r->status < room_status::dug)
         {
@@ -326,7 +326,7 @@ int32_t Population::military_find_free_squad()
     }
 
     size_t barracks_count = 0;
-    ai->plan->find_room(room_type::barracks, [&barracks_count](room *) -> bool
+    ai->find_room(room_type::barracks, [&barracks_count](room *) -> bool
     {
         barracks_count++;
         return false;

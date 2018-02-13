@@ -286,7 +286,7 @@ void Camera::update(color_ostream &)
     world->status.flags.bits.sparring = 0;
 }
 
-void Camera::ignore_pause(int32_t x, int32_t y, int32_t z)
+void AI::ignore_pause(int32_t x, int32_t y, int32_t z)
 {
     if (!config.camera)
     {
@@ -294,10 +294,10 @@ void Camera::ignore_pause(int32_t x, int32_t y, int32_t z)
         return;
     }
 
-    if (df::unit *u = df::unit::find(following))
+    if (df::unit *u = df::unit::find(camera->following))
     {
         Gui::revealInDwarfmodeMap(Units::getPosition(u), true);
-        ui->follow_unit = following;
+        ui->follow_unit = camera->following;
     }
 }
 

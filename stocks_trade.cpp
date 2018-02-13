@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "stocks.h"
-#include "plan.h"
 
 #include "df/general_ref.h"
 #include "df/item_foodst.h"
@@ -62,7 +61,10 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::ANVIL && count[stock_item::anvil] == 0 && ai->plan->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding(); }))
+    if (item->getType() == item_type::ANVIL && count[stock_item::anvil] == 0 && ai->find_room(room_type::workshop, [](room *r) -> bool
+    {
+        return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding();
+    }))
     {
         return true;
     }

@@ -73,13 +73,13 @@ void Population::update_deads(color_ostream & out)
     if (want_coffin > 0)
     {
         // dont dig too early
-        if (!ai->plan->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }))
+        if (!ai->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }))
         {
             want_coffin = 0;
         }
 
         // count actually allocated (plan wise) coffin buildings
-        ai->plan->find_room(room_type::cemetery, [&want_coffin](room *r) -> bool
+        ai->find_room(room_type::cemetery, [&want_coffin](room *r) -> bool
         {
             for (auto f : r->layout)
             {

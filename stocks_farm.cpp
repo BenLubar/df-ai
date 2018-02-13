@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "stocks.h"
-#include "plan.h"
 
 #include "modules/Maps.h"
 
@@ -16,7 +15,7 @@ REQUIRE_GLOBAL(world);
 void Stocks::count_seeds(color_ostream &)
 {
     farmplots.clear();
-    ai->plan->find_room(room_type::farmplot, [this](room *r) -> bool
+    ai->find_room(room_type::farmplot, [this](room *r) -> bool
     {
         df::building_farmplotst *bld = virtual_cast<df::building_farmplotst>(r->dfbuilding());
         if (!bld)
@@ -227,7 +226,7 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
 
         if (Maps::getTileDesignation(*tree)->bits.dig == tile_dig_designation::No && !jobs.count(*tree))
         {
-            Plan::dig_tile(*tree, tile_dig_designation::Default);
+            AI::dig_tile(*tree, tile_dig_designation::Default);
         }
 
         amount--;
@@ -245,11 +244,11 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
 // expensive method, dont call often
 std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list()
 {
-    uint16_t walkable = Plan::getTileWalkable(ai->plan->fort_entrance->max);
+    uint16_t walkable = Maps::getTileWalkable(ai->fort_entrance_pos());
 
     auto is_walkable = [walkable](df::coord t) -> bool
     {
-        return walkable == Plan::getTileWalkable(t);
+        return walkable == Maps::getTileWalkable(t);
     };
 
     auto add_from_vector = [this, is_walkable](std::vector<df::plant *> & trees)
@@ -261,12 +260,12 @@ std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list
             if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::TREE &&
                 ENUM_ATTR(tiletype, shape, tt) == tiletype_shape::WALL &&
                 !Maps::getTileDesignation(p->pos)->bits.hidden &&
-                !Plan::spiral_search(p->pos, 1, [](df::coord t) -> bool
+                !AI::spiral_search(p->pos, 1, [](df::coord t) -> bool
             {
                 df::tile_designation *td = Maps::getTileDesignation(t);
                 return td && td->bits.flow_size > 0;
             }).isValid() &&
-                Plan::spiral_search(p->pos, 1, is_walkable).isValid())
+                AI::spiral_search(p->pos, 1, is_walkable).isValid())
             {
                 last_treelist.insert(p->pos);
             }

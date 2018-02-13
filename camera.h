@@ -12,6 +12,7 @@ class Camera
 
     int32_t following;
     std::vector<int32_t> following_prev;
+    friend void AI::ignore_pause(int32_t, int32_t, int32_t);
 
 public:
     Camera(AI *ai);
@@ -23,7 +24,6 @@ public:
 
     void check_record_status();
     void update(color_ostream & out);
-    void ignore_pause(int32_t x, int32_t y, int32_t z);
     std::string status();
 
     bool movie_started_in_lockstep;

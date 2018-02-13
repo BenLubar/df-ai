@@ -295,7 +295,7 @@ void Population::report(std::ostream & out, bool html)
         int32_t age = days_since(u->birth_year, u->birth_time);
         out << " (age " << (age / 12 / 28) << "y" << ((age / 28) % 12) << "m" << (age % 28) << "d)";
 
-        if (room *r = ai->plan->find_room_at(Units::getPosition(u)))
+        if (room *r = ai->find_room_at(Units::getPosition(u)))
         {
             if (html)
             {
@@ -305,7 +305,7 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << "\n  ";
             }
-            out << ai->plan->describe_room(r, html);
+            out << AI::describe_room(r, html);
         }
 
         std::string job = AI::describe_job(u);
@@ -770,10 +770,10 @@ void Population::report(std::ostream & out, bool html)
                 {
                     if (f)
                     {
-                        out << ai->plan->describe_furniture(f, html);
+                        out << AI::describe_furniture(f, html);
                         out << " in ";
                     }
-                    out << ai->plan->describe_room(r, html);
+                    out << AI::describe_room(r, html);
                 }
                 else
                 {

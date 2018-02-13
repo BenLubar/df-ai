@@ -119,7 +119,7 @@ command_result Plan::setup_ready(color_ostream & out)
 {
     auto dig_starting_room = [this, &out](room_type::type rt, std::function<bool(room *)> f, bool want = false)
     {
-        find_room(rt, [this, &out, f, want](room *r) -> bool
+        ai->find_room(rt, [this, &out, f, want](room *r) -> bool
         {
             if (f(r))
             {
@@ -208,7 +208,7 @@ command_result Plan::scan_fort_entrance(color_ostream & out)
     int16_t cy = world->map.y_count / 2;
     df::coord center = surface_tile_at(cx, cy, true);
 
-    df::coord ent0 = spiral_search(center, [this](df::coord t0) -> bool
+    df::coord ent0 = AI::spiral_search(center, [this](df::coord t0) -> bool
     {
         // test the whole map for 3x5 clear spots
         df::coord t = surface_tile_at(t0.x, t0.y);
@@ -769,7 +769,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
         }
     }
 
-    df::coord depot_center = spiral_search(df::coord(f.x - 4, f.y, fort_entrance->max.z - 1), [this](df::coord t) -> bool
+    df::coord depot_center = AI::spiral_search(df::coord(f.x - 4, f.y, fort_entrance->max.z - 1), [this](df::coord t) -> bool
     {
         for (int16_t dx = -2; dx <= 2; dx++)
         {
@@ -778,7 +778,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 df::coord tt = t + df::coord(dx, dy, 0);
                 if (!map_tile_in_rock(tt))
                     return false;
-                if (map_tile_intersects_room(tt))
+                if (ai->map_tile_intersects_room(tt))
                     return false;
             }
         }
@@ -790,9 +790,9 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             df::coord ttt = tt + df::coord(0, 0, 1);
             if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt))) != tiletype_shape_basic::Floor)
                 return false;
-            if (map_tile_intersects_room(tt))
+            if (ai->map_tile_intersects_room(tt))
                 return false;
-            if (map_tile_intersects_room(ttt))
+            if (ai->map_tile_intersects_room(ttt))
                 return false;
             df::tile_occupancy *occ = Maps::getTileOccupancy(ttt);
             if (occ && occ->bits.building != tile_building_occ::None)
@@ -919,7 +919,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
 
 command_result Plan::setup_blueprint_pitcage(color_ostream &)
 {
-    room *gdump = find_room(room_type::garbagedump);
+    room *gdump = ai->find_room(room_type::garbagedump);
     if (!gdump)
         return CR_OK;
     auto layout = [](room *r)
@@ -1118,7 +1118,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // farm plots
     int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
     int16_t cy = f.y;
-    int16_t cz = find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Farmers; })->min.z;
+    int16_t cz = ai->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Farmers; })->min.z;
     room *ws_cor = new room(corridor_type::corridor, df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz), "farm access corridor"); // ws_corr->accesspath ...
     rooms_and_corridors.push_back(ws_cor);
     room *farm_stairs = new room(corridor_type::corridor, df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz), "farm stairs");
@@ -1219,7 +1219,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // TODO ensure flat space, no pools/tree, ...
     df::coord tile(cx + 5, cy, cz);
     room *garbagedump = r = new room(room_type::garbagedump, tile, tile);
-    tile = spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
+    tile = AI::spiral_search(tile, [this, f, cx, cz](df::coord t) -> bool
     {
         t = surface_tile_at(t.x, t.y);
         if (!t.isValid())
@@ -1230,7 +1230,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
             return false;
         if (!map_tile_in_rock(t + df::coord(2, 0, -1)))
             return false;
-        return !spiral_search(t + df::coord(1, 0, 0), 5, [](df::coord tt) -> bool
+        return !AI::spiral_search(t + df::coord(1, 0, 0), 5, [](df::coord tt) -> bool
         {
             return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(tt))) != tiletype_shape_basic::Floor;
         }).isValid();
@@ -1425,7 +1425,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
                 break;
             src = nsrc;
             int16_t dist = distance(src, dst);
-            nsrc = spiral_search(src, 1, 1, [distance, dist, dst](df::coord t) -> bool
+            nsrc = AI::spiral_search(src, 1, 1, [distance, dist, dst](df::coord t) -> bool
             {
                 if (distance(t, dst) > dist)
                     return false;
@@ -1471,24 +1471,24 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     // find safe tile near the river and a tile to channel
     df::coord channel;
     channel.clear();
-    df::coord output = spiral_search(src, [this, &channel](df::coord t) -> bool
+    df::coord output = AI::spiral_search(src, [this, &channel](df::coord t) -> bool
     {
         if (!map_tile_in_rock(t))
         {
             return false;
         }
-        channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+        channel = AI::spiral_search(t, 1, 1, [](df::coord t) -> bool
         {
-            return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+            return AI::spiral_search(t, 1, 1, [](df::coord t) -> bool
             {
                 return Maps::getTileDesignation(t)->bits.feature_local;
             }).isValid();
         });
         if (!channel.isValid())
         {
-            channel = Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+            channel = AI::spiral_search(t, 1, 1, [](df::coord t) -> bool
             {
-                return Plan::spiral_search(t, 1, 1, [](df::coord t) -> bool
+                return AI::spiral_search(t, 1, 1, [](df::coord t) -> bool
                 {
                     return Maps::getTileDesignation(t)->bits.flow_size != 0 ||
                         ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::FROZEN_LIQUID;
@@ -1532,7 +1532,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 command_result Plan::setup_blueprint_pastures(color_ostream & out)
 {
     size_t want = 36;
-    spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 10, 5, [this, &out, &want](df::coord _t) -> bool
+    AI::spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 10, 5, [this, &out, &want](df::coord _t) -> bool
     {
         df::coord sf = surface_tile_at(_t.x, _t.y);
         if (!sf.isValid())
@@ -1584,7 +1584,7 @@ command_result Plan::setup_blueprint_pastures(color_ostream & out)
 // scan for 3x3 flat areas with soil
 command_result Plan::setup_blueprint_outdoor_farms(color_ostream & out, size_t want)
 {
-    spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 9, 3, [this, &out, &want](df::coord _t) -> bool
+    AI::spiral_search(fort_entrance->pos(), std::max(world->map.x_count, world->map.y_count), 9, 3, [this, &out, &want](df::coord _t) -> bool
     {
         df::coord sf = surface_tile_at(_t.x, _t.y, true);
         if (!sf.isValid())
@@ -1849,7 +1849,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     room *r = nullptr;
 #define FIND_ROOM(cond, type, lambda) \
     if (r == nullptr && (cond)) \
-        r = find_room(type, lambda)
+        r = ai->find_room(type, lambda)
 
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
@@ -1872,7 +1872,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     FIND_ROOM(true, room_type::tradedepot, ifplan);
     FIND_ROOM(true, room_type::cistern, ifplan);
     FIND_ROOM(true, room_type::infirmary, ifplan);
-    FIND_ROOM(!find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetery, ifplan);
+    FIND_ROOM(!ai->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetery, ifplan);
     FIND_ROOM(!important_workshops2.empty(), room_type::furnace, [this](room *r) -> bool
     {
         if (r->furnace_type == important_workshops2.back() &&
@@ -2014,8 +2014,8 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
             return f->has_users && f->users.empty();
         }) != r->layout.end();
     };
-    FIND_ROOM(!find_room(room_type::dininghall, nousers_noplan), room_type::dininghall, nousers_plan);
-    FIND_ROOM(!find_room(room_type::barracks, nousers_noplan), room_type::barracks, nousers_plan);
+    FIND_ROOM(!ai->find_room(room_type::dininghall, nousers_noplan), room_type::dininghall, nousers_plan);
+    FIND_ROOM(!ai->find_room(room_type::barracks, nousers_noplan), room_type::barracks, nousers_plan);
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
@@ -2044,11 +2044,11 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
                 }
                 return false;
             };
-            find_room(room_type::dininghall, unignore_all_furniture);
-            find_room(room_type::barracks, unignore_all_furniture);
-            find_room(room_type::nobleroom, unignore_all_furniture);
-            find_room(room_type::bedroom, unignore_all_furniture);
-            find_room(room_type::cemetery, unignore_all_furniture);
+            ai->find_room(room_type::dininghall, unignore_all_furniture);
+            ai->find_room(room_type::barracks, unignore_all_furniture);
+            ai->find_room(room_type::nobleroom, unignore_all_furniture);
+            ai->find_room(room_type::bedroom, unignore_all_furniture);
+            ai->find_room(room_type::cemetery, unignore_all_furniture);
         }
 
         bool any_outpost = false;
@@ -2081,8 +2081,8 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
 
     if (r)
     {
-        ai->debug(out, "checkidle " + describe_room(r));
-        reason << "queued room: " << describe_room(r);
+        ai->debug(out, "checkidle " + AI::describe_room(r));
+        reason << "queued room: " << AI::describe_room(r);
         wantdig(out, r);
         if (r->status == room_status::finished)
         {

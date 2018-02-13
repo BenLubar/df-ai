@@ -98,7 +98,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                 if (r->min.z <= level->first && r->max.z >= level->first)
                 {
                     // "<a xlink:href=\"df-ai/plan/room-" << r->id << "\">"
-                    out << "<g><title>" << html_escape(describe_room(r)) << "</title><path fill-rule=\"evenodd\" d=\"M" << r->min.x << " " << r->min.y << "h" << (r->max.x - r->min.x + 1) << "v" << (r->max.y - r->min.y + 1) << "h" << (r->min.x - r->max.x - 1) << "v" << (r->min.y - r->max.y - 1);
+                    out << "<g><title>" << html_escape(AI::describe_room(r)) << "</title><path fill-rule=\"evenodd\" d=\"M" << r->min.x << " " << r->min.y << "h" << (r->max.x - r->min.x + 1) << "v" << (r->max.y - r->min.y + 1) << "h" << (r->min.x - r->max.x - 1) << "v" << (r->min.y - r->max.y - 1);
                     std::set<df::coord> holes;
                     for (auto f : r->layout)
                     {
@@ -152,7 +152,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     {
                         continue;
                     }
-                    out << "<g><title>" << html_escape(describe_furniture(f)) << "</title><rect x=\"" << (r->min.x + f->pos.x) << ".1\" y=\"" << (r->min.y + f->pos.y) << ".1\" width=\"0.8\" height=\"0.8\" fill=\"";
+                    out << "<g><title>" << html_escape(AI::describe_furniture(f)) << "</title><rect x=\"" << (r->min.x + f->pos.x) << ".1\" y=\"" << (r->min.y + f->pos.y) << ".1\" width=\"0.8\" height=\"0.8\" fill=\"";
                     if (f->bld_id != -1)
                     {
                         out << "#963";

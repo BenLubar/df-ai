@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "stocks.h"
-#include "plan.h"
 #include "population.h"
 
 #include "modules/Materials.h"
@@ -178,7 +177,7 @@ Stocks::Stocks(AI *ai) :
     manager_subtype(),
     last_treelist([ai](df::coord a, df::coord b) -> bool
     {
-        df::coord fe = ai->plan->fort_entrance->pos();
+        df::coord fe = ai->fort_entrance_pos();
         int16_t ascore = (a.x - fe.x) * (a.x - fe.x) + (a.y - fe.y) * (a.y - fe.y) + (a.z - fe.z) * (a.z - fe.z) * 16;
         int16_t bscore = (b.x - fe.x) * (b.x - fe.x) + (b.y - fe.y) * (b.y - fe.y) + (b.z - fe.z) * (b.z - fe.z) * 16;
         if (ascore < bscore)

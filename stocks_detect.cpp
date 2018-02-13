@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "stocks.h"
-#include "plan.h"
 
 #include "modules/Items.h"
 #include "modules/Maps.h"
@@ -93,11 +92,9 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
 
     extern AI *dwarfAI; // XXX
 
-                        // If no dwarf can walk to it from the fort entrance, it's probably up in
-                        // a tree or down in the caverns.
-    if (dwarfAI->plan->fort_entrance &&
-        Plan::getTileWalkable(dwarfAI->plan->fort_entrance->max) !=
-        Plan::getTileWalkable(pos))
+    // If no dwarf can walk to it from the fort entrance, it's probably up in
+    // a tree or down in the caverns.
+    if (Maps::getTileWalkable(dwarfAI->fort_entrance_pos()) != Maps::getTileWalkable(pos))
     {
         return false;
     }

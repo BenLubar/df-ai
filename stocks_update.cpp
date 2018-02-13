@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "stocks.h"
-#include "plan.h"
 #include "population.h"
 
 #include "modules/Buildings.h"
@@ -90,7 +89,7 @@ void Stocks::update(color_ostream & out)
     updating_ingots = true;
     updating_farmplots.clear();
 
-    ai->plan->find_room(room_type::farmplot, [this](room *r) -> bool
+    ai->find_room(room_type::farmplot, [this](room *r) -> bool
     {
         if (r->dfbuilding())
         {
@@ -256,7 +255,7 @@ void Stocks::update_ingots(color_ostream &)
 
 void Stocks::update_corpses(color_ostream & out)
 {
-    room *r = ai->plan->find_room(room_type::garbagedump);
+    room *r = ai->find_room(room_type::garbagedump);
     if (!r)
     {
         updating_corpses = false;
@@ -309,7 +308,7 @@ void Stocks::update_slabs(color_ostream & out)
             df::coord pos;
             pos.clear();
 
-            ai->plan->find_room(room_type::cemetery, [&pos](room *r) -> bool
+            ai->find_room(room_type::cemetery, [&pos](room *r) -> bool
             {
                 if (r->status == room_status::plan)
                     return false;

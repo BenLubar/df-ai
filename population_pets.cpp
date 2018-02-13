@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "population.h"
-#include "camera.h"
 #include "plan.h"
 
 #include "modules/Buildings.h"
@@ -260,5 +259,5 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
     }
     AI::feed_key(interface_key::LEAVESCREEN);
     AI::feed_key(interface_key::LEAVESCREEN);
-    ai->camera->ignore_pause(start_x, start_y, start_z);
+    ai->ignore_pause(start_x, start_y, start_z);
 }
