@@ -253,12 +253,40 @@ public:
     int32_t count_manager_orders(color_ostream & out, const df::manager_order_template & tmpl);
     void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount = 1);
 
+    struct find_item_info
+    {
+        find_item_info(df::items_other_id oidx) : find_item_info(oidx, [](df::item *) -> bool { return true; })
+        {
+        }
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred) : find_item_info(oidx, pred, &default_count)
+        {
+        }
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count) : find_item_info(oidx, pred, count, [](df::item *i) -> bool { return is_item_free(i); })
+        {
+        }
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), do_count(count), free(free), init_count(-1)
+        {
+        }
+
+        const df::items_other_id oidx;
+        const std::function<bool(df::item *)> pred;
+        int32_t count(df::item *i)
+        {
+            return do_count(init_count, i);
+        }
+        const std::function<bool(df::item *)> free;
+
+        static int32_t default_count(int32_t &, df::item *);
+    private:
+        const std::function<int32_t(int32_t &, df::item *)> do_count;
+        int32_t init_count;
+    };
     df::item *find_free_item(stock_item::item k);
-    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper(stock_item::item k);
-    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_weapon(df::job_skill skill = job_skill::NONE, bool training = false);
-    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_armor(df::items_other_id oidx);
-    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_clothes(df::items_other_id oidx);
-    std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_tool(stock_item::item k);
+    find_item_info find_item_helper(stock_item::item k);
+    find_item_info find_item_helper_weapon(df::job_skill skill = job_skill::NONE, bool training = false);
+    find_item_info find_item_helper_armor(df::items_other_id oidx);
+    find_item_info find_item_helper_clothes(df::items_other_id oidx);
+    find_item_info find_item_helper_tool(stock_item::item k);
 
     void farmplot(color_ostream & out, room *r, bool initial = true);
     void queue_slab(color_ostream & out, int32_t histfig_id);

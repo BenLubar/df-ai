@@ -396,14 +396,11 @@ int32_t Stocks::count_stocks(color_ostream &, stock_item::item k)
     auto helper = find_item_helper(k);
 
     int32_t n = 0;
-    for (auto i : world->items.other[helper.first])
+    for (auto i : world->items.other[helper.oidx])
     {
-        if (helper.second(i))
+        if (helper.pred(i))
         {
-            if (is_item_free(i))
-            {
-                n += virtual_cast<df::item_actual>(i)->stack_size;
-            }
+            n += helper.count(i);
         }
     }
 

@@ -5,6 +5,8 @@
 #include "modules/Materials.h"
 
 #include "df/building_trapst.h"
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
 #include "df/entity_raw.h"
 #include "df/general_ref_building_holderst.h"
 #include "df/general_ref_contains_itemst.h"
@@ -49,13 +51,18 @@
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
+int32_t Stocks::find_item_info::default_count(int32_t &, df::item *i)
+{
+    return is_item_free(i) ? virtual_cast<df::item_actual>(i)->stack_size : 0;
+}
+
 df::item *Stocks::find_free_item(stock_item::item k)
 {
     auto helper = find_item_helper(k);
 
-    for (auto item : world->items.other[helper.first])
+    for (auto item : world->items.other[helper.oidx])
     {
-        if (helper.second(item) && is_item_free(item))
+        if (helper.pred(item) && helper.free(item))
         {
             return item;
         }
@@ -64,15 +71,18 @@ df::item *Stocks::find_free_item(stock_item::item k)
     return nullptr;
 }
 
-std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item_helper(stock_item::item k)
+static int32_t count_stacks(int32_t &, df::item *i)
 {
-    static std::function<bool(df::item *)> yes_i_mean_all = [](df::item *) -> bool { return true; };
+    return Stocks::is_item_free(i) ? 1 : 0;
+}
 
+Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
+{
     switch (k)
     {
     case stock_item::anvil:
     {
-        return std::make_pair(items_other_id::ANVIL, yes_i_mean_all);
+        return find_item_info(items_other_id::ANVIL);
     }
     case stock_item::armor_feet:
     {
@@ -96,7 +106,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::armor_stand:
     {
-        return std::make_pair(items_other_id::ARMORSTAND, yes_i_mean_all);
+        return find_item_info(items_other_id::ARMORSTAND);
     }
     case stock_item::armor_torso:
     {
@@ -104,7 +114,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::ash:
     {
-        return std::make_pair(items_other_id::BAR, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "ASH";
@@ -116,11 +126,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::backpack:
     {
-        return std::make_pair(items_other_id::BACKPACK, yes_i_mean_all);
+        return find_item_info(items_other_id::BACKPACK);
     }
     case stock_item::bag:
     {
-        return std::make_pair(items_other_id::BOX, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BOX, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.isAnyCloth() || mat.material->flags.is_set(material_flags::LEATHER);
@@ -128,36 +138,36 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::bag_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return bag_plants.count(i->getMaterialIndex()) && bag_plants.at(i->getMaterialIndex()) == i->getMaterial();
         });
     }
     case stock_item::barrel:
     {
-        return std::make_pair(items_other_id::BARREL, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BARREL, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_barrelst>(i)->stockpile.id == -1;
         });
     }
     case stock_item::bed:
     {
-        return std::make_pair(items_other_id::BED, yes_i_mean_all);
+        return find_item_info(items_other_id::BED);
     }
     case stock_item::bin:
     {
-        return std::make_pair(items_other_id::BIN, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BIN, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_binst>(i)->stockpile.id == -1;
         });
     }
     case stock_item::block:
     {
-        return std::make_pair(items_other_id::BLOCKS, yes_i_mean_all);
+        return find_item_info(items_other_id::BLOCKS);
     }
     case stock_item::bone:
     {
-        return std::make_pair(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
+        return find_item_info(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
         {
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             return i->corpse_flags.bits.bone && !i->corpse_flags.bits.unbutchered;
@@ -165,7 +175,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::bone_bolts:
     {
-        return std::make_pair(items_other_id::AMMO, [](df::item *i) -> bool
+        return find_item_info(items_other_id::AMMO, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_ammost>(i)->skill_used == job_skill::BONECARVE;
         });
@@ -180,15 +190,15 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::bucket:
     {
-        return std::make_pair(items_other_id::BUCKET, yes_i_mean_all);
+        return find_item_info(items_other_id::BUCKET);
     }
     case stock_item::cabinet:
     {
-        return std::make_pair(items_other_id::CABINET, yes_i_mean_all);
+        return find_item_info(items_other_id::CABINET);
     }
     case stock_item::cage:
     {
-        return std::make_pair(items_other_id::CAGE, [](df::item *i) -> bool
+        return find_item_info(items_other_id::CAGE, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             if (!mat.material || mat.material->flags.is_set(material_flags::IS_METAL))
@@ -211,7 +221,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::cage_metal:
     {
-        return std::make_pair(items_other_id::CAGE, [](df::item *i) -> bool
+        return find_item_info(items_other_id::CAGE, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             if (!mat.material || !mat.material->flags.is_set(material_flags::IS_METAL))
@@ -234,29 +244,29 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::chair:
     {
-        return std::make_pair(items_other_id::CHAIR, yes_i_mean_all);
+        return find_item_info(items_other_id::CHAIR);
     }
     case stock_item::chest:
     {
-        return std::make_pair(items_other_id::BOX, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BOX, [](df::item *i) -> bool
         {
             return i->getMaterial() == 0;
         });
     }
     case stock_item::clay:
     {
-        return std::make_pair(items_other_id::BOULDER, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return clay_stones.count(i->getMaterialIndex());
         });
     }
     case stock_item::cloth:
     {
-        return std::make_pair(items_other_id::CLOTH, yes_i_mean_all);
+        return find_item_info(items_other_id::CLOTH);
     }
     case stock_item::cloth_nodye:
     {
-        return std::make_pair(items_other_id::CLOTH, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::CLOTH, [this](df::item *i) -> bool
         {
             df::item_clothst *c = virtual_cast<df::item_clothst>(i);
             for (auto imp : c->improvements)
@@ -291,7 +301,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::coal:
     {
-        return std::make_pair(items_other_id::BAR, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "COAL";
@@ -299,70 +309,69 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::coffin:
     {
-        return std::make_pair(items_other_id::COFFIN, yes_i_mean_all);
+        return find_item_info(items_other_id::COFFIN);
     }
     case stock_item::crossbow:
     {
-        return std::make_pair(items_other_id::WEAPON, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::WEAPON, [this](df::item *i) -> bool
         {
             return virtual_cast<df::item_weaponst>(i)->subtype->subtype == manager_subtype.at(stock_item::crossbow);
         });
     }
     case stock_item::crutch:
     {
-        return std::make_pair(items_other_id::CRUTCH, yes_i_mean_all);
+        return find_item_info(items_other_id::CRUTCH);
     }
     case stock_item::door:
     {
-        return std::make_pair(items_other_id::DOOR, yes_i_mean_all);
+        return find_item_info(items_other_id::DOOR);
     }
     case stock_item::drink:
     {
-        return std::make_pair(items_other_id::DRINK, yes_i_mean_all);
+        return find_item_info(items_other_id::DRINK);
     }
     case stock_item::drink_fruit:
     {
-        return std::make_pair(items_other_id::PLANT_GROWTH, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT_GROWTH, [this](df::item *i) -> bool
         {
             return drink_fruits.count(i->getMaterialIndex()) && drink_fruits.at(i->getMaterialIndex()) == i->getMaterial();
-        });
+        }, &count_stacks);
     }
     case stock_item::drink_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return drink_plants.count(i->getMaterialIndex()) && drink_plants.at(i->getMaterialIndex()) == i->getMaterial();
-        });
+        }, &count_stacks);
     }
     case stock_item::dye:
     {
-        return std::make_pair(items_other_id::POWDER_MISC, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::POWDER_MISC, [this](df::item *i) -> bool
         {
             return dye_plants.count(i->getMaterialIndex()) && dye_plants.at(i->getMaterialIndex()) == i->getMaterial();
         });
     }
     case stock_item::dye_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return mill_plants.count(i->getMaterialIndex()) && mill_plants.at(i->getMaterialIndex()) == i->getMaterial() && dye_plants.count(i->getMaterialIndex());
-        });
-        break;
+        }, &count_stacks);
     }
     case stock_item::dye_seeds:
     {
-        return std::make_pair(items_other_id::SEEDS, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::SEEDS, [this](df::item *i) -> bool
         {
             return dye_plants.count(i->getMaterialIndex()) && grow_plants.count(i->getMaterialIndex());
         });
     }
     case stock_item::flask:
     {
-        return std::make_pair(items_other_id::FLASK, yes_i_mean_all);
+        return find_item_info(items_other_id::FLASK);
     }
     case stock_item::floodgate:
     {
-        return std::make_pair(items_other_id::FLOODGATE, yes_i_mean_all);
+        return find_item_info(items_other_id::FLOODGATE);
     }
     case stock_item::food_ingredients:
     {
@@ -375,8 +384,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
             }
         }
 
-        // TODO: count stacks, not items
-        return std::make_pair(items_other_id::ANY_COOKABLE, [forbidden](df::item *i) -> bool
+        return find_item_info(items_other_id::ANY_COOKABLE, [forbidden](df::item *i) -> bool
         {
             if (virtual_cast<df::item_flaskst>(i))
                 return false;
@@ -393,11 +401,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
             if (virtual_cast<df::item_toolst>(i))
                 return false;
             return !forbidden.count(std::make_tuple(i->getType(), i->getSubtype(), i->getMaterial(), i->getMaterialIndex()));
-        });
+        }, &count_stacks);
     }
     case stock_item::giant_corkscrew:
     {
-        return std::make_pair(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
+        return find_item_info(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
         {
             df::item_trapcompst *i = virtual_cast<df::item_trapcompst>(item);
             return i && i->subtype->subtype == manager_subtype.at(stock_item::giant_corkscrew);
@@ -405,18 +413,18 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::goblet:
     {
-        return std::make_pair(items_other_id::GOBLET, yes_i_mean_all);
+        return find_item_info(items_other_id::GOBLET);
     }
     case stock_item::gypsum:
     {
-        return std::make_pair(items_other_id::BOULDER, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return is_gypsum(i);
         });
     }
     case stock_item::hatch_cover:
     {
-        return std::make_pair(items_other_id::HATCH_COVER, yes_i_mean_all);
+        return find_item_info(items_other_id::HATCH_COVER);
     }
     case stock_item::hive:
     {
@@ -427,7 +435,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
         MaterialInfo honey;
         honey.findCreature("HONEY_BEE", "HONEY");
 
-        return std::make_pair(items_other_id::LIQUID_MISC, [honey](df::item *i) -> bool
+        return find_item_info(items_other_id::LIQUID_MISC, [honey](df::item *i) -> bool
         {
             return i->getMaterialIndex() == honey.index && i->getMaterial() == honey.type;
         });
@@ -442,11 +450,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::leather:
     {
-        return std::make_pair(items_other_id::SKIN_TANNED, yes_i_mean_all);
+        return find_item_info(items_other_id::SKIN_TANNED);
     }
     case stock_item::lye:
     {
-        return std::make_pair(items_other_id::LIQUID_MISC, [](df::item *i) -> bool
+        return find_item_info(items_other_id::LIQUID_MISC, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "LYE";
@@ -454,35 +462,35 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::meal:
     {
-        return std::make_pair(items_other_id::ANY_GOOD_FOOD, [](df::item *i) -> bool
+        return find_item_info(items_other_id::ANY_GOOD_FOOD, [](df::item *i) -> bool
         {
             return virtual_cast<df::item_foodst>(i);
         });
     }
     case stock_item::mechanism:
     {
-        return std::make_pair(items_other_id::TRAPPARTS, yes_i_mean_all);
+        return find_item_info(items_other_id::TRAPPARTS);
     }
     case stock_item::metal_ore:
     {
-        return std::make_pair(items_other_id::BOULDER, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return is_metal_ore(i);
         });
     }
     case stock_item::milk:
     {
-        return std::make_pair(items_other_id::LIQUID_MISC, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::LIQUID_MISC, [this](df::item *i) -> bool
         {
             return milk_creatures.count(i->getMaterialIndex()) && milk_creatures.at(i->getMaterialIndex()) == i->getMaterial();
         });
     }
     case stock_item::mill_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return mill_plants.count(i->getMaterialIndex()) && mill_plants.at(i->getMaterialIndex()) == i->getMaterial();
-        });
+        }, &count_stacks);
     }
     case stock_item::minecart:
     {
@@ -494,7 +502,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::paper:
     {
-        return std::make_pair(items_other_id::SHEET, yes_i_mean_all);
+        return find_item_info(items_other_id::SHEET);
     }
     case stock_item::pick:
     {
@@ -502,11 +510,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::pipe_section:
     {
-        return std::make_pair(items_other_id::PIPE_SECTION, yes_i_mean_all);
+        return find_item_info(items_other_id::PIPE_SECTION);
     }
     case stock_item::plaster_powder:
     {
-        return std::make_pair(items_other_id::POWDER_MISC, [](df::item *i) -> bool
+        return find_item_info(items_other_id::POWDER_MISC, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "PLASTER";
@@ -514,8 +522,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::quern:
     {
-        // TODO: include used in building
-        return std::make_pair(items_other_id::QUERN, yes_i_mean_all);
+        return find_item_info(items_other_id::QUERN, [](df::item *) -> bool { return true; }, [](int32_t &, df::item *) -> int32_t
+        {
+            // Include querns that are buildings.
+            return 1;
+        });
     }
     case stock_item::quire:
     {
@@ -523,25 +534,28 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::quiver:
     {
-        return std::make_pair(items_other_id::QUIVER, yes_i_mean_all);
+        return find_item_info(items_other_id::QUIVER);
     }
     case stock_item::raw_adamantine:
     {
-        return std::make_pair(items_other_id::BOULDER, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return i->getMaterialIndex() == manager_subtype.at(stock_item::raw_adamantine);
         });
     }
     case stock_item::raw_coke:
     {
-        return std::make_pair(items_other_id::BOULDER, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
         {
             return !is_raw_coke(i).empty();
         });
     }
     case stock_item::raw_fish:
     {
-        return std::make_pair(items_other_id::FISH_RAW, yes_i_mean_all);
+        return find_item_info(items_other_id::FISH_RAW, [](df::item *i) -> bool
+        {
+            return !i->flags.bits.rotten;
+        });
     }
     case stock_item::rock_pot:
     {
@@ -549,18 +563,18 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::rope:
     {
-        return std::make_pair(items_other_id::CHAIN, yes_i_mean_all);
+        return find_item_info(items_other_id::CHAIN);
     }
     case stock_item::rough_gem:
     {
-        return std::make_pair(items_other_id::ROUGH, [](df::item *i) -> bool
+        return find_item_info(items_other_id::ROUGH, [](df::item *i) -> bool
         {
             return i->getMaterial() == 0;
         });
     }
     case stock_item::shell:
     {
-        return std::make_pair(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
+        return find_item_info(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
         {
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             return i->corpse_flags.bits.shell && !i->corpse_flags.bits.unbutchered;
@@ -568,23 +582,24 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::skull:
     {
-        // XXX exclude dwarf skulls ?
-        return std::make_pair(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
+        return find_item_info(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
         {
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
-            return i->corpse_flags.bits.skull && !i->corpse_flags.bits.unbutchered;
+            auto race = df::creature_raw::find(i->race);
+            auto caste = race ? race->caste.at(i->caste) : nullptr;
+            return i->corpse_flags.bits.skull && !i->corpse_flags.bits.unbutchered && (!caste || !caste->flags.is_set(caste_raw_flags::CAN_LEARN));
         });
     }
     case stock_item::slab:
     {
-        return std::make_pair(items_other_id::SLAB, [](df::item *i) -> bool
+        return find_item_info(items_other_id::SLAB, [](df::item *i) -> bool
         {
             return i->getSlabEngravingType() == slab_engraving_type::Slab;
         });
     }
     case stock_item::slurry:
     {
-        return std::make_pair(items_other_id::GLOB, [](df::item *i) -> bool
+        return find_item_info(items_other_id::GLOB, [](df::item *i) -> bool
         {
             if (!virtual_cast<df::item_globst>(i)->mat_state.bits.paste)
             {
@@ -605,14 +620,14 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::slurry_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return slurry_plants.count(i->getMaterialIndex()) && slurry_plants.at(i->getMaterialIndex()) == i->getMaterial();
         });
     }
     case stock_item::soap:
     {
-        return std::make_pair(items_other_id::BAR, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "SOAP";
@@ -620,11 +635,11 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::splint:
     {
-        return std::make_pair(items_other_id::SPLINT, yes_i_mean_all);
+        return find_item_info(items_other_id::SPLINT);
     }
     case stock_item::statue:
     {
-        return std::make_pair(items_other_id::STATUE, yes_i_mean_all);
+        return find_item_info(items_other_id::STATUE);
     }
     case stock_item::stepladder:
     {
@@ -632,18 +647,18 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::stone:
     {
-        return std::make_pair(items_other_id::BOULDER, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BOULDER, [](df::item *i) -> bool
         {
             return !ui->economic_stone[i->getMaterialIndex()];
         });
     }
     case stock_item::table:
     {
-        return std::make_pair(items_other_id::TABLE, yes_i_mean_all);
+        return find_item_info(items_other_id::TABLE);
     }
     case stock_item::tallow:
     {
-        return std::make_pair(items_other_id::GLOB, [](df::item *i) -> bool
+        return find_item_info(items_other_id::GLOB, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->id == "TALLOW";
@@ -651,32 +666,32 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::thread:
     {
-        return std::make_pair(items_other_id::THREAD, [](df::item *i) -> bool
+        return find_item_info(items_other_id::THREAD, [](df::item *i) -> bool
         {
             return !i->flags.bits.spider_web && virtual_cast<df::item_threadst>(i)->dimension == 15000;
         });
     }
     case stock_item::thread_plant:
     {
-        return std::make_pair(items_other_id::PLANT, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::PLANT, [this](df::item *i) -> bool
         {
             return thread_plants.count(i->getMaterialIndex()) && thread_plants.at(i->getMaterialIndex()) == i->getMaterial();
-        });
+        }, &count_stacks);
     }
     case stock_item::thread_seeds:
     {
-        return std::make_pair(items_other_id::SEEDS, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::SEEDS, [this](df::item *i) -> bool
         {
             return thread_plants.count(i->getMaterialIndex()) && grow_plants.count(i->getMaterialIndex());
         });
     }
     case stock_item::toy:
     {
-        return std::make_pair(items_other_id::TOY, yes_i_mean_all);
+        return find_item_info(items_other_id::TOY);
     }
     case stock_item::traction_bench:
     {
-        return std::make_pair(items_other_id::TRACTION_BENCH, yes_i_mean_all);
+        return find_item_info(items_other_id::TRACTION_BENCH);
     }
     case stock_item::training_weapon:
     {
@@ -688,7 +703,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::weapon_rack:
     {
-        return std::make_pair(items_other_id::WEAPONRACK, yes_i_mean_all);
+        return find_item_info(items_other_id::WEAPONRACK);
     }
     case stock_item::wheelbarrow:
     {
@@ -696,13 +711,13 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::wood:
     {
-        return std::make_pair(items_other_id::WOOD, yes_i_mean_all);
+        return find_item_info(items_other_id::WOOD);
     }
     case stock_item::wool:
     {
         // used for SpinThread which currently ignores the material_amount
         // note: if it didn't, use either HairWool or Yarn but not both
-        return std::make_pair(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
+        return find_item_info(items_other_id::CORPSEPIECE, [](df::item *item) -> bool
         {
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             return i->corpse_flags.bits.hair_wool || i->corpse_flags.bits.yarn;
@@ -710,7 +725,7 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     }
     case stock_item::written_on_quire:
     {
-        return std::make_pair(items_other_id::TOOL, [this](df::item *i) -> bool
+        return find_item_info(items_other_id::TOOL, [this](df::item *i) -> bool
         {
             return i->getSubtype() == manager_subtype.at(stock_item::quire) && i->hasSpecificImprovements(improvement_type::WRITING);
         });
@@ -724,59 +739,106 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     throw DFHack::Error::InvalidArgument();
 }
 
-std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item_helper_weapon(df::job_skill skill, bool training)
-{
-    // TODO: count minimum subtype
-    return std::make_pair(items_other_id::WEAPON, [skill, training](df::item *item) -> bool
-    {
-        df::item_weaponst *i = virtual_cast<df::item_weaponst>(item);
-
-        auto & ue = ui->main.fortress_entity->entity_raw->equipment;
-        if (std::find(ue.digger_id.begin(), ue.digger_id.end(), i->subtype->subtype) == ue.digger_id.end() &&
-            std::find(ue.weapon_id.begin(), ue.weapon_id.end(), i->subtype->subtype) == ue.weapon_id.end())
-        {
-            return false;
-        }
-
-        if (skill != job_skill::NONE && i->subtype->skill_melee != skill)
-        {
-            return false;
-        }
-
-        if (i->subtype->flags.is_set(weapon_flags::TRAINING) != training)
-        {
-            return false;
-        }
-
-        return true;
-    });
-}
-
 template<typename I>
-static bool is_armor_metal(I *i) { return i->subtype->props.flags.is_set(armor_general_flags::METAL); }
-
-template<typename I>
-static std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & idefs, std::function<bool(I *)> pred = is_armor_metal<I>)
+static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, uint8_t div = 1)
 {
-    // TODO: count minimum subtype
-    return std::make_pair(oidx, [idefs, pred](df::item *item) -> bool
+    auto match = [idefs, pred](df::item *item) -> bool
     {
         I *i = virtual_cast<I>(item);
-        if (std::find(idefs.begin(), idefs.end(), i->subtype->subtype) == idefs.end())
+
+        return i && idefs.count(i->subtype->subtype) && pred(i);
+    };
+
+    auto min_subtype = [oidx, idefs, div, match](int32_t & init) -> int32_t
+    {
+        if (init != -1)
         {
-            return false;
+            if (div != 1 && init >= 0)
+            {
+                if ((init & 0x00ff0000) == 0)
+                {
+                    init |= static_cast<int32_t>(div - 1) << 16;
+                }
+                else
+                {
+                    init -= 0x00010000;
+                }
+            }
+            return init;
         }
 
-        if (!pred(i))
+        std::map<int16_t, size_t> subtypes;
+        for (auto i : idefs)
         {
-            return false;
+            subtypes[i] = 0;
+        }
+        for (auto i : world->items.other[oidx])
+        {
+            if (match(i) && Stocks::is_item_free(i))
+            {
+                subtypes[virtual_cast<I>(i)->subtype->subtype]++;
+            }
         }
 
-        return true;
-    });
+        auto min = std::min_element(subtypes.begin(), subtypes.end(), [](std::pair<int16_t, size_t> a, std::pair<int16_t, size_t> b) -> bool { return a.second < b.second; });
+        init = min != subtypes.end() ? static_cast<int32_t>(min->first) | (static_cast<int32_t>(div - 1) << 16) : -2;
+        return init;
+    };
+
+    auto count = [min_subtype](int32_t & init, df::item *i) -> int32_t
+    {
+        return Stocks::is_item_free(i) && static_cast<int32_t>(virtual_cast<I>(i)->subtype->subtype) == min_subtype(init) ? i->getStackSize() : 0;
+    };
+
+    return Stocks::find_item_info(oidx, match, count);
+};
+
+Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training)
+{
+    std::set<int16_t> idefs;
+#define ADD_DEFS(kind) \
+    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.kind) \
+    { \
+        auto def = df::itemdef_weaponst::find(id); \
+\
+        if (skill != job_skill::NONE && def->skill_melee != skill) \
+        { \
+            continue; \
+        } \
+\
+        if (def->flags.is_set(weapon_flags::TRAINING) != training) \
+        { \
+            continue; \
+        } \
+\
+        idefs.insert(id); \
+    }
+    ADD_DEFS(digger_id);
+    ADD_DEFS(weapon_id);
+#undef ADD_DEFS
+
+    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs);
 }
 
-std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item_helper_armor(df::items_other_id oidx)
+template<typename D>
+static bool is_armor_metal(D *def) { return def->props.flags.is_set(armor_general_flags::METAL); }
+
+template<typename I>
+static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, std::function<bool(decltype(I::subtype))> pred = &is_armor_metal<std::remove_pointer<decltype(I::subtype)>::type>, uint8_t div = 1)
+{
+    typedef typename std::remove_pointer<decltype(I::subtype)>::type D;
+    std::set<int16_t> idefs;
+    for (auto id : ids)
+    {
+        if (pred(D::find(id)))
+        {
+            idefs.insert(id);
+        }
+    }
+    return find_item_helper_equip_helper<I>(oidx, idefs, [](I *) -> bool { return true; }, div);
+}
+
+Stocks::find_item_info Stocks::find_item_helper_armor(df::items_other_id oidx)
 {
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     switch (oidx)
@@ -784,43 +846,41 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     case items_other_id::ARMOR:
         return find_item_helper_armor_helper<df::item_armorst>(oidx, ue.armor_id);
     case items_other_id::SHIELD:
-        return find_item_helper_armor_helper<df::item_shieldst>(oidx, ue.shield_id, [](df::item_shieldst *) -> bool { return true; });
+        return find_item_helper_armor_helper<df::item_shieldst>(oidx, ue.shield_id, [](df::itemdef_shieldst *) -> bool { return true; });
     case items_other_id::HELM:
         return find_item_helper_armor_helper<df::item_helmst>(oidx, ue.helm_id);
     case items_other_id::PANTS:
         return find_item_helper_armor_helper<df::item_pantsst>(oidx, ue.pants_id);
     case items_other_id::GLOVES:
-        return find_item_helper_armor_helper<df::item_glovesst>(oidx, ue.gloves_id); // TODO: divide count by 2
+        return find_item_helper_armor_helper<df::item_glovesst>(oidx, ue.gloves_id, &is_armor_metal<df::itemdef_glovesst>, 2);
     case items_other_id::SHOES:
-        return find_item_helper_armor_helper<df::item_shoesst>(oidx, ue.shoes_id); // TODO: divide count by 2
+        return find_item_helper_armor_helper<df::item_shoesst>(oidx, ue.shoes_id, &is_armor_metal<df::itemdef_shoesst>, 2);
     default:
         throw DFHack::Error::InvalidArgument();
     }
 }
 
 template<typename I>
-static std::pair<df::items_other_id, std::function<bool(df::item *)>> find_item_helper_clothes_helper(df::items_other_id oidx, const std::vector<int16_t> & idefs)
+static Stocks::find_item_info find_item_helper_clothes_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, uint8_t div = 1)
 {
-    // TODO: count minimum subtype
-    return std::make_pair(oidx, [idefs](df::item *item) -> bool
+    typedef typename std::remove_pointer<decltype(I::subtype)>::type D;
+    std::set<int16_t> idefs;
+    for (auto id : ids)
     {
-        I *i = virtual_cast<I>(item);
-        if (!i->subtype->props.flags.is_set(armor_general_flags::SOFT)) // XXX
+        D *def = D::find(id);
+        if (def->props.flags.is_set(armor_general_flags::SOFT)) // XXX
         {
-            return false;
+            idefs.insert(id);
         }
-
-        if (std::find(idefs.begin(), idefs.end(), i->subtype->subtype) == idefs.end())
-        {
-            return false;
-        }
-
+    }
+    return find_item_helper_equip_helper<I>(oidx, idefs, [](I *i) -> bool
+    {
         return i->mat_type != 0 && // XXX
             i->wear == 0;
-    });
+    }, div);
 }
 
-std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item_helper_clothes(df::items_other_id oidx)
+Stocks::find_item_info Stocks::find_item_helper_clothes(df::items_other_id oidx)
 {
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     switch (oidx)
@@ -832,17 +892,17 @@ std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item
     case items_other_id::PANTS:
         return find_item_helper_clothes_helper<df::item_pantsst>(oidx, ue.pants_id);
     case items_other_id::GLOVES:
-        return find_item_helper_clothes_helper<df::item_glovesst>(oidx, ue.gloves_id); // TODO: divide by 2
+        return find_item_helper_clothes_helper<df::item_glovesst>(oidx, ue.gloves_id, 2);
     case items_other_id::SHOES:
-        return find_item_helper_clothes_helper<df::item_shoesst>(oidx, ue.shoes_id); // TODO: divide by 2
+        return find_item_helper_clothes_helper<df::item_shoesst>(oidx, ue.shoes_id, 2);
     default:
         throw DFHack::Error::InvalidArgument();
     }
 }
 
-std::pair<df::items_other_id, std::function<bool(df::item *)>> Stocks::find_item_helper_tool(stock_item::item k)
+Stocks::find_item_info Stocks::find_item_helper_tool(stock_item::item k)
 {
-    return std::make_pair(items_other_id::TOOL, [this, k](df::item *item) -> bool
+    return find_item_info(items_other_id::TOOL, [this, k](df::item *item) -> bool
     {
         df::item_toolst *i = virtual_cast<df::item_toolst>(item);
         return i->subtype->subtype == manager_subtype.at(k) &&
