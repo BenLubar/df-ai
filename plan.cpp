@@ -5451,7 +5451,7 @@ room *AI::find_room(room_type::type type)
         return nullptr;
     }
 
-    auto & cat = plan->room_category.find(type);
+    auto cat = plan->room_category.find(type);
     if (cat != plan->room_category.end() && !cat->second.empty())
     {
         return cat->second.front();
@@ -5474,7 +5474,7 @@ room *AI::find_room(room_type::type type, std::function<bool(room *)> b)
         return nullptr;
     }
 
-    auto & cat = plan->room_category.find(type);
+    auto cat = plan->room_category.find(type);
     if (cat != plan->room_category.end())
     {
         for (auto r : cat->second)
