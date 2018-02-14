@@ -32,6 +32,7 @@ AI::AI() :
     status_onupdate(nullptr),
     pause_onupdate(nullptr),
     tag_enemies_onupdate(nullptr),
+    seen_focus(),
     seen_cvname(),
     last_good_x(-1),
     last_good_y(-1),
@@ -137,13 +138,17 @@ void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> 
 {
     df::viewscreen *curscreen = Gui::getCurViewscreen(true);
     std::string name("unknown viewscreen");
-    if (virtual_identity *ident = virtual_identity::get(curscreen))
+    if (auto hack = dfhack_viewscreen::try_cast(curscreen))
+    {
+        name = "dfhack/" + hack->getFocusString();
+    }
+    else if (virtual_identity *ident = virtual_identity::get(curscreen))
     {
         name = ident->getName();
     }
     int32_t *counter = new int32_t(enabler->fps * seconds);
 
-    events.onupdate_register_once(std::string("timeout_sameview on ") + name, [this, curscreen, counter, cb](color_ostream & out) -> bool
+    events.onupdate_register_once("timeout_sameview on " + name, [this, curscreen, counter, cb](color_ostream & out) -> bool
     {
         if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
         {

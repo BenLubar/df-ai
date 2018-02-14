@@ -289,6 +289,14 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             Screen::dismiss(curview);
             camera->check_record_status();
         }
+        else if (auto hack = dfhack_viewscreen::try_cast(curview))
+        {
+            std::string focus = hack->getFocusString();
+            if (seen_focus.insert(focus).second)
+            {
+                debug(out, "[ERROR] paused in unknown DFHack viewscreen " + focus);
+            }
+        }
         else if (virtual_identity *ident = virtual_identity::get(curview))
         {
             std::string cvname = ident->getName();

@@ -63,6 +63,7 @@ public:
     OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;
     OnupdateCallback *tag_enemies_onupdate;
+    std::set<std::string> seen_focus;
     std::set<std::string> seen_cvname;
     int32_t last_good_x, last_good_y, last_good_z;
     bool skip_persist;
