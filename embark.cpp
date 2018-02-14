@@ -4,7 +4,10 @@
 #include "event_manager.h"
 #include "hooks.h"
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "LuaTools.h"
+#pragma GCC diagnostic pop
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
@@ -44,7 +47,7 @@ static bool viewscreen_is()
     return strict_virtual_cast<T>(Gui::getCurViewscreen(false)) != nullptr;
 }
 
-static std::function<bool()> viewscreen_is(const std::string & focus)
+static inline std::function<bool()> viewscreen_is(const std::string & focus)
 {
     return [focus]() -> bool
     {
@@ -58,7 +61,7 @@ static bool viewscreen_is_not()
     return strict_virtual_cast<T>(Gui::getCurViewscreen(false)) == nullptr;
 }
 
-static std::function<bool()> viewscreen_is_not(const std::string & focus)
+static inline std::function<bool()> viewscreen_is_not(const std::string & focus)
 {
     return [focus]() -> bool
     {
