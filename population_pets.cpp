@@ -202,6 +202,7 @@ void Population::update_pets(color_ostream & out)
     {
         df::manager_order_template tmpl;
         tmpl.job_type = job_type::MilkCreature;
+        tmpl.mat_index = -1;
 
         ai->stocks->add_manager_order(out, tmpl, std::min(needmilk, 30));
     }
@@ -210,6 +211,7 @@ void Population::update_pets(color_ostream & out)
     {
         df::manager_order_template tmpl;
         tmpl.job_type = job_type::ShearCreature;
+        tmpl.mat_index = -1;
 
         ai->stocks->add_manager_order(out, tmpl, std::min(needshear, 30));
     }
