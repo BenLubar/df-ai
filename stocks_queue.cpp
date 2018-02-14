@@ -131,6 +131,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     {
         tmpl.job_type = job_type::MakeTool;
         tmpl.item_subtype = manager_subtype.at(stock_item::book_binding);
+        tmpl.mat_type = 0;
         break;
     }
     case stock_item::bookcase:
