@@ -20,6 +20,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         return;
 
     df::manager_order_template tmpl;
+    tmpl.mat_index = -1;
     std::vector<stock_item::item> input;
 
     switch (what)
@@ -359,7 +360,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::mechanism:
     {
         tmpl.job_type = job_type::ConstructMechanisms;
-        tmpl.mat_index = 0;
+        tmpl.mat_type = 0;
         break;
     }
     case stock_item::minecart:
