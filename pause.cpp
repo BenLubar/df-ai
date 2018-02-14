@@ -292,7 +292,20 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (auto hack = dfhack_viewscreen::try_cast(curview))
         {
             std::string focus = hack->getFocusString();
-            if (seen_focus.insert(focus).second)
+            if (focus == "lua/extended_status")
+            {
+                debug(out, "dismissing gui/extended-status overlay");
+                Screen::dismiss(hack);
+            }
+            else if (focus == "lua/warn-starving")
+            {
+                debug(out, "exit warn-starving dialog");
+                timeout_sameview([](color_ostream &)
+                {
+                    AI::feed_key(interface_key::LEAVESCREEN);
+                });
+            }
+            else if (seen_focus.insert(focus).second)
             {
                 debug(out, "[ERROR] paused in unknown DFHack viewscreen " + focus);
             }
