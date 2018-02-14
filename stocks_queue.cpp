@@ -203,6 +203,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::coal:
     {
+        tmpl.job_type = job_type::MakeCharcoal;
         // dont use wood -> charcoal if we have bituminous coal
         // (except for bootstraping)
         if (amount > 2 - count.at(stock_item::coal) && count.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke))
