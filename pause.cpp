@@ -292,7 +292,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         else if (auto hack = dfhack_viewscreen::try_cast(curview))
         {
             std::string focus = hack->getFocusString();
-            if (focus == "lua/extended_status")
+            if (focus == "lua/status_overlay")
             {
                 debug(out, "dismissing gui/extended-status overlay");
                 Screen::dismiss(hack);
