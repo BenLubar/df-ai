@@ -17,6 +17,7 @@
 #include "df/viewscreen_choose_start_sitest.h"
 #include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_loadgamest.h"
+#include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_new_regionst.h"
 #include "df/viewscreen_setupdwarfgamest.h"
 #include "df/viewscreen_textviewerst.h"
@@ -79,10 +80,22 @@ void EmbarkExclusive::Run(color_ostream & out)
 
     While(viewscreen_is_not<df::viewscreen_dwarfmodest>, [&]()
     {
+        Do([&]()
+        {
+            unknown_screen = true;
+        });
+
         Delay();
 
-        If(viewscreen_is<df::viewscreen_titlest>, [&]
+        If(viewscreen_is<df::viewscreen_movieplayerst>, [&]()
         {
+            unknown_screen = false;
+            Key(interface_key::LEAVESCREEN);
+        });
+
+        If(viewscreen_is<df::viewscreen_titlest>, [&]()
+        {
+            unknown_screen = false;
             df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(curview);
             if (!view)
             {
@@ -201,6 +214,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_loadgamest>, [&]()
         {
+            unknown_screen = false;
             df::viewscreen_loadgamest *view = strict_virtual_cast<df::viewscreen_loadgamest>(curview);
             if (!view)
             {
@@ -253,6 +267,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is("dfhack/lua/load_screen"), [&]()
         {
+            unknown_screen = false;
             dfhack_viewscreen *view = dfhack_viewscreen::try_cast(curview);
             df::viewscreen_loadgamest *parent = view ? strict_virtual_cast<df::viewscreen_loadgamest>(view->parent) : nullptr;
             if (!view || view->getFocusString() != "lua/load_screen" || !parent)
@@ -337,6 +352,7 @@ void EmbarkExclusive::Run(color_ostream & out)
             return Gui::getFocusString(screen) == "dfhack/lua" && Gui::getFocusString(parent) == "dfhack/lua/load_screen";
         }, [&]()
         {
+            unknown_screen = false;
             dfhack_viewscreen *view = dfhack_viewscreen::try_cast(curview);
             if (!view)
                 return;
@@ -369,6 +385,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_new_regionst>, [&]()
         {
+            unknown_screen = false;
             df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(curview);
             if (!view)
             {
@@ -438,6 +455,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_update_regionst>, [&]()
         {
+            unknown_screen = false;
             df::viewscreen_update_regionst *view = strict_virtual_cast<df::viewscreen_update_regionst>(curview);
             if (!view)
             {
@@ -449,6 +467,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_choose_start_sitest>, [&]()
         {
+            unknown_screen = false;
             df::viewscreen_choose_start_sitest *view = strict_virtual_cast<df::viewscreen_choose_start_sitest>(curview);
             if (!view)
             {
@@ -669,6 +688,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_setupdwarfgamest>, [&]()
         {
+            unknown_screen = false;
             Do([&]()
             {
                 ai->debug(out, "choosing \"Play Now\"");
@@ -680,6 +700,7 @@ void EmbarkExclusive::Run(color_ostream & out)
 
         If(viewscreen_is<df::viewscreen_textviewerst>, [&]()
         {
+            unknown_screen = false;
             Do([&]()
             {
                 ai->debug(out, "site is ready.");
@@ -697,6 +718,11 @@ void EmbarkExclusive::Run(color_ostream & out)
             });
 
             Delay();
+        });
+
+        If([&]() -> bool { return unknown_screen; }, [&]()
+        {
+            ai->statechanged(out, SC_VIEWSCREEN_CHANGED);
         });
     });
 }

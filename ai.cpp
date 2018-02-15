@@ -136,6 +136,13 @@ void AI::abandon(color_ostream &)
 
 void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)
 {
+    // allow exclusive views to unpause the game
+    if (events.has_exclusive())
+    {
+        cb(Core::getInstance().getConsole());
+        return;
+    }
+
     df::viewscreen *curscreen = Gui::getCurViewscreen(true);
     std::string name("unknown viewscreen");
     if (auto hack = dfhack_viewscreen::try_cast(curscreen))

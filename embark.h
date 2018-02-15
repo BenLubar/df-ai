@@ -8,6 +8,7 @@ class EmbarkExclusive : public ExclusiveCallback
 {
     AI * const ai;
     df::coord2d selected_site_diff;
+    bool unknown_screen;
 
 public:
     EmbarkExclusive(AI *ai);
