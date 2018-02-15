@@ -139,6 +139,108 @@ int32_t Stocks::count_manager_orders(color_ostream &, const df::manager_order_te
     return amount;
 }
 
+class ManagerOrderExclusive : public ExclusiveCallback
+{
+    AI * const ai;
+    df::manager_order_template tmpl;
+    std::string quantity;
+    std::string first_word;
+
+public:
+    ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount)
+        : ExclusiveCallback("add_manager_order: " + AI::describe_job(&tmpl)),
+        ai(ai),
+        tmpl(tmpl),
+        quantity(stl_sprintf("%d", std::min(amount, 9999)))
+    {
+        first_word = AI::describe_job(&tmpl);
+        size_t pos = first_word.find(' ');
+        if (pos != std::string::npos)
+        {
+            first_word = first_word.substr(0, pos);
+        }
+    }
+
+    virtual void Run(color_ostream & out)
+    {
+        Key(interface_key::D_JOBLIST);
+        Key(interface_key::UNITJOB_MANAGER);
+        Key(interface_key::MANAGER_NEW_ORDER);
+
+        Do([&]()
+        {
+            auto curview = Gui::getCurViewscreen(true);
+            auto view = strict_virtual_cast<df::viewscreen_createquotast>(curview);
+            if (!view)
+            {
+                std::string name;
+                if (auto ident = virtual_identity::get(curview))
+                {
+                    name = ident->getName();
+                }
+                else
+                {
+                    name = Gui::getFocusString(curview);
+                }
+                ai->debug(out, "[ERROR] viewscreen when queueing manager job is " + name + ", not viewscreen_createquotast");
+                return;
+            }
+
+            int32_t idx = -1;
+            df::manager_order_template *target = nullptr;
+            for (auto it = view->orders.begin(); it != view->orders.end(); it++)
+            {
+                if (template_equals<df::manager_order_template>(*it, &tmpl))
+                {
+                    idx = it - view->orders.begin();
+                    target = *it;
+                    break;
+                }
+            }
+
+            Do([&]()
+            {
+                if (!target)
+                {
+                    target = df::allocate<df::manager_order_template>();
+                    *target = tmpl;
+                    idx = int32_t(view->orders.size());
+                    view->orders.push_back(target);
+                    view->all_orders.push_back(target);
+                }
+            });
+
+            // XXX: DFHack bug https://github.com/DFHack/df-structures/issues/243
+            const decltype(view->str_filter) *str_filter = (((ptrdiff_t)&((df::viewscreen_createquotast *)nullptr)->str_filter) == sizeof(df::viewscreen)) ?
+                reinterpret_cast<decltype(view->str_filter) *>(reinterpret_cast<uintptr_t>(&view->str_filter) + sizeof(int32_t)) :
+                &view->str_filter;
+
+            EnterString(*str_filter, first_word);
+
+            While([&]() -> bool { return !target; }, [&]()
+            {
+                Key(interface_key::STRING_A000);
+            });
+
+            MoveToItem(view->sel_idx, idx, interface_key::STANDARDSCROLL_PAGEDOWN, interface_key::STANDARDSCROLL_UP);
+
+            Key(interface_key::SELECT);
+
+            EnterString(view->str_quantity, quantity);
+        });
+
+        Key(interface_key::SELECT);
+
+        Do([&]()
+        {
+            ai->debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
+        });
+
+        Key(interface_key::LEAVESCREEN);
+        Key(interface_key::LEAVESCREEN);
+    }
+};
+
 void Stocks::add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount)
 {
     amount -= count_manager_orders(out, tmpl);
@@ -147,60 +249,5 @@ void Stocks::add_manager_order(color_ostream & out, const df::manager_order_temp
         return;
     }
 
-    if (!ai->is_dwarfmode_viewscreen())
-    {
-        ai->debug(out, stl_sprintf("cannot add manager order for %s - not on main screen", tmpl.job_type == job_type::CustomReaction ? tmpl.reaction_name.c_str() : ENUM_ATTR(job_type, caption, tmpl.job_type)));
-        return;
-    }
-    AI::feed_key(interface_key::D_JOBLIST);
-    AI::feed_key(interface_key::UNITJOB_MANAGER);
-    AI::feed_key(interface_key::MANAGER_NEW_ORDER);
-    auto view = strict_virtual_cast<df::viewscreen_createquotast>(Gui::getCurViewscreen(true));
-    if (!view)
-    {
-        ai->debug(out, stl_sprintf("[ERROR] viewscreen when queueing manager job is %s, not viewscreen_createquotast", virtual_identity::get(Gui::getCurViewscreen(true))->getName()));
-        return;
-    }
-    int32_t idx = -1;
-    df::manager_order_template *target = nullptr;
-    for (auto it = view->orders.begin(); it != view->orders.end(); it++)
-    {
-        if (template_equals<df::manager_order_template>(*it, &tmpl))
-        {
-            idx = it - view->orders.begin();
-            target = *it;
-            break;
-        }
-    }
-    if (!target)
-    {
-        target = df::allocate<df::manager_order_template>();
-        *target = tmpl;
-        idx = int32_t(view->orders.size());
-        view->orders.push_back(target);
-        view->all_orders.push_back(target);
-    }
-
-    while (view->sel_idx < idx)
-    {
-        AI::feed_key(interface_key::STANDARDSCROLL_PAGEDOWN);
-    }
-    while (view->sel_idx > idx)
-    {
-        AI::feed_key(interface_key::STANDARDSCROLL_UP);
-    }
-    AI::feed_key(interface_key::SELECT);
-
-    if (amount >= 10000)
-    {
-        amount = 9999;
-    }
-    AI::feed_char('0' + char((amount / 1000) % 10));
-    AI::feed_char('0' + char((amount / 100) % 10));
-    AI::feed_char('0' + char((amount / 10) % 10));
-    AI::feed_char('0' + char(amount % 10));
-    AI::feed_key(interface_key::SELECT);
-    AI::feed_key(interface_key::LEAVESCREEN);
-    AI::feed_key(interface_key::LEAVESCREEN);
-    ai->debug(out, stl_sprintf("add_manager_order(%d) %s", amount, AI::describe_job(world->manager_orders.back()).c_str()));
+    events.queue_exclusive(new ManagerOrderExclusive(ai, tmpl, amount));
 }

@@ -125,22 +125,22 @@ static std::string do_describe_job(T *job)
     return desc;
 }
 
-std::string AI::describe_job(df::job *job)
+std::string AI::describe_job(const df::job *job)
 {
     return do_describe_job(job);
 }
 
-std::string AI::describe_job(df::manager_order *job)
+std::string AI::describe_job(const df::manager_order *job)
 {
     return do_describe_job(job);
 }
 
-std::string AI::describe_job(df::manager_order_template *job)
+std::string AI::describe_job(const df::manager_order_template *job)
 {
     return do_describe_job(job);
 }
 
-std::string AI::describe_job(df::unit *u)
+std::string AI::describe_job(const df::unit *u)
 {
     if (u->job.current_job != nullptr)
     {
