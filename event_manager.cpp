@@ -228,19 +228,17 @@ void EventManager::onupdate(color_ostream & out)
 }
 void EventManager::onstatechange(color_ostream & out, state_change_event event)
 {
-    if (exclusive)
+    if (exclusive && event == SC_VIEWSCREEN_CHANGED)
     {
-        if (event == SC_VIEWSCREEN_CHANGED)
+        df::viewscreen *curview = Gui::getCurViewscreen(true);
+        if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
         {
-            df::viewscreen *curview = Gui::getCurViewscreen(true);
-            if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
-            {
-                TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
-                Screen::dismiss(curview);
-                extern AI *dwarfAI;
-                dwarfAI->camera->check_record_status();
-            }
+            TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
+            Screen::dismiss(curview);
+            extern AI *dwarfAI;
+            dwarfAI->camera->check_record_status();
         }
+        return;
     }
 
     // make a copy
