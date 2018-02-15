@@ -371,11 +371,28 @@ void ExclusiveCallback::Key(df::interface_key key)
     }
 }
 
+const static char safe_char[128] =
+{
+    'C', 'u', 'e', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'i', 'i', 'i', 'A', 'A',
+    'E', 0, 0, 'o', 'o', 'o', 'u', 'u', 'y', 'O', 'U', 0, 0, 0, 0, 0,
+    'a', 'i', 'o', 'u', 'n', 'N', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
 void ExclusiveCallback::Char(std::function<char()> ch)
 {
     if (step_in())
     {
-        AI::feed_char(ch());
+        char c = ch();
+        if (c < 0)
+        {
+            c = safe_char[(uint8_t)c - 128];
+        }
+        AI::feed_char(c);
         step_out();
         throw wait_for_next_frame();
     }
