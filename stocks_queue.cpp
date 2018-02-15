@@ -621,6 +621,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         return;
 
     df::manager_order_template tmpl;
+    tmpl.mat_index = -1;
     std::vector<stock_item::item> input;
 
     // stuff may rot/be brewed before we can process it
