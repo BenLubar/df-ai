@@ -429,6 +429,10 @@ bool ExclusiveCallback::step_in()
 
 void ExclusiveCallback::step_out()
 {
+    if (current_step == last_step)
+    {
+        last_step.clear();
+    }
     current_step.pop_back();
     current_step.back()++;
 }
