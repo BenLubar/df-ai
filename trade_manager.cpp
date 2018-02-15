@@ -282,7 +282,7 @@ class PerformTradeExclusive : public ExclusiveCallback
     virtual void Run(color_ostream & out);
 
     void EnterCount(df::viewscreen_tradegoodsst *trade, const std::string & want);
-    void ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, volatile int32_t & cursor, int32_t target);
+    void ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, int32_t cursor, int32_t target);
 
     friend class Population;
 };
@@ -740,21 +740,13 @@ void PerformTradeExclusive::EnterCount(df::viewscreen_tradegoodsst *trade, const
 
     If([&]() -> bool { return trade->in_edit_count; }, [&]()
     {
-        While([&]() -> bool { return trade->edit_count.size() > want.size() || trade->edit_count != want.substr(0, trade->edit_count.size()); }, [&]()
-        {
-            Key(interface_key::STRING_A000); // backspace
-        });
-
-        While([&]() -> bool { return trade->edit_count.size() < want.size(); }, [&]()
-        {
-            Char([&]() -> char { return want.at(trade->edit_count.size()); });
-        });
+        EnterString(trade->edit_count, want);
 
         Key(interface_key::SELECT);
     });
 }
 
-void PerformTradeExclusive::ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, volatile int32_t & cursor, int32_t target)
+void PerformTradeExclusive::ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, int32_t cursor, int32_t target)
 {
     if (right)
     {
@@ -771,14 +763,5 @@ void PerformTradeExclusive::ScrollTo(df::viewscreen_tradegoodsst *trade, bool ri
         });
     }
 
-    While([&]() -> bool { return cursor != target; }, [&]()
-    {
-        If([&]() -> bool { return cursor > target; }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_UP);
-        }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_DOWN);
-        });
-    });
+    MoveToItem(cursor, target);
 }

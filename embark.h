@@ -17,8 +17,8 @@ public:
     virtual void Run(color_ostream & out);
 
 private:
-    void SelectVerticalMenuItem(volatile int32_t & current, int32_t target);
-    void SelectHorizontalMenuItem(volatile int32_t & current, int32_t target);
+    void SelectVerticalMenuItem(int32_t current, int32_t target);
+    void SelectHorizontalMenuItem(int32_t current, int32_t target);
 };
 
 class RestartWaitExclusive : public ExclusiveCallback

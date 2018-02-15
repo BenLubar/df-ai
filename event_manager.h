@@ -42,6 +42,9 @@ protected:
     void Char(std::function<char()> ch);
     void Delay(size_t frames = 1);
 
+    void MoveToItem(int32_t current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP);
+    void EnterString(const std::string & current, const std::string & target);
+
     virtual void Run(color_ostream & out) = 0;
 
     struct wait_for_next_frame {};

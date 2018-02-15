@@ -727,34 +727,16 @@ void EmbarkExclusive::Run(color_ostream & out)
     });
 }
 
-void EmbarkExclusive::SelectVerticalMenuItem(volatile int32_t & current, int32_t target)
+void EmbarkExclusive::SelectVerticalMenuItem(int32_t current, int32_t target)
 {
-    While([&]() -> bool { return current != target; }, [&]()
-    {
-        If([&]() -> bool { return current > target; }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_UP);
-        }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_DOWN);
-        });
-    });
+    MoveToItem(current, target);
 
     Key(interface_key::SELECT);
 }
 
-void EmbarkExclusive::SelectHorizontalMenuItem(volatile int32_t & current, int32_t target)
+void EmbarkExclusive::SelectHorizontalMenuItem(int32_t current, int32_t target)
 {
-    While([&]() -> bool { return current != target; }, [&]()
-    {
-        If([&]() -> bool { return current > target; }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_LEFT);
-        }, [&]()
-        {
-            Key(interface_key::STANDARDSCROLL_RIGHT);
-        });
-    });
+    MoveToItem(current, target, interface_key::STANDARDSCROLL_RIGHT, interface_key::STANDARDSCROLL_LEFT);
 
     Key(interface_key::SELECT);
 }

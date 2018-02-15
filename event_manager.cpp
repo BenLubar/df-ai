@@ -368,6 +368,33 @@ void ExclusiveCallback::Delay(size_t frames)
     }
 }
 
+void ExclusiveCallback::MoveToItem(int32_t current, int32_t target, df::interface_key inc, df::interface_key dec)
+{
+    While([&]() -> bool {return current != target; }, [&]()
+    {
+        If([&]() -> bool { return current < target; }, [&]()
+        {
+            Key(inc);
+        }, [&]()
+        {
+            Key(dec);
+        });
+    });
+}
+
+void ExclusiveCallback::EnterString(const std::string & current, const std::string & target)
+{
+    While([&]() -> bool {return current.size() > target.size() || current != target.substr(0, current.size()); }, [&]()
+    {
+        Key(interface_key::STRING_A000); // backspace
+    });
+
+    While([&]() -> bool { return current.size() < target.size(); }, [&]()
+    {
+        Char([&]() -> char { return target.at(current.size()); });
+    });
+}
+
 bool ExclusiveCallback::run(color_ostream & out)
 {
     if (wait_frames)
