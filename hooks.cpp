@@ -14,7 +14,7 @@
 #include "df/init.h"
 #include "df/interfacest.h"
 #include "df/renderer.h"
-#include "df/viewscreen.h"
+#include "df/viewscreen_movieplayerst.h"
 
 #include <zlib.h>
 
@@ -719,6 +719,12 @@ void Hook_Update()
             out << COLOR_LIGHTRED << "[df-ai] lockstep mode does not work with PRINT_MODE:TEXT. Disabling lockstep in the df-ai config.";
             out << COLOR_RESET << std::endl;
             config.set(out, config.lockstep, false);
+            return;
+        }
+
+        if (strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(false)))
+        {
+            LOCKSTEP_DEBUG("not hooking while movie player is present");
             return;
         }
 
