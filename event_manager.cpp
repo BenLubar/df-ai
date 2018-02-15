@@ -73,6 +73,7 @@ OnstatechangeCallback::OnstatechangeCallback(const std::string & descr, std::fun
 
 EventManager::EventManager() :
     exclusive(),
+    exclusive_queue(),
     onupdate_list(),
     onstatechange_list()
 {
@@ -85,19 +86,30 @@ EventManager::~EventManager()
 void EventManager::clear()
 {
     TICK_DEBUG("clearing exclusive callback");
-    delete exclusive;
-    exclusive = nullptr;
-    TICK_DEBUG("clearing event listeners");
-    for (auto it = onupdate_list.begin(); it != onupdate_list.end(); it++)
+    if (exclusive)
     {
-        TICK_DEBUG("clearing onupdate: " << (*it)->description);
-        delete *it;
+        TICK_DEBUG("clearing exclusive: " << exclusive->description);
+        delete exclusive;
+        exclusive = nullptr;
+    }
+    TICK_DEBUG("clearing exclusive queue");
+    for (auto it : exclusive_queue)
+    {
+        TICK_DEBUG("clearing exclusive: " << it->description);
+        delete it;
+    }
+    exclusive_queue.clear();
+    TICK_DEBUG("clearing event listeners");
+    for (auto it : onupdate_list)
+    {
+        TICK_DEBUG("clearing onupdate: " << it->description);
+        delete it;
     }
     onupdate_list.clear();
-    for (auto it = onstatechange_list.begin(); it != onstatechange_list.end(); it++)
+    for (auto it : onstatechange_list)
     {
-        TICK_DEBUG("clearing onstatechange: " << (*it)->description);
-        delete *it;
+        TICK_DEBUG("clearing onstatechange: " << it->description);
+        delete it;
     }
     onstatechange_list.clear();
 }
@@ -193,19 +205,32 @@ bool EventManager::register_exclusive(ExclusiveCallback *cb)
     return true;
 }
 
+void EventManager::queue_exclusive(ExclusiveCallback *cb)
+{
+    TICK_DEBUG("queue_exclusive: " << cb->description);
+    exclusive_queue.push_back(cb);
+}
+
 void EventManager::onupdate(color_ostream & out)
 {
+    if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())
+    {
+        TICK_DEBUG("onupdate: next exclusive from queue");
+        exclusive = exclusive_queue.front();
+        exclusive_queue.pop_front();
+    }
+
     if (exclusive)
     {
         if (exclusive->run(out))
         {
-            TICK_DEBUG("onupdate: exclusive completed");
+            TICK_DEBUG("onupdate: exclusive completed: " << exclusive->description);
             delete exclusive;
             exclusive = nullptr;
         }
         else
         {
-            TICK_DEBUG("onupdate: waiting on exclusive");
+            TICK_DEBUG("onupdate: waiting on exclusive: " << exclusive->description);
         }
         return;
     }

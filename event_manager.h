@@ -85,6 +85,7 @@ public:
     void onstatechange_unregister(OnstatechangeCallback *&b);
 
     bool register_exclusive(ExclusiveCallback *cb);
+    void queue_exclusive(ExclusiveCallback *cb);
     inline bool has_exclusive() const { return exclusive != nullptr; }
     template<typename E>
     inline bool has_exclusive() const { return dynamic_cast<E *>(exclusive) != nullptr; }
@@ -96,6 +97,7 @@ private:
     void clear();
 
     ExclusiveCallback *exclusive;
+    std::list<ExclusiveCallback *> exclusive_queue;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
 };
