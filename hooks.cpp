@@ -376,7 +376,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI->camera->movie_started_in_lockstep)
+                    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {

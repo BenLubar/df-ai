@@ -1,8 +1,10 @@
 #include "event_manager.h"
 #include "ai.h"
 #include "camera.h"
+#include "embark.h"
 
 #include "df/viewscreen_movieplayerst.h"
+#include "df/viewscreen_textviewerst.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
@@ -191,14 +193,22 @@ void EventManager::onstatechange_unregister(OnstatechangeCallback *&b)
     b = nullptr;
 }
 
-bool EventManager::register_exclusive(ExclusiveCallback *cb)
+bool EventManager::register_exclusive(ExclusiveCallback *cb, bool force)
 {
     TICK_DEBUG("register_exclusive: " << cb->description);
     if (exclusive)
     {
         TICK_DEBUG("already have an exclusive");
-        delete cb;
-        return false;
+        if (force)
+        {
+            TICK_DEBUG("forcing registration");
+            delete exclusive;
+        }
+        else
+        {
+            delete cb;
+            return false;
+        }
     }
     TICK_DEBUG("exclusive registered");
     exclusive = cb;
@@ -253,17 +263,54 @@ void EventManager::onupdate(color_ostream & out)
 }
 void EventManager::onstatechange(color_ostream & out, state_change_event event)
 {
-    if (exclusive && event == SC_VIEWSCREEN_CHANGED)
+    if (event == SC_VIEWSCREEN_CHANGED)
     {
         df::viewscreen *curview = Gui::getCurViewscreen(true);
-        if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+        if (auto view = strict_virtual_cast<df::viewscreen_textviewerst>(curview))
         {
-            TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
-            Screen::dismiss(curview);
-            extern AI *dwarfAI;
-            dwarfAI->camera->check_record_status();
+            if (view->formatted_text.size() == 1)
+            {
+                const std::string & text = view->formatted_text.at(0)->text;
+                if (text == "Your strength has been broken." ||
+                    text == "Your settlement has crumbled to its end." ||
+                    text == "Your settlement has been abandoned.")
+                {
+                    extern AI *dwarfAI;
+                    if (dwarfAI)
+                    {
+                        dwarfAI->debug(out, "you just lost the game: " + text);
+                        dwarfAI->debug(out, "Exiting AI");
+                        dwarfAI->onupdate_unregister(out);
+
+                        // get rid of all the remaining event handlers
+                        events.clear();
+
+                        // remove embark-specific saved data
+                        dwarfAI->unpersist(out);
+                        dwarfAI->skip_persist = true;
+
+                        if (config.random_embark)
+                        {
+                            register_exclusive(new RestartWaitExclusive(dwarfAI), true);
+                        }
+
+                        // don't unpause, to allow for 'die'
+                    }
+                    return;
+                }
+            }
         }
-        return;
+        if (exclusive)
+        {
+            if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+            {
+                TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
+                Screen::dismiss(curview);
+                extern AI *dwarfAI;
+                dwarfAI->camera->check_record_status();
+            }
+            return;
+        }
     }
 
     // make a copy

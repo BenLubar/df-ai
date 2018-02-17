@@ -84,7 +84,7 @@ public:
     OnstatechangeCallback *onstatechange_register_once(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> b);
     void onstatechange_unregister(OnstatechangeCallback *&b);
 
-    bool register_exclusive(ExclusiveCallback *cb);
+    bool register_exclusive(ExclusiveCallback *cb, bool force = false);
     void queue_exclusive(ExclusiveCallback *cb);
     inline bool has_exclusive() const { return exclusive != nullptr; }
     template<typename E>

@@ -225,28 +225,6 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     unpause();
                 });
             }
-            else if (stripped.find("Your strength has been broken.") != std::string::npos ||
-                stripped.find("Your settlement has crumbled to its end.") != std::string::npos ||
-                stripped.find("Your settlement has been abandoned.") != std::string::npos)
-            {
-                debug(out, "you just lost the game:" + stripped);
-                debug(out, "Exiting AI");
-                onupdate_unregister(out);
-
-                // get rid of all the remaining event handlers
-                events.clear();
-
-                // remove embark-specific saved data
-                unpersist(out);
-                skip_persist = true;
-
-                if (config.random_embark)
-                {
-                    events.register_exclusive(new RestartWaitExclusive(this));
-                }
-
-                // don't unpause, to allow for 'die'
-            }
             else
             {
                 debug(out, "[ERROR] paused in unknown textviewerst:" + stripped);
