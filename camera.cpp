@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "camera.h"
+#include "hooks.h"
 
 #include <sstream>
 
@@ -71,7 +72,7 @@ void Camera::check_record_status()
 {
     if (config.record_movie && gview->supermovie_on == 0)
     {
-        movie_started_in_lockstep = config.lockstep;
+        movie_started_in_lockstep = lockstep_hooked;
         gview->supermovie_on = 1;
         gview->currentblocksize = 0;
         gview->nextfilepos = 0;

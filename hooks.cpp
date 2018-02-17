@@ -43,7 +43,7 @@ DFhackCExport uint32_t SDL_ThreadID(void);
 DFhackCExport void SDL_Quit(void);
 
 static volatile uint32_t lockstep_tick_count = 0;
-static volatile bool lockstep_hooked = false;
+volatile bool lockstep_hooked = false;
 static volatile bool lockstep_want_shutdown = false;
 static volatile bool lockstep_want_shutdown_now = false;
 
