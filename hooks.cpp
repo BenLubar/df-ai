@@ -45,6 +45,7 @@ DFhackCExport void SDL_Quit(void);
 static volatile uint32_t lockstep_tick_count = 0;
 volatile bool lockstep_hooked = false;
 static volatile bool lockstep_want_shutdown = false;
+static volatile bool lockstep_ready_for_shutdown = false;
 static volatile bool lockstep_want_shutdown_now = false;
 
 #ifdef _WIN32
@@ -526,18 +527,18 @@ static bool lockstep_drain_sdl()
 
 static void lockstep_loop()
 {
-    while (config.lockstep)
+    while (config.lockstep && !lockstep_want_shutdown)
     {
         LOCKSTEP_DEBUG("calling mainloop (A)");
         if (lockstep_mainloop())
         {
             LOCKSTEP_DEBUG("want shutdown (A)");
             Hook_Shutdown_Now();
-            return;
+            break;
         }
         LOCKSTEP_DEBUG("calling DFHack (A)");
         SDL_NumJoysticks();
-        if (!config.lockstep)
+        if (!config.lockstep || lockstep_want_shutdown)
         {
             LOCKSTEP_DEBUG("want disable (A)");
             break;
@@ -550,11 +551,11 @@ static void lockstep_loop()
             {
                 LOCKSTEP_DEBUG("want shutdown (B)");
                 Hook_Shutdown_Now();
-                return;
+                break;
             }
             LOCKSTEP_DEBUG("calling DFHack (B)");
             SDL_NumJoysticks();
-            if (!config.lockstep)
+            if (!config.lockstep || lockstep_want_shutdown)
             {
                 LOCKSTEP_DEBUG("want disable (B)");
                 break;
@@ -651,7 +652,7 @@ static struct df_ai_renderer : public df::renderer
         lockstep_loop();
         LOCKSTEP_DEBUG("lockstep_loop ended");
 
-        lockstep_want_shutdown = true;
+        lockstep_ready_for_shutdown = true;
     }
     virtual void resize(int32_t w, int32_t h)
     {
@@ -706,8 +707,13 @@ void Hook_Update()
 
     if (lockstep_want_shutdown)
     {
+        while (!lockstep_ready_for_shutdown)
+        {
+            tthread::this_thread::yield();
+        }
         LOCKSTEP_DEBUG("trying to unhook");
         lockstep_want_shutdown = false;
+        lockstep_ready_for_shutdown = false;
         Hook_Shutdown();
     }
     else if (!lockstep_hooked && config.lockstep && !lockstep_want_shutdown_now)
@@ -823,8 +829,6 @@ void Hook_Shutdown()
         {
             screen->breakdown_level = interface_breakdown_types::QUIT;
         }
-
-        egg_shutdown();
     }
 }
 
