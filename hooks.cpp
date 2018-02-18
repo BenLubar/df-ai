@@ -420,11 +420,11 @@ static void lockstep_handlemovie(bool flushall)
             {
                 frame_size *= 2;
             }
-            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall)
+            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || !dwarfAI->camera->movie_started_in_lockstep)
             {
                 int length = lockstep_write_movie_chunk();
 
-                if (length > 5000000)
+                if (length > 5000000 || !dwarfAI->camera->movie_started_in_lockstep)
                 {
                     lockstep_finish_movie();
                 }
