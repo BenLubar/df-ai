@@ -290,7 +290,7 @@ static int32_t lockstep_write_movie_chunk()
             //WRITE A HEADER
             if (gview->first_movie_write)
             {
-                const int32_t movie_version = 10001;
+                const int32_t movie_version = 10000;
                 f.write((const char *)&movie_version, sizeof(int32_t));
 
                 int32_t header[3];
@@ -303,18 +303,6 @@ static int32_t lockstep_write_movie_chunk()
                 }
                 header[2] = gview->supermovie_delayrate;
                 f.write((const char *)&header, sizeof(header));
-
-                int32_t s = int32_t(gview->supermovie_sound.size());
-                f.write((const char *)&s, sizeof(int32_t));
-                char buf[50];
-                for (s = 0; s < int32_t(gview->supermovie_sound.size()); s++)
-                {
-                    memset(buf, 0, sizeof(buf));
-                    strcpy(buf, gview->supermovie_sound.at(s)->c_str());
-                    f.write(buf, sizeof(buf));
-                }
-
-                f.write((const char *)gview->supermovie_sound_time, sizeof(gview->supermovie_sound_time));
             }
 
             //WRITE IT
