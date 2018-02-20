@@ -584,7 +584,7 @@ public:
     {
     }
 
-    virtual bool SuppressStateChange(color_ostream & out, state_change_event event)
+    virtual bool SuppressStateChange(color_ostream &, state_change_event event)
     {
         return event == SC_PAUSED || event == SC_UNPAUSED;
     }
