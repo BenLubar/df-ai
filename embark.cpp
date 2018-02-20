@@ -14,8 +14,11 @@
 #include "modules/Translation.h"
 
 #include "df/region_map_entry.h"
+#include "df/viewscreen_adopt_regionst.h"
 #include "df/viewscreen_choose_start_sitest.h"
 #include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_export_regionst.h"
+#include "df/viewscreen_game_cleanerst.h"
 #include "df/viewscreen_loadgamest.h"
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_new_regionst.h"
@@ -86,6 +89,21 @@ void EmbarkExclusive::Run(color_ostream & out)
         });
 
         Delay();
+
+        If(viewscreen_is<df::viewscreen_adopt_regionst>, [&]()
+        {
+            unknown_screen = false;
+        });
+
+        If(viewscreen_is<df::viewscreen_export_regionst>, [&]()
+        {
+            unknown_screen = false;
+        });
+
+        If(viewscreen_is<df::viewscreen_game_cleanerst>, [&]()
+        {
+            unknown_screen = false;
+        });
 
         If(viewscreen_is<df::viewscreen_movieplayerst>, [&]()
         {
