@@ -121,6 +121,12 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
 // This is called right before the plugin library is removed from memory.
 DFhackCExport command_result plugin_shutdown(color_ostream & out)
 {
+    if (lockstep_hooked)
+    {
+        unloading_plugin = true;
+        return CR_FAILURE;
+    }
+
     CoreSuspender suspend;
 
     remove_weblegends_handler("df-ai");
@@ -132,6 +138,14 @@ DFhackCExport command_result plugin_shutdown(color_ostream & out)
 
 DFhackCExport command_result plugin_enable(color_ostream & out, bool enable)
 {
+    if (!enable && lockstep_hooked)
+    {
+        disabling_plugin = true;
+        out << COLOR_YELLOW << "Disabling lockstep mode. df-ai will deactivate when lockstep mode has exited.";
+        out << COLOR_RESET << std::endl;
+        return CR_FAILURE;
+    }
+
     enabled = enable;
     check_enabled(out);
     return CR_OK;
@@ -258,6 +272,11 @@ DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_cha
 {
     if (!check_enabled(out))
         return CR_OK;
+
+    if (event == SC_BEGIN_UNLOAD)
+    {
+        unloading_plugin = true;
+    }
 
     if (event == SC_VIEWSCREEN_CHANGED && strict_virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true)))
     {

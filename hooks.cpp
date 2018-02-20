@@ -44,6 +44,9 @@ DFhackCExport void SDL_Quit(void);
 
 static volatile uint32_t lockstep_tick_count = 0;
 volatile bool lockstep_hooked = false;
+volatile bool disabling_plugin = false;
+volatile bool unloading_plugin = false;
+extern bool & enabled;
 static volatile bool lockstep_want_shutdown = false;
 static volatile bool lockstep_ready_for_shutdown = false;
 static volatile bool lockstep_want_shutdown_now = false;
@@ -390,7 +393,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI->camera->movie_started_in_lockstep)
+                    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -408,11 +411,11 @@ static void lockstep_handlemovie(bool flushall)
             {
                 frame_size *= 2;
             }
-            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || !dwarfAI->camera->movie_started_in_lockstep)
+            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || !dwarfAI || !dwarfAI->camera->movie_started_in_lockstep)
             {
                 int length = lockstep_write_movie_chunk();
 
-                if (length > 5000000 || !dwarfAI->camera->movie_started_in_lockstep)
+                if (length > 5000000 || !dwarfAI || !dwarfAI->camera->movie_started_in_lockstep)
                 {
                     lockstep_finish_movie();
                 }
@@ -513,9 +516,18 @@ static bool lockstep_drain_sdl()
     return false;
 }
 
+static bool Hook_Want_Disable()
+{
+    if (!config.lockstep || !enabled || disabling_plugin || unloading_plugin)
+    {
+        lockstep_want_shutdown = true;
+    }
+    return lockstep_want_shutdown;
+}
+
 static void lockstep_loop()
 {
-    while (config.lockstep && !lockstep_want_shutdown)
+    while (!Hook_Want_Disable())
     {
         LOCKSTEP_DEBUG("calling mainloop (A)");
         if (lockstep_mainloop())
@@ -526,7 +538,7 @@ static void lockstep_loop()
         }
         LOCKSTEP_DEBUG("calling DFHack (A)");
         SDL_NumJoysticks();
-        if (!config.lockstep || lockstep_want_shutdown)
+        if (Hook_Want_Disable())
         {
             LOCKSTEP_DEBUG("want disable (A)");
             break;
@@ -543,7 +555,7 @@ static void lockstep_loop()
             }
             LOCKSTEP_DEBUG("calling DFHack (B)");
             SDL_NumJoysticks();
-            if (!config.lockstep || lockstep_want_shutdown)
+            if (Hook_Want_Disable())
             {
                 LOCKSTEP_DEBUG("want disable (B)");
                 break;
@@ -573,7 +585,7 @@ static void lockstep_loop()
     }
 
     extern AI *dwarfAI;
-    if (dwarfAI->camera->movie_started_in_lockstep)
+    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
     {
         LOCKSTEP_DEBUG("stopping movie started in lockstep to avoid corruption");
         // Stop the current CMV so it doesn't get corrupted on the next frame.
@@ -704,7 +716,7 @@ void Hook_Update()
         lockstep_ready_for_shutdown = false;
         Hook_Shutdown();
     }
-    else if (!lockstep_hooked && config.lockstep && !lockstep_want_shutdown_now)
+    else if (!lockstep_hooked && !Hook_Want_Disable() && !lockstep_want_shutdown_now)
     {
         LOCKSTEP_DEBUG("trying to hook");
         if (init->display.flag.is_set(init_display_flags::TEXT))
@@ -786,6 +798,8 @@ void Hook_Update()
     }
 }
 
+extern bool check_enabled(color_ostream & out);
+
 void Hook_Shutdown()
 {
     if (!lockstep_hooked)
@@ -817,6 +831,12 @@ void Hook_Shutdown()
         {
             screen->breakdown_level = interface_breakdown_types::QUIT;
         }
+    }
+    else if (disabling_plugin)
+    {
+        enabled = false;
+        disabling_plugin = false;
+        check_enabled(Core::getInstance().getConsole());
     }
 }
 
