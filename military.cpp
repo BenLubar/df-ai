@@ -22,31 +22,57 @@ bool AI::tag_enemies(color_ostream & out)
             !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
             !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
         {
-            if (race &&
-                (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
-                    race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))
+            if (race && race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST))
             {
-                if (pop->military_all_squads_attack_unit(out, u))
-                {
-                    found = true;
-                }
+                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: megabeast") || found;
             }
-            else if (Units::isUndead(u) ||
-                u->flags1.bits.marauder ||
-                u->flags1.bits.active_invader ||
-                u->flags2.bits.underworld ||
-                u->flags2.bits.visitor_uninvited ||
-                is_attacking_citizen(u))
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST))
             {
-                if (pop->military_random_squad_attack_unit(out, u))
-                {
-                    found = true;
-                }
+                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: semi-megabeast") || found;
+            }
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST))
+            {
+                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: forgotten beast") || found;
+            }
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_TITAN))
+            {
+                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: titan") || found;
+            }
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON))
+            {
+                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: demon") || found;
+            }
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_DEMON))
+            {
+                found = pop->military_all_squads_attack_unit(out, u, "antagonist: demon") || found;
+            }
+            else if (race && race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY))
+            {
+                found = pop->military_all_squads_attack_unit(out, u, "antagonist: night creature") || found;
+            }
+            else if (Units::isUndead(u))
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "undead") || found;
+            }
+            else if (u->flags1.bits.marauder)
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "marauder") || found;
+            }
+            else if (u->flags1.bits.active_invader)
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "active invader") || found;
+            }
+            else if (u->flags2.bits.underworld)
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "underworld creature") || found;
+            }
+            else if (u->flags2.bits.visitor_uninvited)
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "uninvited visitor") || found;
+            }
+            else if (is_attacking_citizen(u))
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "attacking citizen") || found;
             }
         }
     }

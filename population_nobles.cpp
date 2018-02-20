@@ -31,7 +31,7 @@ bool Population::unit_hasmilitaryduty(df::unit *u)
     return !curmonth.empty() && (curmonth.size() != 1 || curmonth[0]->min_count != 0);
 }
 
-int32_t Population::unit_totalxp(df::unit *u)
+int32_t Population::unit_totalxp(const df::unit *u)
 {
     int32_t t = 0;
     for (auto sk : u->status.current_soul->skills)

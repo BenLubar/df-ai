@@ -80,17 +80,17 @@ void Population::update_caged(color_ostream & out)
                         {
                             assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
                             ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
-                            military_random_squad_attack_unit(out, u);
+                            military_random_squad_attack_unit(out, u, "just in case pitting fails");
                         }
                         else
                         {
-                            military_cancel_attack_order(out, u);
+                            military_cancel_attack_order(out, u, "caged, but not in place for pitting");
                         }
                     }
                     else
                     {
                         ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), waiting_items));
-                        military_cancel_attack_order(out, u);
+                        military_cancel_attack_order(out, u, "caged, but not ready for pitting");
                     }
                 }
             }

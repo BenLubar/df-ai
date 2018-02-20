@@ -55,6 +55,22 @@ private:
     bool did_trade;
     int32_t trade_start_x, trade_start_y, trade_start_z;
 
+    struct squad_order_change
+    {
+        enum order_type
+        {
+            kill
+        };
+
+        order_type type;
+        int32_t squad_id;
+        int32_t unit_id;
+        bool remove;
+        std::string reason;
+    };
+    std::list<squad_order_change> squad_order_changes;
+    friend class MilitarySquadAttackExclusive;
+
 public:
     Population(AI *ai);
     ~Population();
@@ -80,20 +96,18 @@ public:
 
     void assign_occupation(color_ostream & out, df::building *bld, df::abstract_building *loc, df::occupation_type occ);
 
-    bool military_random_squad_attack_unit(color_ostream & out, df::unit *u);
-    bool military_all_squads_attack_unit(color_ostream & out, df::unit *u);
-    bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u);
-    bool military_cancel_attack_order(color_ostream & out, df::unit *u);
-
-    df::unit *military_find_new_soldier(color_ostream & out, const std::vector<df::unit *> & unitlist);
-    int32_t military_find_free_squad();
+    bool military_random_squad_attack_unit(color_ostream & out, df::unit *u, const std::string & reason);
+    bool military_all_squads_attack_unit(color_ostream & out, df::unit *u, const std::string & reason);
+    bool military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u, const std::string & reason);
+    bool military_cancel_attack_order(color_ostream & out, df::unit *u, const std::string & reason);
+    bool military_cancel_attack_order(color_ostream & out, df::squad *squad, df::unit *u, const std::string & reason);
 
     bool set_up_trading(color_ostream & out, bool should_be_trading, bool allow_any_dwarf = false);
     bool perform_trade(color_ostream & out);
     friend class PerformTradeExclusive;
 
     bool unit_hasmilitaryduty(df::unit *u);
-    int32_t unit_totalxp(df::unit *u);
+    static int32_t unit_totalxp(const df::unit *u);
 
     void update_nobles(color_ostream & out);
     void check_noble_appartments(color_ostream & out);
