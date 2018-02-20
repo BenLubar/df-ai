@@ -549,7 +549,7 @@ class MilitarySquadAttackExclusive : public ExclusiveCallback
     std::map<int32_t, std::set<int32_t>>::const_iterator kill_orders_squad;
     std::set<int32_t>::const_iterator kill_orders_unit;
 public:
-    MilitarySquadAttackExclusive(AI * const ai) : ExclusiveCallback("squad attack updater"), ai(ai)
+    MilitarySquadAttackExclusive(AI * const ai) : ExclusiveCallback("squad attack updater", 2), ai(ai)
     {
     }
 
@@ -616,6 +616,8 @@ public:
                     break;
                 }
             }
+
+            ai->pop->squad_order_changes.clear();
         });
 
         If([&]() -> bool { return !kill_orders.empty(); }, [&]()
@@ -639,12 +641,12 @@ public:
                     return squad->id == ui->squads.unk48;
                 }) - ui->squads.list.begin() : 0;
 
-                // Menu is guaranteed to be capped at 9 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
+                // Menu is guaranteed to be capped at 10 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
                 While([&]() -> bool { return first_squad > squad_pos; }, [&]()
                 {
                     Key(interface_key::SECONDSCROLL_PAGEUP);
                 });
-                While([&]() -> bool { return first_squad + 9 <= squad_pos; }, [&]()
+                While([&]() -> bool { return first_squad + 10 <= squad_pos; }, [&]()
                 {
                     Key(interface_key::SECONDSCROLL_PAGEDOWN);
                 });
@@ -684,7 +686,7 @@ public:
                         {
                             Key(interface_key::SECONDSCROLL_PAGEUP);
                         });
-                        While([&]() -> bool { return first_unit + 9 <= unit_pos; }, [&]()
+                        While([&]() -> bool { return first_unit + 10 <= unit_pos; }, [&]()
                         {
                             Key(interface_key::SECONDSCROLL_PAGEDOWN);
                         });
