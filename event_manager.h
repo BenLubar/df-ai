@@ -45,6 +45,7 @@ protected:
     void MoveToItem(int32_t current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP);
     void EnterString(const std::string & current, const std::string & target);
 
+    virtual bool SuppressStateChange(color_ostream & out, state_change_event event) { return event == SC_VIEWSCREEN_CHANGED; }
     virtual void Run(color_ostream & out) = 0;
 
     struct wait_for_next_frame {};

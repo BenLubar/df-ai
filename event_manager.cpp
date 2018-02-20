@@ -315,7 +315,10 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
                 return;
             }
         }
-        return;
+        if (exclusive->SuppressStateChange(out, event))
+        {
+            return;
+        }
     }
 
     // make a copy
