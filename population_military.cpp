@@ -132,7 +132,7 @@ public:
     {
         Do([&]()
         {
-            size_t squad_size = 10;
+            int32_t squad_size = 10;
             int32_t num_soldiers = screen->num_soldiers + int32_t(units.size());
             if (num_soldiers < 4 * 8)
                 squad_size = 8;
@@ -212,17 +212,17 @@ public:
         {
             auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool
             {
-                return u->id == units.front();
+                return u->id == unit_id;
             });
 
             If([&]() -> bool { return selected_unit == screen->positions.candidates.end(); }, [&]()
             {
-                ai->debug(out, "Failed to recruit " + AI::describe_unit(df::unit::find(units.front())) + ": could not find unit on list of candidates");
+                ai->debug(out, "Failed to recruit " + AI::describe_unit(df::unit::find(unit_id)) + ": could not find unit on list of candidates");
             }, [&]()
             {
                 Do([&]()
                 {
-                    ai->debug(out, "Recruiting new squad member: " + AI::describe_unit(df::unit::find(units.front())));
+                    ai->debug(out, "Recruiting new squad member: " + AI::describe_unit(df::unit::find(unit_id)));
                 });
 
                 ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
@@ -712,7 +712,10 @@ public:
                         }
 
                         auto unit_pos = unit_it - ui->squads.kill_targets.begin();
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
                         auto first_unit = static_cast<ptrdiff_t>(*reinterpret_cast<int32_t *>(&ui->squads.anon_3));
+#pragma GCC diagnostic pop
 
                         While([&]() -> bool { return first_unit > unit_pos; }, [&]()
                         {
@@ -842,7 +845,7 @@ bool Population::military_all_squads_attack_unit(color_ostream & out, df::unit *
     return any;
 }
 
-bool Population::military_squad_attack_unit(color_ostream & out, df::squad *squad, df::unit *u, const std::string & reason)
+bool Population::military_squad_attack_unit(color_ostream &, df::squad *squad, df::unit *u, const std::string & reason)
 {
     if (Units::isOwnCiv(u))
     {
@@ -907,7 +910,7 @@ bool Population::military_cancel_attack_order(color_ostream & out, df::unit *u, 
     return any;
 }
 
-bool Population::military_cancel_attack_order(color_ostream & out, df::squad *squad, df::unit *u, const std::string & reason)
+bool Population::military_cancel_attack_order(color_ostream &, df::squad *squad, df::unit *u, const std::string & reason)
 {
     auto order_change = std::find_if(squad_order_changes.begin(), squad_order_changes.end(), [squad, u](const squad_order_change & change) -> bool
     {
