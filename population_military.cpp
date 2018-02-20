@@ -513,8 +513,8 @@ void Population::update_military(color_ostream & out)
         }
     }
 
-    size_t min_military = citizen.size() / 4;
     size_t max_military = std::min(citizen.size() * 3 / 4, std::min(axes ? axes - 1 : 0, picks ? picks - 1 : 0));
+    size_t min_military = std::min(citizen.size() / 4, max_military);
     size_t citizen_military = std::count_if(military.begin(), military.end(), [this](const std::pair<const int32_t, int32_t> & member) -> bool
     {
         return citizen.count(member.first);
