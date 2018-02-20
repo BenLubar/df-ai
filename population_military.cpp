@@ -634,10 +634,10 @@ public:
                 {
                     return squad->id == kill_orders_squad->first;
                 }) - ui->squads.list.begin();
-                auto first_squad = std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
+                auto first_squad = ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
                 {
                     return squad->id == ui->squads.unk48;
-                }) - ui->squads.list.begin();
+                }) - ui->squads.list.begin() : 0;
 
                 // Menu is guaranteed to be capped at 9 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
                 While([&]() -> bool { return first_squad > squad_pos; }, [&]()
