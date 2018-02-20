@@ -695,8 +695,10 @@ public:
                     });
 
                     Key(interface_key::SELECT);
+
                     If([&]() -> bool { return ui->squads.in_kill_list; }, [&]()
                     {
+                        Key(interface_key::LEAVESCREEN);
                         Key(interface_key::LEAVESCREEN);
                     });
                 });
