@@ -422,6 +422,7 @@ public:
 void Population::update_military(color_ostream & out)
 {
     std::vector<df::unit *> soldiers;
+    std::vector<df::unit *> want_draft;
     std::vector<df::unit *> draft_pool;
 
     for (auto u : world->units.active)
@@ -470,6 +471,27 @@ void Population::update_military(color_ostream & out)
                 }
             }
         }
+        else if (resident.count(u->id))
+        {
+            if (u->military.squad_id == -1)
+            {
+                if (military.erase(u->id))
+                {
+                    ai->plan->freesoldierbarrack(out, u->id);
+                }
+
+                // Soldier residents should be recruited into the military.
+                if (Units::isSane(u) && ENUM_ATTR(profession, military, u->profession))
+                {
+                    want_draft.push_back(u);
+                }
+            }
+            else if (!military.count(u->id))
+            {
+                military[u->id] = u->military.squad_id;
+                ai->plan->getsoldierbarrack(out, u->id);
+            }
+        }
     }
 
     size_t axes = 0, picks = 0;
@@ -493,18 +515,27 @@ void Population::update_military(color_ostream & out)
 
     size_t min_military = citizen.size() / 4;
     size_t max_military = std::min(citizen.size() * 3 / 4, std::min(axes ? axes - 1 : 0, picks ? picks - 1 : 0));
-
-    if (military.size() > max_military)
+    size_t citizen_military = std::count_if(military.begin(), military.end(), [this](const std::pair<const int32_t, int32_t> & member) -> bool
     {
-        auto mid = soldiers.begin() + std::min(military.size() - max_military, soldiers.size());
+        return citizen.count(member.first);
+    });
+
+    if (citizen_military > max_military)
+    {
+        auto mid = soldiers.begin() + std::min(citizen_military - max_military, soldiers.size());
         std::partial_sort(soldiers.begin(), mid, soldiers.end(), &MilitarySetupExclusive::Dismiss::compare);
         events.queue_exclusive(new MilitarySetupExclusive::Dismiss(ai, soldiers.begin(), mid));
     }
-    else if (military.size() < min_military)
+    else if (citizen_military < min_military)
     {
-        auto mid = draft_pool.begin() + std::min(min_military - military.size(), draft_pool.size());
+        auto mid = draft_pool.begin() + std::min(min_military - citizen_military, draft_pool.size());
         std::partial_sort(draft_pool.begin(), mid, draft_pool.end(), &MilitarySetupExclusive::Draft::compare);
-        events.queue_exclusive(new MilitarySetupExclusive::Draft(ai, draft_pool.begin(), mid));
+        want_draft.insert(want_draft.end(), draft_pool.begin(), mid);
+    }
+
+    if (!want_draft.empty())
+    {
+        events.queue_exclusive(new MilitarySetupExclusive::Draft(ai, want_draft.begin(), want_draft.end()));
     }
 
     // Check barracks construction status.
