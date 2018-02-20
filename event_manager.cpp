@@ -300,17 +300,22 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
                 }
             }
         }
-        if (exclusive)
+    }
+    if (exclusive)
+    {
+        if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
         {
-            if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+            // Don't cancel the intro video this way - it causes the sounds from the intro to get stuck in CMV recordings.
+            if (!view->is_playing)
             {
                 TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
-                Screen::dismiss(curview);
+                Screen::dismiss(view);
                 extern AI *dwarfAI;
                 dwarfAI->camera->check_record_status();
+                return;
             }
-            return;
         }
+        return;
     }
 
     // make a copy
