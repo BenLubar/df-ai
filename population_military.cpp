@@ -14,6 +14,7 @@
 #include "df/item_weaponst.h"
 #include "df/itemdef_weaponst.h"
 #include "df/layer_object_listst.h"
+#include "df/occupation.h"
 #include "df/squad.h"
 #include "df/squad_ammo_spec.h"
 #include "df/squad_order_kill_listst.h"
@@ -481,7 +482,7 @@ void Population::update_military(color_ostream & out)
                 }
 
                 // Soldier residents should be recruited into the military.
-                if (Units::isSane(u) && ENUM_ATTR(profession, military, u->profession))
+                if (Units::isSane(u) && std::find_if(u->occupations.begin(), u->occupations.end(), [](df::occupation *occ) -> bool { return occ->type == occupation_type::MERCENARY; }) != u->occupations.end())
                 {
                     want_draft.push_back(u);
                 }
