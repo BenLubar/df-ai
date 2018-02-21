@@ -705,7 +705,7 @@ void Hook_Update()
         return;
     }
 
-    if (lockstep_want_shutdown)
+    if (lockstep_hooked && lockstep_want_shutdown)
     {
         while (!lockstep_ready_for_shutdown)
         {
