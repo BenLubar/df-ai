@@ -300,7 +300,7 @@ void Plan::update(color_ostream &)
         for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
         {
             task *t = *it;
-            if (t->type != task_type::dig_room || (t->r->type == room_type::corridor && (t->r->corridor_type == corridor_type::veinshaft || t->r->corridor_type == corridor_type::outpost)))
+            if ((t->type != task_type::dig_room && t->type != task_type::dig_room_immediate) || (t->r->type == room_type::corridor && (t->r->corridor_type == corridor_type::veinshaft || t->r->corridor_type == corridor_type::outpost)))
                 continue;
             df::coord size = t->r->size();
             if (t->r->type != room_type::corridor || size.z > 1)
@@ -328,11 +328,27 @@ void Plan::update(color_ostream &)
             std::ostringstream reason;
             task & t = **bg_idx_generic;
 
+            auto any_immediate = [this]() -> bool
+            {
+                for (auto t : tasks_generic)
+                {
+                    if (t->type == task_type::dig_room_immediate)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             bool del = false;
             switch (t.type)
             {
             case task_type::want_dig:
-                if (t.r->is_dug() || nrdig[t.r->queue] < wantdig_max)
+                if (any_immediate())
+                {
+                    reason << "waiting for more important room to be dug";
+                }
+                else if (t.r->is_dug() || nrdig[t.r->queue] < wantdig_max)
                 {
                     digroom(out, t.r);
                     del = true;
@@ -343,6 +359,7 @@ void Plan::update(color_ostream &)
                 }
                 break;
             case task_type::dig_room:
+            case task_type::dig_room_immediate:
                 fixup_open(out, t.r);
                 if (t.r->is_dug(reason))
                 {
@@ -1201,7 +1218,7 @@ task *Plan::is_digging()
 {
     for (auto t : tasks_generic)
     {
-        if ((t->type == task_type::want_dig || t->type == task_type::dig_room) && t->r->type != room_type::corridor)
+        if ((t->type == task_type::want_dig || t->type == task_type::dig_room || t->type == task_type::dig_room_immediate) && t->r->type != room_type::corridor)
         {
             return t;
         }
@@ -1912,7 +1929,7 @@ bool Plan::wantdig(color_ostream & out, room *r, int32_t queue)
     return true;
 }
 
-bool Plan::digroom(color_ostream & out, room *r)
+bool Plan::digroom(color_ostream & out, room *r, bool immediate)
 {
     if (r->status != room_status::plan)
         return false;
@@ -1922,11 +1939,11 @@ bool Plan::digroom(color_ostream & out, room *r)
     fixup_open(out, r);
     r->dig();
 
-    add_task(task_type::dig_room, r);
+    add_task(immediate ? task_type::dig_room : task_type::dig_room_immediate, r);
 
     for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
     {
-        digroom(out, *it);
+        digroom(out, *it, immediate);
     }
 
     for (auto it = r->layout.begin(); it != r->layout.end(); it++)
@@ -1939,7 +1956,7 @@ bool Plan::digroom(color_ostream & out, room *r)
         add_task(task_type::furnish, r, f);
     }
 
-    ai->find_room(room_type::stockpile, [this, &out, r](room *r_) -> bool
+    ai->find_room(room_type::stockpile, [this, &out, r, immediate](room *r_) -> bool
     {
         if (r_->workshop != r)
         {
@@ -1947,7 +1964,7 @@ bool Plan::digroom(color_ostream & out, room *r)
         }
 
         // dig associated stockpiles
-        digroom(out, r_);
+        digroom(out, r_, immediate);
 
         // search all stockpiles in case there's more than one
         return false;
@@ -4920,7 +4937,7 @@ std::string Plan::status()
     }
     if (task *t = is_digging())
     {
-        if (t->type == task_type::dig_room)
+        if (t->type == task_type::dig_room || t->type == task_type::dig_room_immediate)
         {
             s << ", digging: " << AI::describe_room(t->r);
         }

@@ -156,6 +156,7 @@ BEGIN_ENUM(task, type) \
     ENUM_ITEM(dig_cistern) \
     ENUM_ITEM(dig_garbage) \
     ENUM_ITEM(dig_room) \
+    ENUM_ITEM(dig_room_immediate) \
     ENUM_ITEM(furnish) \
     ENUM_ITEM(monitor_cistern) \
     ENUM_ITEM(monitor_farm_irrigation) \

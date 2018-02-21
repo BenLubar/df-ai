@@ -714,7 +714,7 @@ bool plan_priority_t::do_dig(AI *ai, color_ostream & out, room *r)
 
 bool plan_priority_t::do_dig_immediate(AI *ai, color_ostream & out, room *r)
 {
-    return ai->plan->digroom(out, r);
+    return ai->plan->digroom(out, r, true);
 }
 
 bool plan_priority_t::do_unignore_furniture(AI *ai, color_ostream & out, room *r)
@@ -801,7 +801,7 @@ bool plan_priority_t::do_dig_next_cavern_outpost(AI *ai, color_ostream & out)
    bool any_outpost = false;
    for (auto & t : ai->plan->tasks_generic)
    {
-       if (t->type != task_type::want_dig && t->type != task_type::dig_room)
+       if (t->type != task_type::want_dig && t->type != task_type::dig_room && t->type != task_type::dig_room_immediate)
        {
            continue;
        }

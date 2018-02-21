@@ -2054,7 +2054,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
         bool any_outpost = false;
         for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
         {
-            if ((*it)->type != task_type::want_dig && (*it)->type != task_type::dig_room)
+            if ((*it)->type != task_type::want_dig && (*it)->type != task_type::dig_room && (*it)->type != task_type::dig_room_immediate)
             {
                 continue;
             }

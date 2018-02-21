@@ -130,7 +130,7 @@ public:
     void set_owner(color_ostream & out, room *r, int32_t uid);
 
     bool wantdig(color_ostream & out, room *r, int32_t queue = 0);
-    bool digroom(color_ostream & out, room *r);
+    bool digroom(color_ostream & out, room *r, bool immediate = false);
     bool construct_room(color_ostream & out, room *r);
     bool furnish_room(color_ostream & out, room *r);
     bool try_furnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
