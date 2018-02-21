@@ -705,7 +705,7 @@ void Hook_Update()
         return;
     }
 
-    if (lockstep_hooked && lockstep_want_shutdown)
+    if (lockstep_want_shutdown)
     {
         while (!lockstep_ready_for_shutdown)
         {
@@ -716,7 +716,7 @@ void Hook_Update()
         lockstep_ready_for_shutdown = false;
         Hook_Shutdown();
     }
-    else if (!lockstep_hooked && !Hook_Want_Disable() && !lockstep_want_shutdown_now)
+    else if (!lockstep_hooked && config.lockstep && !Hook_Want_Disable() && !lockstep_want_shutdown_now)
     {
         LOCKSTEP_DEBUG("trying to hook");
         if (init->display.flag.is_set(init_display_flags::TEXT))
