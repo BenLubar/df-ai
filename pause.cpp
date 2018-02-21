@@ -262,10 +262,13 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 AI::feed_key(interface_key::LEAVESCREEN);
             });
         }
-        else if (strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
+        else if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
         {
-            Screen::dismiss(curview);
-            camera->check_record_status();
+            if (!view->is_playing)
+            {
+                Screen::dismiss(curview);
+                camera->check_record_status();
+            }
         }
         else if (auto hack = dfhack_viewscreen::try_cast(curview))
         {

@@ -159,8 +159,11 @@ void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> 
     {
         if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))
         {
-            Screen::dismiss(view);
-            camera->check_record_status();
+            if (!view->is_playing)
+            {
+                Screen::dismiss(view);
+                camera->check_record_status();
+            }
         }
         if (Gui::getCurViewscreen(true) != curscreen)
         {
