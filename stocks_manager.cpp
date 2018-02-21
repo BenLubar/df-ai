@@ -144,7 +144,7 @@ class ManagerOrderExclusive : public ExclusiveCallback
     AI * const ai;
     df::manager_order_template tmpl;
     std::string quantity;
-    std::string first_word;
+    std::string search_word;
 
 public:
     ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount)
@@ -153,11 +153,25 @@ public:
         tmpl(tmpl),
         quantity(stl_sprintf("%d", std::min(amount, 9999)))
     {
-        first_word = AI::describe_job(&tmpl);
-        size_t pos = first_word.find(' ');
+        search_word = AI::describe_job(&tmpl);
+        size_t pos = search_word.find(' ');
         if (pos != std::string::npos)
         {
-            first_word = first_word.substr(0, pos);
+            if (search_word.substr(0, pos) == "Smelt" && search_word.substr(search_word.length() - 4) == " Ore")
+            {
+                size_t pos2 = search_word.rfind(' ');
+                pos = search_word.rfind(' ', pos2);
+                search_word = search_word.substr(pos, pos2 - pos);
+            }
+            else if ((search_word.substr(0, pos) == "Construct" || search_word.substr(0, pos) == "Make" || search_word.substr(0, pos) == "Prepare" || search_word.substr(0, pos) == "Forge") && isalpha(search_word.at(search_word.length() - 1)))
+            {
+                pos = search_word.rfind(' ');
+                search_word = search_word.substr(pos);
+            }
+            else
+            {
+                search_word = search_word.substr(0, pos);
+            }
         }
     }
 
@@ -218,7 +232,7 @@ public:
                 &view->str_filter;
 #pragma GCC diagnostic pop
 
-            EnterString(*str_filter, first_word);
+            EnterString(*str_filter, search_word);
 
             While([&]() -> bool { return !target; }, [&]()
             {
