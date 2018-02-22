@@ -224,18 +224,21 @@ public:
                 }
             });
 
-            // XXX: DFHack bug https://github.com/DFHack/df-structures/issues/243
-            const static bool df_structures_bug_243_present = view->str_filter[0] == -1 && view->str_filter[1] == -1 && view->str_filter[2] == -1 && view->str_filter[3] == -1 && view->str_filter[4] == 0;
-            const char *str_filter = df_structures_bug_243_present ? view->str_filter + sizeof(int32_t) : view->str_filter;
+            EnterString(view->str_filter, search_word);
 
-            EnterString(str_filter, search_word);
-
-            While([&]() -> bool { return !target; }, [&]()
+            While([&]() -> bool { return !target && view->str_filter[0]; }, [&]()
             {
                 Key(interface_key::STRING_A000);
             });
 
-            MoveToItem(view->sel_idx, idx, interface_key::STANDARDSCROLL_PAGEDOWN, interface_key::STANDARDSCROLL_UP);
+            If([&]() -> bool { return target == nullptr; }, [&]()
+            {
+                ai->debug(out, "[CHEAT] Failed to get a manager order for " + AI::describe_job(&tmpl) + "; forcing it.");
+                *view->orders.at(0) = tmpl;
+            }, [&]()
+            {
+                MoveToItem(view->sel_idx, idx, interface_key::STANDARDSCROLL_PAGEDOWN, interface_key::STANDARDSCROLL_UP);
+            });
 
             Key(interface_key::SELECT);
 
