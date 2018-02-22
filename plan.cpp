@@ -1939,7 +1939,7 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
     fixup_open(out, r);
     r->dig();
 
-    add_task(immediate ? task_type::dig_room : task_type::dig_room_immediate, r);
+    add_task(immediate ? task_type::dig_room_immediate : task_type::dig_room, r);
 
     for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
     {
