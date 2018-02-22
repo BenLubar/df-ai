@@ -141,6 +141,40 @@
 			}
 		},
 		{
+			"continue": true,
+			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "farmplot",
+					"farm_type": "food"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "farmplot",
+				"farm_type": "food"
+			}
+		},
+		{
+			"continue": true,
+			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "farmplot",
+					"farm_type": "cloth"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "farmplot",
+				"farm_type": "cloth"
+			}
+		},
+		{
 			"action": "dig_immediate",
 			"match": {
 				"type": "garbagedump"
