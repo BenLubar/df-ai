@@ -122,6 +122,7 @@ public:
 class MilitarySetupExclusive::Draft : public MilitarySetupExclusive
 {
     int32_t selected_uniform;
+    int32_t reassign_as_leader;
 
 public:
     Draft(AI * const ai, unit_iterator begin, unit_iterator end) : MilitarySetupExclusive(ai, "military - draft", begin, end)
@@ -193,6 +194,95 @@ public:
             });
 
             ScrollTo(int32_t(selected_squad - screen->squads.list.begin()));
+
+            If([&]() -> bool
+            {
+                if (!ai->pop->resident.count(unit_id))
+                {
+                    return false;
+                }
+
+                for (auto pos : (*selected_squad)->positions)
+                {
+                    if (pos)
+                    {
+                        if (auto fig = df::historical_figure::find(pos->occupant))
+                        {
+                            if (auto u = df::unit::find(fig->unit_id))
+                            {
+                                if (Units::isAlive(u) && Units::isSane(u))
+                                {
+                                    return false;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Move an existing citizen soldier into this squad as the leader. Mercenaries can't lead squads.
+                reassign_as_leader = -1;
+
+                for (auto squad : screen->squads.list)
+                {
+                    if (reassign_as_leader != -1)
+                    {
+                        break;
+                    }
+
+                    if (!squad)
+                    {
+                        continue;
+                    }
+
+                    for (auto pos : squad->positions)
+                    {
+                        if (!pos)
+                        {
+                            continue;
+                        }
+
+                        if (auto fig = df::historical_figure::find(pos->occupant))
+                        {
+                            if (ai->pop->resident.count(fig->unit_id))
+                            {
+                                continue;
+                            }
+
+                            if (auto u = df::unit::find(fig->unit_id))
+                            {
+                                if (squad->leader_position == u->military.squad_position)
+                                {
+                                    continue;
+                                }
+
+                                reassign_as_leader = u->id;
+                                ai->debug(out, "Reassigning " + AI::describe_unit(u) + " from " + AI::describe_name(squad->name, true) + " to lead new squad " + AI::describe_name((*selected_squad)->name, true));
+                                return true;
+                            }
+                        }
+                    }
+                }
+
+                ai->debug(out, "[WARNING] Could not find an existing soldier to lead squad: " + AI::describe_name((*selected_squad)->name, true));
+                return false;
+            }, [&]()
+            {
+                Key(interface_key::STANDARDSCROLL_LEFT);
+
+                Do([&]()
+                {
+                    auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool
+                    {
+                        return u->id == reassign_as_leader;
+                    });
+
+                    ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
+                });
+
+                Key(interface_key::SELECT);
+
+                Key(interface_key::STANDARDSCROLL_RIGHT);
+            });
         });
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
