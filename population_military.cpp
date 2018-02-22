@@ -711,11 +711,8 @@ public:
                             return;
                         }
 
-                        auto unit_pos = unit_it - ui->squads.kill_targets.begin();
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
-                        auto first_unit = static_cast<ptrdiff_t>(*reinterpret_cast<int32_t *>(&ui->squads.anon_3));
-#pragma GCC diagnostic pop
+                        auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
+                        auto first_unit = ui->squads.unk_f0;
 
                         While([&]() -> bool { return first_unit > unit_pos; }, [&]()
                         {
