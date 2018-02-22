@@ -224,15 +224,11 @@ public:
                 }
             });
 
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
             // XXX: DFHack bug https://github.com/DFHack/df-structures/issues/243
-            const decltype(view->str_filter) *str_filter = (((ptrdiff_t)&((df::viewscreen_createquotast *)nullptr)->str_filter) == sizeof(df::viewscreen)) ?
-                reinterpret_cast<decltype(view->str_filter) *>(reinterpret_cast<uintptr_t>(&view->str_filter) + sizeof(int32_t)) :
-                &view->str_filter;
-#pragma GCC diagnostic pop
+            const static bool df_structures_bug_243_present = view->str_filter[0] == -1 && view->str_filter[1] == -1 && view->str_filter[2] == -1 && view->str_filter[3] == -1 && view->str_filter[4] == 0;
+            const char *str_filter = df_structures_bug_243_present ? view->str_filter + sizeof(int32_t) : view->str_filter;
 
-            EnterString(*str_filter, search_word);
+            EnterString(str_filter, search_word);
 
             While([&]() -> bool { return !target; }, [&]()
             {
