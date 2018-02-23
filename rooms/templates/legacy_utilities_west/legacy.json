@@ -5,7 +5,7 @@
 			"x": 0,
 			"y": 0,
 			"z": 0,
-			"has_users": 2,
+			"has_users": 3,
 			"makeroom": true
 		},
 		{
@@ -13,35 +13,35 @@
 			"x": 1,
 			"y": 0,
 			"z": 0,
-			"has_users": 2
+			"has_users": 3
 		},
 		{
 			"type": "table",
 			"x": 0,
 			"y": 1,
 			"z": 0,
-			"has_users": 2
+			"has_users": 3
 		},
 		{
 			"type": "chair",
 			"x": 1,
 			"y": 1,
 			"z": 0,
-			"has_users": 2
+			"has_users": 3
 		},
 		{
 			"type": "table",
 			"x": 0,
 			"y": 2,
 			"z": 0,
-			"has_users": 2
+			"has_users": 3
 		},
 		{
 			"type": "chair",
 			"x": 1,
 			"y": 2,
 			"z": 0,
-			"has_users": 2
+			"has_users": 3
 		}
 	],
 	"r": [
