@@ -5346,7 +5346,10 @@ std::string AI::describe_room(room *r, bool html)
         s << ")";
     }
 
-    s << " (" << r->status << ")";
+    if (r->status != room_status::finished)
+    {
+        s << " (" << r->status << ")";
+    }
 
     return s.str();
 }
@@ -5430,7 +5433,7 @@ std::string AI::describe_furniture(furniture *f, bool html)
 
     if (f->makeroom)
     {
-        s << " (room)";
+        s << " (main)";
     }
 
     if (f->internal)
