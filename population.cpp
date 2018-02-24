@@ -18,7 +18,7 @@
 #include "df/job_item.h"
 #include "df/occupation.h"
 #include "df/squad.h"
-#include "df/squad_order.h"
+#include "df/squad_order_kill_listst.h"
 #include "df/squad_position.h"
 #include "df/unit_relationship_type.h"
 #include "df/ui.h"
@@ -435,15 +435,32 @@ void Population::report(std::ostream & out, bool html)
         }
         for (auto o : sq->orders)
         {
-            std::string description;
-            o->getDescription(&description);
-            if (html)
+            if (auto kill = virtual_cast<df::squad_order_kill_listst>(o))
             {
-                out << "<li>" << html_escape(description) << "</li>";
+                for (auto unit_id : kill->units)
+                {
+                    auto target = df::unit::find(unit_id);
+                    if (!target || Units::isDead(target))
+                    {
+                        continue;
+                    }
+                    out << (html ? "<li>" : "- ");
+                    out << AI::describe_unit(target, html);
+                    out << (html ? "</li>" : "\n");
+                }
             }
             else
             {
-                out << "- " << description << "\n";
+                std::string description;
+                o->getDescription(&description);
+                if (html)
+                {
+                    out << "<li>" << html_escape(description) << "</li>";
+                }
+                else
+                {
+                    out << "- " << description << "\n";
+                }
             }
         }
         if (sq->orders.empty())
