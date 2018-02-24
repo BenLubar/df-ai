@@ -6036,6 +6036,11 @@ std::vector<room *> Plan::find_corridor_tosurface(color_ostream & out, corridor_
 
 bool Plan::find_building(df::building *bld, room * & r, furniture * & f)
 {
+    if (!bld)
+    {
+        return false;
+    }
+
     if (room_by_z.empty())
     {
         for (auto r_ : rooms_and_corridors)
