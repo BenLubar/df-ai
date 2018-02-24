@@ -8,6 +8,7 @@
 
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/crime.h"
 #include "df/general_ref_unit_infantst.h"
 #include "df/general_ref_unit_workerst.h"
 #include "df/historical_entity.h"
@@ -582,6 +583,176 @@ void Population::report(std::ostream & out, bool html)
     for (auto it : resident)
     {
         do_unit(it);
+    }
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Crimes\">Crimes</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Crimes\n";
+    }
+    for (auto crime : world->crimes.all)
+    {
+        if (crime->site != ui->site_id)
+        {
+            continue;
+        }
+
+        auto convicted = df::unit::find(crime->convicted);
+        auto criminal = df::unit::find(crime->criminal);
+        auto victim = df::unit::find(crime->victim);
+
+        out << (html ? "<li>" : "- ");
+        out << "[" << AI::timestamp(crime->event_year, crime->event_time) << "] ";
+        using crime_type = df::crime::T_mode;
+        switch (crime->mode)
+        {
+        case crime_type::ProductionOrderViolation:
+            out << AI::describe_unit(criminal, html) << " violated a production mandate set by " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::ExportViolation:
+            out << AI::describe_unit(criminal, html) << " violated an export ban set by " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::JobOrderViolation:
+            out << AI::describe_unit(criminal, html) << " violated a job order set by " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::ConspiracyToSlowLabor:
+            out << AI::describe_unit(criminal, html) << " committed conspiracy to slow labor";
+            if (victim)
+            {
+                out << " against " << AI::describe_unit(victim, html);
+            }
+            break;
+        case crime_type::Murder:
+            out << AI::describe_unit(criminal, html) << " murdered " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::DisorderlyBehavior:
+            out << AI::describe_unit(criminal, html) << " assaulted " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::BuildingDestruction:
+            out << AI::describe_unit(criminal, html) << " destroyed a building";
+            if (victim)
+            {
+                out << " owned by " << AI::describe_unit(victim, html);
+            }
+            break;
+        case crime_type::Vandalism:
+            out << AI::describe_unit(criminal, html) << " vandalized furniture";
+            if (victim)
+            {
+                out << " owned by " << AI::describe_unit(victim, html);
+            }
+            break;
+        case crime_type::Theft:
+            out << AI::describe_unit(criminal, html) << " stole an item from " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::Robbery:
+            out << AI::describe_unit(criminal, html) << " robbed " << AI::describe_unit(victim, html);
+            break;
+        case crime_type::BloodDrinking:
+            out << AI::describe_unit(criminal, html) << " is a vampire who drank the blood of " << AI::describe_unit(victim, html);
+            break;
+        }
+
+        out << (html ? "<br/>" : "\n  ");
+        if (crime->flags.bits.discovered)
+        {
+            out << "Crime discovered: " << AI::timestamp(crime->discovered_year, crime->discovered_time);
+        }
+        else
+        {
+            out << (html ? "<i>Crime undiscovered</i>" : "Crime undiscovered");
+        }
+
+        if (convicted)
+        {
+            out << (html ? "<br/>" : "\n  ");
+            out << "Convicted: " << AI::describe_unit(convicted, html);
+            if (crime->flags.bits.sentenced)
+            {
+                if (crime->punishment.give_beating || crime->punishment.hammerstrikes || crime->punishment.prison_time)
+                {
+                    out << (html ? "<br/>" : "\n  ");
+                    out << "Sentenced to";
+                    if (crime->punishment.give_beating)
+                    {
+                        out << " a beating";
+                    }
+                    if (crime->punishment.hammerstrikes)
+                    {
+                        if (crime->punishment.give_beating)
+                        {
+                            if (crime->punishment.prison_time)
+                            {
+                                out << ", ";
+                            }
+                            else
+                            {
+                                out << " and";
+                            }
+                        }
+                        out << " hammer strikes";
+                    }
+                    if (crime->punishment.prison_time)
+                    {
+                        if (crime->punishment.give_beating && crime->punishment.hammerstrikes)
+                        {
+                            out << ",";
+                        }
+                        if (crime->punishment.give_beating || crime->punishment.hammerstrikes)
+                        {
+                            out << " and";
+                        }
+                        out << " prison time";
+                    }
+                    out << ".";
+
+                    if (html)
+                    {
+                        out << "<!--" << crime->punishment.give_beating << "," << crime->punishment.hammerstrikes << "," << crime->punishment.prison_time << "-->";
+                    }
+                }
+            }
+            else
+            {
+                out << (html ? "<br/>" : "\n  ");
+                out << (html ? "<i>Awaiting sentencing</i>" : "Awaiting sentencing");
+            }
+        }
+        else if (crime->flags.bits.needs_trial)
+        {
+            out << (html ? "<br/>" : "\n  ");
+            out << (html ? "<i>Awaiting trial</i>" : "Awaiting trial");
+        }
+
+        if (html)
+        {
+            out << "<ul>";
+        }
+        for (auto report : crime->reports)
+        {
+            out << (html ? "<li>" : "\n  - ");
+            out << "[" << AI::timestamp(report->report_year, report->report_time) << "] ";
+            out << AI::describe_unit(df::unit::find(report->witness), html);
+            if (report->unk1 == 1)
+            {
+                out << " found the body.";
+            }
+            else
+            {
+                out << " accused ";
+                out << AI::describe_unit(df::unit::find(report->accuses), html);
+                out << ".";
+            }
+            if (html)
+            {
+                out << "</li>";
+            }
+        }
+
+        out << (html ? "</ul></li>" : "\n");
     }
 
     if (html)
