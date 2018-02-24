@@ -10,49 +10,57 @@
 			"type": "bed",
 			"x": 0,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"comment": "north-west"
 		},
 		{
 			"type": "table",
 			"x": 1,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"comment": "north"
 		},
 		{
 			"type": "bed",
 			"x": 2,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"comment": "north-east"
 		},
 		{
 			"type": "traction_bench",
 			"x": 0,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"comment": "west"
 		},
 		{
 			"type": "traction_bench",
 			"x": 2,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"comment": "east"
 		},
 		{
 			"type": "bed",
 			"x": 0,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"comment": "south-west"
 		},
 		{
 			"type": "table",
 			"x": 1,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"comment": "south"
 		},
 		{
 			"type": "bed",
 			"x": 2,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"comment": "south-east"
 		},
 		{
 			"type": "chest",
