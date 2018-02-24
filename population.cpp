@@ -16,6 +16,7 @@
 #include "df/incident.h"
 #include "df/job.h"
 #include "df/job_item.h"
+#include "df/occupation.h"
 #include "df/squad.h"
 #include "df/squad_order.h"
 #include "df/squad_position.h"
@@ -150,7 +151,6 @@ void Population::update_citizenlist(color_ostream & out)
     // add new fort citizen to our list
     for (auto u : world->units.active)
     {
-        df::creature_raw *race = df::creature_raw::find(u->race);
         if (Units::isCitizen(u) && !Units::isBaby(u))
         {
             if (old.count(u->id))
@@ -169,10 +169,10 @@ void Population::update_citizenlist(color_ostream & out)
                     payload["name_english"] = DF2UTF(AI::describe_name(u->name, true));
                     payload["birth_year"] = Json::Int(u->birth_year);
                     payload["birth_time"] = Json::Int(u->birth_time);
-                    if (race)
+                    if (auto race = df::creature_raw::find(u->race))
                     {
                         payload["race"] = race->creature_id;
-                        payload["caste"] = race->caste[u->caste]->caste_id;
+                        payload["caste"] = race->caste.at(u->caste)->caste_id;
                     }
                     payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
                     ai->event("new citizen", payload);
@@ -199,7 +199,7 @@ void Population::update_citizenlist(color_ostream & out)
                 mother->job.current_job = seek_infant;
             }
         }
-        else if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.slaughter)
+        else if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.diplomat || u->flags1.bits.forest || u->flags2.bits.slaughter)
         {
             // ignore
         }
@@ -207,7 +207,7 @@ void Population::update_citizenlist(color_ostream & out)
         {
             visitor.insert(u->id);
         }
-        else if (Units::isOwnCiv(u) && !Units::isOwnGroup(u) && race && race->caste[u->caste]->flags.is_set(caste_raw_flags::CAN_LEARN))
+        else if (!Units::isOwnGroup(u) && std::find_if(u->occupations.begin(), u->occupations.end(), [](df::occupation *occ) -> bool { return occ->site_id == ui->site_id; }) != u->occupations.end())
         {
             resident.insert(u->id);
         }
