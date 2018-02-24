@@ -292,6 +292,37 @@ void Population::report(std::ostream & out, bool html)
             return;
         }
 
+        if (resident.count(u->id))
+        {
+            for (auto occ : u->occupations)
+            {
+                if (occ->site_id == ui->site_id)
+                {
+                    switch (occ->type)
+                    {
+                    case occupation_type::TAVERN_KEEPER:
+                        out << " (tavern keeper)";
+                        break;
+                    case occupation_type::PERFORMER:
+                        out << " (performer)";
+                        break;
+                    case occupation_type::SCHOLAR:
+                        out << " (scholar)";
+                        break;
+                    case occupation_type::MERCENARY:
+                        out << " (mercenary)";
+                        break;
+                    case occupation_type::MONSTER_SLAYER:
+                        out << " (monster slayer)";
+                        break;
+                    case occupation_type::SCRIBE:
+                        out << " (scribe)";
+                        break;
+                    }
+                }
+            }
+        }
+
         int32_t age = days_since(u->birth_year, u->birth_time);
         out << " (age " << (age / 12 / 28) << "y" << ((age / 28) % 12) << "m" << (age % 28) << "d)";
 
