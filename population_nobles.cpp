@@ -165,7 +165,7 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
         for (auto assign : view->assignments)
         {
             auto pos = assign ? binsearch_in_vector(ui->main.fortress_entity->positions.own, assign->position_id) : nullptr;
-            if (pos && filter(pos) && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && assign->squad_id == squad_id)
+            if (pos && filter(pos) && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && (squad_id == -1 || assign->squad_id == squad_id))
             {
                 AI::feed_key(interface_key::SELECT);
                 for (auto c : view->candidates)
