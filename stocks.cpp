@@ -399,7 +399,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Orders\">Orders</h2><table><thead><tr><th></th><th>Remaining</th><th>Total</th><th>Order</th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Orders\">Orders</h2><table><thead><tr><th>Order</th><th>Remaining</th><th>Total</th><th></th></tr></thead><tbody>";
     }
     else
     {
@@ -409,8 +409,8 @@ void Stocks::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            out << "<tr><td><progress max=\"" << mo->amount_total << "\" value=\"" << (mo->amount_total - mo->amount_left) << "\"></progress></td>";
-            out << "<td>" << mo->amount_left << "</td><td>" << mo->amount_total << "</td><th>" << html_escape(AI::describe_job(mo)) << "</th></tr>";
+            out << "<tr><th>" << html_escape(AI::describe_job(mo)) << "</th><td>" << mo->amount_left << "</td><td>" << mo->amount_total << "</td>";
+            out << "<td><progress max=\"" << mo->amount_total << "\" value=\"" << (mo->amount_total - mo->amount_left) << "\"></progress></td></tr>";
         }
         else
         {
