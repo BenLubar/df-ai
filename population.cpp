@@ -3,8 +3,9 @@
 #include "plan.h"
 #include "thirdparty/weblegends/weblegends-plugin.h"
 
-#include "modules/Units.h"
 #include "modules/Job.h"
+#include "modules/Materials.h"
+#include "modules/Units.h"
 
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
@@ -21,9 +22,13 @@
 #include "df/squad.h"
 #include "df/squad_order_kill_listst.h"
 #include "df/squad_position.h"
+#include "df/syndrome.h"
+#include "df/unit_health_info.h"
 #include "df/unit_relationship_type.h"
+#include "df/unit_wound.h"
 #include "df/ui.h"
 #include "df/world.h"
+#include "df/wound_curse_info.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -721,7 +726,7 @@ void Population::report(std::ostream & out, bool html)
                 out << (html ? "<i>Awaiting sentencing</i>" : "Awaiting sentencing");
             }
         }
-        else if (crime->flags.bits.needs_trial)
+        else if (crime->flags.bits.needs_trial && crime->flags.bits.discovered)
         {
             out << (html ? "<br/>" : "\n  ");
             out << (html ? "<i>Awaiting trial</i>" : "Awaiting trial");
@@ -753,6 +758,664 @@ void Population::report(std::ostream & out, bool html)
         }
 
         out << (html ? "</ul></li>" : "\n");
+    }
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Health\">Health</h2><ul>";
+    }
+    else
+    {
+        out << "\n## Health\n";
+    }
+    auto is_interesting_wound = [](df::unit_wound *wound) -> bool
+    {
+        auto syn = df::syndrome::find(wound->syndrome_id);
+        if (syn && syn->syn_name == "inebriation")
+        {
+            return false;
+        }
+
+        return (wound->flags.whole &~df::unit_wound::T_flags::mask_diagnosed) || syn || wound->dizziness || wound->fever || wound->nausea || wound->numbness || wound->pain || wound->paralysis || !wound->parts.empty();
+    };
+    for (auto u : world->units.active)
+    {
+        bool is_dead = Units::isDead(u);
+        bool any_wounds = std::find_if(u->body.wounds.begin(), u->body.wounds.end(), is_interesting_wound) != u->body.wounds.end();
+
+        if (!u || !u->health || (u->health->op_history.empty() && (!any_wounds || is_dead)))
+        {
+            continue;
+        }
+
+        // skip unimportant units like wild animals
+        if (u->hist_figure_id == -1 && u->civ_id == -1)
+        {
+            continue;
+        }
+
+        auto race = df::creature_raw::find(u->race);
+        auto caste = race ? race->caste.at(u->caste) : nullptr;
+        if (!caste)
+        {
+            continue;
+        }
+
+        out << (html ? "<li>" : "- ");
+        out << AI::describe_unit(u, html);
+        if (is_dead)
+        {
+            out << " (deceased)";
+        }
+        else
+        {
+            if (u->health->flags.whole)
+            {
+                std::string before = html ? "<br/>" : "\n  ";
+                before += "Needs healthcare: ";
+                if (u->health->flags.bits.needs_recovery)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "unable to walk to hospital";
+                }
+                if (u->job.current_job == job_type::Rest)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "resting";
+                }
+                if (u->health->flags.bits.needs_healthcare)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "waiting for doctor";
+                }
+                if (u->health->flags.bits.rq_cleaning)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs cleaning";
+                }
+                if (u->health->flags.bits.rq_crutch)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs crutch";
+                }
+                if (u->health->flags.bits.rq_diagnosis)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs diagnosis";
+                }
+                if (u->health->flags.bits.rq_immobilize)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs cast or splint";
+                }
+                if (u->health->flags.bits.rq_surgery)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs surgery";
+                }
+                if (u->health->flags.bits.rq_suture)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs sutures";
+                }
+                if (u->health->flags.bits.rq_traction)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs immobilization in traction bench";
+                }
+            }
+            for (size_t i = 0; i < u->health->body_part_flags.size(); i++)
+            {
+                auto & flags = u->health->body_part_flags.at(i);
+                auto & status = u->body.components.body_part_status.at(i);
+                if (!flags.whole && !(status.whole &~df::body_part_status::mask_grime))
+                {
+                    continue;
+                }
+
+                auto part = caste->body_info.body_parts.at(i);
+                std::string before = html ? "<br/>" : "\n  ";
+                before += *part->name_singular.at(0) + ": ";
+
+                if (status.bits.missing)
+                {
+                    if (part->con_part_id == -1 || !u->body.components.body_part_status.at(part->con_part_id).bits.missing)
+                    {
+                        out << before << "missing";
+                    }
+                    continue;
+                }
+                if (flags.bits.inoperable_rot)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "inoperable rot";
+                }
+                if (status.bits.has_bandage || (!flags.bits.rq_dressing && flags.bits.needs_bandage))
+                {
+                    out << before;
+                    before = ", ";
+                    out << "has bandage";
+                }
+                if (status.bits.has_splint)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "splint applied";
+                }
+                else if (status.bits.has_plaster_cast)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "plaster cast applied";
+                }
+                else if (!flags.bits.rq_immobilize && flags.bits.needs_cast)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "cast or splint applied";
+                }
+                if (flags.bits.rq_cleaning)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs cleaning";
+                }
+                if (flags.bits.rq_dressing)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs dressing";
+                }
+                if (flags.bits.rq_immobilize)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs splint or cast";
+                }
+                if (flags.bits.rq_setting)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "bone needs setting";
+                }
+                if (flags.bits.rq_surgery)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs surgery";
+                }
+                if (flags.bits.rq_suture)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs sutures";
+                }
+                if (flags.bits.rq_traction)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "needs immobilization in traction bench";
+                }
+                if (status.bits.on_fire)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "on fire";
+                }
+                if (status.bits.organ_loss)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "organ lost";
+                }
+                else if (status.bits.organ_damage)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "organ damaged";
+                }
+                if (status.bits.muscle_loss)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "muscle lost";
+                }
+                else if (status.bits.muscle_damage)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "muscle damaged";
+                }
+                if (status.bits.bone_loss)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "bone lost";
+                }
+                else if (status.bits.bone_damage)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "bone damaged";
+                }
+                if (status.bits.skin_damage)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "skin damaged";
+                }
+                if (status.bits.motor_nerve_severed)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "motor nerve severed";
+                }
+                if (status.bits.sensory_nerve_severed)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "sensory nerve severed";
+                }
+                if (status.bits.spilled_guts)
+                {
+                    out << before;
+                    before = ", ";
+                    out << "guts spilled";
+                }
+                if (status.bits.grime)
+                {
+                    out << before;
+                    before = ", ";
+                    switch (status.bits.grime)
+                    {
+                    case 1:
+                        out << "a little dirty";
+                        break;
+                    case 2:
+                        out << "somewhat dirty";
+                        break;
+                    case 3:
+                        out << "dirty";
+                        break;
+                    case 4:
+                        out << "very dirty";
+                        break;
+                    case 5:
+                        out << "extremely dirty";
+                        break;
+                    case 6:
+                        out << "grimy";
+                        break;
+                    case 7:
+                        out << "filthy";
+                        break;
+                    }
+                }
+            }
+            if (any_wounds)
+            {
+                out << (html ? "<br/>Wounds:<ul>" : "\n  Wounds:");
+                for (auto wound : u->body.wounds)
+                {
+                    if (!is_interesting_wound(wound))
+                    {
+                        continue;
+                    }
+
+                    out << (html ? "<li>" : "\n  - ");
+                    if (!wound->flags.bits.diagnosed)
+                    {
+                        out << "[undiagnosed] ";
+                    }
+
+                    out << (wound->flags.whole ? "[" : "");
+                    out << bitfield_to_string(wound->flags, ",");
+                    out << (wound->flags.whole ? "] " : "");
+                    /* TODO:
+                    wound->flags.bits.infection;
+                    wound->flags.bits.mortal_wound;
+                    wound->flags.bits.severed_part;
+                    wound->flags.bits.stuck_weapon;
+                    wound->flags.bits.sutured;
+                    */
+
+                    if (auto syndrome = df::syndrome::find(wound->syndrome_id))
+                    {
+                        out << syndrome->syn_name;
+                    }
+
+                    if (auto attacker = df::unit::find(wound->attacker_unit_id))
+                    {
+                        out << " (inflicted by " << AI::describe_unit(attacker, html) << ")";
+                    }
+                    else if (auto attacker = df::historical_figure::find(wound->attacker_hist_figure_id))
+                    {
+                        if (html)
+                        {
+                            out << " (inflicted by <a href=\"fig-" << attacker->id << "\">" << html_escape(AI::describe_name(attacker->name)) << "</a>)";
+                        }
+                        else
+                        {
+                            out << " (inflicted by " << AI::describe_name(attacker->name) << ")";
+                        }
+                    }
+
+#define FIELD(base, name) \
+                    if (base->name) \
+                    { \
+                        out << " [" #name ":" << (base->name) << "]"; \
+                    }
+
+                    int32_t age_year = *cur_year;
+                    int32_t age_tick = *cur_year_tick;
+                    age_tick -= wound->age;
+                    while (age_tick < 0)
+                    {
+                        age_year--;
+                        age_tick += 12 * 28 * 1200;
+                    }
+                    out << " [age:" << wound->age << ":" << AI::timestamp(age_year, age_tick) << "]";
+
+                    FIELD(wound, dizziness);
+                    FIELD(wound, fever);
+                    FIELD(wound, nausea);
+                    FIELD(wound, numbness);
+                    FIELD(wound, pain);
+                    FIELD(wound, paralysis);
+
+                    /* TODO:
+                    if (wound->curse)
+                    {
+                        int debug = 1;
+                    }
+                    */
+
+                    if (!wound->parts.empty())
+                    {
+                        out << (html ? "<ul>" : "");
+                        for (auto part : wound->parts)
+                        {
+                            out << (html ? "<li>" : "\n    - ");
+                            auto bp = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(part->body_part_id));
+                            out << *bp->name_singular.at(0);
+
+                            for (size_t i = 0; i < part->effect_type.size(); i++)
+                            {
+                                auto effect = part->effect_type.at(i);
+                                auto perc1 = part->effect_perc1.at(i);
+                                auto perc2 = part->effect_perc2.at(i);
+                                out << "[effect:" << enum_item_key(effect) << ":" << perc1 << ":" << perc2 << "]";
+                            }
+
+                            out << (part->flags1.whole || part->flags2.whole ? " [" : "");
+                            out << bitfield_to_string(part->flags1, ",");
+                            out << (part->flags1.whole && part->flags2.whole ? "," : "");
+                            out << bitfield_to_string(part->flags2, ",");
+                            out << (part->flags1.whole || part->flags2.whole ? "]" : "");
+                            /* TODO:
+                            part->flags1.bits.cut;
+                            part->flags1.bits.smashed;
+                            part->flags1.bits.scar_cut; // straight scar
+                            part->flags1.bits.scar_smashed; // huge dent
+                            part->flags1.bits.tendon_bruised;
+                            part->flags1.bits.tendon_strained;
+                            part->flags1.bits.tendon_torn;
+                            part->flags1.bits.ligament_bruised;
+                            part->flags1.bits.ligament_sprained;
+                            part->flags1.bits.ligament_torn;
+                            part->flags1.bits.motor_nerve_severed;
+                            part->flags1.bits.sensory_nerve_severed;
+                            part->flags1.bits.edged_damage;
+                            part->flags1.bits.smashed_apart; // ?
+                            part->flags1.bits.major_artery;
+                            part->flags1.bits.guts_spilled;
+                            part->flags1.bits.edged_shake1;
+                            part->flags1.bits.scar_edged_shake1; // jagged scar
+                            part->flags1.bits.edged_shake2;
+                            part->flags1.bits.broken;
+                            part->flags1.bits.scar_broken; // huge dent
+                            part->flags1.bits.gouged;
+                            part->flags1.bits.blunt_shake1;
+                            part->flags1.bits.scar_blunt_shake1; // jagged scar
+                            part->flags1.bits.blunt_shake2;
+                            part->flags1.bits.joint_bend1;
+                            part->flags1.bits.scar_joint_bend1; // jagged scar
+                            part->flags1.bits.joint_bend2;
+                            part->flags1.bits.compound_fracture;
+                            part->flags1.bits.diagnosed;
+                            part->flags1.bits.artery;
+                            part->flags1.bits.overlapping_fracture;
+                            part->flags2.bits.needs_setting;
+                            part->flags2.bits.entire_surface;
+                            part->flags2.bits.gelded;
+                            */
+
+                            FIELD(part, bleeding);
+                            FIELD(part, pain);
+                            FIELD(part, nausea);
+                            FIELD(part, dizziness);
+                            FIELD(part, paralysis);
+                            FIELD(part, numbness);
+                            FIELD(part, swelling);
+                            FIELD(part, impaired);
+
+                            FIELD(part, cur_penetration_perc);
+                            FIELD(part, max_penetration_perc);
+                            FIELD(part, contact_area);
+                            FIELD(part, edged_curve_perc);
+                            FIELD(part, surface_perc);
+#undef FIELD
+
+                            out << (html ? "</li>" : "");
+                        }
+                        out << (html ? "</ul>" : "");
+                    }
+                }
+                out << (html ? "</ul>" : "");
+            }
+        }
+        if (!u->health->op_history.empty())
+        {
+            out << (html ? (any_wounds && !is_dead ? "Operation history:<ul>" : "<br/>Operation history:<ul>") : "\n  Operation history:");
+            for (auto op : u->health->op_history)
+            {
+                out << (html ? "<li>" : "\n  - ");
+                out << "[" << AI::timestamp(op->year, op->year_time) << "] ";
+                out << AI::describe_unit(df::unit::find(op->doctor_id), html) << ": ";
+                switch (op->job_type)
+                {
+                case job_type::RecoverWounded:
+                {
+                    room *r = nullptr;
+                    furniture *f = nullptr;
+                    if (ai->plan->find_building(df::building::find(op->info.bed_id), r, f))
+                    {
+                        out << "Brought to rest in " << AI::describe_furniture(f, html) << " in " << AI::describe_room(r, html) << ".";
+                    }
+                    else
+                    {
+                        out << "Brought to rest in bed.";
+                    }
+                    break;
+                }
+                case job_type::DiagnosePatient:
+                {
+                    out << "Diagnosed injuries.";
+                    break;
+                }
+                case job_type::ImmobilizeBreak:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Immobilized broken " << (part ? *part->name_singular.at(0) : "") << " bone with ";
+                    if (auto item = df::item::find(op->info.bandage.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " splint";
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::DressWound:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Dressed " << (part ? *part->name_singular.at(0) : "") << " wound with ";
+                    if (auto item = df::item::find(op->info.bandage.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " cloth";
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::CleanPatient:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Cleaned";
+                    if (part)
+                    {
+                        out << " " << *part->name_singular.at(0);
+                    }
+                    if (auto item = df::item::find(op->info.bandage.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << " with " << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        MaterialInfo soap(&op->info.bandage);
+                        if (soap.material)
+                        {
+                            out << " with " << soap.material->state_name[matter_state::Solid];
+                        }
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::Surgery:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Performed surgery";
+                    if (part)
+                    {
+                        out << " on " << *part->name_singular.at(0);
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::Suture:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Applied ";
+                    if (auto item = df::item::find(op->info.bandage.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid];
+                    }
+                    out << " sutures";
+                    if (part)
+                    {
+                        out << " to " << *part->name_singular.at(0);
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::SetBone:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bed_id));
+                    out << "Set bone";
+                    if (part)
+                    {
+                        out << " in " << *part->name_singular.at(0);
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::PlaceInTraction:
+                {
+                    room *r = nullptr;
+                    furniture *f = nullptr;
+                    if (ai->plan->find_building(df::building::find(op->info.bed_id), r, f))
+                    {
+                        out << "Immobilized in " << AI::describe_furniture(f, html) << " in " << AI::describe_room(r, html) << ".";
+                    }
+                    else
+                    {
+                        out << "Immobilized in traction bench.";
+                    }
+                    break;
+                }
+                case job_type::BringCrutch:
+                {
+                    out << "Brought ";
+                    if (auto item = df::item::find(op->info.crutch.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        out << MaterialInfo(&op->info.crutch).material->state_name[matter_state::Solid] << " " << ItemTypeInfo(df::item_type(op->info.crutch.item_type), int16_t(op->info.crutch.item_subtype)).toString();
+                    }
+                    out << ".";
+                    break;
+                }
+                case job_type::ApplyCast:
+                {
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
+                    out << "Applied ";
+                    if (auto item = df::item::find(op->info.bandage.item_id))
+                    {
+                        auto desc = AI::describe_item(item);
+                        out << (html ? html_escape(desc) : desc);
+                    }
+                    else
+                    {
+                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " cast";
+                    }
+                    if (part)
+                    {
+                        out << " to " << *part->name_singular.at(0);
+                    }
+                    out << ".";
+                    break;
+                }
+                default:
+                {
+                    out << enum_item_key(op->job_type);
+                    break;
+                }
+                }
+                if (html)
+                {
+                    out << "</li>";
+                }
+            }
+            out << (html ? "</ul>" : "");
+        }
+        out << (html ? "</li>" : "\n");
     }
 
     if (html)
