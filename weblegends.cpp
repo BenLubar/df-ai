@@ -1,5 +1,7 @@
 #include "ai.h"
 #include "plan.h"
+#include "population.h"
+#include "stocks.h"
 
 #include "thirdparty/weblegends/weblegends-plugin.h"
 
@@ -35,22 +37,46 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
 {
     if (!enabled || !dwarfAI)
     {
-        out << "<!DOCTYPE html><html><head><title>df-ai</title></head>";
-        out << "<body><p>AI is not active.</p></body></html>";
+        out << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai</title></head>";
+        out << "<body><p><i>AI is not active.</i></p></body></html>";
         return true;
     }
     if (url == "")
     {
-        out << "<!DOCTYPE html><html><head><title>df-ai status</title></head>";
-        out << "<body><p><b>Status</b> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/plan\">Plan</a> - <a href=\"df-ai/version\">Version</a></p></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << html_escape(dwarfAI->status()) << "</pre></body></html>";
+        out << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai status</title></head>";
+        out << "<body><p><b>Status</b> - <a href=\"df-ai/report/plan\">Plan</a> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
+        out << "<p>" << html_escape(dwarfAI->status()) << "</p></body></html>";
         return true;
     }
-    if (url == "/report")
+    if (url == "/report/plan")
     {
-        out << "<!DOCTYPE html><html><head><title>df-ai report</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Report</b> - <a href=\"df-ai/plan\">Plan</a> - <a href=\"df-ai/version\">Version</a></p>";
-        out << "<pre style=\"white-space:pre-wrap\">" << dwarfAI->report(true) << "</pre></body></html>";
+        out << "<!DOCTYPE html><html><head><title>df-ai report: plan</title><base href=\"../..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</b> - <b>Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
+        out << "<h1 id=\"Plan\">Plan</h1>";
+        dwarfAI->plan->report(out, true);
+        out << "</body></html>";
+        return true;
+    }
+    if (url == "/report/population")
+    {
+        out << "<!DOCTYPE html><html><head><title>df-ai report: population</title><base href=\"../..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</b> -  <a href=\"df-ai/report/plan\">Plan</b> - <b>Population</b> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
+        out << "<h1 id=\"Population\">Population</h1>";
+        dwarfAI->pop->report(out, true);
+        out << "</body></html>";
+        return true;
+    }
+    if (url == "/report/stocks")
+    {
+        out << "<!DOCTYPE html><html><head><title>df-ai report: stocks</title><base href=\"../..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <b>Stocks</b> - ";
+        out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
+        out << "<h1 id=\"Stocks\">Stocks</h1>";
+        dwarfAI->stocks->report(out, true);
+        out << "</body></html>";
         return true;
     }
     if (url == "/version")
@@ -58,14 +84,16 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
         std::ostringstream version;
         ai_version(version, true);
         out << "<!DOCTYPE html><html><head><title>df-ai version</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report\">Report</a> - <a href=\"df-ai/plan\">Plan</a> - <b>Version</b></p>";
+        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<pre style=\"white-space:pre-wrap\">" << version.str() << "</pre></body></html>";
         return true;
     }
     if (url == "/plan")
     {
-        out << "<!DOCTYPE html><html><head><title>df-ai plan</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report\">Report</a> - <b>Plan</b> - <a href=\"df-ai/version\">Version</a></p>";
+        out << "<!DOCTYPE html><html><head><title>df-ai blueprint</title><base href=\"..\"/></head>";
+        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<b>Blueprint</b> - <a href=\"df-ai/version\">Version</a></p></p>";
         dwarfAI->plan->weblegends_write_svg(out);
         out << "</body></html>";
         return true;
