@@ -283,7 +283,7 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "- ";
         }
-        out << AI::describe_unit(u, html);
+        out << "<b>" << AI::describe_unit(u, html) << "</b>";
 
         if (u == nullptr)
         {
@@ -611,17 +611,18 @@ void Population::report(std::ostream & out, bool html)
 
         out << (html ? "<li>" : "- ");
         out << "[" << AI::timestamp(crime->event_year, crime->event_time) << "] ";
+        out << (html ? "<b>" : "");
         using crime_type = df::crime::T_mode;
         switch (crime->mode)
         {
         case crime_type::ProductionOrderViolation:
-            out << AI::describe_unit(criminal, html) << " violated a production mandate set by " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " violated a production mandate set by " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::ExportViolation:
-            out << AI::describe_unit(criminal, html) << " violated an export ban set by " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " violated an export ban set by " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::JobOrderViolation:
-            out << AI::describe_unit(criminal, html) << " violated a job order set by " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " violated a job order set by " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::ConspiracyToSlowLabor:
             out << AI::describe_unit(criminal, html) << " committed conspiracy to slow labor";
@@ -629,12 +630,13 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << " against " << AI::describe_unit(victim, html);
             }
+            out << ".";
             break;
         case crime_type::Murder:
-            out << AI::describe_unit(criminal, html) << " murdered " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " murdered " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::DisorderlyBehavior:
-            out << AI::describe_unit(criminal, html) << " assaulted " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " assaulted " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::BuildingDestruction:
             out << AI::describe_unit(criminal, html) << " destroyed a building";
@@ -642,6 +644,7 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << " owned by " << AI::describe_unit(victim, html);
             }
+            out << ".";
             break;
         case crime_type::Vandalism:
             out << AI::describe_unit(criminal, html) << " vandalized furniture";
@@ -649,19 +652,21 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << " owned by " << AI::describe_unit(victim, html);
             }
+            out << ".";
             break;
         case crime_type::Theft:
-            out << AI::describe_unit(criminal, html) << " stole an item from " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " stole an item from " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::Robbery:
-            out << AI::describe_unit(criminal, html) << " robbed " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " robbed " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::BloodDrinking:
-            out << AI::describe_unit(criminal, html) << " is a vampire who drank the blood of " << AI::describe_unit(victim, html);
+            out << AI::describe_unit(criminal, html) << " is a vampire who drank the blood of " << AI::describe_unit(victim, html) << ".";
             break;
         }
 
-        out << (html ? "<br/>" : "\n  ");
+        out << (html ? "</b><br/>" : "\n  ");
+
         if (crime->flags.bits.discovered)
         {
             out << "Crime discovered: " << AI::timestamp(crime->discovered_year, crime->discovered_time);
@@ -801,8 +806,9 @@ void Population::report(std::ostream & out, bool html)
             continue;
         }
 
-        out << (html ? "<li>" : "- ");
+        out << (html ? "<li><b>" : "- ");
         out << AI::describe_unit(u, html);
+        out << (html ? "</b>" : "");
         if (is_dead)
         {
             out << " (deceased)";
@@ -1467,7 +1473,7 @@ void Population::report(std::ostream & out, bool html)
         }
         if (html)
         {
-            out << "<li>" << html_escape(AI::describe_job(j->item));
+            out << "<li><b>" << html_escape(AI::describe_job(j->item)) << "</b>";
         }
         else
         {
@@ -1696,7 +1702,7 @@ void Population::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            out << "<li>" << html_escape(boring.first) << " &times;" << boring.second << "</li>";
+            out << "<li><b>" << html_escape(boring.first) << "</b> &times;" << boring.second << "</li>";
         }
         else
         {

@@ -4992,11 +4992,14 @@ void Plan::report(std::ostream & out, bool html)
         }
 
         task *t = *it;
-        if (!html)
+        if (html)
         {
-            out << "- ";
+            out << "<b>" << t->type << "</b>";
         }
-        out << t->type;
+        else
+        {
+            out << "- " << t->type;
+        }
         if (t->r != nullptr)
         {
             if (html)
@@ -5089,11 +5092,14 @@ void Plan::report(std::ostream & out, bool html)
         }
 
         task *t = *it;
-        if (!html)
+        if (html)
         {
-            out << "- ";
+            out << "<b>" << t->type << "</b>";
         }
-        out << t->type;
+        else
+        {
+            out << "- " << t->type;
+        }
         if (t->r != nullptr)
         {
             if (html)
