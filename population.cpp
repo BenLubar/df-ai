@@ -819,7 +819,7 @@ void Population::report(std::ostream & out, bool html)
                     before = ", ";
                     out << "unable to walk to hospital";
                 }
-                if (u->job.current_job == job_type::Rest)
+                if (u->job.current_job && u->job.current_job->job_type == job_type::Rest)
                 {
                     out << before;
                     before = ", ";
