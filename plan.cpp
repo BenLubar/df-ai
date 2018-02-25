@@ -4967,7 +4967,7 @@ void Plan::report(std::ostream & out, bool html)
 {
     if (html)
     {
-        out << "<h2 id=\"Plan_Tasks\">Tasks</h2><h3 id=\"Plan_Tasks_Generic\">Generic</h3><ul>";
+        out << "<h2 id=\"Plan_Tasks_Generic\">Generic</h2><ul>";
     }
     else
     {
