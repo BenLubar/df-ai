@@ -52,7 +52,7 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "/report/plan")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai report: plan</title><base href=\"../..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</b> - <b>Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <b>Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
         out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<h1 id=\"Plan\">Plan</h1>";
         dwarfAI->plan->report(out, true);
@@ -62,7 +62,7 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "/report/population")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai report: population</title><base href=\"../..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</b> -  <a href=\"df-ai/report/plan\">Plan</b> - <b>Population</b> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<body><p><a href=\"df-ai\">Status</a> -  <a href=\"df-ai/report/plan\">Plan</a> - <b>Population</b> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
         out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<h1 id=\"Population\">Population</h1>";
         dwarfAI->pop->report(out, true);
@@ -72,7 +72,7 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "/report/stocks")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai report: stocks</title><base href=\"../..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <b>Stocks</b> - ";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report/plan\">Plan</a> - <a href=\"df-ai/report/population\">Population</a> - <b>Stocks</b> - ";
         out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<h1 id=\"Stocks\">Stocks</h1>";
         dwarfAI->stocks->report(out, true);
@@ -84,7 +84,7 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
         std::ostringstream version;
         ai_version(version, true);
         out << "<!DOCTYPE html><html><head><title>df-ai version</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report/plan\">Plan</a> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
         out << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         out << "<pre style=\"white-space:pre-wrap\">" << version.str() << "</pre></body></html>";
         return true;
@@ -92,7 +92,7 @@ bool ai_weblegends_handler(std::ostringstream & out, const std::string & url)
     if (url == "/plan")
     {
         out << "<!DOCTYPE html><html><head><title>df-ai blueprint</title><base href=\"..\"/></head>";
-        out << "<body><p><a href=\"df-ai\">Status</b> - <a href=\"df-ai/report/plan\">Plan</b> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
+        out << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report/plan\">Plan</a> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
         out << "<b>Blueprint</b> - <a href=\"df-ai/version\">Version</a></p></p>";
         dwarfAI->plan->weblegends_write_svg(out);
         out << "</body></html>";
