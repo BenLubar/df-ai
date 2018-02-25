@@ -225,41 +225,53 @@ static df::job_item *make_job_item(T *t)
 }
 
 // Not perfect, but it should at least cut down on cancellation spam.
-static bool find_items(const std::vector<df::job_item *> & filters, std::vector<df::item *> & items)
+static bool find_items(const std::vector<df::job_item *> & filters, std::vector<df::item *> & items, std::ostream & reason)
 {
-    for (auto filter = filters.begin(); filter != filters.end(); filter++)
+    bool found_all = true;
+
+    for (auto filter : filters)
     {
         int32_t found = 0;
 
-        for (auto it = world->items.all.begin(); it != world->items.all.end(); it++)
+        for (auto i : world->items.other[items_other_id::IN_PLAY])
         {
-            if (std::find(items.begin(), items.end(), *it) != items.end())
+            if (std::find(items.begin(), items.end(), i) != items.end())
             {
                 continue;
             }
 
-            ItemTypeInfo iinfo(*it);
-            MaterialInfo minfo(*it);
-            if (!iinfo.matches(**filter, &minfo, true))
+            ItemTypeInfo iinfo(i);
+            MaterialInfo minfo(i);
+            if (!iinfo.matches(*filter, &minfo, true))
             {
                 continue;
             }
 
-            items.push_back(*it);
+            items.push_back(i);
             found++;
 
-            if ((*filter)->quantity >= found)
+            if (filter->quantity >= found)
             {
                 break;
             }
         }
 
-        if ((*filter)->quantity < found)
+        if (filter->quantity < found)
         {
-            return false;
+            if (found_all)
+            {
+                reason << "could not find ";
+                found_all = false;
+            }
+            else
+            {
+                reason << " or ";
+            }
+
+            reason << ItemTypeInfo(filter->item_type, filter->item_subtype).toString();
         }
     }
-    return true;
+    return found_all;
 }
 
 command_result Plan::startup(color_ostream & out)
@@ -2558,7 +2570,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
 
     if (r->workshop_type == workshop_type::Dyers)
     {
-        df::item *barrel, *bucket;
+        df::item *barrel = nullptr, *bucket = nullptr;
         if (find_item(items_other_id::BARREL, barrel) &&
             find_item(items_other_id::BUCKET, bucket))
         {
@@ -2573,10 +2585,23 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             add_task(task_type::check_construct, r);
             return true;
         }
+        reason << "could not find ";
+        if (!barrel)
+        {
+            reason << "barrel";
+        }
+        if (!bucket)
+        {
+            if (!barrel)
+            {
+                reason << " or ";
+            }
+            reason << "bucket";
+        }
     }
     else if (r->workshop_type == workshop_type::Ashery)
     {
-        df::item *block, *barrel, *bucket;
+        df::item *block = nullptr, *barrel = nullptr, *bucket = nullptr;
         if (find_item(items_other_id::BLOCKS, block) &&
             find_item(items_other_id::BARREL, barrel) &&
             find_item(items_other_id::BUCKET, bucket))
@@ -2593,10 +2618,42 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             add_task(task_type::check_construct, r);
             return true;
         }
+        reason << "could not find ";
+        if (!block)
+        {
+            reason << "blocks";
+        }
+        if (!barrel)
+        {
+            if (!block)
+            {
+                if (!bucket)
+                {
+                    reason << ", ";
+                }
+                else
+                {
+                    reason << " or ";
+                }
+            }
+            reason << "barrel";
+        }
+        if (!bucket)
+        {
+            if (!block || !barrel)
+            {
+                if (!block && !barrel)
+                {
+                    reason << ", ";
+                }
+                reason << " or ";
+            }
+            reason << "bucket";
+        }
     }
     else if (r->workshop_type == workshop_type::MetalsmithsForge)
     {
-        df::item *anvil, *bould;
+        df::item *anvil = nullptr, *bould = nullptr;
         if (find_item(items_other_id::ANVIL, anvil, true) &&
             find_item(items_other_id::BOULDER, bould, true, true))
         {
@@ -2611,10 +2668,23 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             add_task(task_type::check_construct, r);
             return true;
         }
+        reason << "could not find ";
+        if (!anvil)
+        {
+            reason << "anvil";
+        }
+        if (!bould)
+        {
+            if (!anvil)
+            {
+                reason << " or ";
+            }
+            reason << "fire-safe boulder";
+        }
     }
     else if (r->workshop_type == workshop_type::Quern)
     {
-        df::item *quern;
+        df::item *quern = nullptr;
         if (find_item(items_other_id::QUERN, quern))
         {
             df::building *bld = Buildings::allocInstance(r->min, building_type::Workshop, workshop_type::Quern);
@@ -2627,6 +2697,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             add_task(task_type::check_construct, r);
             return true;
         }
+        reason << "could not find quern";
     }
     else if (r->workshop_type == workshop_type::Custom)
     {
@@ -2643,7 +2714,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             filters.push_back(make_job_item(*it));
         }
         std::vector<df::item *> items;
-        if (!find_items(filters, items))
+        if (!find_items(filters, items, reason))
         {
             for (auto it = filters.begin(); it != filters.end(); it++)
             {
@@ -2677,6 +2748,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
             return true;
             // XXX else quarry?
         }
+        reason << "could not find building material";
     }
     return false;
 }
@@ -2701,7 +2773,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
             filters.push_back(make_job_item(*it));
         }
         std::vector<df::item *> items;
-        if (!find_items(filters, items))
+        if (!find_items(filters, items, reason))
         {
             for (auto it = filters.begin(); it != filters.end(); it++)
             {
@@ -2719,7 +2791,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
     }
     else
     {
-        df::item *bould;
+        df::item *bould = nullptr;
         if (find_item(items_other_id::BOULDER, bould, true, true))
         {
             df::building *bld = Buildings::allocInstance(r->min, building_type::Furnace, r->furnace_type);
@@ -2732,6 +2804,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
             add_task(task_type::check_construct, r);
             return true;
         }
+        reason << "could not find fire-safe boulder";
         return false;
     }
 }
