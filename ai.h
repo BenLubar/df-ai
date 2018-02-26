@@ -46,7 +46,8 @@ class Trade;
 
 std::string html_escape(const std::string & str);
 void ai_version(std::ostream & out, bool html = false);
-bool ai_weblegends_handler(std::ostringstream & out, const std::string & url);
+class weblegends_handler_v1;
+bool ai_weblegends_handler(weblegends_handler_v1 & out, const std::string & url);
 
 class AI
 {

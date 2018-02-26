@@ -28,7 +28,6 @@ AI *dwarfAI = nullptr;
 bool full_reset_requested = false;
 
 command_result ai_command(color_ostream & out, std::vector<std::string> & args);
-bool ai_weblegends_handler(std::ostringstream & out, const std::string & url);
 
 // Check whether we are enabled and make sure the AI data exists iff we are.
 bool check_enabled(color_ostream & out)
