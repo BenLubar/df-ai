@@ -4,6 +4,7 @@
 
 #include "modules/Items.h"
 #include "modules/Materials.h"
+#include "modules/Units.h"
 
 #include "df/building_trapst.h"
 #include "df/caste_raw.h"
@@ -33,7 +34,6 @@
 #include "df/item_shoesst.h"
 #include "df/item_threadst.h"
 #include "df/item_toolst.h"
-#include "df/item_trapcompst.h"
 #include "df/item_weaponst.h"
 #include "df/itemdef_ammost.h"
 #include "df/itemdef_armorst.h"
@@ -393,14 +393,6 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             return !forbidden.count(std::make_tuple(i->getType(), i->getSubtype(), i->getMaterial(), i->getMaterialIndex()));
         }, &count_stacks);
     }
-    case stock_item::giant_corkscrew:
-    {
-        return find_item_info(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
-        {
-            df::item_trapcompst *i = virtual_cast<df::item_trapcompst>(item);
-            return i && i->subtype->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW";
-        });
-    }
     case stock_item::goblet:
     {
         return find_item_info(items_other_id::GOBLET);
@@ -472,6 +464,14 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             return is_metal_ore(i);
         });
     }
+    case stock_item::metal_strand:
+    {
+        return find_item_info(items_other_id::BOULDER, [](df::item *i) -> bool
+        {
+            MaterialInfo mat(i);
+            return mat.inorganic && !mat.inorganic->thread_metal.mat_index.empty();
+        });
+    }
     case stock_item::milk:
     {
         return find_item_info(items_other_id::LIQUID_MISC, [this](df::item *i) -> bool
@@ -511,7 +511,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         return find_item_info(items_other_id::POWDER_MISC, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
-            return mat.material && mat.material->id == "PLASTER";
+            return mat.material && mat.material->hardens_with_water.mat_type != -1;
         });
     }
     case stock_item::quern:
@@ -532,16 +532,6 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     case stock_item::quiver:
     {
         return find_item_info(items_other_id::QUIVER);
-    }
-    case stock_item::raw_adamantine:
-    {
-        MaterialInfo candy;
-        candy.findInorganic("RAW_ADAMANTINE");
-
-        return find_item_info(items_other_id::BOULDER, [candy](df::item *i) -> bool
-        {
-            return i->getMaterialIndex() == candy.index;
-        });
     }
     case stock_item::raw_coke:
     {
@@ -571,6 +561,26 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         {
             return i->getMaterial() == 0;
         });
+    }
+    case stock_item::screw:
+    {
+        std::set<int16_t> idefs;
+        for (auto id : ui->main.fortress_entity->entity_raw->equipment.trapcomp_id)
+        {
+            auto def = df::itemdef_trapcompst::find(id);
+
+            if (def->flags.is_set(trapcomp_flags::IS_SCREW))
+            {
+                idefs.insert(id);
+            }
+        }
+
+        return find_item_info(items_other_id::TRAPCOMP, [idefs](df::item *item) -> bool
+        {
+            return idefs.count(item->getSubtype());
+        }, &find_item_info::default_count, [this](df::item *i) -> bool {
+            return is_item_free(i);
+        }, idefs, false);
     }
     case stock_item::shell:
     {
@@ -750,6 +760,14 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
 {
     auto match = [idefs, pred](df::item *item) -> bool
     {
+        if (auto u = Items::getHolderUnit(item))
+        {
+            if (!Units::isCitizen(u))
+            {
+                return false;
+            }
+        }
+
         I *i = virtual_cast<I>(item);
 
         return i && idefs.count(i->subtype->subtype) && pred(i);
@@ -943,10 +961,11 @@ Stocks::find_item_info Stocks::find_item_helper_clothes(df::items_other_id oidx)
 
 Stocks::find_item_info Stocks::find_item_helper_tool(df::tool_uses use, std::function<bool(df::itemdef_toolst *)> pred)
 {
+    const auto & tool_id = ui->main.fortress_entity->entity_raw->equipment.tool_id;
     std::set<int16_t> idefs;
     for (auto def : world->raws.itemdefs.tools_by_type[use])
     {
-        if (pred(def))
+        if (std::find(tool_id.begin(), tool_id.end(), def->subtype) != tool_id.end() && pred(def))
         {
             idefs.insert(def->subtype);
         }

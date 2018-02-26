@@ -391,7 +391,7 @@ void Stocks::count_stocks(color_ostream & out, stock_item::item k)
 {
     auto helper = find_item_helper(k);
 
-    if (helper.count_min_subtype)
+    if (helper.count_min_subtype || !helper.subtypes.empty())
     {
         count_stocks_subtype(out, k, helper);
         return;
@@ -438,12 +438,26 @@ void Stocks::count_stocks_subtype(color_ostream &, stock_item::item k, find_item
         }
     }
 
-    auto min = std::min_element(subtype.begin(), subtype.end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
-    {
-        return a.second.first < b.second.first;
-    });
-
     count_subtype[k] = subtype;
-    count_free[k] = min == subtype.end() ? 0 : min->second.first;
-    count_total[k] = min == subtype.end() ? 0 : min->second.second;
+
+    if (helper.count_min_subtype)
+    {
+        auto min = std::min_element(subtype.begin(), subtype.end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
+        {
+            return a.second.first < b.second.first;
+        });
+
+        count_free[k] = min == subtype.end() ? 0 : min->second.first;
+        count_total[k] = min == subtype.end() ? 0 : min->second.second;
+    }
+    else
+    {
+        count_free[k] = 0;
+        count_total[k] = 0;
+        for (auto st : subtype)
+        {
+            count_free[k] += st.second.first;
+            count_total[k] += st.second.second;
+        }
+    }
 }

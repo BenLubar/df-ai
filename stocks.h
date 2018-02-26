@@ -71,7 +71,6 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(flask) \
     ENUM_ITEM(floodgate) \
     ENUM_ITEM(food_ingredients) \
-    ENUM_ITEM(giant_corkscrew) \
     ENUM_ITEM(goblet) \
     ENUM_ITEM(gypsum) \
     ENUM_ITEM(hatch_cover) \
@@ -84,6 +83,7 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(meal) \
     ENUM_ITEM(mechanism) \
     ENUM_ITEM(metal_ore) \
+    ENUM_ITEM(metal_strand) \
     ENUM_ITEM(milk) \
     ENUM_ITEM(mill_plant) \
     ENUM_ITEM(minecart) \
@@ -95,12 +95,12 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(quern) \
     ENUM_ITEM(quire) \
     ENUM_ITEM(quiver) \
-    ENUM_ITEM(raw_adamantine) \
     ENUM_ITEM(raw_coke) \
     ENUM_ITEM(raw_fish) \
     ENUM_ITEM(rock_pot) \
     ENUM_ITEM(rope) \
     ENUM_ITEM(rough_gem) \
+    ENUM_ITEM(screw) \
     ENUM_ITEM(shell) \
     ENUM_ITEM(skull) \
     ENUM_ITEM(slab) \
@@ -270,7 +270,7 @@ public:
         find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1), subtypes(), count_min_subtype(false)
         {
         }
-        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free, const std::set<int16_t> & count_min_subtype_from) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1), subtypes(count_min_subtype_from), count_min_subtype(true)
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free, const std::set<int16_t> & subtypes, bool count_min_subtype = true) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1), subtypes(subtypes), count_min_subtype(count_min_subtype)
         {
         }
 

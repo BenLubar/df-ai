@@ -294,17 +294,6 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.mat_type = 0;
         break;
     }
-    case stock_item::giant_corkscrew:
-    {
-        auto def = std::find_if(world->raws.itemdefs.trapcomps.begin(), world->raws.itemdefs.trapcomps.end(), [](df::itemdef_trapcompst *def) -> bool
-        {
-            return def->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW";
-        });
-        tmpl.job_type = job_type::MakeTrapComponent;
-        tmpl.item_subtype = (*def)->subtype;
-        tmpl.material_category.bits.wood = 1;
-        break;
-    }
     case stock_item::goblet:
     {
         tmpl.job_type = job_type::MakeGoblet;
@@ -462,6 +451,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     {
         tmpl.job_type = job_type::MakeChain;
         tmpl.material_category.bits.cloth = 1;
+        break;
+    }
+    case stock_item::screw:
+    {
+        tmpl.job_type = job_type::MakeTrapComponent;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::screw);
+        tmpl.material_category.bits.wood = 1;
         break;
     }
     case stock_item::slab:
@@ -777,6 +773,18 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         queue_use_metal_ore(out, amount);
         return;
     }
+    case stock_item::metal_strand:
+    {
+        auto candy = find_free_item(stock_item::metal_strand);
+        if (!candy)
+        {
+            return;
+        }
+        tmpl.job_type = job_type::ExtractMetalStrands;
+        tmpl.mat_type = 0;
+        tmpl.mat_index = candy->getMaterialIndex();
+        break;
+    }
     case stock_item::milk:
     {
         tmpl.job_type = job_type::MakeCheese;
@@ -787,16 +795,6 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         tmpl.job_type = job_type::MillPlants;
         may_rot();
         input.push_back(stock_item::bag);
-        break;
-    }
-    case stock_item::raw_adamantine:
-    {
-        MaterialInfo candy;
-        candy.findInorganic("RAW_ADAMANTINE");
-
-        tmpl.job_type = job_type::ExtractMetalStrands;
-        tmpl.mat_type = 0;
-        tmpl.mat_index = candy.index;
         break;
     }
     case stock_item::raw_coke:

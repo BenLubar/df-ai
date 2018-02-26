@@ -177,7 +177,7 @@ bool Stocks::is_gypsum(int32_t mi)
 {
     for (auto c = world->raws.inorganics[mi]->material.reaction_class.begin(); c != world->raws.inorganics[mi]->material.reaction_class.end(); c++)
     {
-        if (**c == "GYPSUM")
+        if (**c == "GYPSUM") // XXX
         {
             return true;
         }

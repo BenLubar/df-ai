@@ -68,7 +68,6 @@ Watch::Watch()
     Needed[stock_item::dye_seeds] = 10;
     Needed[stock_item::flask] = 2;
     Needed[stock_item::floodgate] = 1;
-    Needed[stock_item::giant_corkscrew] = 1;
     Needed[stock_item::goblet] = 10;
     Needed[stock_item::gypsum] = 1;
     Needed[stock_item::hatch_cover] = 2;
@@ -89,6 +88,7 @@ Watch::Watch()
     Needed[stock_item::raw_coke] = 1;
     Needed[stock_item::rock_pot] = 4;
     Needed[stock_item::rope] = 1;
+    Needed[stock_item::screw] = 1;
     Needed[stock_item::slab] = 1;
     Needed[stock_item::slurry] = 5;
     Needed[stock_item::soap] = 1;
@@ -135,9 +135,9 @@ Watch::Watch()
     WatchStock[stock_item::honey] = 1;
     WatchStock[stock_item::honeycomb] = 1;
     WatchStock[stock_item::metal_ore] = 6;
+    WatchStock[stock_item::metal_strand] = 2;
     WatchStock[stock_item::milk] = 1;
     WatchStock[stock_item::mill_plant] = 4;
-    WatchStock[stock_item::raw_adamantine] = 2;
     WatchStock[stock_item::raw_coke] = 2;
     WatchStock[stock_item::raw_fish] = 1;
     WatchStock[stock_item::rough_gem] = 6;
