@@ -328,24 +328,17 @@ void Stocks::report(std::ostream & out, bool html)
             {
                 const auto & subtypes = count_subtype.at(n.first);
                 df::item_type item_type = ENUM_ATTR(items_other_id, item, find_item_helper(n.first).oidx);
-                size_t count = subtypes.size();
                 for (auto subtype : subtypes)
                 {
                     std::string name(ItemTypeInfo(item_type, subtype.first).toString());
                     int32_t max = compute_max(std::max(needed, subtype.second.first));
-                    out << "<tr>";
-                    if (count)
-                    {
-                        out << "<th rowspan=\"" << count << "\">" << n.first << "</th>";
-                        count = 0;
-                    }
-                    out << "<td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                    out << "<tr><th>" << n.first << "</th><td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
                 }
             }
             else
             {
                 int32_t max = compute_max(std::max(needed, count_free[n.first]));
-                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
             }
         }
         else
@@ -367,7 +360,7 @@ void Stocks::report(std::ostream & out, bool html)
         if (html)
         {
             int32_t max = compute_max(std::max(w.second, count_free[w.first]));
-            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << (w.second + 1) << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << w.second << "\" max=\"" << max << "\"></meter></td></tr>";
+            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << w.second << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << w.second << "\" max=\"" << max << "\"></meter></td></tr>";
         }
         else
         {
