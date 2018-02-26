@@ -148,7 +148,9 @@ class Stocks
 {
     AI *ai;
 public:
-    std::map<stock_item::item, int32_t> count;
+    std::map<stock_item::item, int32_t> count_free;
+    std::map<stock_item::item, int32_t> count_total;
+    std::map<stock_item::item, std::map<int16_t, std::pair<int32_t, int32_t>>> count_subtype;
     std::map<int32_t, int32_t> ingots;
 private:
     OnupdateCallback *onupdate_handle;
@@ -200,6 +202,8 @@ public:
     Stocks(AI *ai);
     ~Stocks();
 
+    struct find_item_info;
+
     void reset();
     command_result startup(color_ostream & out);
     command_result onupdate_register(color_ostream & out);
@@ -219,7 +223,8 @@ public:
 
     int32_t num_needed(stock_item::item key);
     void act(color_ostream & out, stock_item::item key);
-    int32_t count_stocks(color_ostream & out, stock_item::item k);
+    void count_stocks(color_ostream & out, stock_item::item k);
+    void count_stocks_subtype(color_ostream & out, stock_item::item k, find_item_info & helper);
 
     void queue_need(color_ostream & out, stock_item::item what, int32_t amount);
     void queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false);
@@ -264,7 +269,10 @@ public:
         find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count) : find_item_info(oidx, pred, count, [](df::item *i) -> bool { return is_item_free(i); })
         {
         }
-        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1)
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1), subtypes(), count_min_subtype(false)
+        {
+        }
+        find_item_info(df::items_other_id oidx, std::function<bool(df::item *)> pred, std::function<int32_t(int32_t &, df::item *)> count, std::function<bool(df::item *)> free, const std::set<int16_t> & count_min_subtype_from) : oidx(oidx), pred(pred), free(free), do_count(count), init_count(-1), subtypes(count_min_subtype_from), count_min_subtype(true)
         {
         }
 
@@ -280,10 +288,15 @@ public:
     private:
         const std::function<int32_t(int32_t &, df::item *)> do_count;
         int32_t init_count;
+
+    public:
+        const std::set<int16_t> subtypes;
+        const bool count_min_subtype;
     };
     df::item *find_free_item(stock_item::item k);
     find_item_info find_item_helper(stock_item::item k);
     find_item_info find_item_helper_weapon(df::job_skill skill = job_skill::NONE, bool training = false);
+    find_item_info find_item_helper_digger(df::job_skill skill = job_skill::NONE, bool training = false);
     find_item_info find_item_helper_armor(df::items_other_id oidx);
     find_item_info find_item_helper_clothes(df::items_other_id oidx);
     find_item_info find_item_helper_tool(stock_item::item k);

@@ -32,7 +32,7 @@ REQUIRE_GLOBAL(world);
 // forge weapons
 void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill, bool training)
 {
-    if (skill == job_skill::NONE && !training && (count.at(stock_item::pick) == 0 || count.at(stock_item::axe) == 0))
+    if (skill == job_skill::NONE && !training && (count_free.at(stock_item::pick) == 0 || count_free.at(stock_item::axe) == 0))
         return;
 
     auto search = [this, &out, stock_item, needed, skill, training](const std::vector<int16_t> & idefs, df::material_flags pref)
@@ -304,7 +304,7 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
 void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
 {
     // try to avoid cancel spam
-    int32_t available_cloth = count.at(stock_item::cloth) - 20;
+    int32_t available_cloth = count_free.at(stock_item::cloth) - 20;
 
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
 

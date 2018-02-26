@@ -2,6 +2,7 @@
 #include "stocks.h"
 #include "population.h"
 
+#include "modules/Items.h"
 #include "modules/Materials.h"
 
 #include "df/creature_raw.h"
@@ -156,7 +157,9 @@ Watch::Watch()
 
 Stocks::Stocks(AI *ai) :
     ai(ai),
-    count(),
+    count_free(),
+    count_total(),
+    count_subtype(),
     ingots(),
     onupdate_handle(nullptr),
     updating(),
@@ -222,7 +225,9 @@ void Stocks::reset()
 {
     updating.clear();
     lastupdating = 0;
-    count.clear();
+    count_free.clear();
+    count_total.clear();
+    count_subtype.clear();
     farmplots.clear();
     seeds.clear();
     plants.clear();
@@ -259,7 +264,7 @@ std::string Stocks::status()
     for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
     {
         int32_t want = num_needed(it->first);
-        int32_t have = count[it->first];
+        int32_t have = count_free[it->first];
 
         if (have >= want)
             continue;
@@ -277,7 +282,7 @@ std::string Stocks::status()
     for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
     {
         int32_t want = it->second;
-        int32_t have = count[it->first];
+        int32_t have = count_free[it->first];
         if (have <= want)
             continue;
 
@@ -314,7 +319,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th>item</th><th>Current</th><th>Minimum</th><th></th></tr></thead><tbody>";
+        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th>item</th><th>Available</th><th>Minimum</th><th>Total</th><th></th></tr></thead><tbody>";
     }
     else
     {
@@ -325,18 +330,32 @@ void Stocks::report(std::ostream & out, bool html)
         int32_t needed = num_needed(n.first);
         if (html)
         {
-            int32_t max = compute_max(std::max(needed, count[n.first]));
-            out << "<tr><th>" << n.first << "</th><td>" << count[n.first] << "</td><td>" << needed << "</td><td><meter value=\"" << count[n.first] << "\" low=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+            if (count_subtype.count(n.first))
+            {
+                const auto & subtypes = count_subtype.at(n.first);
+                df::item_type item_type = ENUM_ATTR(items_other_id, item, find_item_helper(n.first).oidx);
+                for (auto subtype : subtypes)
+                {
+                    std::string name(ItemTypeInfo(item_type, subtype.first).toString());
+                    int32_t max = compute_max(std::max(needed, subtype.second.first));
+                    out << "<tr><th>" << n.first << ": " << name << "</th><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.first << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                }
+            }
+            else
+            {
+                int32_t max = compute_max(std::max(needed, count_free[n.first]));
+                out << "<tr><th>" << n.first << "</th><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+            }
         }
         else
         {
-            out << "- " << n.first << ": " << count[n.first] << " / " << needed << "\n";
+            out << "- " << n.first << ": " << count_free[n.first] << " / " << needed << "\n";
         }
     }
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>item</th><th>Current</th><th>Maximum</th><th></th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>item</th><th>Available</th><th>Maximum</th><th>Total</th><th></th></tr></thead><tbody>";
     }
     else
     {
@@ -346,18 +365,18 @@ void Stocks::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            int32_t max = compute_max(std::max(w.second, count[w.first]));
-            out << "<tr><th>" << w.first << "</th><td>" << count[w.first] << "</td><td>" << w.second << "</td><td><meter value=\"" << count[w.first] << "\" high=\"" << (w.second + 1) << "\" optimum=\"" << w.second << "\" max=\"" << max << "\"></meter></td></tr>";
+            int32_t max = compute_max(std::max(w.second, count_free[w.first]));
+            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << (w.second + 1) << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << w.second << "\" max=\"" << max << "\"></meter></td></tr>";
         }
         else
         {
-            out << "- " << w.first << ": " << count[w.first] << " / " << w.second << "\n";
+            out << "- " << w.first << ": " << count_free[w.first] << " / " << w.second << "\n";
         }
     }
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Track\">Track</h2><table><thead><tr><th>Item</th><th>Current</th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Track\">Track</h2><table><thead><tr><th>Item</th><th>Available</th><th>Total</th></tr></thead><tbody>";
     }
     else
     {
@@ -367,11 +386,11 @@ void Stocks::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            out << "<tr><th>" << t << "</th><td>" << count[t] << "</td></tr>";
+            out << "<tr><th>" << t << "</th><td>" << count_free[t] << "</td><td>" << count_total[t] << "</td></tr>";
         }
         else
         {
-            out << "- " << t << ": " << count[t] << "\n";
+            out << "- " << t << ": " << count_free[t] << "\n";
         }
     }
 
@@ -581,5 +600,5 @@ bool Stocks::need_more(stock_item::item type)
 
     int32_t want = Watch.Needed.count(type) ? num_needed(type) : Watch.WatchStock.count(type) ? Watch.WatchStock.at(type) : 10;
 
-    return (count.count(type) ? count.at(type) : 0) < want;
+    return (count_free.count(type) ? count_free.at(type) : 0) < want;
 }

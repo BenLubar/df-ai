@@ -113,7 +113,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         amount = (amount + 3) / 4;
 
         // no stone => make wooden blocks (needed for pumps for aquifer handling)
-        if (!count.count(stock_item::stone) || !count.at(stock_item::stone))
+        if (!count_free.count(stock_item::stone) || !count_free.at(stock_item::stone))
         {
             if (amount > 2)
             {
@@ -206,9 +206,9 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.job_type = job_type::MakeCharcoal;
         // dont use wood -> charcoal if we have bituminous coal
         // (except for bootstraping)
-        if (amount > 2 - count.at(stock_item::coal) && count.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke))
+        if (amount > 2 - count_free.at(stock_item::coal) && count_free.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke))
         {
-            amount = 2 - count.at(stock_item::coal);
+            amount = 2 - count_free.at(stock_item::coal);
         }
         break;
     }
@@ -238,7 +238,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         reactions[stock_item::honey] = "MAKE_MEAD";
         auto score = [this, &out](std::pair<const stock_item::item, std::string> i) -> int32_t
         {
-            int32_t c = count.at(i.first);
+            int32_t c = count_free.at(i.first);
             df::manager_order_template count_tmpl;
             count_tmpl.job_type = job_type::CustomReaction;
             count_tmpl.reaction_name = i.second;
@@ -249,7 +249,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = max->second;
         input.push_back(max->first);
-        if (count[stock_item::barrel] > count[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
         {
             input.push_back(stock_item::barrel);
         }
@@ -560,7 +560,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         int32_t i_amount = amount;
         for (auto i : input)
         {
-            int32_t c = count.at(i);
+            int32_t c = count_free.at(i);
             if (c < i_amount)
             {
                 i_amount = c;
@@ -600,7 +600,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         {
             throw DFHack::Error::InvalidArgument();
         }
-        int32_t i_amount = count.at(matcat_item) - count_manager_orders_matcat(tmpl.material_category, tmpl.job_type);
+        int32_t i_amount = count_free.at(matcat_item) - count_manager_orders_matcat(tmpl.material_category, tmpl.job_type);
         if (i_amount < amount && Watch.Needed.count(matcat_item))
         {
             queue_need(out, matcat_item, amount - i_amount);
@@ -657,7 +657,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         {
             return;
         }
-        int32_t need_crossbow = nhunters + 1 - count.at(stock_item::crossbow);
+        int32_t need_crossbow = nhunters + 1 - count_free.at(stock_item::crossbow);
         if (need_crossbow > 0)
         {
             tmpl.job_type = job_type::MakeWeapon;
@@ -671,7 +671,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
             tmpl.job_type = job_type::MakeAmmo;
             tmpl.item_subtype = manager_subtype.at(stock_item::bone_bolts);
             tmpl.material_category.bits.bone = 1;
-            int32_t stock = count.at(stock_item::bone_bolts);
+            int32_t stock = count_free.at(stock_item::bone_bolts);
             if (amount > 1000 - stock)
                 amount = 1000 - stock;
             may_rot();
@@ -699,7 +699,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         tmpl.reaction_name = what == stock_item::drink_plant ? "BREW_DRINK_FROM_PLANT" : "BREW_DRINK_FROM_PLANT_GROWTH";
         may_rot();
 
-        if (count[stock_item::barrel] > count[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
         {
             input.push_back(stock_item::barrel);
         }
@@ -729,7 +729,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     {
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = "MAKE_MEAD";
-        if (count[stock_item::barrel] > count[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
         {
             input.push_back(stock_item::barrel);
         }
@@ -844,7 +844,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         int32_t i_amount = amount;
         for (auto i = input.begin(); i != input.end(); i++)
         {
-            int32_t c = count.at(*i);
+            int32_t c = count_free.at(*i);
             if (i_amount > c)
                 i_amount = c;
             if (c < amount && Watch.Needed.count(*i))

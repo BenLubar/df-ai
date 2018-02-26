@@ -586,22 +586,13 @@ void Population::update_military(color_ostream & out)
     }
 
     size_t axes = 0, picks = 0;
-    for (auto item : world->items.other[items_other_id::WEAPON])
+    for (const auto & st : ai->stocks->count_subtype[stock_item::axe])
     {
-        df::item_weaponst *weapon = virtual_cast<df::item_weaponst>(item);
-        if (!weapon || !weapon->subtype || !weapon->subtype->flags.is_set(weapon_flags::HAS_EDGE_ATTACK))
-        {
-            continue;
-        }
-
-        if (weapon->getMeleeSkill() == job_skill::AXE)
-        {
-            axes++;
-        }
-        else if (weapon->getMeleeSkill() == job_skill::MINING)
-        {
-            picks++;
-        }
+        axes += size_t(st.second.second);
+    }
+    for (const auto & st : ai->stocks->count_subtype[stock_item::pick])
+    {
+        picks += size_t(st.second.second);
     }
 
     size_t max_military = std::min(citizen.size() * 3 / 4, std::min(axes ? axes - 1 : 0, picks ? picks - 1 : 0));

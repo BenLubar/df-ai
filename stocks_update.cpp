@@ -155,7 +155,7 @@ void Stocks::update(color_ostream & out)
         {
             stock_item::item key = updating_count.back();
             updating_count.pop_back();
-            count[key] = count_stocks(out, key);
+            count_stocks(out, key);
             return false;
         }
         if (!updating.empty())
@@ -179,8 +179,9 @@ void Stocks::update(color_ostream & out)
             for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
             {
                 Json::Value needed(Json::arrayValue);
-                needed.append(count.at(it->first));
+                needed.append(count_free.at(it->first));
                 needed.append(num_needed(it->first));
+                needed.append(count_total.at(it->first));
                 stringify.str(std::string());
                 stringify.clear();
                 stringify << it->first;
@@ -189,8 +190,9 @@ void Stocks::update(color_ostream & out)
             for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
             {
                 Json::Value watch(Json::arrayValue);
-                watch.append(count.at(it->first));
+                watch.append(count_free.at(it->first));
                 watch.append(-it->second);
+                watch.append(count_total.at(it->first));
                 stringify.str(std::string());
                 stringify.clear();
                 stringify << it->first;
@@ -199,8 +201,9 @@ void Stocks::update(color_ostream & out)
             for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
             {
                 Json::Value also(Json::arrayValue);
-                also.append(count.at(*it));
+                also.append(count_free.at(*it));
                 also.append(0);
+                also.append(count_total.at(*it));
                 stringify.str(std::string());
                 stringify.clear();
                 stringify << *it;
@@ -369,33 +372,78 @@ void Stocks::act(color_ostream & out, stock_item::item key)
     {
         if (need_more(key))
         {
-            queue_need(out, key, num_needed(key) * 3 / 2 - count.at(key));
+            queue_need(out, key, num_needed(key) * 3 / 2 - count_free.at(key));
         }
     }
 
     if (Watch.WatchStock.count(key))
     {
         int32_t amount = Watch.WatchStock.at(key);
-        if (count.at(key) > amount)
+        if (count_free.at(key) > amount)
         {
-            queue_use(out, key, count.at(key) - amount);
+            queue_use(out, key, count_free.at(key) - amount);
         }
     }
 }
 
 // count unused stocks of one type of item
-int32_t Stocks::count_stocks(color_ostream &, stock_item::item k)
+void Stocks::count_stocks(color_ostream & out, stock_item::item k)
 {
     auto helper = find_item_helper(k);
 
-    int32_t n = 0;
+    if (helper.count_min_subtype)
+    {
+        count_stocks_subtype(out, k, helper);
+        return;
+    }
+
+    int32_t total = 0;
+    int32_t free = 0;
     for (auto i : world->items.other[helper.oidx])
     {
         if (helper.pred(i))
         {
-            n += helper.count(i);
+            int32_t c = helper.count(i);
+            total += c;
+            if (helper.free(i))
+            {
+                free += c;
+            }
         }
     }
 
-    return n;
+    count_free[k] = free;
+    count_total[k] = total;
+}
+
+void Stocks::count_stocks_subtype(color_ostream &, stock_item::item k, find_item_info & helper)
+{
+    std::map<int16_t, std::pair<int32_t, int32_t>> subtype;
+    for (auto i : helper.subtypes)
+    {
+        subtype[i] = std::pair<int32_t, int32_t>();
+    }
+
+    for (auto i : world->items.other[helper.oidx])
+    {
+        if (helper.pred(i))
+        {
+            int16_t st = i->getSubtype();
+            int32_t c = helper.count(i);
+            subtype[st].second += c;
+            if (helper.free(i))
+            {
+                subtype[st].first += c;
+            }
+        }
+    }
+
+    auto min = std::min_element(subtype.begin(), subtype.end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
+    {
+        return a.second.first < b.second.first;
+    });
+
+    count_subtype[k] = subtype;
+    count_free[k] = min == subtype.end() ? 0 : min->second.first;
+    count_total[k] = min == subtype.end() ? 0 : min->second.second;
 }

@@ -61,7 +61,7 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::ANVIL && count[stock_item::anvil] == 0 && ai->find_room(room_type::workshop, [](room *r) -> bool
+    if (item->getType() == item_type::ANVIL && count_free[stock_item::anvil] == 0 && ai->find_room(room_type::workshop, [](room *r) -> bool
     {
         return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding();
     }))

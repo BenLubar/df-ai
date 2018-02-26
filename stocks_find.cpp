@@ -53,7 +53,7 @@ REQUIRE_GLOBAL(world);
 
 int32_t Stocks::find_item_info::default_count(int32_t &, df::item *i)
 {
-    return is_item_free(i) ? virtual_cast<df::item_actual>(i)->stack_size : 0;
+    return virtual_cast<df::item_actual>(i)->stack_size;
 }
 
 df::item *Stocks::find_free_item(stock_item::item k)
@@ -73,7 +73,7 @@ df::item *Stocks::find_free_item(stock_item::item k)
 
 static int32_t count_stacks(int32_t &, df::item *i)
 {
-    return Stocks::is_item_free(i) ? 1 : 0;
+    return 1;
 }
 
 Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
@@ -506,7 +506,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::pick:
     {
-        return find_item_helper_weapon(job_skill::MINING);
+        return find_item_helper_digger(job_skill::MINING);
     }
     case stock_item::pipe_section:
     {
@@ -522,10 +522,10 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::quern:
     {
-        return find_item_info(items_other_id::QUERN, [](df::item *) -> bool { return true; }, [](int32_t &, df::item *) -> int32_t
+        return find_item_info(items_other_id::QUERN, [](df::item *) -> bool { return true; }, &count_stacks, [](df::item *) -> bool
         {
-            // Include querns that are buildings.
-            return 1;
+            // also count used querns
+            return true;
         });
     }
     case stock_item::quire:
@@ -749,75 +749,56 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
         return i && idefs.count(i->subtype->subtype) && pred(i);
     };
 
-    auto min_subtype = [oidx, idefs, div, match](int32_t & init) -> int32_t
+    auto count = [div](int32_t & init, df::item *i) -> int32_t
     {
-        if (init != -1)
+        if (init == -1)
         {
-            if (div != 1 && init >= 0)
-            {
-                if ((init & 0x00ff0000) == 0)
-                {
-                    init |= static_cast<int32_t>(div - 1) << 16;
-                }
-                else
-                {
-                    init -= 0x00010000;
-                }
-            }
-            return init;
+            init = div;
         }
-
-        std::map<int16_t, size_t> subtypes;
-        for (auto i : idefs)
+        int32_t n = 0;
+        init -= i->getStackSize();
+        while (init <= 0)
         {
-            subtypes[i] = 0;
+            n++;
+            init += div;
         }
-        for (auto i : world->items.other[oidx])
-        {
-            if (match(i) && Stocks::is_item_free(i))
-            {
-                subtypes[virtual_cast<I>(i)->subtype->subtype]++;
-            }
-        }
-
-        auto min = std::min_element(subtypes.begin(), subtypes.end(), [](std::pair<int16_t, size_t> a, std::pair<int16_t, size_t> b) -> bool { return a.second < b.second; });
-        init = min != subtypes.end() ? static_cast<int32_t>(min->first) | (static_cast<int32_t>(div - 1) << 16) : -2;
-        return init;
+        return n;
     };
 
-    auto count = [min_subtype](int32_t & init, df::item *i) -> int32_t
-    {
-        return Stocks::is_item_free(i) && static_cast<int32_t>(virtual_cast<I>(i)->subtype->subtype) == min_subtype(init) ? i->getStackSize() : 0;
-    };
-
-    return Stocks::find_item_info(oidx, match, count);
+    return Stocks::find_item_info(oidx, match, count, [](df::item *i) -> bool { return Stocks::is_item_free(i); }, idefs);
 };
+
+static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training)
+{
+    std::set<int16_t> idefs;
+    for (int16_t id : defs)
+    {
+        auto def = df::itemdef_weaponst::find(id);
+
+        if (skill != job_skill::NONE && def->skill_melee != skill)
+        {
+            continue;
+        }
+
+        if (def->flags.is_set(weapon_flags::TRAINING) != training)
+        {
+            continue;
+        }
+
+        idefs.insert(id);
+    }
+
+    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs);
+}
 
 Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training)
 {
-    std::set<int16_t> idefs;
-#define ADD_DEFS(kind) \
-    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.kind) \
-    { \
-        auto def = df::itemdef_weaponst::find(id); \
-\
-        if (skill != job_skill::NONE && def->skill_melee != skill) \
-        { \
-            continue; \
-        } \
-\
-        if (def->flags.is_set(weapon_flags::TRAINING) != training) \
-        { \
-            continue; \
-        } \
-\
-        idefs.insert(id); \
-    }
-    ADD_DEFS(digger_id);
-    ADD_DEFS(weapon_id);
-#undef ADD_DEFS
+    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.weapon_id, skill, training);
+}
 
-    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs);
+Stocks::find_item_info Stocks::find_item_helper_digger(df::job_skill skill, bool training)
+{
+    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.digger_id, skill, training);
 }
 
 template<typename D>

@@ -2149,7 +2149,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         stocks_furniture_type = stock_item::cage_metal;
         break;
     case layout_type::cage_trap:
-        if (ai->stocks->count[stock_item::cage] < 1)
+        if (ai->stocks->count_free[stock_item::cage] < 1)
         {
             // avoid too much spam
             reason << "no empty cages available";

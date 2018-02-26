@@ -38,7 +38,7 @@ void Stocks::queue_need_cage(color_ostream & out)
 
 void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype)
 {
-    int32_t coal_bars = count.at(stock_item::coal);
+    int32_t coal_bars = count_free.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
         coal_bars = 50000;
 
@@ -56,7 +56,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
     const auto & pref = metal_pref.at(preference);
 
     int32_t cnt = Watch.Needed.at(item);
-    cnt -= count.at(item);
+    cnt -= count_free.at(item);
 
     for (auto mo : world->manager_orders)
     {
@@ -323,7 +323,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
 void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 {
     // make coke from bituminous coal has priority
-    if (count.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke) && count.at(stock_item::coal) < 100)
+    if (count_free.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke) && count_free.at(stock_item::coal) < 100)
     {
         return;
     }
@@ -365,8 +365,7 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
 
     if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
     {
-        if (amount > count.at(stock_item::coal))
-            amount = count.at(stock_item::coal);
+        amount = std::min(amount, count_free.at(stock_item::coal));
         if (amount <= 0)
             return;
     }
@@ -426,7 +425,7 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
     if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
     {
         // need at least 1 unit of fuel to bootstrap
-        if (count.at(stock_item::coal) <= 0)
+        if (count_free.at(stock_item::coal) <= 0)
         {
             return;
         }
