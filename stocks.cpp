@@ -59,7 +59,7 @@ Watch::Watch()
     Needed[stock_item::clothes_head] = 2;
     Needed[stock_item::clothes_legs] = 2;
     Needed[stock_item::clothes_torso] = 2;
-    Needed[stock_item::coal] = 3;
+    Needed[stock_item::coal] = 12;
     Needed[stock_item::coffin] = 2;
     Needed[stock_item::crutch] = 1;
     Needed[stock_item::door] = 4;
