@@ -12,6 +12,7 @@
 #include "df/manager_order_template.h"
 #include "df/tool_uses.h"
 #include "df/viewscreen_createquotast.h"
+#include "df/viewscreen_jobmanagementst.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(world);
@@ -75,14 +76,18 @@ class ManagerOrderExclusive : public ExclusiveCallback
     AI * const ai;
     df::manager_order_template tmpl;
     std::string quantity;
+    int32_t amount;
     std::string search_word;
+    int32_t old_order;
 
 public:
     ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount)
         : ExclusiveCallback("add_manager_order: " + AI::describe_job(&tmpl)),
         ai(ai),
         tmpl(tmpl),
-        quantity(stl_sprintf("%d", std::min(amount, 9999)))
+        amount(amount),
+        quantity(),
+        old_order(-1)
     {
         search_word = AI::describe_job(&tmpl);
         size_t pos = search_word.find(' ');
@@ -110,6 +115,57 @@ public:
     {
         Key(interface_key::D_JOBLIST);
         Key(interface_key::UNITJOB_MANAGER);
+
+        Do([&]()
+        {
+            auto curview = Gui::getCurViewscreen(true);
+            auto view = strict_virtual_cast<df::viewscreen_jobmanagementst>(curview);
+            if (!view)
+            {
+                std::string name;
+                if (auto ident = virtual_identity::get(curview))
+                {
+                    name = ident->getName();
+                }
+                else
+                {
+                    name = Gui::getFocusString(curview);
+                }
+                ai->debug(out, "[ERROR] viewscreen when queueing manager job is " + name + ", not viewscreen_createquotast");
+                return;
+            }
+
+            If([&]() -> bool
+            {
+                bool first = true;
+                for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
+                {
+                    if (template_equals(*it, &tmpl))
+                    {
+                        if (first)
+                        {
+                            first = false;
+                        }
+                        else if ((*it)->amount_left == (*it)->amount_total)
+                        {
+                            old_order = int32_t(it - world->manager_orders.begin());
+                            amount += (*it)->amount_left;
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }, [&]()
+            {
+                MoveToItem(view->sel_idx, old_order);
+
+                Key(interface_key::MANAGER_REMOVE);
+            });
+
+            quantity = stl_sprintf("%d", std::min(amount, 9999));
+        });
+
         Key(interface_key::MANAGER_NEW_ORDER);
 
         Do([&]()
