@@ -740,7 +740,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, int32_t div = 1, std::function<bool(I *)> pred = [](I *) -> bool { return true; })
+static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, int32_t div = 1, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, std::function<bool(I *)> free = [](I *) -> bool { return true; })
 {
     auto match = [idefs, pred](df::item *item) -> bool
     {
@@ -765,7 +765,10 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
         return n;
     };
 
-    return Stocks::find_item_info(oidx, match, count, [](df::item *i) -> bool { return Stocks::is_item_free(i); }, idefs);
+    return Stocks::find_item_info(oidx, match, count, [free](df::item *i) -> bool
+    {
+        return Stocks::is_item_free(i) && free(virtual_cast<I>(i));
+    }, idefs);
 };
 
 static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training)
@@ -856,8 +859,10 @@ static Stocks::find_item_info find_item_helper_clothes_helper(df::items_other_id
     }
     return find_item_helper_equip_helper<I>(oidx, idefs, div, [](I *i) -> bool
     {
-        return i->mat_type != 0 && // XXX
-            i->wear == 0;
+        return i->mat_type != 0; // XXX
+    }, [](I *i) -> bool
+    {
+        return i->wear == 0;
     });
 }
 
