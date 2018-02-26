@@ -410,7 +410,14 @@ void Stocks::report(std::ostream & out, bool html)
         if (html)
         {
             out << "<tr><th>" << html_escape(AI::describe_job(mo)) << "</th><td>" << mo->amount_left << "</td><td>" << mo->amount_total << "</td>";
-            out << "<td><progress max=\"" << mo->amount_total << "\" value=\"" << (mo->amount_total - mo->amount_left) << "\"></progress></td></tr>";
+            if (!mo->status.bits.validated && mo->amount_left == mo->amount_total)
+            {
+                out << "<td><progress max=\"" << mo->amount_total << "\"></progress></td></tr>";
+            }
+            else
+            {
+                out << "<td><progress max=\"" << mo->amount_total << "\" value=\"" << (mo->amount_total - mo->amount_left) << "\"></progress></td></tr>";
+            }
         }
         else
         {
