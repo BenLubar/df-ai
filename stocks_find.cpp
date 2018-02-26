@@ -73,7 +73,7 @@ df::item *Stocks::find_free_item(stock_item::item k)
     return nullptr;
 }
 
-static int32_t count_stacks(int32_t &, df::item *i)
+static int32_t count_stacks(int32_t &, df::item *)
 {
     return 1;
 }
