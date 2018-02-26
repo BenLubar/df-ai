@@ -126,7 +126,7 @@ Watch::Watch()
     WatchStock[stock_item::cloth_nodye] = 10;
     WatchStock[stock_item::drink_fruit] = 5;
     WatchStock[stock_item::drink_plant] = 5;
-    WatchStock[stock_item::food_ingredients] = 2;
+    WatchStock[stock_item::food_ingredients] = 4;
     WatchStock[stock_item::honey] = 1;
     WatchStock[stock_item::honeycomb] = 1;
     WatchStock[stock_item::metal_ore] = 6;
