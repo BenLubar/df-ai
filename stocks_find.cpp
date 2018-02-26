@@ -871,7 +871,10 @@ static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id o
             idefs.insert(id);
         }
     }
-    return find_item_helper_equip_helper<I>(oidx, idefs, div);
+    return find_item_helper_equip_helper<I>(oidx, idefs, div, [](I *i) -> bool
+    {
+        return i->mat_type == 0; // XXX
+    });
 }
 
 Stocks::find_item_info Stocks::find_item_helper_armor(df::items_other_id oidx)
