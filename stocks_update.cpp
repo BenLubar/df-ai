@@ -56,6 +56,7 @@ void Stocks::update(color_ostream & out)
                     if (m->amount_left > 3)
                     {
                         m->amount_left -= 3;
+                        m->amount_total -= 3;
                     }
                     else
                     {
@@ -98,8 +99,6 @@ void Stocks::update(color_ostream & out)
         return false; // search all farm plots
     });
 
-    ai->debug(out, "updating stocks");
-
     if (ai->eventsJson.is_open())
     {
         // update wealth by opening the status screen
@@ -124,7 +123,7 @@ void Stocks::update(color_ostream & out)
     }
 
     // do stocks accounting 'in the background' (ie one bit at a time)
-    events.onupdate_register_once("df-ai stocks bg", 8, [this](color_ostream & out) -> bool
+    events.onupdate_register_once("df-ai stocks bg", [this](color_ostream & out) -> bool
     {
         if (updating_seeds)
         {
@@ -160,9 +159,11 @@ void Stocks::update(color_ostream & out)
         }
         if (!updating.empty())
         {
-            stock_item::item key = updating.back();
-            updating.pop_back();
-            act(out, key);
+            for (auto key : updating)
+            {
+                act(out, key);
+            }
+            updating.clear();
             return false;
         }
         if (!updating_farmplots.empty())

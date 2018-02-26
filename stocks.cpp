@@ -239,7 +239,7 @@ command_result Stocks::startup(color_ostream & out)
 command_result Stocks::onupdate_register(color_ostream &)
 {
     reset();
-    onupdate_handle = events.onupdate_register("df-ai stocks", 4800, 30, [this](color_ostream & out) { update(out); });
+    onupdate_handle = events.onupdate_register("df-ai stocks", 600, 30, [this](color_ostream & out) { update(out); });
     return CR_OK;
 }
 
