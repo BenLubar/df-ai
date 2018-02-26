@@ -890,9 +890,11 @@ Stocks::find_item_info Stocks::find_item_helper_tool(stock_item::item k)
 {
     return find_item_info(items_other_id::TOOL, [this, k](df::item *item) -> bool
     {
-        df::item_toolst *i = virtual_cast<df::item_toolst>(item);
-        return i->subtype->subtype == manager_subtype.at(k) &&
-            i->stockpile.id == -1 &&
-            (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
+        auto i = virtual_cast<df::item_toolst>(item);
+        return i && i->subtype->subtype == manager_subtype.at(k);
+    }, &find_item_info::default_count, [](df::item *item) -> bool
+    {
+        auto i = virtual_cast<df::item_toolst>(item);
+        return i && i->stockpile.id == -1 && (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
     });
 }
