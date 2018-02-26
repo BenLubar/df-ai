@@ -1901,7 +1901,7 @@ void AI::dig_tile(df::coord t, df::tile_dig_designation dig)
     }
 
     df::tile_designation *des = Maps::getTileDesignation(t);
-    if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No && !des->bits.hidden)
+    if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No)
     {
         for (auto job = world->jobs.list.next; job != nullptr; job = job->next)
         {
