@@ -338,7 +338,7 @@ void Stocks::report(std::ostream & out, bool html)
                 {
                     std::string name(ItemTypeInfo(item_type, subtype.first).toString());
                     int32_t max = compute_max(std::max(needed, subtype.second.first));
-                    out << "<tr><th>" << n.first << ": " << name << "</th><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.first << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                    out << "<tr><th>" << n.first << ": " << name << "</th><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
                 }
             }
             else
