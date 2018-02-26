@@ -29,6 +29,7 @@ STOCKS_ENUMS
 
 Watch::Watch()
 {
+    Needed[stock_item::ammo] = 50;
     Needed[stock_item::anvil] = 1;
     Needed[stock_item::armor_feet] = 2;
     Needed[stock_item::armor_hands] = 2;
@@ -97,11 +98,13 @@ Watch::Watch()
     Needed[stock_item::thread_seeds] = 10;
     Needed[stock_item::toy] = 2;
     Needed[stock_item::traction_bench] = 1;
-    Needed[stock_item::weapon] = 2;
+    Needed[stock_item::weapon_melee] = 2;
     Needed[stock_item::weapon_rack] = 1;
+    Needed[stock_item::weapon_ranged] = 2;
     Needed[stock_item::wheelbarrow] = 1;
     Needed[stock_item::wood] = 16;
 
+    NeededPerDwarf[stock_item::ammo] = 500;
     NeededPerDwarf[stock_item::armor_feet] = 3;
     NeededPerDwarf[stock_item::armor_hands] = 3;
     NeededPerDwarf[stock_item::armor_head] = 3;
@@ -119,7 +122,8 @@ Watch::Watch()
     NeededPerDwarf[stock_item::slab] = 10;
     NeededPerDwarf[stock_item::soap] = 20;
     NeededPerDwarf[stock_item::toy] = 5;
-    NeededPerDwarf[stock_item::weapon] = 5;
+    NeededPerDwarf[stock_item::weapon_melee] = 5;
+    NeededPerDwarf[stock_item::weapon_ranged] = 5;
 
     WatchStock[stock_item::bag_plant] = 4;
     WatchStock[stock_item::bone] = 8;
@@ -144,9 +148,7 @@ Watch::Watch()
     WatchStock[stock_item::wool] = 1;
     WatchStock[stock_item::written_on_quire] = 1;
 
-    AlsoCount.insert(stock_item::bone_bolts);
     AlsoCount.insert(stock_item::cloth);
-    AlsoCount.insert(stock_item::crossbow);
     AlsoCount.insert(stock_item::dye_plant);
     AlsoCount.insert(stock_item::leather);
     AlsoCount.insert(stock_item::slurry_plant);
@@ -177,7 +179,6 @@ Stocks::Stocks(AI *ai) :
     updating_slabs(false),
     updating_ingots(false),
     updating_farmplots(),
-    manager_subtype(),
     last_treelist([ai](df::coord a, df::coord b) -> bool
     {
         df::coord fe = ai->fort_entrance_pos();
@@ -208,13 +209,6 @@ Stocks::Stocks(AI *ai) :
     complained_about_no_plants()
 {
     last_cutpos.clear();
-    events.onstatechange_register("init_manager_subtype", [this](color_ostream &, state_change_event st)
-    {
-        if (st == SC_WORLD_LOADED)
-            init_manager_subtype();
-    });
-    if (!world->raws.itemdefs.ammo.empty())
-        init_manager_subtype();
 }
 
 Stocks::~Stocks()
@@ -319,7 +313,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th>item</th><th>Available</th><th>Minimum</th><th>Total</th><th></th></tr></thead><tbody>";
+        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th colspan=\"2\">Item</th><th>Available</th><th>Minimum</th><th>Total</th><th></th></tr></thead><tbody>";
     }
     else
     {
@@ -334,17 +328,24 @@ void Stocks::report(std::ostream & out, bool html)
             {
                 const auto & subtypes = count_subtype.at(n.first);
                 df::item_type item_type = ENUM_ATTR(items_other_id, item, find_item_helper(n.first).oidx);
+                size_t count = subtypes.size();
                 for (auto subtype : subtypes)
                 {
                     std::string name(ItemTypeInfo(item_type, subtype.first).toString());
                     int32_t max = compute_max(std::max(needed, subtype.second.first));
-                    out << "<tr><th>" << n.first << ": " << name << "</th><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                    out << "<tr>";
+                    if (count)
+                    {
+                        out << "<th rowspan=\"" << count << "\">" << n.first << "</th>";
+                        count = 0;
+                    }
+                    out << "<td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
                 }
             }
             else
             {
                 int32_t max = compute_max(std::max(needed, count_free[n.first]));
-                out << "<tr><th>" << n.first << "</th><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
+                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << (needed - 1) << "\" optimum=\"" << needed << "\" max=\"" << max << "\"></meter></td></tr>";
             }
         }
         else
@@ -355,7 +356,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>item</th><th>Available</th><th>Maximum</th><th>Total</th><th></th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>Item</th><th>Available</th><th>Maximum</th><th>Total</th><th></th></tr></thead><tbody>";
     }
     else
     {

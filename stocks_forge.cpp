@@ -26,6 +26,15 @@ static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & bars, 
     return true;
 }
 
+void Stocks::queue_need_ammo(color_ostream & out)
+{
+    auto min = std::min_element(count_subtype.at(stock_item::ammo).begin(), count_subtype.at(stock_item::ammo).end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
+    {
+        return a.second.first < b.second.first;
+    });
+    queue_need_forge(out, material_flags::ITEMS_AMMO, 1, stock_item::ammo, job_type::MakeAmmo, &select_most_abundant_metal, item_type::NONE, min->first, 25);
+}
+
 void Stocks::queue_need_anvil(color_ostream & out)
 {
     queue_need_forge(out, material_flags::ITEMS_ANVIL, 3, stock_item::anvil, job_type::ForgeAnvil, &select_most_abundant_metal);
@@ -36,10 +45,10 @@ void Stocks::queue_need_cage(color_ostream & out)
     queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal);
 }
 
-void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype)
+void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
 {
     int32_t coal_bars = count_free.at(stock_item::coal);
-    if (!world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
+    if (!world->buildings.other[buildings_other_id::WORKSHOP_MAGMA_FORGE].empty())
         coal_bars = 50000;
 
     if (!metal_pref.count(preference))
@@ -55,8 +64,9 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
     }
     const auto & pref = metal_pref.at(preference);
 
-    int32_t cnt = Watch.Needed.at(item);
+    int32_t cnt = num_needed(item);
     cnt -= count_free.at(item);
+    cnt = (cnt + items_created_per_job - 1) / items_created_per_job;
 
     for (auto mo : world->manager_orders)
     {

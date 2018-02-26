@@ -2,6 +2,7 @@
 
 #include "Error.h"
 
+#include "modules/Items.h"
 #include "modules/Materials.h"
 
 #include "df/building_trapst.h"
@@ -34,6 +35,7 @@
 #include "df/item_toolst.h"
 #include "df/item_trapcompst.h"
 #include "df/item_weaponst.h"
+#include "df/itemdef_ammost.h"
 #include "df/itemdef_armorst.h"
 #include "df/itemdef_glovesst.h"
 #include "df/itemdef_helmst.h"
@@ -76,10 +78,42 @@ static int32_t count_stacks(int32_t &, df::item *i)
     return 1;
 }
 
+static bool is_cage_free(df::item *i)
+{
+    if (!Stocks::is_item_free(i))
+    {
+        return false;
+    }
+
+    if (Items::getGeneralRef(i, general_ref_type::CONTAINS_UNIT))
+    {
+        return false;
+    }
+
+    if (Items::getGeneralRef(i, general_ref_type::CONTAINS_ITEM))
+    {
+        return false;
+    }
+
+    if (auto bh = Items::getGeneralRef(i, general_ref_type::BUILDING_HOLDER))
+    {
+        if (virtual_cast<df::building_trapst>(bh->getBuilding()))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 {
     switch (k)
     {
+    case stock_item::ammo:
+    {
+        return find_item_helper_ammo();
+    }
     case stock_item::anvil:
     {
         return find_item_info(items_other_id::ANVIL);
@@ -145,9 +179,9 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::barrel:
     {
-        return find_item_info(items_other_id::BARREL, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BARREL, [](df::item *) -> bool { return true; }, &find_item_info::default_count, [](df::item *i) -> bool
         {
-            return virtual_cast<df::item_barrelst>(i)->stockpile.id == -1;
+            return is_item_free(i) && virtual_cast<df::item_barrelst>(i)->stockpile.id == -1;
         });
     }
     case stock_item::bed:
@@ -156,9 +190,9 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::bin:
     {
-        return find_item_info(items_other_id::BIN, [](df::item *i) -> bool
+        return find_item_info(items_other_id::BIN, [](df::item *) -> bool { return true; }, &find_item_info::default_count, [](df::item *i) -> bool
         {
-            return virtual_cast<df::item_binst>(i)->stockpile.id == -1;
+            return is_item_free(i) && virtual_cast<df::item_binst>(i)->stockpile.id == -1;
         });
     }
     case stock_item::block:
@@ -173,20 +207,13 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             return i->corpse_flags.bits.bone && !i->corpse_flags.bits.unbutchered;
         });
     }
-    case stock_item::bone_bolts:
-    {
-        return find_item_info(items_other_id::AMMO, [](df::item *i) -> bool
-        {
-            return virtual_cast<df::item_ammost>(i)->skill_used == job_skill::BONECARVE;
-        });
-    }
     case stock_item::book_binding:
     {
-        return find_item_helper_tool(stock_item::book_binding);
+        return find_item_helper_tool(tool_uses::PROTECT_FOLDED_SHEETS);
     }
     case stock_item::bookcase:
     {
-        return find_item_helper_tool(stock_item::bookcase);
+        return find_item_helper_tool(tool_uses::BOOKCASE);
     }
     case stock_item::bucket:
     {
@@ -201,46 +228,16 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         return find_item_info(items_other_id::CAGE, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
-            if (!mat.material || mat.material->flags.is_set(material_flags::IS_METAL))
-            {
-                return false;
-            }
-
-            for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
-            {
-                if (virtual_cast<df::general_ref_contains_unitst>(*ref))
-                    return false;
-                if (virtual_cast<df::general_ref_contains_itemst>(*ref))
-                    return false;
-                df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(*ref);
-                if (bh && virtual_cast<df::building_trapst>(bh->getBuilding()))
-                    return false;
-            }
-            return true;
-        });
+            return mat.material && !mat.material->flags.is_set(material_flags::IS_METAL);
+        }, &find_item_info::default_count, &is_cage_free);
     }
     case stock_item::cage_metal:
     {
         return find_item_info(items_other_id::CAGE, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
-            if (!mat.material || !mat.material->flags.is_set(material_flags::IS_METAL))
-            {
-                return false;
-            }
-
-            for (auto ref = i->general_refs.begin(); ref != i->general_refs.end(); ref++)
-            {
-                if (virtual_cast<df::general_ref_contains_unitst>(*ref))
-                    return false;
-                if (virtual_cast<df::general_ref_contains_itemst>(*ref))
-                    return false;
-                df::general_ref_building_holderst *bh = virtual_cast<df::general_ref_building_holderst>(*ref);
-                if (bh && virtual_cast<df::building_trapst>(bh->getBuilding()))
-                    return false;
-            }
-            return true;
-        });
+            return mat.material && mat.material->flags.is_set(material_flags::IS_METAL);
+        }, &find_item_info::default_count, &is_cage_free);
     }
     case stock_item::chair:
     {
@@ -310,13 +307,6 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     case stock_item::coffin:
     {
         return find_item_info(items_other_id::COFFIN);
-    }
-    case stock_item::crossbow:
-    {
-        return find_item_info(items_other_id::WEAPON, [this](df::item *i) -> bool
-        {
-            return virtual_cast<df::item_weaponst>(i)->subtype->subtype == manager_subtype.at(stock_item::crossbow);
-        });
     }
     case stock_item::crutch:
     {
@@ -408,7 +398,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         return find_item_info(items_other_id::TRAPCOMP, [this](df::item *item) -> bool
         {
             df::item_trapcompst *i = virtual_cast<df::item_trapcompst>(item);
-            return i && i->subtype->subtype == manager_subtype.at(stock_item::giant_corkscrew);
+            return i && i->subtype->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW";
         });
     }
     case stock_item::goblet:
@@ -428,7 +418,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::hive:
     {
-        return find_item_helper_tool(stock_item::hive);
+        return find_item_helper_tool(tool_uses::HIVE);
     }
     case stock_item::honey:
     {
@@ -442,11 +432,15 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::honeycomb:
     {
-        return find_item_helper_tool(stock_item::honeycomb);
+        return find_item_info(items_other_id::TOOL, [](df::item *i) -> bool
+        {
+            auto def = virtual_cast<df::item_toolst>(i)->subtype;
+            return def->id == "ITEM_TOOL_HONEYCOMB";
+        });
     }
     case stock_item::jug:
     {
-        return find_item_helper_tool(stock_item::jug);
+        return find_item_helper_tool(tool_uses::LIQUID_CONTAINER);
     }
     case stock_item::leather:
     {
@@ -494,11 +488,11 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::minecart:
     {
-        return find_item_helper_tool(stock_item::minecart);
+        return find_item_helper_tool(tool_uses::TRACK_CART);
     }
     case stock_item::nest_box:
     {
-        return find_item_helper_tool(stock_item::nest_box);
+        return find_item_helper_tool(tool_uses::NEST_BOX);
     }
     case stock_item::paper:
     {
@@ -530,7 +524,10 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::quire:
     {
-        return find_item_helper_tool(stock_item::quire);
+        return find_item_helper_tool(tool_uses::CONTAIN_WRITING, [](df::itemdef_toolst *def) -> bool
+        {
+            return def->flags.is_set(tool_flags::INCOMPLETE_ITEM);
+        });
     }
     case stock_item::quiver:
     {
@@ -538,9 +535,12 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::raw_adamantine:
     {
-        return find_item_info(items_other_id::BOULDER, [this](df::item *i) -> bool
+        MaterialInfo candy;
+        candy.findInorganic("RAW_ADAMANTINE");
+
+        return find_item_info(items_other_id::BOULDER, [candy](df::item *i) -> bool
         {
-            return i->getMaterialIndex() == manager_subtype.at(stock_item::raw_adamantine);
+            return i->getMaterialIndex() == candy.index;
         });
     }
     case stock_item::raw_coke:
@@ -559,7 +559,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::rock_pot:
     {
-        return find_item_helper_tool(stock_item::rock_pot);
+        return find_item_helper_tool(tool_uses::FOOD_STORAGE);
     }
     case stock_item::rope:
     {
@@ -643,7 +643,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::stepladder:
     {
-        return find_item_helper_tool(stock_item::stepladder);
+        return find_item_helper_tool(tool_uses::STAND_AND_WORK_ABOVE);
     }
     case stock_item::stone:
     {
@@ -693,11 +693,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::TRACTION_BENCH);
     }
-    case stock_item::training_weapon:
-    {
-        return find_item_helper_weapon(job_skill::NONE, true);
-    }
-    case stock_item::weapon:
+    case stock_item::weapon_melee:
     {
         return find_item_helper_weapon();
     }
@@ -705,9 +701,17 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::WEAPONRACK);
     }
+    case stock_item::weapon_ranged:
+    {
+        return find_item_helper_weapon(job_skill::NONE, false, true);
+    }
+    case stock_item::weapon_training:
+    {
+        return find_item_helper_weapon(job_skill::NONE, true);
+    }
     case stock_item::wheelbarrow:
     {
-        return find_item_helper_tool(stock_item::wheelbarrow);
+        return find_item_helper_tool(tool_uses::HEAVY_OBJECT_HAULING);
     }
     case stock_item::wood:
     {
@@ -727,7 +731,9 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::TOOL, [this](df::item *i) -> bool
         {
-            return i->getSubtype() == manager_subtype.at(stock_item::quire) && i->hasSpecificImprovements(improvement_type::WRITING);
+            auto def = virtual_cast<df::item_toolst>(i)->subtype;
+            return std::find(def->tool_use.begin(), def->tool_use.end(), tool_uses::CONTAIN_WRITING) != def->tool_use.end() &&
+                def->flags.is_set(tool_flags::INCOMPLETE_ITEM) && i->hasSpecificImprovements(improvement_type::WRITING);
         });
     }
     case stock_item::_stock_item_count:
@@ -771,14 +777,19 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
     }, idefs);
 };
 
-static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training)
+static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training, bool ranged = false)
 {
     std::set<int16_t> idefs;
     for (int16_t id : defs)
     {
         auto def = df::itemdef_weaponst::find(id);
 
-        if (skill != job_skill::NONE && def->skill_melee != skill)
+        if (skill != job_skill::NONE && (ranged ? def->skill_ranged : def->skill_melee) != skill)
+        {
+            continue;
+        }
+
+        if (ranged == (def->skill_ranged == job_skill::NONE))
         {
             continue;
         }
@@ -794,14 +805,55 @@ static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<i
     return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs);
 }
 
-Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training)
+Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training, bool ranged)
 {
-    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.weapon_id, skill, training);
+    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.weapon_id, skill, training, ranged);
 }
 
 Stocks::find_item_info Stocks::find_item_helper_digger(df::job_skill skill, bool training)
 {
     return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.digger_id, skill, training);
+}
+
+Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool training)
+{
+    std::set<std::string> classes;
+    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.weapon_id)
+    {
+        auto def = df::itemdef_weaponst::find(id);
+
+        if (skill != job_skill::NONE && def->skill_ranged != skill)
+        {
+            continue;
+        }
+
+        if (def->skill_ranged == job_skill::NONE)
+        {
+            continue;
+        }
+
+        if (def->flags.is_set(weapon_flags::TRAINING) != training)
+        {
+            continue;
+        }
+
+        classes.insert(def->ranged_ammo);
+    }
+
+    std::set<int16_t> idefs;
+    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.ammo_id)
+    {
+        auto def = df::itemdef_ammost::find(id);
+
+        if (!classes.count(def->ammo_class))
+        {
+            continue;
+        }
+
+        idefs.insert(id);
+    }
+
+    return find_item_helper_equip_helper<df::item_ammost>(items_other_id::AMMO, idefs);
 }
 
 template<typename D>
@@ -886,15 +938,24 @@ Stocks::find_item_info Stocks::find_item_helper_clothes(df::items_other_id oidx)
     }
 }
 
-Stocks::find_item_info Stocks::find_item_helper_tool(stock_item::item k)
+Stocks::find_item_info Stocks::find_item_helper_tool(df::tool_uses use, std::function<bool(df::itemdef_toolst *)> pred)
 {
-    return find_item_info(items_other_id::TOOL, [this, k](df::item *item) -> bool
+    std::set<int16_t> idefs;
+    for (auto def : world->raws.itemdefs.tools_by_type[use])
+    {
+        if (pred(def))
+        {
+            idefs.insert(def->subtype);
+        }
+    }
+
+    return find_item_info(items_other_id::TOOL, [this, idefs](df::item *item) -> bool
     {
         auto i = virtual_cast<df::item_toolst>(item);
-        return i && i->subtype->subtype == manager_subtype.at(k);
+        return i && idefs.count(i->subtype->subtype);
     }, &find_item_info::default_count, [](df::item *item) -> bool
     {
         auto i = virtual_cast<df::item_toolst>(item);
         return i && i->stockpile.id == -1 && (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
-    });
+    }, idefs);
 }

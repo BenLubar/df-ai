@@ -6,6 +6,9 @@
 
 #include "modules/Units.h"
 
+#include "df/building_furnacest.h"
+#include "df/buildings_other_id.h"
+#include "df/itemdef_trapcompst.h"
 #include "df/manager_order.h"
 #include "df/manager_order_template.h"
 #include "df/world.h"
@@ -25,6 +28,11 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
 
     switch (what)
     {
+    case stock_item::ammo:
+    {
+        queue_need_ammo(out);
+        return;
+    }
     case stock_item::anvil:
     {
         queue_need_anvil(out);
@@ -130,14 +138,14 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::book_binding:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::book_binding);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::book_binding);
         tmpl.mat_type = 0;
         break;
     }
     case stock_item::bookcase:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::bookcase);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::bookcase);
         tmpl.mat_type = 0;
         break;
     }
@@ -288,8 +296,12 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::giant_corkscrew:
     {
+        auto def = std::find_if(world->raws.itemdefs.trapcomps.begin(), world->raws.itemdefs.trapcomps.end(), [](df::itemdef_trapcompst *def) -> bool
+        {
+            return def->id == "ITEM_TRAPCOMP_ENORMOUSCORKSCREW";
+        });
         tmpl.job_type = job_type::MakeTrapComponent;
-        tmpl.item_subtype = manager_subtype.at(stock_item::giant_corkscrew);
+        tmpl.item_subtype = (*def)->subtype;
         tmpl.material_category.bits.wood = 1;
         break;
     }
@@ -331,14 +343,14 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::hive:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::hive);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::hive);
         tmpl.mat_type = 0;
         break;
     }
     case stock_item::jug:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::jug);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::jug);
         tmpl.mat_type = 0;
         break;
     }
@@ -368,14 +380,14 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::minecart:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::minecart);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::minecart);
         tmpl.material_category.bits.wood = 1;
         break;
     }
     case stock_item::nest_box:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::nest_box);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::nest_box);
         tmpl.mat_type = 0;
         break;
     }
@@ -388,7 +400,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::pick:
     {
-        queue_need_weapon(out, what, num_needed(what), job_skill::MINING);
+        queue_need_weapon(out, what, num_needed(what), job_skill::MINING, false, false, true);
         return;
     }
     case stock_item::pipe_section:
@@ -442,7 +454,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::rock_pot:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::rock_pot);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::rock_pot);
         tmpl.mat_type = 0;
         break;
     }
@@ -482,7 +494,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     case stock_item::stepladder:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::stepladder);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::stepladder);
         tmpl.material_category.bits.wood = 1;
         break;
     }
@@ -513,12 +525,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         input.push_back(stock_item::mechanism);
         break;
     }
-    case stock_item::training_weapon:
-    {
-        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, true);
-        return;
-    }
-    case stock_item::weapon:
+    case stock_item::weapon_melee:
     {
         queue_need_weapon(out, what, num_needed(what));
         return;
@@ -529,10 +536,20 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.mat_type = 0;
         break;
     }
+    case stock_item::weapon_ranged:
+    {
+        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, false, true);
+        return;
+    }
+    case stock_item::weapon_training:
+    {
+        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, true);
+        return;
+    }
     case stock_item::wheelbarrow:
     {
         tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = manager_subtype.at(stock_item::wheelbarrow);
+        tmpl.item_subtype = min_subtype_for_item(stock_item::wheelbarrow);
         tmpl.material_category.bits.wood = 1;
         break;
     }
@@ -614,6 +631,16 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     add_manager_order(out, tmpl, amount);
 }
 
+int16_t Stocks::min_subtype_for_item(stock_item::item what)
+{
+    const auto & count = count_subtype.at(what);
+    auto min = std::min_element(count.begin(), count.end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
+    {
+        return a.second.first < b.second.first;
+    });
+    return min == count.end() ? -1 : min->first;
+}
+
 // make it so the stocks of 'what' decrease by 'amount'
 void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amount)
 {
@@ -645,42 +672,41 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     }
     case stock_item::bone:
     {
-        int32_t nhunters = 0;
-        for (auto u : world->units.active)
+        if (need_more(stock_item::weapon_ranged))
         {
-            if (Units::isCitizen(u) && !Units::isDead(u) && u->status.labors[unit_labor::HUNT])
-            {
-                nhunters++;
-            }
-        }
-        if (!nhunters)
-        {
-            return;
-        }
-        int32_t need_crossbow = nhunters + 1 - count_free.at(stock_item::crossbow);
-        if (need_crossbow > 0)
-        {
+            int32_t need_crossbow = num_needed(stock_item::weapon_ranged) - count_free.at(stock_item::weapon_ranged);
             tmpl.job_type = job_type::MakeWeapon;
-            tmpl.item_subtype = manager_subtype.at(stock_item::crossbow);
+            tmpl.item_subtype = min_subtype_for_item(stock_item::weapon_ranged);
             tmpl.material_category.bits.bone = 1;
             if (amount > need_crossbow)
+            {
                 amount = need_crossbow;
+            }
         }
         else
         {
             tmpl.job_type = job_type::MakeAmmo;
-            tmpl.item_subtype = manager_subtype.at(stock_item::bone_bolts);
+            tmpl.item_subtype = min_subtype_for_item(stock_item::ammo);
             tmpl.material_category.bits.bone = 1;
-            int32_t stock = count_free.at(stock_item::bone_bolts);
-            if (amount > 1000 - stock)
-                amount = 1000 - stock;
             may_rot();
         }
         break;
     }
     case stock_item::clay:
     {
-        input.push_back(stock_item::coal); // TODO: handle magma kilns
+        bool magma_kiln = false;
+        for (auto kiln : world->buildings.other[buildings_other_id::FURNACE_KILN_ANY])
+        {
+            if (virtual_cast<df::building_furnacest>(kiln)->type == furnace_type::MagmaKiln)
+            {
+                magma_kiln = true;
+                break;
+            }
+        }
+        if (!magma_kiln)
+        {
+            input.push_back(stock_item::coal);
+        }
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = "MAKE_CLAY_STATUE";
         break;
@@ -765,9 +791,12 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     }
     case stock_item::raw_adamantine:
     {
+        MaterialInfo candy;
+        candy.findInorganic("RAW_ADAMANTINE");
+
         tmpl.job_type = job_type::ExtractMetalStrands;
         tmpl.mat_type = 0;
-        tmpl.mat_index = manager_subtype.at(stock_item::raw_adamantine);
+        tmpl.mat_index = candy.index;
         break;
     }
     case stock_item::raw_coke:

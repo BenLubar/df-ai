@@ -30,17 +30,21 @@ REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 // forge weapons
-void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill, bool training)
+void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill, bool training, bool ranged, bool digger)
 {
     if (skill == job_skill::NONE && !training && (count_free.at(stock_item::pick) == 0 || count_free.at(stock_item::axe) == 0))
+    {
         return;
+    }
 
-    auto search = [this, &out, stock_item, needed, skill, training](const std::vector<int16_t> & idefs, df::material_flags pref)
+    auto search = [this, &out, stock_item, needed, skill, training, ranged](const std::vector<int16_t> & idefs, df::material_flags pref)
     {
         for (auto id : idefs)
         {
             df::itemdef_weaponst *idef = df::itemdef_weaponst::find(id);
-            if (skill != job_skill::NONE && idef->skill_melee != skill)
+            if (skill != job_skill::NONE && (ranged ? idef->skill_ranged : idef->skill_melee) != skill)
+                continue;
+            if (ranged == (idef->skill_ranged == job_skill::NONE))
                 continue;
             if (idef->flags.is_set(weapon_flags::TRAINING) != training)
                 continue;
@@ -110,8 +114,14 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
         }
     };
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
-    search(ue.digger_id, material_flags::ITEMS_DIGGER);
-    search(ue.weapon_id, material_flags::ITEMS_WEAPON);
+    if (digger)
+    {
+        search(ue.digger_id, material_flags::ITEMS_DIGGER);
+    }
+    else
+    {
+        search(ue.weapon_id, material_flags::ITEMS_WEAPON);
+    }
 }
 
 template<typename D>
