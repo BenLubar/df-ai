@@ -574,9 +574,12 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
 
 bool Stocks::need_more(stock_item::item type)
 {
+    if (type == stock_item::barrel && need_more(stock_item::bed))
+    {
+        return false;
+    }
+
     int32_t want = Watch.Needed.count(type) ? num_needed(type) : Watch.WatchStock.count(type) ? Watch.WatchStock.at(type) : 10;
-    if (Watch.NeededPerDwarf.count(type))
-        want += Watch.NeededPerDwarf.at(type) * int32_t(ai->pop->citizen.size()) / 100 * 9;
 
     return (count.count(type) ? count.at(type) : 0) < want;
 }

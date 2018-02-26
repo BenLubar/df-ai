@@ -360,11 +360,6 @@ int32_t Stocks::num_needed(stock_item::item key)
     {
         amount += int32_t(ai->pop->citizen.size()) * Watch.NeededPerDwarf.at(key) / 100;
     }
-
-    if (key == stock_item::barrel && need_more(stock_item::bed))
-    {
-        amount = 0;
-    }
     return amount;
 }
 
@@ -372,10 +367,9 @@ void Stocks::act(color_ostream & out, stock_item::item key)
 {
     if (Watch.Needed.count(key))
     {
-        int32_t amount = num_needed(key);
-        if (count.at(key) < amount)
+        if (need_more(key))
         {
-            queue_need(out, key, amount * 3 / 2 - count.at(key));
+            queue_need(out, key, num_needed(key) * 3 / 2 - count.at(key));
         }
     }
 
