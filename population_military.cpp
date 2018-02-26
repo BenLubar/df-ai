@@ -619,7 +619,7 @@ void Population::update_military(color_ostream & out)
     }
     else if (citizen_military < min_military)
     {
-        auto mid = draft_pool.begin() + std::min(min_military - citizen_military, draft_pool.size());
+        auto mid = draft_pool.begin() + std::min(max_military - citizen_military, draft_pool.size());
         std::partial_sort(draft_pool.begin(), mid, draft_pool.end(), &MilitarySetupExclusive::Draft::compare);
         want_draft.insert(want_draft.end(), draft_pool.begin(), mid);
     }
