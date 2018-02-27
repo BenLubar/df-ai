@@ -180,6 +180,7 @@ public:
     command_result make_map_walkable(color_ostream & out);
     command_result list_map_veins(color_ostream & out);
 
+    int32_t can_dig_vein(int32_t mat);
     int32_t dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders = 1);
     int32_t do_dig_vein(color_ostream & out, int32_t mat, df::coord b);
 

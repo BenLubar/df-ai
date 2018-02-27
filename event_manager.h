@@ -89,26 +89,38 @@ public:
     void queue_exclusive(ExclusiveCallback *cb);
     inline bool has_exclusive() const { return exclusive != nullptr; }
     template<typename E>
-    inline bool has_exclusive(bool allow_queued = false) const
+    inline bool each_exclusive(std::function<bool(const E *)> fn) const
     {
-        if (dynamic_cast<E *>(exclusive) != nullptr)
+        if (auto e = dynamic_cast<E *>(exclusive))
         {
-            return true;
-        }
-
-        if (!allow_queued)
-        {
-            return false;
-        }
-
-        for (auto queued : exclusive_queue)
-        {
-            if (dynamic_cast<E *>(queued) != nullptr)
+            if (fn(e))
             {
                 return true;
             }
         }
+
+        for (auto queued : exclusive_queue)
+        {
+            if (auto e = dynamic_cast<E *>(queued))
+            {
+                if (fn(e))
+                {
+                    return true;
+                }
+            }
+        }
+
         return false;
+    }
+    template<typename E>
+    inline bool has_exclusive(bool allow_queued = false) const
+    {
+        if (!allow_queued)
+        {
+            return dynamic_cast<E *>(exclusive) != nullptr;
+        }
+
+        return each_exclusive<E>([](const E *) -> bool { return true; });
     }
 
     void onstatechange(color_ostream & out, state_change_event event);

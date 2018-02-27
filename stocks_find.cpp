@@ -393,6 +393,10 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             return !forbidden.count(std::make_tuple(i->getType(), i->getSubtype(), i->getMaterial(), i->getMaterialIndex()));
         }, &count_stacks);
     }
+    case stock_item::food_storage:
+    {
+        return find_item_helper_tool(tool_uses::FOOD_STORAGE);
+    }
     case stock_item::goblet:
     {
         return find_item_info(items_other_id::GOBLET);
@@ -546,10 +550,6 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         {
             return !i->flags.bits.rotten;
         });
-    }
-    case stock_item::rock_pot:
-    {
-        return find_item_helper_tool(tool_uses::FOOD_STORAGE);
     }
     case stock_item::rope:
     {
@@ -756,7 +756,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, int32_t div = 1, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, std::function<bool(I *)> free = [](I *) -> bool { return true; })
+static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, int32_t div = 1, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, std::function<bool(I *)> free = [](I *) -> bool { return true; }, bool count_min = true)
 {
     auto match = [idefs, pred](df::item *item) -> bool
     {
@@ -792,10 +792,10 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
     return Stocks::find_item_info(oidx, match, count, [free](df::item *i) -> bool
     {
         return Stocks::is_item_free(i) && free(virtual_cast<I>(i));
-    }, idefs);
+    }, idefs, count_min);
 };
 
-static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training, bool ranged = false)
+static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<int16_t> & defs, df::job_skill skill, bool training, bool ranged = false, bool count_min = true)
 {
     std::set<int16_t> idefs;
     for (int16_t id : defs)
@@ -820,17 +820,17 @@ static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<i
         idefs.insert(id);
     }
 
-    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs);
+    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs, 1, [](df::item_weaponst *) -> bool { return true; }, [](df::item_weaponst *) -> bool { return true; }, count_min);
 }
 
 Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training, bool ranged)
 {
-    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.weapon_id, skill, training, ranged);
+    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.weapon_id, skill, training, ranged, skill == job_skill::NONE);
 }
 
 Stocks::find_item_info Stocks::find_item_helper_digger(df::job_skill skill, bool training)
 {
-    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.digger_id, skill, training);
+    return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.digger_id, skill, training, false, skill == job_skill::NONE);
 }
 
 Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool training)
@@ -979,5 +979,5 @@ Stocks::find_item_info Stocks::find_item_helper_tool(df::tool_uses use, std::fun
     {
         auto i = virtual_cast<df::item_toolst>(item);
         return i && i->stockpile.id == -1 && (i->vehicle_id == -1 || df::vehicle::find(i->vehicle_id)->route_id == -1);
-    }, idefs);
+    }, idefs, false);
 }

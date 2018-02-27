@@ -239,8 +239,17 @@ void Stocks::count_plants(color_ostream &)
     updating_plants = false;
 }
 
-void Stocks::update_ingots(color_ostream &)
+void Stocks::update_ingots(color_ostream & out)
 {
+    std::ofstream discard;
+    for (int32_t mat_index = 0; mat_index < int32_t(world->raws.inorganics.size()); mat_index++)
+    {
+        if (may_forge_bars(out, mat_index, discard, 1, true) > 0)
+        {
+            ingots[mat_index] = 0;
+        }
+    }
+
     // Set to 0 instead of clearing so metals stay in
     // the report after we use them all up.
     for (auto & i : ingots)
@@ -371,18 +380,21 @@ void Stocks::act(color_ostream & out, stock_item::item key)
 {
     if (Watch.Needed.count(key))
     {
+        act_reason[key].str(std::string());
         if (need_more(key))
         {
-            queue_need(out, key, num_needed(key) * 3 / 2 - count_free.at(key));
+            queue_need(out, key, num_needed(key) * 3 / 2 - count_free.at(key), act_reason[key]);
         }
     }
 
     if (Watch.WatchStock.count(key))
     {
+        act_reason[key].str(std::string());
+
         int32_t amount = Watch.WatchStock.at(key);
         if (count_free.at(key) > amount)
         {
-            queue_use(out, key, count_free.at(key) - amount);
+            queue_use(out, key, count_free.at(key) - amount, act_reason[key]);
         }
     }
 }

@@ -19,37 +19,42 @@ REQUIRE_GLOBAL(world);
 static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)
 {
     // pick the metal we have the most of
-    chosen_type = std::max_element(bars.begin(), bars.end(), [](std::pair<const int32_t, int32_t> a, std::pair<const int32_t, int32_t> b) -> bool
+    auto max = std::max_element(bars.begin(), bars.end(), [](std::pair<const int32_t, int32_t> a, std::pair<const int32_t, int32_t> b) -> bool
     {
         return a.second < b.second;
-    })->first;
+    });
+
+    if (max == bars.end() || max->second <= 0)
+    {
+        return false;
+    }
+
+    chosen_type = max->first;
     return true;
 }
 
-void Stocks::queue_need_ammo(color_ostream & out)
+void Stocks::queue_need_ammo(color_ostream & out, std::ostream & reason)
 {
-    auto min = std::min_element(count_subtype.at(stock_item::ammo).begin(), count_subtype.at(stock_item::ammo).end(), [](std::pair<const int16_t, std::pair<int32_t, int32_t>> a, std::pair<const int16_t, std::pair<int32_t, int32_t>> b) -> bool
-    {
-        return a.second.first < b.second.first;
-    });
-    queue_need_forge(out, material_flags::ITEMS_AMMO, 1, stock_item::ammo, job_type::MakeAmmo, &select_most_abundant_metal, item_type::NONE, min->first, 25);
+    queue_need_forge(out, material_flags::ITEMS_AMMO, 1, stock_item::ammo, job_type::MakeAmmo, &select_most_abundant_metal, reason, item_type::NONE, min_subtype_for_item(stock_item::ammo), 25);
 }
 
-void Stocks::queue_need_anvil(color_ostream & out)
+void Stocks::queue_need_anvil(color_ostream & out, std::ostream & reason)
 {
-    queue_need_forge(out, material_flags::ITEMS_ANVIL, 3, stock_item::anvil, job_type::ForgeAnvil, &select_most_abundant_metal);
+    queue_need_forge(out, material_flags::ITEMS_ANVIL, 3, stock_item::anvil, job_type::ForgeAnvil, &select_most_abundant_metal, reason);
 }
 
-void Stocks::queue_need_cage(color_ostream & out)
+void Stocks::queue_need_cage(color_ostream & out, std::ostream & reason)
 {
-    queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal);
+    queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal, reason);
 }
 
-void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
+void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
 {
     int32_t coal_bars = count_free.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::WORKSHOP_MAGMA_FORGE].empty())
+    {
         coal_bars = 50000;
+    }
 
     if (!metal_pref.count(preference))
     {
@@ -75,6 +80,14 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
             cnt -= mo->amount_left;
         }
     }
+    events.each_exclusive<ManagerOrderExclusive>([&cnt, job, item_type, item_subtype](const ManagerOrderExclusive *excl) -> bool
+    {
+        if (excl->tmpl.job_type == job && excl->tmpl.item_type == item_type && excl->tmpl.item_subtype == item_subtype && excl->tmpl.material_category.whole == 0)
+        {
+            cnt -= excl->amount;
+        }
+        return false;
+    });
 
     std::map<int32_t, int32_t> bars = ingots;
 
@@ -87,13 +100,23 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
             coal_bars -= mo->amount_left;
         }
     }
+    events.each_exclusive<ManagerOrderExclusive>([&bars, &coal_bars](const ManagerOrderExclusive *excl) -> bool
+    {
+        if (excl->tmpl.mat_type == 0 && bars.count(excl->tmpl.mat_index))
+        {
+            bars[excl->tmpl.mat_index] -= excl->amount;
+            coal_bars -= excl->amount;
+        }
+        return false;
+    });
 
     std::map<int32_t, int32_t> potential_bars = bars;
     if (ai->plan->should_search_for_metal)
     {
+        std::ofstream discard;
         for (auto mi : pref)
         {
-            potential_bars[mi] += may_forge_bars(out, mi);
+            potential_bars[mi] += may_forge_bars(out, mi, discard, true);
         }
     }
 
@@ -103,6 +126,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
     {
         if (coal_bars < 1)
         {
+            reason << "not enough coal\n";
             break;
         }
 
@@ -126,11 +150,13 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         int32_t mat_index;
         if (!decide(potential_bars, mat_index))
         {
+            reason << "not enough metal\n";
             break;
         }
 
         if (!bars.count(mat_index) || bars.at(mat_index) < bars_per_item)
         {
+            reason << "not enough " << MaterialInfo(0, mat_index).toString() << "\n";
             break;
         }
 
@@ -148,7 +174,8 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         tmpl.item_subtype = item_subtype;
         tmpl.mat_type = 0;
         tmpl.mat_index = q.first;
-        add_manager_order(out, tmpl, q.second);
+        reason << "\n";
+        add_manager_order(out, tmpl, q.second, reason);
     }
 }
 
@@ -156,7 +183,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
 // may queue manager_jobs to do so
 // recursive (eg steel need pig_iron)
 // return the potential number of bars available (in dimensions, eg 1 bar => 150)
-int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t div)
+int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostream & reason, int32_t div, bool dry_run)
 {
     int32_t can_melt = 0;
     for (auto i : world->items.other[items_other_id::BOULDER])
@@ -167,14 +194,19 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
         }
     }
 
-    if (can_melt < Watch.WatchStock.at(stock_item::metal_ore) && ai->plan->should_search_for_metal)
+    if (can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && (ai->plan->should_search_for_metal || dry_run))
     {
         for (auto k : ai->plan->map_veins)
         {
             if (simple_metal_ores.at(mat_index).count(k.first))
             {
-                can_melt += ai->plan->dig_vein(out, k.first);
+                can_melt += dry_run ? ai->plan->can_dig_vein(k.first) : ai->plan->dig_vein(out, k.first);
             }
+        }
+
+        if (can_melt > Watch.WatchStock.at(stock_item::metal_ore))
+        {
+            reason << "mining more ore\n";
         }
     }
 
@@ -197,8 +229,11 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 break;
             }
         }
+
         if (prod_mult == -1)
+        {
             continue;
+        }
 
         bool all = true;
         int32_t can_reaction = 30;
@@ -212,6 +247,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 all = false;
                 break;
             }
+
             int32_t has = 0;
             df::items_other_id oidx;
             if (!find_enum_item(&oidx, ENUM_KEY_STR(item_type, rri->item_type)))
@@ -220,6 +256,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 all = false;
                 break;
             }
+
             for (auto i : world->items.other[oidx])
             {
                 if (rri->mat_type != -1 && i->getMaterial() != rri->mat_type)
@@ -228,6 +265,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     continue;
                 if (!is_item_free(i))
                     continue;
+
                 if (!rri->reaction_class.empty())
                 {
                     MaterialInfo mi(i);
@@ -243,6 +281,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     if (!found)
                         continue;
                 }
+
                 if (rri->metal_ore != -1 && i->getMaterial() == 0)
                 {
                     bool found = false;
@@ -258,6 +297,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     if (!found)
                         continue;
                 }
+
                 if (rri->item_type == item_type::BAR)
                 {
                     has += virtual_cast<df::item_barst>(i)->dimension;
@@ -267,12 +307,14 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     has++;
                 }
             }
-            if (has <= 0 && rri->item_type == item_type::BOULDER && rri->mat_type == 0 && rri->mat_index != -1 && ai->plan->should_search_for_metal)
+
+            if (has <= 0 && rri->item_type == item_type::BOULDER && rri->mat_type == 0 && rri->mat_index != -1 && (ai->plan->should_search_for_metal || dry_run))
             {
-                has += ai->plan->dig_vein(out, rri->mat_index);
+                has += dry_run ? ai->plan->can_dig_vein(rri->mat_index) : ai->plan->dig_vein(out, rri->mat_index);
                 if (has > 0)
                     future = true;
             }
+
             has /= rri->quantity;
 
             if (has <= 0 && rri->item_type == item_type::BAR && rri->mat_type == 0 && rri->mat_index != -1)
@@ -280,7 +322,8 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 future = true;
                 // 'div' tries to ensure that eg making pig iron wont consume all available iron
                 // and leave some to make steel
-                has = may_forge_bars(out, rri->mat_index, div + 1);
+                reason << "preparing to smelt " << MaterialInfo(0, mat_index).toString() << ":\n";
+                has = may_forge_bars(out, rri->mat_index, reason, div + 1, dry_run);
                 if (has == -1)
                 {
                     all = false;
@@ -293,6 +336,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 can_reaction = has / div;
             }
         }
+
         if (all)
         {
             if (can_reaction <= 0)
@@ -307,10 +351,25 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                 {
                     if (mo->job_type == job_type::CustomReaction && mo->reaction_name == r->code)
                     {
+                        reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
                         found = true;
                         break;
                     }
                 }
+                if (!found)
+                {
+                    found = events.each_exclusive<ManagerOrderExclusive>([&reason, r, mat_index](const ManagerOrderExclusive *excl) -> bool
+                    {
+                        if (excl->tmpl.job_type == job_type::CustomReaction && excl->tmpl.reaction_name == r->code)
+                        {
+                            reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)";
+                            return true;
+                        }
+
+                        return false;
+                    });
+                }
+
                 if (!found)
                 {
                     df::manager_order_template tmpl;
@@ -320,29 +379,56 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, int32_t d
                     tmpl.item_subtype = -1;
                     tmpl.mat_type = -1;
                     tmpl.mat_index = -1;
-                    add_manager_order(out, tmpl, can_reaction);
+                    reason << "smelting " << MaterialInfo(0, mat_index).toString() << ": ";
+                    if (dry_run)
+                    {
+                        reason << "[dry run]";
+                    }
+                    else
+                    {
+                        add_manager_order(out, tmpl, can_reaction, reason);
+                    }
+                    reason << "\n";
                 }
             }
+
             return prod_mult * can_reaction;
         }
     }
+
+    reason << "cannot produce " << MaterialInfo(0, mat_index).toString() << "\n";
     return -1;
 }
 
 // smelt metal ores
-void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
+void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount, std::ostream & reason)
 {
     // make coke from bituminous coal has priority
     if (count_free.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke) && count_free.at(stock_item::coal) < 100)
     {
+        reason << "making coal instead";
         return;
     }
+
     for (auto mo : world->manager_orders)
     {
         if (mo->job_type == job_type::SmeltOre)
         {
+            reason << "already smelting ore: " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
             return;
         }
+    }
+    if (events.each_exclusive<ManagerOrderExclusive>([&reason](const ManagerOrderExclusive *excl) -> bool
+    {
+        if (excl->tmpl.job_type == job_type::SmeltOre)
+        {
+            reason << "already smelting ore: " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)";
+            return true;
+        }
+        return false;
+    }))
+    {
+        return;
     }
 
     df::item *base = nullptr;
@@ -356,8 +442,10 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
     }
     if (!base)
     {
+        reason << "could not find metal ore";
         return;
     }
+
     int32_t this_amount = 0;
     for (auto i : world->items.other[items_other_id::BOULDER])
     {
@@ -366,6 +454,7 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
             this_amount++;
         }
     }
+
     if (amount > this_amount)
         amount = this_amount;
     if (amount >= 10)
@@ -377,7 +466,10 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
     {
         amount = std::min(amount, count_free.at(stock_item::coal));
         if (amount <= 0)
+        {
+            reason << "not enough coal";
             return;
+        }
     }
 
     df::manager_order_template tmpl;
@@ -386,19 +478,32 @@ void Stocks::queue_use_metal_ore(color_ostream & out, int32_t amount)
     tmpl.item_subtype = -1;
     tmpl.mat_type = base->getMaterial();
     tmpl.mat_index = base->getMaterialIndex();
-    add_manager_order(out, tmpl, amount);
+    add_manager_order(out, tmpl, amount, reason);
 }
 
 // bituminous_coal -> coke
-void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
+void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount, std::ostream & reason)
 {
     is_raw_coke(0); // populate raw_coke_inv
     for (auto mo : world->manager_orders)
     {
         if (mo->job_type == job_type::CustomReaction && raw_coke_inv.count(mo->reaction_name))
         {
+            reason << "already using raw coke: " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
             return;
         }
+    }
+    if (events.each_exclusive<ManagerOrderExclusive>([this, &reason](const ManagerOrderExclusive *excl) -> bool
+    {
+        if (excl->tmpl.job_type == job_type::CustomReaction && raw_coke_inv.count(excl->tmpl.reaction_name))
+        {
+            reason << "already using raw coke: " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)";
+            return true;
+        }
+        return false;
+    }))
+    {
+        return;
     }
 
     std::string reaction;
@@ -414,6 +519,7 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
     }
     if (!base)
     {
+        reason << "could not find raw coke";
         return;
     }
 
@@ -425,6 +531,7 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
             this_amount++;
         }
     }
+
     if (amount > this_amount)
         amount = this_amount;
     if (amount >= 10)
@@ -437,6 +544,7 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
         // need at least 1 unit of fuel to bootstrap
         if (count_free.at(stock_item::coal) <= 0)
         {
+            reason << "need coal or charcoal";
             return;
         }
     }
@@ -448,5 +556,5 @@ void Stocks::queue_use_raw_coke(color_ostream & out, int32_t amount)
     tmpl.item_subtype = -1;
     tmpl.mat_type = -1;
     tmpl.mat_index = -1;
-    add_manager_order(out, tmpl, amount);
+    add_manager_order(out, tmpl, amount, reason);
 }

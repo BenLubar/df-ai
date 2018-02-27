@@ -188,7 +188,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
 }
 
 // designate some trees for woodcutting
-df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
+df::coord Stocks::cuttrees(color_ostream &, int32_t amount, std::ostream & reason)
 {
     std::set<df::coord> jobs;
 
@@ -203,6 +203,7 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
     if (last_cutpos.isValid() && (Maps::getTileDesignation(last_cutpos)->bits.dig != tile_dig_designation::No || jobs.count(last_cutpos)))
     {
         // skip designating if we haven't cut the last tree yet
+        reason << "waiting for trees to be cut: " << jobs.size() << " remaining";
         return last_cutpos;
     }
 
@@ -210,23 +211,26 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
     df::coord br;
     br.clear();
 
+    size_t designated_count = 0;
+
     auto list = tree_list();
 
-    for (auto tree = list.begin(); tree != list.end(); tree++)
+    for (auto tree : list)
     {
-        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(*tree)) != tiletype_material::TREE)
+        if (ENUM_ATTR(tiletype, material, *Maps::getTileType(tree)) != tiletype_material::TREE)
         {
             continue;
         }
 
-        if (!br.isValid() || (br.x & -16) < (tree->x & -16) || ((br.x & -16) == (tree->x & -16) && (br.y & -16) < (tree->y & -16)))
+        if (!br.isValid() || (br.x & -16) < (tree.x & -16) || ((br.x & -16) == (tree.x & -16) && (br.y & -16) < (tree.y & -16)))
         {
-            br = *tree;
+            br = tree;
         }
 
-        if (Maps::getTileDesignation(*tree)->bits.dig == tile_dig_designation::No && !jobs.count(*tree))
+        if (Maps::getTileDesignation(tree)->bits.dig == tile_dig_designation::No && !jobs.count(tree))
         {
-            AI::dig_tile(*tree, tile_dig_designation::Default);
+            designated_count++;
+            AI::dig_tile(tree, tile_dig_designation::Default);
         }
 
         amount--;
@@ -234,6 +238,12 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount)
         {
             break;
         }
+    }
+
+    reason << "marked " << designated_count << " trees for cutting";
+    if (!jobs.empty())
+    {
+        reason << "; " << jobs.size() << " trees already marked";
     }
 
     return br;

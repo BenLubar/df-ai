@@ -8,6 +8,7 @@
 #include "df/job_material_category.h"
 #include "df/job_skill.h"
 #include "df/job_type.h"
+#include "df/manager_order_template.h"
 #include "df/material_flags.h"
 #include "df/tool_uses.h"
 
@@ -15,7 +16,6 @@ namespace df
 {
     struct itemdef_toolst;
     struct manager_order;
-    struct manager_order_template;
 }
 
 class AI;
@@ -71,6 +71,7 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(flask) \
     ENUM_ITEM(floodgate) \
     ENUM_ITEM(food_ingredients) \
+    ENUM_ITEM(food_storage) \
     ENUM_ITEM(goblet) \
     ENUM_ITEM(gypsum) \
     ENUM_ITEM(hatch_cover) \
@@ -97,7 +98,6 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(quiver) \
     ENUM_ITEM(raw_coke) \
     ENUM_ITEM(raw_fish) \
-    ENUM_ITEM(rock_pot) \
     ENUM_ITEM(rope) \
     ENUM_ITEM(rough_gem) \
     ENUM_ITEM(screw) \
@@ -146,6 +146,20 @@ const struct Watch
     Watch();
 } Watch;
 
+class ManagerOrderExclusive : public ExclusiveCallback
+{
+public:
+    AI * const ai;
+    df::manager_order_template tmpl;
+    std::string quantity;
+    int32_t amount;
+    std::string search_word;
+    int32_t old_order;
+
+    ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount);
+    virtual void Run(color_ostream & out);
+};
+
 class Stocks
 {
     AI *ai;
@@ -153,6 +167,7 @@ public:
     std::map<stock_item::item, int32_t> count_free;
     std::map<stock_item::item, int32_t> count_total;
     std::map<stock_item::item, std::map<int16_t, std::pair<int32_t, int32_t>>> count_subtype;
+    std::map<stock_item::item, std::ostringstream> act_reason;
     std::map<int32_t, int32_t> ingots;
 private:
     OnupdateCallback *onupdate_handle;
@@ -225,21 +240,21 @@ public:
     void count_stocks(color_ostream & out, stock_item::item k);
     void count_stocks_subtype(color_ostream & out, stock_item::item k, find_item_info & helper);
 
-    void queue_need(color_ostream & out, stock_item::item what, int32_t amount);
-    void queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill = job_skill::NONE, bool training = false, bool ranged = false, bool digger = false);
-    void queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx);
-    void queue_need_ammo(color_ostream & out);
-    void queue_need_anvil(color_ostream & out);
-    void queue_need_cage(color_ostream & out);
-    void queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1, int32_t items_created_per_job = 1);
-    void queue_need_clothes(color_ostream & out, df::items_other_id oidx);
-    void queue_use(color_ostream & out, stock_item::item what, int32_t amount);
-    void queue_use_gems(color_ostream & out, int32_t amount);
-    void queue_use_metal_ore(color_ostream & out, int32_t amount);
-    void queue_use_raw_coke(color_ostream & out, int32_t amount);
+    void queue_need(color_ostream & out, stock_item::item what, int32_t amount, std::ostream & reason);
+    void queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, std::ostream & reason, df::job_skill skill = job_skill::NONE, bool training = false, bool ranged = false, bool digger = false);
+    void queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx, std::ostream & reason);
+    void queue_need_ammo(color_ostream & out, std::ostream & reason);
+    void queue_need_anvil(color_ostream & out, std::ostream & reason);
+    void queue_need_cage(color_ostream & out, std::ostream & reason);
+    void queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1, int32_t items_created_per_job = 1);
+    void queue_need_clothes(color_ostream & out, df::items_other_id oidx, std::ostream & reason);
+    void queue_use(color_ostream & out, stock_item::item what, int32_t amount, std::ostream & reason);
+    void queue_use_gems(color_ostream & out, int32_t amount, std::ostream & reason);
+    void queue_use_metal_ore(color_ostream & out, int32_t amount, std::ostream & reason);
+    void queue_use_raw_coke(color_ostream & out, int32_t amount, std::ostream & reason);
 
     std::set<df::coord, std::function<bool(df::coord, df::coord)>> tree_list();
-    df::coord cuttrees(color_ostream & out, int32_t amount);
+    df::coord cuttrees(color_ostream & out, int32_t amount, std::ostream & reason);
 
     static bool is_item_free(df::item *i, bool allow_nonempty = false);
     bool is_metal_ore(int32_t i);
@@ -250,11 +265,12 @@ public:
     bool is_gypsum(df::item *i);
 
     void update_simple_metal_ores(color_ostream & out);
-    int32_t may_forge_bars(color_ostream & out, int32_t mat_index, int32_t div = 1);
+    int32_t may_forge_bars(color_ostream & out, int32_t mat_index, std::ostream & reason, int32_t div = 1, bool dry_run = false);
 
     int32_t count_manager_orders_matcat(const df::job_material_category & matcat, df::job_type order = job_type::NONE);
     int32_t count_manager_orders(color_ostream & out, const df::manager_order_template & tmpl);
     void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount = 1);
+    void add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount, std::ostream & reason);
 
     struct find_item_info
     {

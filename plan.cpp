@@ -4523,6 +4523,58 @@ static int32_t mat_index_vein(df::coord t)
     return -1;
 }
 
+int32_t Plan::can_dig_vein(int32_t mat)
+{
+    int32_t count = 0;
+
+    if (map_vein_queue.count(mat))
+    {
+        for (auto queued : map_vein_queue.at(mat))
+        {
+            df::tiletype tt = *Maps::getTileType(queued.first);
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall && ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL && mat_index_vein(queued.first) == mat)
+            {
+                count++;
+            }
+        }
+    }
+
+    if (map_veins.count(mat))
+    {
+        for (auto vein : map_veins.at(mat))
+        {
+            if (auto block = Maps::getBlock(vein))
+            {
+                for (auto event : block->block_events)
+                {
+                    if (auto e = virtual_cast<df::block_square_event_mineralst>(event))
+                    {
+                        if (e->inorganic_mat != mat)
+                        {
+                            continue;
+                        }
+
+                        for (size_t x = 0; x < 16; x++)
+                        {
+                            for (size_t y = 0; y < 16; y++)
+                            {
+                                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, block->tiletype[x][y])) == tiletype_shape_basic::Wall &&
+                                    ENUM_ATTR(tiletype, material, block->tiletype[x][y]) == tiletype_material::MINERAL &&
+                                    e->tile_bitmask.getassignment(df::coord2d(uint16_t(x), uint16_t(y))))
+                                {
+                                    count++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return count / 4;
+}
+
 // mark a vein of a mat for digging, return expected boulder count
 int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
 {

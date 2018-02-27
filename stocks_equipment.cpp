@@ -30,14 +30,27 @@ REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 // forge weapons
-void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, df::job_skill skill, bool training, bool ranged, bool digger)
+void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, std::ostream & reason, df::job_skill skill, bool training, bool ranged, bool digger)
 {
     if (skill == job_skill::NONE && !training && (count_free.at(stock_item::pick) == 0 || count_free.at(stock_item::axe) == 0))
     {
+        reason << "need more ";
+        if (count_free.at(stock_item::pick) == 0)
+        {
+            reason << "picks";
+        }
+        if (count_free.at(stock_item::axe) == 0)
+        {
+            if (count_free.at(stock_item::pick) == 0)
+            {
+                reason << " and ";
+            }
+            reason << "axes";
+        }
         return;
     }
 
-    auto search = [this, &out, stock_item, needed, skill, training, ranged](const std::vector<int16_t> & idefs, df::material_flags pref)
+    auto search = [this, &out, stock_item, needed, &reason, skill, training, ranged](const std::vector<int16_t> & idefs, df::material_flags pref)
     {
         for (auto id : idefs)
         {
@@ -59,17 +72,32 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                     cnt--;
                 }
             }
+            if (cnt <= 0)
+            {
+                continue;
+            }
 
             for (auto mo : world->manager_orders)
             {
                 if (mo->job_type == job_type::MakeWeapon && mo->item_subtype == idef->subtype)
                 {
-                    cnt -= mo->amount_total;
+                    cnt -= mo->amount_left;
                 }
             }
+            events.each_exclusive<ManagerOrderExclusive>([&cnt, idef](const ManagerOrderExclusive *excl) -> bool
+            {
+                if (excl->tmpl.job_type == job_type::MakeWeapon && excl->tmpl.item_subtype == idef->subtype)
+                {
+                    cnt -= excl->amount;
+                }
+                return false;
+            });
 
             if (cnt <= 0)
+            {
+                reason << "already have manager order for " << idef->name << "\n";
                 continue;
+            }
 
             if (training)
             {
@@ -79,7 +107,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                 tmpl.item_subtype = idef->subtype;
                 tmpl.mat_index = -1;
                 tmpl.material_category.bits.wood = true;
-                add_manager_order(out, tmpl, cnt);
+                add_manager_order(out, tmpl, cnt, reason);
                 continue;
             }
 
@@ -87,7 +115,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
             if (need_bars < 1)
                 need_bars = 1;
 
-            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, pref, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
+            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, &reason, pref, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
             {
                 std::vector<int32_t> best;
                 best.insert(best.end(), metal_pref.at(pref).begin(), metal_pref.at(pref).end());
@@ -104,15 +132,19 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                         chosen_type = mi;
                         return true;
                     }
-                    if (may_forge_bars(out, mi, need_bars) > 0)
+
+                    std::ostringstream may_forge_reason;
+                    if (may_forge_bars(out, mi, may_forge_reason, need_bars) > 0)
                     {
+                        reason << may_forge_reason.str();
                         return false;
                     }
                 }
                 return false;
-            }, item_type::NONE, idef->subtype);
+            }, reason, item_type::NONE, idef->subtype);
         }
     };
+
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     if (digger)
     {
@@ -128,11 +160,11 @@ template<typename D>
 static bool is_armordef_metal(D *d) { return d->props.flags.is_set(armor_general_flags::METAL); }
 
 template<typename D, typename I>
-static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::item what, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, int32_t div = 1, std::function<bool(D *)> pred = is_armordef_metal<D>)
+static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::item what, df::items_other_id oidx, const std::vector<int16_t> & idefs, df::job_type job, std::ostream & reason, int32_t div = 1, std::function<bool(D *)> pred = is_armordef_metal<D>)
 {
-    for (auto id = idefs.begin(); id != idefs.end(); id++)
+    for (auto id : idefs)
     {
-        D *idef = D::find(*id);
+        auto idef = D::find(id);
 
         if (!pred(idef))
         {
@@ -143,7 +175,7 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
         int32_t have = 0;
         for (auto item : world->items.other[oidx])
         {
-            I *i = virtual_cast<I>(item);
+            auto i = virtual_cast<I>(item);
             if (i && i->subtype->subtype == idef->subtype && i->mat_type == 0 && ai->stocks->is_item_free(i))
             {
                 have++;
@@ -158,8 +190,18 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
                 cnt -= mo->amount_total;
             }
         }
+        events.each_exclusive<ManagerOrderExclusive>([&cnt, job, idef](const ManagerOrderExclusive *excl) -> bool
+        {
+            if (excl->tmpl.job_type == job && excl->tmpl.item_subtype == idef->subtype)
+            {
+                cnt -= excl->amount;
+            }
+            return false;
+        });
+
         if (cnt <= 0)
         {
+            reason << "already have manager order for " << idef->name << "\n";
             continue;
         }
 
@@ -167,7 +209,7 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
         if (need_bars < 1)
             need_bars = 1;
 
-        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
+        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, &reason, need_bars](const std::map<int32_t, int32_t> & bars, int32_t & chosen_type) -> bool
         {
             std::vector<int32_t> best;
             const auto & pref = ai->stocks->metal_pref.at(material_flags::ITEMS_ARMOR);
@@ -185,40 +227,43 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
                     chosen_type = mi;
                     return true;
                 }
-                if (ai->stocks->may_forge_bars(out, mi, need_bars) > 0)
+
+                std::ostringstream may_forge_reason;
+                if (ai->stocks->may_forge_bars(out, mi, may_forge_reason, need_bars) > 0)
                 {
+                    reason << may_forge_reason.str();
                     return false;
                 }
             }
             return false;
-        }, item_type::NONE, idef->subtype);
+        }, reason, item_type::NONE, idef->subtype);
     }
 }
 
 // forge armor pieces
-void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx)
+void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, df::items_other_id oidx, std::ostream & reason)
 {
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
 
     switch (oidx)
     {
     case items_other_id::ARMOR:
-        queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, out, what, oidx, ue.armor_id, job_type::MakeArmor);
+        queue_need_armor_helper<df::itemdef_armorst, df::item_armorst>(ai, out, what, oidx, ue.armor_id, job_type::MakeArmor, reason);
         return;
     case items_other_id::SHIELD:
-        queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, out, what, oidx, ue.shield_id, job_type::MakeShield, 1, [](df::itemdef_shieldst *) -> bool { return true; });
+        queue_need_armor_helper<df::itemdef_shieldst, df::item_shieldst>(ai, out, what, oidx, ue.shield_id, job_type::MakeShield, reason, 1, [](df::itemdef_shieldst *) -> bool { return true; });
         return;
     case items_other_id::HELM:
-        queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, out, what, oidx, ue.helm_id, job_type::MakeHelm);
+        queue_need_armor_helper<df::itemdef_helmst, df::item_helmst>(ai, out, what, oidx, ue.helm_id, job_type::MakeHelm, reason);
         return;
     case items_other_id::PANTS:
-        queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, what, oidx, ue.pants_id, job_type::MakePants);
+        queue_need_armor_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, what, oidx, ue.pants_id, job_type::MakePants, reason);
         return;
     case items_other_id::GLOVES:
-        queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, what, oidx, ue.gloves_id, job_type::MakeGloves, 2);
+        queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, what, oidx, ue.gloves_id, job_type::MakeGloves, reason, 2);
         return;
     case items_other_id::SHOES:
-        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, what, oidx, ue.shoes_id, job_type::MakeGloves, 2);
+        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, what, oidx, ue.shoes_id, job_type::MakeGloves, reason, 2);
         return;
     default:
         return;
@@ -226,7 +271,7 @@ void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, df::it
 }
 
 template<typename D, typename I>
-static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, int32_t needed, int32_t div = 1)
+static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_other_id oidx, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, int32_t needed, std::ostream & reason, int32_t div = 1)
 {
     int32_t thread = 0, yarn = 0, silk = 0;
 
@@ -250,17 +295,20 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         }
     }
 
-    for (auto id = idefs.begin(); id != idefs.end(); id++)
+    bool first = true;
+    for (auto id : idefs)
     {
-        D *idef = D::find(*id);
+        auto idef = D::find(id);
         if (!idef->props.flags.is_set(armor_general_flags::SOFT)) // XXX
+        {
             continue;
+        }
 
         int32_t cnt = needed;
         int32_t have = 0;
-        for (auto item = world->items.other[oidx].begin(); item != world->items.other[oidx].end(); item++)
+        for (auto item : world->items.other[oidx])
         {
-            I *i = virtual_cast<I>(*item);
+            auto i = virtual_cast<I>(item);
             if (i->subtype->subtype == idef->subtype &&
                 i->mat_type != 0 &&
                 i->wear == 0 &&
@@ -271,14 +319,48 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         }
         cnt -= have / div;
 
-        for (auto mo = world->manager_orders.begin(); mo != world->manager_orders.end(); mo++)
+        bool first_def = true;
+        for (auto mo : world->manager_orders)
         {
-            if ((*mo)->job_type == job && (*mo)->item_subtype == idef->subtype)
+            if (mo->job_type == job && mo->item_subtype == idef->subtype)
             {
-                cnt -= (*mo)->amount_total;
+                cnt -= mo->amount_left;
+
+                if (first_def)
+                {
+                    first_def = false;
+
+                    if (first)
+                    {
+                        first = false;
+                    }
+
+                    reason << "already have manager order for " << idef->name << "\n";
+                }
             }
-            // TODO subtract available_cloth too
         }
+        events.each_exclusive<ManagerOrderExclusive>([&](const ManagerOrderExclusive *excl) -> bool
+        {
+            if (excl->tmpl.job_type == job && excl->tmpl.item_subtype == idef->subtype)
+            {
+                cnt -= excl->amount;
+
+                if (first_def)
+                {
+                    first_def = false;
+
+                    if (first)
+                    {
+                        first = false;
+                    }
+
+                    reason << "already have manager order for " << idef->name << "\n";
+                }
+            }
+
+            return false;
+        });
+        // TODO subtract available_cloth too
         if (cnt > available_cloth)
             cnt = available_cloth;
         if (cnt <= 0)
@@ -290,6 +372,7 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
         tmpl.item_subtype = idef->subtype;
         tmpl.mat_type = -1;
         tmpl.mat_index = -1;
+
         if (thread >= yarn && thread >= silk)
         {
             tmpl.material_category.bits.cloth = 1;
@@ -305,13 +388,24 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, df::items_oth
             tmpl.material_category.bits.silk = 1;
             silk -= cnt;
         }
-        ai->stocks->add_manager_order(out, tmpl, cnt);
+
+        if (first)
+        {
+            first = false;
+        }
+        ai->stocks->add_manager_order(out, tmpl, cnt, reason);
+        reason << "\n";
 
         available_cloth -= cnt;
     }
+
+    if (first)
+    {
+        reason << "not enough cloth";
+    }
 }
 
-void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
+void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx, std::ostream & reason)
 {
     // try to avoid cancel spam
     int32_t available_cloth = count_free.at(stock_item::cloth) - 20;
@@ -321,19 +415,19 @@ void Stocks::queue_need_clothes(color_ostream & out, df::items_other_id oidx)
     switch (oidx)
     {
     case items_other_id::ARMOR:
-        queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, num_needed(stock_item::clothes_torso));
+        queue_need_clothes_helper<df::itemdef_armorst, df::item_armorst>(ai, out, oidx, ue.armor_id, available_cloth, job_type::MakeArmor, num_needed(stock_item::clothes_torso), reason);
         return;
     case items_other_id::HELM:
-        queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, num_needed(stock_item::clothes_head));
+        queue_need_clothes_helper<df::itemdef_helmst, df::item_helmst>(ai, out, oidx, ue.helm_id, available_cloth, job_type::MakeHelm, num_needed(stock_item::clothes_head), reason);
         return;
     case items_other_id::PANTS:
-        queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, num_needed(stock_item::clothes_legs));
+        queue_need_clothes_helper<df::itemdef_pantsst, df::item_pantsst>(ai, out, oidx, ue.pants_id, available_cloth, job_type::MakePants, num_needed(stock_item::clothes_legs), reason);
         return;
     case items_other_id::GLOVES:
-        queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, num_needed(stock_item::clothes_hands), 2);
+        queue_need_clothes_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, oidx, ue.gloves_id, available_cloth, job_type::MakeGloves, num_needed(stock_item::clothes_hands), reason, 2);
         return;
     case items_other_id::SHOES:
-        queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, num_needed(stock_item::clothes_feet), 2);
+        queue_need_clothes_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, oidx, ue.shoes_id, available_cloth, job_type::MakeShoes, num_needed(stock_item::clothes_feet), reason, 2);
         return;
     default:
         return;

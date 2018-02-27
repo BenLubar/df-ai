@@ -17,10 +17,13 @@ REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(world);
 
 // make it so the stocks of 'what' rises by 'amount'
-void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amount)
+void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amount, std::ostream & reason)
 {
     if (amount <= 0)
+    {
+        reason << "have enough " << what;
         return;
+    }
 
     df::manager_order_template tmpl;
     tmpl.mat_index = -1;
@@ -30,37 +33,37 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     {
     case stock_item::ammo:
     {
-        queue_need_ammo(out);
+        queue_need_ammo(out, reason);
         return;
     }
     case stock_item::anvil:
     {
-        queue_need_anvil(out);
+        queue_need_anvil(out, reason);
         return;
     }
     case stock_item::armor_feet:
     {
-        queue_need_armor(out, what, items_other_id::SHOES);
+        queue_need_armor(out, what, items_other_id::SHOES, reason);
         return;
     }
     case stock_item::armor_hands:
     {
-        queue_need_armor(out, what, items_other_id::GLOVES);
+        queue_need_armor(out, what, items_other_id::GLOVES, reason);
         return;
     }
     case stock_item::armor_head:
     {
-        queue_need_armor(out, what, items_other_id::HELM);
+        queue_need_armor(out, what, items_other_id::HELM, reason);
         return;
     }
     case stock_item::armor_legs:
     {
-        queue_need_armor(out, what, items_other_id::PANTS);
+        queue_need_armor(out, what, items_other_id::PANTS, reason);
         return;
     }
     case stock_item::armor_shield:
     {
-        queue_need_armor(out, what, items_other_id::SHIELD);
+        queue_need_armor(out, what, items_other_id::SHIELD, reason);
         return;
     }
     case stock_item::armor_stand:
@@ -71,7 +74,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::armor_torso:
     {
-        queue_need_armor(out, what, items_other_id::ARMOR);
+        queue_need_armor(out, what, items_other_id::ARMOR, reason);
         return;
     }
     case stock_item::ash:
@@ -82,7 +85,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::axe:
     {
-        queue_need_weapon(out, what, num_needed(what), job_skill::AXE);
+        queue_need_weapon(out, what, num_needed(what), reason, job_skill::AXE);
         return;
     }
     case stock_item::backpack:
@@ -169,7 +172,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::cage_metal:
     {
-        queue_need_cage(out);
+        queue_need_cage(out, reason);
         return;
     }
     case stock_item::chair:
@@ -186,27 +189,27 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::clothes_feet:
     {
-        queue_need_clothes(out, items_other_id::SHOES);
+        queue_need_clothes(out, items_other_id::SHOES, reason);
         return;
     }
     case stock_item::clothes_hands:
     {
-        queue_need_clothes(out, items_other_id::GLOVES);
+        queue_need_clothes(out, items_other_id::GLOVES, reason);
         return;
     }
     case stock_item::clothes_head:
     {
-        queue_need_clothes(out, items_other_id::HELM);
+        queue_need_clothes(out, items_other_id::HELM, reason);
         return;
     }
     case stock_item::clothes_legs:
     {
-        queue_need_clothes(out, items_other_id::PANTS);
+        queue_need_clothes(out, items_other_id::PANTS, reason);
         return;
     }
     case stock_item::clothes_torso:
     {
-        queue_need_clothes(out, items_other_id::ARMOR);
+        queue_need_clothes(out, items_other_id::ARMOR, reason);
         return;
     }
     case stock_item::coal:
@@ -217,6 +220,10 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         if (amount > 2 - count_free.at(stock_item::coal) && count_free.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke))
         {
             amount = 2 - count_free.at(stock_item::coal);
+            if (amount <= 0)
+            {
+                reason << "using raw coke instead of making charcoal";
+            }
         }
         break;
     }
@@ -257,13 +264,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = max->second;
         input.push_back(max->first);
-        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::food_storage])
         {
             input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back(stock_item::rock_pot);
+            input.push_back(stock_item::food_storage);
         }
         amount = (amount + 4) / 5; // accounts for brewer yield, but not for input stack size
         break;
@@ -294,6 +301,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.mat_type = 0;
         break;
     }
+    case stock_item::food_storage:
+    {
+        tmpl.job_type = job_type::MakeTool;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::food_storage);
+        tmpl.mat_type = 0;
+        break;
+    }
     case stock_item::goblet:
     {
         tmpl.job_type = job_type::MakeGoblet;
@@ -308,11 +322,15 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
             {
                 if (is_gypsum(vein.first))
                 {
-                    ai->plan->dig_vein(out, vein.first, amount);
-                    break;
+                    if (ai->plan->dig_vein(out, vein.first, amount))
+                    {
+                        reason << "marked " << MaterialInfo(0, vein.first).toString() << " vein for excavation";
+                        return;
+                    }
                 }
             }
         }
+        reason << "could not find gypsum vein";
         return;
     }
     case stock_item::hatch_cover:
@@ -358,6 +376,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
             ai->debug(out, stl_sprintf("need %d more food", amount));
             last_warn_food_year = *cur_year;
         }
+        reason << "waiting for ingredients and cooks";
         return;
     }
     case stock_item::mechanism:
@@ -389,7 +408,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::pick:
     {
-        queue_need_weapon(out, what, num_needed(what), job_skill::MINING, false, false, true);
+        queue_need_weapon(out, what, num_needed(what), reason, job_skill::MINING, false, false, true);
         return;
     }
     case stock_item::pipe_section:
@@ -433,19 +452,16 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
             {
                 if (!is_raw_coke(vein.first).empty())
                 {
-                    ai->plan->dig_vein(out, vein.first, amount);
-                    break;
+                    if (ai->plan->dig_vein(out, vein.first, amount))
+                    {
+                        reason << "marked " << MaterialInfo(0, vein.first).toString() << " vein for excavation";
+                        return;
+                    }
                 }
             }
         }
+        reason << "could not find raw coke vein";
         return;
-    }
-    case stock_item::rock_pot:
-    {
-        tmpl.job_type = job_type::MakeTool;
-        tmpl.item_subtype = min_subtype_for_item(stock_item::rock_pot);
-        tmpl.mat_type = 0;
-        break;
     }
     case stock_item::rope:
     {
@@ -523,7 +539,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::weapon_melee:
     {
-        queue_need_weapon(out, what, num_needed(what));
+        queue_need_weapon(out, what, num_needed(what), reason);
         return;
     }
     case stock_item::weapon_rack:
@@ -534,12 +550,12 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::weapon_ranged:
     {
-        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, false, true);
+        queue_need_weapon(out, what, num_needed(what), reason, job_skill::NONE, false, true);
         return;
     }
     case stock_item::weapon_training:
     {
-        queue_need_weapon(out, what, num_needed(what), job_skill::NONE, true);
+        queue_need_weapon(out, what, num_needed(what), reason, job_skill::NONE, true);
         return;
     }
     case stock_item::wheelbarrow:
@@ -555,7 +571,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         if (amount > 30)
             amount = 30;
 
-        last_cutpos = cuttrees(out, amount / 6 + 1);
+        last_cutpos = cuttrees(out, amount / 6 + 1, reason);
 
         return;
     }
@@ -568,22 +584,24 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     if (amount > 30)
         amount = 30;
 
+    int32_t i_amount = amount;
     if (!input.empty())
     {
-        int32_t i_amount = amount;
         for (auto i : input)
         {
             int32_t c = count_free.at(i);
-            if (c < i_amount)
+            if (c < amount)
             {
-                i_amount = c;
-            }
-            if (c < amount && Watch.Needed.count(i))
-            {
-                queue_need(out, i, amount - c);
+                reason << "not enough " << i;
+                i_amount = std::min(i_amount, c);
+                if (Watch.Needed.count(i))
+                {
+                    reason << ": ";
+                    queue_need(out, i, amount - c, reason);
+                }
+                reason << "\n";
             }
         }
-        amount = i_amount;
     }
 
     if (tmpl.material_category.whole != 0)
@@ -592,6 +610,11 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         if (tmpl.material_category.bits.wood)
         {
             matcat_item = stock_item::wood;
+            if (what != stock_item::bed && need_more(stock_item::bed))
+            {
+                reason << "need more beds";
+                return;
+            }
         }
         else if (tmpl.material_category.bits.cloth)
         {
@@ -613,18 +636,24 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         {
             throw DFHack::Error::InvalidArgument();
         }
-        int32_t i_amount = count_free.at(matcat_item) - count_manager_orders_matcat(tmpl.material_category, tmpl.job_type);
-        if (i_amount < amount && Watch.Needed.count(matcat_item))
+
+        int32_t mat_amount = count_free.at(matcat_item) - count_manager_orders_matcat(tmpl.material_category, tmpl.job_type);
+        if (mat_amount < amount)
         {
-            queue_need(out, matcat_item, amount - i_amount);
-        }
-        if (amount > i_amount)
-        {
-            amount = i_amount;
+            reason << "not enough " << matcat_item;
+            if (Watch.Needed.count(matcat_item))
+            {
+                reason << ": ";
+                queue_need(out, matcat_item, amount - mat_amount, reason);
+            }
+            reason << "\n";
+            i_amount = std::min(i_amount, mat_amount);
         }
     }
 
-    add_manager_order(out, tmpl, amount);
+    amount = i_amount;
+
+    add_manager_order(out, tmpl, amount, reason);
 }
 
 int16_t Stocks::min_subtype_for_item(stock_item::item what)
@@ -634,14 +663,18 @@ int16_t Stocks::min_subtype_for_item(stock_item::item what)
     {
         return a.second.first < b.second.first;
     });
+
     return min == count.end() ? -1 : min->first;
 }
 
 // make it so the stocks of 'what' decrease by 'amount'
-void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amount)
+void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amount, std::ostream & reason)
 {
     if (amount <= 0)
+    {
+        reason << "amount not above threshold";
         return;
+    }
 
     df::manager_order_template tmpl;
     tmpl.mat_index = -1;
@@ -721,17 +754,18 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         tmpl.reaction_name = what == stock_item::drink_plant ? "BREW_DRINK_FROM_PLANT" : "BREW_DRINK_FROM_PLANT_GROWTH";
         may_rot();
 
-        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::food_storage])
         {
             input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back(stock_item::rock_pot);
+            input.push_back(stock_item::food_storage);
         }
 
         if (!need_more(stock_item::drink))
         {
+            reason << "have enough drinks";
             return;
         }
         break;
@@ -743,6 +777,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         amount = (amount + 4) / 5;
         if (!need_more(stock_item::meal))
         {
+            reason << "have enough meals";
             return;
         }
         break;
@@ -751,13 +786,13 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     {
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = "MAKE_MEAD";
-        if (count_free[stock_item::barrel] > count_free[stock_item::rock_pot])
+        if (count_free[stock_item::barrel] > count_free[stock_item::food_storage])
         {
             input.push_back(stock_item::barrel);
         }
         else
         {
-            input.push_back(stock_item::rock_pot);
+            input.push_back(stock_item::food_storage);
         }
         break;
     }
@@ -770,7 +805,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     }
     case stock_item::metal_ore:
     {
-        queue_use_metal_ore(out, amount);
+        queue_use_metal_ore(out, amount, reason);
         return;
     }
     case stock_item::metal_strand:
@@ -778,6 +813,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         auto candy = find_free_item(stock_item::metal_strand);
         if (!candy)
         {
+            reason << "could not find metal";
             return;
         }
         tmpl.job_type = job_type::ExtractMetalStrands;
@@ -799,7 +835,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     }
     case stock_item::raw_coke:
     {
-        queue_use_raw_coke(out, amount);
+        queue_use_raw_coke(out, amount, reason);
         return;
     }
     case stock_item::raw_fish:
@@ -810,7 +846,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     }
     case stock_item::rough_gem:
     {
-        queue_use_gems(out, amount);
+        queue_use_gems(out, amount, reason);
         return;
     }
     case stock_item::shell:
@@ -833,6 +869,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         input.push_back(stock_item::lye);
         if (!need_more(stock_item::soap))
         {
+            reason << "have enough soap";
             return;
         }
         break;
@@ -869,32 +906,54 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
     if (!input.empty())
     {
         int32_t i_amount = amount;
-        for (auto i = input.begin(); i != input.end(); i++)
+        for (auto i : input)
         {
-            int32_t c = count_free.at(*i);
+            int32_t c = count_free.at(i);
             if (i_amount > c)
                 i_amount = c;
-            if (c < amount && Watch.Needed.count(*i))
+
+            if (c < amount)
             {
-                queue_need(out, *i, amount - c);
+                reason << "not enough " << i;
+                if (Watch.Needed.count(i))
+                {
+                    reason << ": ";
+                    queue_need(out, i, amount - c, reason);
+                }
+                reason << "\n";
             }
         }
+
         amount = i_amount;
     }
 
-    add_manager_order(out, tmpl, amount);
+    add_manager_order(out, tmpl, amount, reason);
 }
 
 // cut gems
-void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
+void Stocks::queue_use_gems(color_ostream & out, int32_t amount, std::ostream & reason)
 {
     for (auto mo : world->manager_orders)
     {
         if (mo->job_type == job_type::CutGems)
         {
+            reason << "there is already a manager order to cut gems: " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
             return;
         }
     }
+    if (events.each_exclusive<ManagerOrderExclusive>([&reason](const ManagerOrderExclusive *excl) -> bool
+    {
+        if (excl->tmpl.job_type == job_type::CutGems)
+        {
+            reason << "there is already a manager order to cut gems: " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)";
+            return true;
+        }
+        return false;
+    }))
+    {
+        return;
+    }
+
     df::item *base = nullptr;
     for (auto i : world->items.other[items_other_id::ROUGH])
     {
@@ -906,8 +965,10 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
     }
     if (!base)
     {
+        reason << "could not find rough gems to cut";
         return;
     }
+
     int32_t this_amount = 0;
     for (auto i : world->items.other[items_other_id::ROUGH])
     {
@@ -916,6 +977,7 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
             this_amount++;
         }
     }
+
     if (amount > this_amount)
         amount = this_amount;
     if (amount >= 10)
@@ -929,5 +991,6 @@ void Stocks::queue_use_gems(color_ostream & out, int32_t amount)
     tmpl.item_subtype = -1;
     tmpl.mat_type = base->getMaterial();
     tmpl.mat_index = base->getMaterialIndex();
-    add_manager_order(out, tmpl, amount);
+
+    add_manager_order(out, tmpl, amount, reason);
 }

@@ -68,6 +68,7 @@ Watch::Watch()
     Needed[stock_item::dye_seeds] = 10;
     Needed[stock_item::flask] = 2;
     Needed[stock_item::floodgate] = 1;
+    Needed[stock_item::food_storage] = 4;
     Needed[stock_item::goblet] = 10;
     Needed[stock_item::gypsum] = 1;
     Needed[stock_item::hatch_cover] = 2;
@@ -86,7 +87,6 @@ Watch::Watch()
     Needed[stock_item::quire] = 5;
     Needed[stock_item::quiver] = 2;
     Needed[stock_item::raw_coke] = 1;
-    Needed[stock_item::rock_pot] = 4;
     Needed[stock_item::rope] = 1;
     Needed[stock_item::screw] = 1;
     Needed[stock_item::slab] = 1;
@@ -162,6 +162,7 @@ Stocks::Stocks(AI *ai) :
     count_free(),
     count_total(),
     count_subtype(),
+    act_reason(),
     ingots(),
     onupdate_handle(nullptr),
     updating(),
@@ -222,6 +223,7 @@ void Stocks::reset()
     count_free.clear();
     count_total.clear();
     count_subtype.clear();
+    act_reason.clear();
     farmplots.clear();
     seeds.clear();
     plants.clear();
@@ -291,6 +293,24 @@ std::string Stocks::status()
     return s.str();
 }
 
+static std::string compact_newlines(std::string str)
+{
+    size_t pos = 0;
+    while ((pos = str.find('\n', pos)) != std::string::npos)
+    {
+        if (pos == 0 || pos + 1 == str.size() || str.at(pos + 1) == '\n')
+        {
+            str.erase(pos);
+        }
+        else
+        {
+            pos++;
+        }
+    }
+
+    return str;
+}
+
 void Stocks::report(std::ostream & out, bool html)
 {
     auto compute_max = [](int32_t n) -> int32_t
@@ -313,7 +333,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th colspan=\"2\">Item</th><th>Available</th><th>Minimum</th><th>Total</th><th></th></tr></thead><tbody>";
+        out << "<h2 id=\"Stocks_Need\">Need</h2><table><thead><tr><th colspan=\"2\">Item</th><th>Available</th><th>Minimum</th><th>Total</th><th></th><th>Status</th></tr></thead><tbody>";
     }
     else
     {
@@ -328,17 +348,24 @@ void Stocks::report(std::ostream & out, bool html)
             {
                 const auto & subtypes = count_subtype.at(n.first);
                 df::item_type item_type = ENUM_ATTR(items_other_id, item, find_item_helper(n.first).oidx);
+                size_t count = subtypes.size();
                 for (auto subtype : subtypes)
                 {
                     std::string name(ItemTypeInfo(item_type, subtype.first).toString());
                     int32_t max = compute_max(std::max(needed, subtype.second.first));
-                    out << "<tr><th>" << n.first << "</th><td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td></tr>";
+                    out << "<tr><th>" << n.first << "</th><td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td>";
+                    if (count)
+                    {
+                        out << "<td rowspan=\"" << count << "\"><i>" << html_escape(compact_newlines(act_reason[n.first].str())) << "</i></td>";
+                        count = 0;
+                    }
+                    out << "</tr>";
                 }
             }
             else
             {
                 int32_t max = compute_max(std::max(needed, count_free[n.first]));
-                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td></tr>";
+                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[n.first].str())) << "</i></td></tr>";
             }
         }
         else
@@ -349,7 +376,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>Item</th><th>Available</th><th>Maximum</th><th>Total</th><th></th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Watch\">Watch</h2><table><thead><tr><th>Item</th><th>Available</th><th>Maximum</th><th>Total</th><th></th><th>Status</th></tr></thead><tbody>";
     }
     else
     {
@@ -360,7 +387,7 @@ void Stocks::report(std::ostream & out, bool html)
         if (html)
         {
             int32_t max = compute_max(std::max(w.second, count_free[w.first]));
-            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << w.second << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << (w.second - 1) << "\" max=\"" << max << "\"></meter></td></tr>";
+            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << w.second << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << (w.second - 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[w.first].str())) << "</i></td></tr>";
         }
         else
         {
@@ -557,9 +584,9 @@ void Stocks::update_simple_metal_ores(color_ostream &)
     for (auto it = world->raws.inorganics.begin(); it != world->raws.inorganics.end(); it++)
     {
         const auto & bars = (*it)->metal_ore.mat_index;
-        for (auto bar = bars.begin(); bar != bars.end(); bar++)
+        for (auto bar : bars)
         {
-            simple_metal_ores.at(*bar).insert(it - world->raws.inorganics.begin());
+            simple_metal_ores.at(bar).insert(it - world->raws.inorganics.begin());
         }
     }
 }
@@ -587,11 +614,6 @@ void Stocks::queue_slab(color_ostream & out, int32_t histfig_id)
 
 bool Stocks::need_more(stock_item::item type)
 {
-    if (type == stock_item::barrel && need_more(stock_item::bed))
-    {
-        return false;
-    }
-
     int32_t want = Watch.Needed.count(type) ? num_needed(type) : Watch.WatchStock.count(type) ? Watch.WatchStock.at(type) : 10;
 
     return (count_free.count(type) ? count_free.at(type) : 0) < want;

@@ -1455,22 +1455,8 @@ void Population::report(std::ostream & out, bool html)
 
     std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & s) -> std::string { return s; };
 
-    if (html)
+    auto write_job = [&](df::job_list_link *j)
     {
-        out << "</ul><h2 id=\"Population_Jobs\">Jobs</h2><ul>";
-    }
-    else
-    {
-        out << "\n## Jobs\n";
-    }
-    std::map<std::string, size_t> boring_job_count;
-    for (auto j = world->jobs.list.next; j; j = j->next)
-    {
-        if (j->item->items.empty() && j->item->job_items.empty() && j->item->general_refs.empty())
-        {
-            boring_job_count[AI::describe_job(j->item)]++;
-            continue;
-        }
         if (html)
         {
             out << "<li><b>" << html_escape(AI::describe_job(j->item)) << "</b>";
@@ -1567,21 +1553,21 @@ void Population::report(std::ostream & out, bool html)
             int32_t base_quantity;
             switch (item->item_type)
             {
-                case item_type::BAR:
-                case item_type::POWDER_MISC:
-                case item_type::LIQUID_MISC:
-                case item_type::DRINK:
-                    base_quantity = 150;
-                    break;
-                case item_type::THREAD:
-                    base_quantity = 15000;
-                    break;
-                case item_type::CLOTH:
-                    base_quantity = 10000;
-                    break;
-                default:
-                    base_quantity = 1;
-                    break;
+            case item_type::BAR:
+            case item_type::POWDER_MISC:
+            case item_type::LIQUID_MISC:
+            case item_type::DRINK:
+                base_quantity = 150;
+                break;
+            case item_type::THREAD:
+                base_quantity = 15000;
+                break;
+            case item_type::CLOTH:
+                base_quantity = 10000;
+                break;
+            default:
+                base_quantity = 1;
+                break;
             }
             int32_t remainder = item->quantity % base_quantity;
             if (item->quantity / base_quantity != 1 || remainder != 0)
@@ -1697,7 +1683,49 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "</li>";
         }
+    };
+
+    if (html)
+    {
+        out << "</ul><h2 id=\"Population_Jobs\">Jobs</h2><h3 id=\"Population_Jobs_Active\">Active</h3><ul>";
     }
+    else
+    {
+        out << "\n## Jobs\n### Active\n";
+    }
+
+    for (auto j = world->jobs.list.next; j; j = j->next)
+    {
+        if (Job::getWorker(j->item))
+        {
+            write_job(j);
+        }
+    }
+
+    if (html)
+    {
+        out << "</ul><h3 id=\"Population_Jobs_Waiting\">Waiting</h3><ul>";
+    }
+    else
+    {
+        out << "\n### Waiting\n";
+    }
+
+    std::map<std::string, size_t> boring_job_count;
+    for (auto j = world->jobs.list.next; j; j = j->next)
+    {
+        if (j->item->items.empty() && j->item->job_items.empty() && j->item->general_refs.empty())
+        {
+            boring_job_count[AI::describe_job(j->item)]++;
+            continue;
+        }
+
+        if (!Job::getWorker(j->item))
+        {
+            write_job(j);
+        }
+    }
+
     for (auto & boring : boring_job_count)
     {
         if (html)
