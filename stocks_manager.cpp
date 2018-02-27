@@ -94,8 +94,9 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI *ai, const df::manager_order_tem
     : ExclusiveCallback("add_manager_order: " + AI::describe_job(&tmpl)),
     ai(ai),
     tmpl(tmpl),
-    amount(amount),
     quantity(),
+    amount(amount),
+    search_word(),
     old_order(-1)
 {
     search_word = AI::describe_job(&tmpl);
