@@ -143,7 +143,6 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         if (coal_bars < 1)
         {
             reason << "not enough coal\n";
-            break;
         }
 
         for (auto it = bars.begin(); it != bars.end(); )
@@ -172,6 +171,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
 
         if (potential_bars.empty())
         {
+            reason << (ai->plan->should_search_for_metal ? "no viable ores available\n" : "not ready to mine ores\n");
             break;
         }
 
@@ -184,7 +184,13 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
 
         if (!bars.count(mat_index) || bars.at(mat_index) < bars_per_item)
         {
-            reason << "not enough " << MaterialInfo(0, mat_index).toString() << "\n";
+            reason << "not enough " << MaterialInfo(0, mat_index).toString() << ":\n";
+            may_forge_bars(out, mat_index, reason, bars_per_item);
+            break;
+        }
+
+        if (coal_bars < 1)
+        {
             break;
         }
 
@@ -213,11 +219,14 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
 // return the potential number of bars available (in dimensions, eg 1 bar => 150)
 int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostream & reason, int32_t div, bool dry_run)
 {
+    std::set<int32_t> waiting_for_smelting;
+
     int32_t can_melt = 0;
     for (auto i : world->items.other[items_other_id::BOULDER])
     {
         if (is_metal_ore(i) && simple_metal_ores.at(mat_index).count(i->getMaterialIndex()) && is_item_free(i))
         {
+            waiting_for_smelting.insert(i->getMaterialIndex());
             can_melt++;
         }
     }
@@ -229,17 +238,18 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
             if (simple_metal_ores.at(mat_index).count(k.first))
             {
                 can_melt += dry_run ? ai->plan->can_dig_vein(k.first) : ai->plan->dig_vein(out, k.first);
-            }
-        }
 
-        if (can_melt > Watch.WatchStock.at(stock_item::metal_ore))
-        {
-            reason << "mining more ore\n";
+                reason << "mining more " << MaterialInfo(0, k.first).toString() << "\n";
+            }
         }
     }
 
     if (can_melt > Watch.WatchStock.at(stock_item::metal_ore))
     {
+        for (auto mat : waiting_for_smelting)
+        {
+            reason << "waiting for " << MaterialInfo(0, mat).toString() << " to be smelted\n";
+        }
         return 4 * 150 * (can_melt - Watch.WatchStock.at(stock_item::metal_ore));
     }
 
