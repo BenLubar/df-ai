@@ -16,21 +16,37 @@
 
 REQUIRE_GLOBAL(world);
 
-static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)
+static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & actual_bars, int32_t & chosen_type)
 {
     // pick the metal we have the most of
-    auto max = std::max_element(bars.begin(), bars.end(), [](std::pair<const int32_t, int32_t> a, std::pair<const int32_t, int32_t> b) -> bool
+    auto max = std::max_element(actual_bars.begin(), actual_bars.end(), [](std::pair<const int32_t, int32_t> a, std::pair<const int32_t, int32_t> b) -> bool
     {
         return a.second < b.second;
     });
 
-    if (max == bars.end() || max->second <= 0)
+    if (max != actual_bars.end() && max->second > 0)
     {
-        return false;
+        chosen_type = max->first;
+        return true;
     }
 
-    chosen_type = max->first;
-    return true;
+    // fine, then pick a simple metal we can get a lot of
+    chosen_type = -1;
+    int32_t count = -1;
+    for (auto potential : potential_bars)
+    {
+        extern AI *dwarfAI;
+        if (!dwarfAI->stocks->simple_metal_ores.at(potential.first).empty())
+        {
+            if (count < potential.second)
+            {
+                chosen_type = potential.first;
+                count = potential.second;
+            }
+        }
+    }
+
+    return chosen_type != -1;
 }
 
 void Stocks::queue_need_ammo(color_ostream & out, std::ostream & reason)
@@ -48,7 +64,7 @@ void Stocks::queue_need_cage(color_ostream & out, std::ostream & reason)
     queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal, reason);
 }
 
-void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
+void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & current_bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
 {
     int32_t coal_bars = count_free.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::WORKSHOP_MAGMA_FORGE].empty())
@@ -116,7 +132,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         std::ofstream discard;
         for (auto mi : pref)
         {
-            potential_bars[mi] += may_forge_bars(out, mi, discard, true);
+            potential_bars[mi] += may_forge_bars(out, mi, discard, 1, true);
         }
     }
 
@@ -128,6 +144,18 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         {
             reason << "not enough coal\n";
             break;
+        }
+
+        for (auto it = bars.begin(); it != bars.end(); )
+        {
+            if (!pref.count(it->first))
+            {
+                it = bars.erase(it);
+            }
+            else
+            {
+                it++;
+            }
         }
 
         for (auto it = potential_bars.begin(); it != potential_bars.end(); )
@@ -148,7 +176,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         }
 
         int32_t mat_index;
-        if (!decide(potential_bars, mat_index))
+        if (!decide(potential_bars, bars, mat_index))
         {
             reason << "not enough metal\n";
             break;
