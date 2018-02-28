@@ -192,6 +192,7 @@ Stocks::Stocks(AI *ai) :
         return a < b;
     }),
     last_cutpos(),
+    cut_wait_counter(0),
     last_warn_food_year(-1),
     drink_plants(),
     drink_fruits(),

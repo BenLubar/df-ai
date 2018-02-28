@@ -188,6 +188,7 @@ private:
     std::vector<room *> updating_farmplots;
     std::set<df::coord, std::function<bool(df::coord, df::coord)>> last_treelist;
     df::coord last_cutpos;
+    int32_t cut_wait_counter;
     int32_t last_warn_food_year;
 
     std::map<int32_t, int16_t> drink_plants;

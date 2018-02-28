@@ -200,12 +200,14 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount, std::ostream & reaso
         }
     }
 
-    if (last_cutpos.isValid() && (Maps::getTileDesignation(last_cutpos)->bits.dig != tile_dig_designation::No || jobs.count(last_cutpos)))
+    if (last_cutpos.isValid() && (Maps::getTileDesignation(last_cutpos)->bits.dig != tile_dig_designation::No || jobs.count(last_cutpos)) && cut_wait_counter < amount * 10)
     {
         // skip designating if we haven't cut the last tree yet
         reason << "waiting for trees to be cut: " << jobs.size() << " remaining";
+        cut_wait_counter++;
         return last_cutpos;
     }
+    cut_wait_counter = 0;
 
     // return the bottom-rightest designated tree
     df::coord br;
