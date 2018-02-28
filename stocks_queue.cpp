@@ -763,7 +763,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
             input.push_back(stock_item::food_storage);
         }
 
-        if (!need_more(stock_item::drink))
+        if (!need_more(stock_item::drink) && (need_more(stock_item::meal) || (need_more(stock_item::barrel) && need_more(stock_item::food_storage))))
         {
             reason << "have enough drinks";
             return;
@@ -775,7 +775,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         tmpl.job_type = job_type::PrepareMeal;
         tmpl.mat_type = 4; // roasts
         amount = (amount + 4) / 5;
-        if (!need_more(stock_item::meal))
+        if (!need_more(stock_item::meal) && (need_more(stock_item::drink) || (need_more(stock_item::barrel) && need_more(stock_item::food_storage))))
         {
             reason << "have enough meals";
             return;
