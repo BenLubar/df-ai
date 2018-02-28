@@ -115,7 +115,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
             if (need_bars < 1)
                 need_bars = 1;
 
-            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, &reason, pref, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & actual_bars, int32_t & chosen_type) -> bool
+            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, &reason, pref, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
             {
                 std::vector<int32_t> best;
                 best.insert(best.end(), metal_pref.at(pref).begin(), metal_pref.at(pref).end());
@@ -209,7 +209,7 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
         if (need_bars < 1)
             need_bars = 1;
 
-        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, &reason, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & actual_bars, int32_t & chosen_type) -> bool
+        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, &reason, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
         {
             std::vector<int32_t> best;
             const auto & pref = ai->stocks->metal_pref.at(material_flags::ITEMS_ARMOR);
