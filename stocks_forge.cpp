@@ -132,7 +132,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         std::ofstream discard;
         for (auto mi : pref)
         {
-            potential_bars[mi] += may_forge_bars(out, mi, discard, 1, true);
+            potential_bars[mi] += may_forge_bars(out, mi, discard, 1, true) / 150;
         }
     }
 
@@ -231,7 +231,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
         }
     }
 
-    if (can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && (ai->plan->should_search_for_metal || dry_run))
+    if ((can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && ai->plan->should_search_for_metal) || dry_run)
     {
         for (auto & k : ai->plan->map_veins)
         {
@@ -244,7 +244,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
         }
     }
 
-    if (can_melt > Watch.WatchStock.at(stock_item::metal_ore))
+    if (can_melt > Watch.WatchStock.at(stock_item::metal_ore) && !dry_run)
     {
         for (auto mat : waiting_for_smelting)
         {
@@ -252,6 +252,10 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
         }
         return 4 * 150 * (can_melt - Watch.WatchStock.at(stock_item::metal_ore));
     }
+
+    std::string best_reaction;
+    int32_t best_reaction_count = -1;
+    int32_t best_reaction_output = -1;
 
     // "make <mi> bars" customreaction
     for (auto r : world->raws.reactions)
@@ -274,7 +278,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
         }
 
         bool all = true;
-        int32_t can_reaction = 30;
+        int32_t can_reaction = dry_run ? std::numeric_limits<int32_t>::max() : 30;
         bool future = false;
         for (auto rr : r->reagents)
         {
@@ -346,28 +350,38 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                 }
             }
 
-            if (has <= 0 && rri->item_type == item_type::BOULDER && rri->mat_type == 0 && rri->mat_index != -1 && (ai->plan->should_search_for_metal || dry_run))
+            if (((has <= 0 && ai->plan->should_search_for_metal) || dry_run) && rri->item_type == item_type::BOULDER)
             {
-                has += dry_run ? ai->plan->can_dig_vein(rri->mat_index) : ai->plan->dig_vein(out, rri->mat_index);
+                if (rri->mat_type == 0 && rri->mat_index != -1)
+                {
+                    has += dry_run ? ai->plan->can_dig_vein(rri->mat_index) : ai->plan->dig_vein(out, rri->mat_index);
+                }
+                else if (rri->metal_ore != -1)
+                {
+                    for (auto mat : simple_metal_ores.at(rri->metal_ore))
+                    {
+                        has += dry_run ? ai->plan->can_dig_vein(mat) : ai->plan->dig_vein(out, mat);
+                    }
+                }
                 if (has > 0)
                     future = true;
             }
 
-            has /= rri->quantity;
-
-            if (has <= 0 && rri->item_type == item_type::BAR && rri->mat_type == 0 && rri->mat_index != -1)
+            if ((has < rri->quantity || dry_run) && rri->item_type == item_type::BAR && rri->mat_type == 0 && rri->mat_index != -1)
             {
                 future = true;
                 // 'div' tries to ensure that eg making pig iron wont consume all available iron
                 // and leave some to make steel
                 reason << "preparing to smelt " << MaterialInfo(0, mat_index).toString() << ":\n";
-                has = may_forge_bars(out, rri->mat_index, reason, div + 1, dry_run);
-                if (has == -1)
+                has += may_forge_bars(out, rri->mat_index, reason, div + 1, dry_run);
+                if (has < rri->quantity)
                 {
                     all = false;
                     break;
                 }
             }
+
+            has /= rri->quantity;
 
             if (can_reaction > has / div)
             {
@@ -382,21 +396,22 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                 continue;
             }
 
-            if (!future)
+            if (!future && !dry_run)
             {
-                bool found = false;
+                bool already_making = false;
                 for (auto mo : world->manager_orders)
                 {
                     if (mo->job_type == job_type::CustomReaction && mo->reaction_name == r->code)
                     {
                         reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
-                        found = true;
+                        already_making = true;
                         break;
                     }
                 }
-                if (!found)
+
+                if (!already_making)
                 {
-                    found = events.each_exclusive<ManagerOrderExclusive>([&reason, r, mat_index](const ManagerOrderExclusive *excl) -> bool
+                    already_making = events.each_exclusive<ManagerOrderExclusive>([&reason, r, mat_index](const ManagerOrderExclusive *excl) -> bool
                     {
                         if (excl->tmpl.job_type == job_type::CustomReaction && excl->tmpl.reaction_name == r->code)
                         {
@@ -408,30 +423,44 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                     });
                 }
 
-                if (!found)
+                if (already_making)
                 {
-                    df::manager_order_template tmpl;
-                    tmpl.job_type = job_type::CustomReaction;
-                    tmpl.reaction_name = r->code;
-                    tmpl.item_type = item_type::NONE;
-                    tmpl.item_subtype = -1;
-                    tmpl.mat_type = -1;
-                    tmpl.mat_index = -1;
-                    reason << "smelting " << MaterialInfo(0, mat_index).toString() << ": ";
-                    if (dry_run)
-                    {
-                        reason << "[dry run]";
-                    }
-                    else
-                    {
-                        add_manager_order(out, tmpl, can_reaction, reason);
-                    }
-                    reason << "\n";
+                    return prod_mult * can_reaction;
                 }
             }
 
-            return prod_mult * can_reaction;
+            if (!future || dry_run)
+            {
+                if (prod_mult * can_reaction > best_reaction_output)
+                {
+                    best_reaction = r->code;
+                    best_reaction_count = can_reaction;
+                    best_reaction_output = prod_mult * can_reaction;
+                }
+            }
         }
+    }
+
+    if (dry_run)
+    {
+        int32_t result = std::max(4 * 150 * can_melt, 0) + std::max(best_reaction_output, 0);
+        return result ? result : -1;
+    }
+
+    if (!best_reaction.empty())
+    {
+        df::manager_order_template tmpl;
+        tmpl.job_type = job_type::CustomReaction;
+        tmpl.reaction_name = best_reaction;
+        tmpl.item_type = item_type::NONE;
+        tmpl.item_subtype = -1;
+        tmpl.mat_type = -1;
+        tmpl.mat_index = -1;
+        reason << "smelting " << MaterialInfo(0, mat_index).toString() << ": ";
+        add_manager_order(out, tmpl, best_reaction_count, reason);
+        reason << "\n";
+
+        return best_reaction_output;
     }
 
     reason << "cannot produce " << MaterialInfo(0, mat_index).toString() << "\n";

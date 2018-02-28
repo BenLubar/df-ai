@@ -244,7 +244,7 @@ void Stocks::update_ingots(color_ostream & out)
     std::ofstream discard;
     for (int32_t mat_index = 0; mat_index < int32_t(world->raws.inorganics.size()); mat_index++)
     {
-        if (may_forge_bars(out, mat_index, discard, 1, true) > 0)
+        if (may_forge_bars(out, mat_index, discard, 1, true) >= 150)
         {
             ingots[mat_index] = 0;
         }

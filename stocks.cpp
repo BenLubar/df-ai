@@ -429,7 +429,10 @@ void Stocks::report(std::ostream & out, bool html)
 
         if (html)
         {
-            out << "<tr><th>" << html_escape(mat->material.state_name[matter_state::Solid]) << "</th><td class=\"num\">" << t.second << "</td></tr>";
+            std::ofstream discard;
+            color_ostream_wrapper color_discard(discard);
+            int32_t may_forge = may_forge_bars(color_discard, t.first, discard, 1, true) / 150;
+            out << "<tr><th>" << html_escape(mat->material.state_name[matter_state::Solid]) << "</th><td class=\"num\">" << t.second << "</td><td class=\"num\">" << may_forge << "</td></tr>";
         }
         else
         {

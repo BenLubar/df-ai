@@ -134,7 +134,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                     }
 
                     std::ostringstream may_forge_reason;
-                    if (may_forge_bars(out, mi, may_forge_reason, need_bars) > 0)
+                    if (may_forge_bars(out, mi, may_forge_reason, need_bars) >= 150)
                     {
                         reason << may_forge_reason.str();
                         return false;
@@ -229,7 +229,7 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
                 }
 
                 std::ostringstream may_forge_reason;
-                if (ai->stocks->may_forge_bars(out, mi, may_forge_reason, need_bars) > 0)
+                if (ai->stocks->may_forge_bars(out, mi, may_forge_reason, need_bars) >= 150)
                 {
                     reason << may_forge_reason.str();
                     return false;
