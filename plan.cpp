@@ -4479,6 +4479,22 @@ command_result Plan::make_map_walkable(color_ostream &)
     return CR_OK;
 }
 
+static int32_t count_tile_bitmask(const df::tile_bitmask & mask)
+{
+    static int8_t bits_set[] = {0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4};
+
+    int32_t count = 0;
+    for (int i = 0; i < df::tile_bitmask::SIZE; i++)
+    {
+        count += bits_set[(mask.bits[i] >> 0) & 0xf];
+        count += bits_set[(mask.bits[i] >> 4) & 0xf];
+        count += bits_set[(mask.bits[i] >> 8) & 0xf];
+        count += bits_set[(mask.bits[i] >> 12) & 0xf];
+    }
+
+    return count;
+}
+
 // scan the map, list all map veins in @map_veins (mat_index => [block coords],
 // sorted by z)
 command_result Plan::list_map_veins(color_ostream &)
@@ -4495,12 +4511,11 @@ command_result Plan::list_map_veins(color_ostream &)
                 {
                     continue;
                 }
-                for (auto event = block->block_events.begin(); event != block->block_events.end(); event++)
+                for (auto event : block->block_events)
                 {
-                    df::block_square_event_mineralst *vein = virtual_cast<df::block_square_event_mineralst>(*event);
-                    if (vein)
+                    if (auto vein = virtual_cast<df::block_square_event_mineralst>(event))
                     {
-                        map_veins[vein->inorganic_mat].insert(block->map_pos);
+                        map_veins[vein->inorganic_mat][block->map_pos] = count_tile_bitmask(vein->tile_bitmask);
                     }
                 }
             }
@@ -4509,17 +4524,19 @@ command_result Plan::list_map_veins(color_ostream &)
     return CR_OK;
 }
 
-static int32_t mat_index_vein(df::coord t)
+static int32_t mat_index_vein(const df::map_block *block, df::coord t)
 {
-    auto & events = Maps::getTileBlock(t)->block_events;
-    for (auto it = events.rbegin(); it != events.rend(); it++)
+    for (auto event : block->block_events)
     {
-        df::block_square_event_mineralst *mineral = virtual_cast<df::block_square_event_mineralst>(*it);
-        if (mineral && mineral->getassignment(t.x & 0xf, t.y & 0xf))
+        if (auto mineral = virtual_cast<df::block_square_event_mineralst>(event))
         {
-            return mineral->inorganic_mat;
+            if (mineral->getassignment(t.x & 0xf, t.y & 0xf))
+            {
+                return mineral->inorganic_mat;
+            }
         }
     }
+
     return -1;
 }
 
@@ -4531,8 +4548,11 @@ int32_t Plan::can_dig_vein(int32_t mat)
     {
         for (auto queued : map_vein_queue.at(mat))
         {
-            df::tiletype tt = *Maps::getTileType(queued.first);
-            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall && ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL && mat_index_vein(queued.first) == mat)
+            df::map_block *block = Maps::getTileBlock(queued.first);
+            df::tiletype tt = block->tiletype[queued.first.x & 0xf][queued.first.y & 0xf];
+            if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall &&
+                ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL &&
+                mat_index_vein(block, queued.first) == mat)
             {
                 count++;
             }
@@ -4543,32 +4563,7 @@ int32_t Plan::can_dig_vein(int32_t mat)
     {
         for (auto vein : map_veins.at(mat))
         {
-            if (auto block = Maps::getBlock(vein))
-            {
-                for (auto event : block->block_events)
-                {
-                    if (auto e = virtual_cast<df::block_square_event_mineralst>(event))
-                    {
-                        if (e->inorganic_mat != mat)
-                        {
-                            continue;
-                        }
-
-                        for (size_t x = 0; x < 16; x++)
-                        {
-                            for (size_t y = 0; y < 16; y++)
-                            {
-                                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, block->tiletype[x][y])) == tiletype_shape_basic::Wall &&
-                                    ENUM_ATTR(tiletype, material, block->tiletype[x][y]) == tiletype_material::MINERAL &&
-                                    e->tile_bitmask.getassignment(df::coord2d(uint16_t(x), uint16_t(y))))
-                                {
-                                    count++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            count += vein.second;
         }
     }
 
@@ -4586,7 +4581,8 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
         auto & q = map_vein_queue.at(mat);
         q.erase(std::remove_if(q.begin(), q.end(), [this, mat, &count, &out](std::pair<df::coord, df::tile_dig_designation> d) -> bool
         {
-            df::tiletype tt = *Maps::getTileType(d.first);
+            df::map_block *block = Maps::getTileBlock(d.first);
+            df::tiletype tt = block->tiletype[d.first.x & 0xf][d.first.y & 0xf];
             df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
             if (sb == tiletype_shape_basic::Open)
             {
@@ -4600,19 +4596,29 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
                     ai->debug(out, "[ERROR] could not find construction_type::" + ENUM_KEY_STR(tile_dig_designation, d.second));
                     return false;
                 }
-                std::ostringstream discard;
+
+                std::ofstream discard;
                 return try_furnish_construction(out, ctype, d.first, discard);
             }
+
             if (sb != tiletype_shape_basic::Wall)
             {
                 return true;
             }
-            if (Maps::getTileDesignation(d.first)->bits.dig == tile_dig_designation::No) // warm/wet tile
+
+            if (block->designation[d.first.x & 0xf][d.first.y & 0xf].bits.dig == tile_dig_designation::No) // warm/wet tile
+            {
                 AI::dig_tile(d.first, d.second);
-            if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL && mat_index_vein(d.first) == mat)
+            }
+
+            if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL && mat_index_vein(block, d.first) == mat)
+            {
                 count++;
+            }
+
             return false;
         }), q.end());
+
         if (q.empty())
         {
             map_vein_queue.erase(mat);
@@ -4632,15 +4638,18 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
     for (size_t i = 0; i < 16; i++)
     {
         if (count / 4 >= want_boulders)
+        {
             break;
+        }
+
         auto & veins = map_veins.at(mat);
-        auto it = std::find_if(veins.begin(), veins.end(), [this](df::coord c) -> bool
+        auto it = std::find_if(veins.begin(), veins.end(), [this](std::pair<df::coord, int32_t> c) -> bool
         {
             for (int16_t vx = -1; vx <= 1; vx++)
             {
                 for (int16_t vy = -1; vy <= 1; vy++)
                 {
-                    if (dug_veins.count(c + df::coord(16 * vx, 16 * vy, 0)))
+                    if (dug_veins.count(c.first + df::coord(16 * vx, 16 * vy, 0)))
                     {
                         return true;
                     }
@@ -4649,15 +4658,21 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
             return false;
         });
         if (it == veins.end())
+        {
             it--;
-        df::coord v = *it;
+        }
+
+        auto v = *it;
         map_veins.at(mat).erase(it);
-        int32_t cnt = do_dig_vein(out, mat, v);
+
+        int32_t cnt = do_dig_vein(out, mat, v.first);
         if (cnt > 0)
         {
-            dug_veins.insert(v);
+            dug_veins.insert(v.first);
         }
+
         count += cnt;
+
         if (map_veins.at(mat).empty())
         {
             map_veins.erase(mat);
@@ -4671,6 +4686,7 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
 int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
 {
     ai->debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
+
     int32_t count = 0;
     int16_t fort_miny = 0x7fff;
     int16_t fort_maxy = -1;
@@ -4684,12 +4700,21 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
             fort_minz = std::min(fort_minz, r->min.z);
         }
     }
-    if (b.z >= fort_minz)
+
+    std::set<df::coord> disallow_tile;
+
+    if (b.z >= fort_minz && b.y > fort_miny && b.y < fort_maxy)
     {
-        // TODO rooms outline
-        if (b.y > fort_miny && b.y < fort_maxy)
+        for (uint16_t dx = 0; dx < 16; dx++)
         {
-            return count;
+            for (uint16_t dy = 0; dy < 16; dy++)
+            {
+                df::coord c = b + df::coord(dx, dy, 0);
+                if (ai->find_room_at(c))
+                {
+                    disallow_tile.insert(c);
+                }
+            }
         }
     }
 
@@ -4698,17 +4723,20 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
     // dig whole block
     // TODO have the dwarves search for the vein
     // TODO mine in (visible?) chunks
+    df::map_block *block = Maps::getTileBlock(b);
     int16_t minx = 16, maxx = -1, miny = 16, maxy = -1;
     for (int16_t dx = 0; dx < 16; dx++)
     {
         if (b.x + dx == 0 || b.x + dx >= world->map.x_count - 1)
             continue;
+
         for (int16_t dy = 0; dy < 16; dy++)
         {
             if (b.y + dy == 0 || b.y + dy >= world->map.y_count - 1)
                 continue;
+
             df::coord t = b + df::coord(dx, dy, 0);
-            if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(t) == mat)
+            if (ENUM_ATTR(tiletype, material, block->tiletype[dx][dy]) == tiletype_material::MINERAL && mat_index_vein(block, t) == mat)
             {
                 minx = std::min(minx, dx);
                 maxx = std::max(maxx, dx);
@@ -4728,6 +4756,11 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         for (int16_t dy = miny; dy <= maxy; dy++)
         {
             df::coord t = b + df::coord(dx, dy, 0);
+            if (disallow_tile.count(t))
+            {
+                continue;
+            }
+
             if (Maps::getTileDesignation(t)->bits.dig == tile_dig_designation::No)
             {
                 bool ok = true;
@@ -4740,9 +4773,13 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
                         if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(tt))) != tiletype_shape_basic::Wall)
                         {
                             if (Maps::getTileDesignation(tt)->bits.hidden)
+                            {
                                 ok = false;
+                            }
                             else
+                            {
                                 ns = false;
+                            }
                         }
                         else if (Maps::getTileDesignation(tt)->bits.dig != tile_dig_designation::No)
                         {
@@ -4750,11 +4787,14 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
                         }
                     }
                 }
+
                 if (ok)
                 {
                     todo.push_back(std::make_pair(t, tile_dig_designation::Default));
-                    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(t) == mat)
+                    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::MINERAL && mat_index_vein(block, t) == mat)
+                    {
                         count++;
+                    }
                     need_shaft = ns;
                 }
             }

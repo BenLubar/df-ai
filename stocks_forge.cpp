@@ -233,7 +233,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
 
     if (can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && (ai->plan->should_search_for_metal || dry_run))
     {
-        for (auto k : ai->plan->map_veins)
+        for (auto & k : ai->plan->map_veins)
         {
             if (simple_metal_ores.at(mat_index).count(k.first))
             {
