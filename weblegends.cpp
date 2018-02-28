@@ -37,6 +37,32 @@ std::string html_escape(const std::string & str)
 
 bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & url)
 {
+    if (url == "/style.css")
+    {
+        handler.headers()["Content-Type"] = "text/css; charset=utf-8";
+        handler.raw_out() << "table {\n"
+            "\tbackground-color: #eee;\n"
+            "\tcolor: #000;\n"
+            "}\n"
+            "\n"
+            "td, th {\n"
+            "\tpadding: 0.1em 0.5em;\n"
+            "}\n"
+            "\n"
+            "td {\n"
+            "\tbackground-color: #fff;\n"
+            "}\n"
+            "\n"
+            "td.num {\n"
+            "\ttext-align: right;\n"
+            "}\n"
+            "\n"
+            "tbody th {\n"
+            "\ttext-align: left;\n"
+            "}\n";
+        return true;
+    }
+
     if (!enabled || !dwarfAI)
     {
         handler.status_code() = 503;
@@ -99,7 +125,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     }
     if (url == "/report/stocks")
     {
-        handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai report: stocks</title><base href=\"../..\"/></head>";
+        handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai report: stocks</title><base href=\"../..\"/><link rel=\"stylesheet\" href=\"df-ai/style.css\"/></head>";
         handler.cp437_out() << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report/plan\">Tasks</a> - <a href=\"df-ai/report/population\">Population</a> - <b>Stocks</b> - ";
         handler.cp437_out() << "<a href=\"df-ai/plan\">Blueprint</a> - <a href=\"df-ai/version\">Version</a></p></p>";
         handler.cp437_out() << "<h1 id=\"Stocks\">Stocks</h1>";

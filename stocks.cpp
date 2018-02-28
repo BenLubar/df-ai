@@ -353,7 +353,7 @@ void Stocks::report(std::ostream & out, bool html)
                 {
                     std::string name(ItemTypeInfo(item_type, subtype.first).toString());
                     int32_t max = compute_max(std::max(needed, subtype.second.first));
-                    out << "<tr><th>" << n.first << "</th><td>" << name << "</td><td>" << subtype.second.first << "</td><td>" << needed << "</td><td>" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td>";
+                    out << "<tr><th>" << n.first << "</th><td>" << name << "</td><td class=\"num\">" << subtype.second.first << "</td><td class=\"num\">" << needed << "</td><td class=\"num\">" << subtype.second.second << "</td><td><meter value=\"" << subtype.second.first << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td>";
                     if (count)
                     {
                         out << "<td rowspan=\"" << count << "\"><i>" << html_escape(compact_newlines(act_reason[n.first].str())) << "</i></td>";
@@ -365,7 +365,7 @@ void Stocks::report(std::ostream & out, bool html)
             else
             {
                 int32_t max = compute_max(std::max(needed, count_free[n.first]));
-                out << "<tr><th>" << n.first << "</th><td>-</td><td>" << count_free[n.first] << "</td><td>" << needed << "</td><td>" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[n.first].str())) << "</i></td></tr>";
+                out << "<tr><th>" << n.first << "</th><td>-</td><td class=\"num\">" << count_free[n.first] << "</td><td class=\"num\">" << needed << "</td><td class=\"num\">" << count_total[n.first] << "</td><td><meter value=\"" << count_free[n.first] << "\" low=\"" << (needed / 2) << "\" high=\"" << needed << "\" optimum=\"" << (needed + 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[n.first].str())) << "</i></td></tr>";
             }
         }
         else
@@ -387,7 +387,7 @@ void Stocks::report(std::ostream & out, bool html)
         if (html)
         {
             int32_t max = compute_max(std::max(w.second, count_free[w.first]));
-            out << "<tr><th>" << w.first << "</th><td>" << count_free[w.first] << "</td><td>" << w.second << "</td><td>" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << w.second << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << (w.second - 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[w.first].str())) << "</i></td></tr>";
+            out << "<tr><th>" << w.first << "</th><td class=\"num\">" << count_free[w.first] << "</td><td>" << w.second << "</td><td class=\"num\">" << count_total[w.first] << "</td><td><meter value=\"" << count_free[w.first] << "\" low=\"" << w.second << "\" high=\"" << (w.second * 2) << "\" optimum=\"" << (w.second - 1) << "\" max=\"" << max << "\"></meter></td><td><i>" << html_escape(compact_newlines(act_reason[w.first].str())) << "</i></td></tr>";
         }
         else
         {
@@ -407,7 +407,7 @@ void Stocks::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            out << "<tr><th>" << t << "</th><td>" << count_free[t] << "</td><td>" << count_total[t] << "</td></tr>";
+            out << "<tr><th>" << t << "</th><td class=\"num\">" << count_free[t] << "</td><td class=\"num\">" << count_total[t] << "</td></tr>";
         }
         else
         {
@@ -417,7 +417,7 @@ void Stocks::report(std::ostream & out, bool html)
 
     if (html)
     {
-        out << "</tbody></table><h2 id=\"Stocks_Ingots\">Ingots</h2><table><thead><tr><th>Metal</th><th>Current</th></tr></thead><tbody>";
+        out << "</tbody></table><h2 id=\"Stocks_Ingots\">Ingots</h2><table><thead><tr><th>Metal</th><th>Current</th><th>Potential</th></tr></thead><tbody>";
     }
     else
     {
@@ -429,7 +429,7 @@ void Stocks::report(std::ostream & out, bool html)
 
         if (html)
         {
-            out << "<tr><th>" << html_escape(mat->material.state_name[matter_state::Solid]) << "</th><td>" << t.second << "</td></tr>";
+            out << "<tr><th>" << html_escape(mat->material.state_name[matter_state::Solid]) << "</th><td class=\"num\">" << t.second << "</td></tr>";
         }
         else
         {
@@ -449,7 +449,7 @@ void Stocks::report(std::ostream & out, bool html)
     {
         if (html)
         {
-            out << "<tr><th>" << html_escape(AI::describe_job(mo)) << "</th><td>" << mo->amount_left << "</td><td>" << mo->amount_total << "</td>";
+            out << "<tr><th>" << html_escape(AI::describe_job(mo)) << "</th><td class=\"num\">" << mo->amount_left << "</td><td class=\"num\">" << mo->amount_total << "</td>";
             if (!mo->status.bits.validated && mo->amount_left == mo->amount_total)
             {
                 out << "<td><progress max=\"" << mo->amount_total << "\"></progress></td></tr>";
