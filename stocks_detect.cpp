@@ -10,6 +10,7 @@
 #include "df/general_ref_contains_itemst.h"
 #include "df/general_ref_unit_holderst.h"
 #include "df/item_boulderst.h"
+#include "df/job.h"
 #include "df/reaction.h"
 #include "df/reaction_reagent_itemst.h"
 #include "df/reaction_product_itemst.h"
@@ -23,7 +24,6 @@ REQUIRE_GLOBAL(world);
 bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
 {
     if (i->flags.bits.trader || // merchant's item
-        i->flags.bits.in_job || // current job item
         i->flags.bits.construction ||
         i->flags.bits.encased ||
         i->flags.bits.removed || // deleted object
@@ -32,6 +32,20 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         i->flags.bits.in_chest) // in infirmary (XXX dwarf owned items ?)
     {
         return false;
+    }
+
+    if (i->flags.bits.in_job)
+    {
+        for (auto ref : i->specific_refs)
+        {
+            if (ref->type == specific_ref_type::JOB)
+            {
+                if (ENUM_ATTR(job_type, type, ref->job->job_type) != job_type_class::Hauling)
+                {
+                    return false;
+                }
+            }
+        }
     }
 
     if (i->flags.bits.container && !allow_nonempty)
