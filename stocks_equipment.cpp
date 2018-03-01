@@ -263,7 +263,7 @@ void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, df::it
         queue_need_armor_helper<df::itemdef_glovesst, df::item_glovesst>(ai, out, what, oidx, ue.gloves_id, job_type::MakeGloves, reason, 2);
         return;
     case items_other_id::SHOES:
-        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, what, oidx, ue.shoes_id, job_type::MakeGloves, reason, 2);
+        queue_need_armor_helper<df::itemdef_shoesst, df::item_shoesst>(ai, out, what, oidx, ue.shoes_id, job_type::MakeShoes, reason, 2);
         return;
     default:
         return;
