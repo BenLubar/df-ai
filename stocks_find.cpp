@@ -106,6 +106,34 @@ static bool is_cage_free(df::item *i)
     return true;
 }
 
+static std::set<std::string> find_ammo_classes(df::job_skill skill = job_skill::NONE, bool training = false)
+{
+    std::set<std::string> classes;
+    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.weapon_id)
+    {
+        auto def = df::itemdef_weaponst::find(id);
+
+        if (skill != job_skill::NONE && def->skill_ranged != skill)
+        {
+            continue;
+        }
+
+        if (def->skill_ranged == job_skill::NONE)
+        {
+            continue;
+        }
+
+        if (def->flags.is_set(weapon_flags::TRAINING) != training)
+        {
+            continue;
+        }
+
+        classes.insert(def->ranged_ammo);
+    }
+
+    return classes;
+}
+
 Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 {
     switch (k)
@@ -400,6 +428,74 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     case stock_item::goblet:
     {
         return find_item_info(items_other_id::GOBLET);
+    }
+    case stock_item::goblinite:
+    {
+        auto ammo_classes = find_ammo_classes();
+        return find_item_info(items_other_id::IN_PLAY, [this, ammo_classes](df::item *i) -> bool
+        {
+            if (i->flags.bits.melt)
+            {
+                return true;
+            }
+
+            if (!i->flags.bits.foreign || i->flags.bits.artifact || i->flags.bits.artifact_mood)
+            {
+                return false;
+            }
+
+            if (!is_item_free(i))
+            {
+                // Don't count raw goblinite.
+                return false;
+            }
+
+            if (MaterialInfo(i).getCraftClass() != craft_material_class::Metal)
+            {
+                return false;
+            }
+
+            if (i->isRangedWeapon())
+            {
+                // Keep ranged weapons we can make.
+                if (find_item_helper(stock_item::weapon_ranged).pred(i))
+                {
+                    return false;
+                }
+            }
+            else if (i->isWeapon())
+            {
+                // Keep all weapons for now.
+                return false;
+            }
+            else if (i->isArmor())
+            {
+                if (can_wear_item_from_race.at(size_t(i->getMakerRace())))
+                {
+                    // Keep armor if we can wear it.
+                    return false;
+                }
+            }
+            else if (auto ammo = virtual_cast<df::item_ammost>(i))
+            {
+                // Keep ammo we can use.
+                if (ammo_classes.count(ammo->subtype->ammo_class))
+                {
+                    return false;
+                }
+            }
+            else if (i->getType() != item_type::COIN)
+            {
+                // Keep misc. items like anvils and cages.
+                return false;
+            }
+
+            i->uncategorize();
+            i->flags.bits.melt = 1;
+            i->categorize(true);
+
+            return true;
+        });
     }
     case stock_item::gypsum:
     {
@@ -835,28 +931,7 @@ Stocks::find_item_info Stocks::find_item_helper_digger(df::job_skill skill, bool
 
 Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool training)
 {
-    std::set<std::string> classes;
-    for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.weapon_id)
-    {
-        auto def = df::itemdef_weaponst::find(id);
-
-        if (skill != job_skill::NONE && def->skill_ranged != skill)
-        {
-            continue;
-        }
-
-        if (def->skill_ranged == job_skill::NONE)
-        {
-            continue;
-        }
-
-        if (def->flags.is_set(weapon_flags::TRAINING) != training)
-        {
-            continue;
-        }
-
-        classes.insert(def->ranged_ammo);
-    }
+    auto classes = find_ammo_classes(skill, training);
 
     std::set<int16_t> idefs;
     for (int16_t id : ui->main.fortress_entity->entity_raw->equipment.ammo_id)

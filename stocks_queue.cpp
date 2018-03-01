@@ -782,6 +782,24 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         }
         break;
     }
+    case stock_item::goblinite:
+    {
+        // make coke from bituminous coal has priority if there isn't a magma smelter
+        if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty() &&
+            count_free.at(stock_item::raw_coke) > Watch.WatchStock.at(stock_item::raw_coke) &&
+            count_free.at(stock_item::coal) < 100)
+        {
+            reason << "making coal instead";
+            return;
+        }
+
+        tmpl.job_type = job_type::MeltMetalObject;
+        if (world->buildings.other[buildings_other_id::FURNACE_SMELTER_MAGMA].empty())
+        {
+            input.push_back(stock_item::coal);
+        }
+        break;
+    }
     case stock_item::honey:
     {
         tmpl.job_type = job_type::CustomReaction;
