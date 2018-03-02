@@ -470,7 +470,9 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             }
             else if (i->isArmor())
             {
-                if (can_wear_item_from_race.at(size_t(i->getMakerRace())))
+                auto maker = df::creature_raw::find(i->getMakerRace());
+                auto own_race = df::creature_raw::find(ui->race_id);
+                if (maker && own_race && maker->adultsize == own_race->adultsize)
                 {
                     // Keep armor if we can wear it.
                     return false;

@@ -211,7 +211,6 @@ public:
 
 private:
     std::set<std::tuple<farm_type::type, df::biome_type, int8_t>> complained_about_no_plants;
-    std::vector<bool> can_wear_item_from_race;
 
 public:
     Stocks(AI *ai);
@@ -230,7 +229,6 @@ public:
     void update(color_ostream & out);
     void update_kitchen(color_ostream & out);
     void update_plants(color_ostream & out);
-    void update_race_clothing(color_ostream & out);
     void count_seeds(color_ostream & out);
     void count_plants(color_ostream & out);
     void update_corpses(color_ostream & out);

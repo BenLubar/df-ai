@@ -210,8 +210,7 @@ Stocks::Stocks(AI *ai) :
     raw_coke_inv(),
     metal_pref(),
     simple_metal_ores(),
-    complained_about_no_plants(),
-    can_wear_item_from_race()
+    complained_about_no_plants()
 {
     last_cutpos.clear();
 }
@@ -237,7 +236,6 @@ command_result Stocks::startup(color_ostream & out)
 {
     update_kitchen(out);
     update_plants(out);
-    update_race_clothing(out);
     update_simple_metal_ores(out);
     ui->stockpile.reserved_barrels = 5;
     return CR_OK;
@@ -582,26 +580,6 @@ void Stocks::update_plants(color_ostream &)
         {
             clay_stones.insert(i);
         }
-    }
-}
-
-// TODO: determine formula and remove this function
-void Stocks::update_race_clothing(color_ostream &)
-{
-    can_wear_item_from_race.clear();
-    auto item = df::allocate<df::item_armorst>();
-    item->temperature.whole = 10015;
-    item->subtype = world->raws.itemdefs.armor.at(0);
-    item->maker_race = ui->race_id;
-
-    std::string expected;
-    item->getItemDescription(&expected, 0);
-    for (size_t i = 0; i < world->raws.creatures.all.size(); i++)
-    {
-        std::string actual;
-        item->maker_race = int32_t(i);
-        item->getItemDescription(&actual, 0);
-        can_wear_item_from_race.push_back(actual == expected);
     }
 }
 
