@@ -1271,7 +1271,7 @@ void Population::report(std::ostream & out, bool html)
                     }
                     else
                     {
-                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " splint";
+                        out << MaterialInfo(&op->info.bandage).toString() << " splint";
                     }
                     out << ".";
                     break;
@@ -1287,7 +1287,7 @@ void Population::report(std::ostream & out, bool html)
                     }
                     else
                     {
-                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " cloth";
+                        out << MaterialInfo(&op->info.bandage).toString() << " cloth";
                     }
                     out << ".";
                     break;
@@ -1310,7 +1310,7 @@ void Population::report(std::ostream & out, bool html)
                         MaterialInfo soap(&op->info.bandage);
                         if (soap.material)
                         {
-                            out << " with " << soap.material->state_name[matter_state::Solid];
+                            out << " with " << soap.toString();
                         }
                     }
                     out << ".";
@@ -1338,7 +1338,7 @@ void Population::report(std::ostream & out, bool html)
                     }
                     else
                     {
-                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid];
+                        out << MaterialInfo(&op->info.bandage).toString();
                     }
                     out << " sutures";
                     if (part)
@@ -1383,7 +1383,7 @@ void Population::report(std::ostream & out, bool html)
                     }
                     else
                     {
-                        out << MaterialInfo(&op->info.crutch).material->state_name[matter_state::Solid] << " " << ItemTypeInfo(df::item_type(op->info.crutch.item_type), int16_t(op->info.crutch.item_subtype)).toString();
+                        out << MaterialInfo(&op->info.crutch).toString() << " " << ItemTypeInfo(df::item_type(op->info.crutch.item_type), int16_t(op->info.crutch.item_subtype)).toString();
                     }
                     out << ".";
                     break;
@@ -1399,7 +1399,7 @@ void Population::report(std::ostream & out, bool html)
                     }
                     else
                     {
-                        out << MaterialInfo(&op->info.bandage).material->state_name[matter_state::Solid] << " cast";
+                        out << MaterialInfo(&op->info.bandage).toString() << " cast";
                     }
                     if (part)
                     {
