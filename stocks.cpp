@@ -32,8 +32,8 @@ Watch::Watch()
 {
     Needed[stock_item::ammo] = 50;
     Needed[stock_item::anvil] = 1;
-    Needed[stock_item::armor_feet] = 2;
-    Needed[stock_item::armor_hands] = 2;
+    Needed[stock_item::armor_feet] = 4;
+    Needed[stock_item::armor_hands] = 4;
     Needed[stock_item::armor_head] = 2;
     Needed[stock_item::armor_legs] = 2;
     Needed[stock_item::armor_shield] = 2;
@@ -55,8 +55,8 @@ Watch::Watch()
     Needed[stock_item::cage_metal] = 1;
     Needed[stock_item::chair] = 3;
     Needed[stock_item::chest] = 4;
-    Needed[stock_item::clothes_feet] = 2;
-    Needed[stock_item::clothes_hands] = 2;
+    Needed[stock_item::clothes_feet] = 4;
+    Needed[stock_item::clothes_hands] = 4;
     Needed[stock_item::clothes_head] = 2;
     Needed[stock_item::clothes_legs] = 2;
     Needed[stock_item::clothes_torso] = 2;
@@ -106,15 +106,15 @@ Watch::Watch()
     Needed[stock_item::wood] = 16;
 
     NeededPerDwarf[stock_item::ammo] = 500;
-    NeededPerDwarf[stock_item::armor_feet] = 3;
-    NeededPerDwarf[stock_item::armor_hands] = 3;
+    NeededPerDwarf[stock_item::armor_feet] = 6;
+    NeededPerDwarf[stock_item::armor_hands] = 6;
     NeededPerDwarf[stock_item::armor_head] = 3;
     NeededPerDwarf[stock_item::armor_legs] = 3;
     NeededPerDwarf[stock_item::armor_shield] = 3;
     NeededPerDwarf[stock_item::armor_torso] = 3;
     NeededPerDwarf[stock_item::cloth] = 20;
-    NeededPerDwarf[stock_item::clothes_feet] = 20;
-    NeededPerDwarf[stock_item::clothes_hands] = 20;
+    NeededPerDwarf[stock_item::clothes_feet] = 40;
+    NeededPerDwarf[stock_item::clothes_hands] = 40;
     NeededPerDwarf[stock_item::clothes_head] = 20;
     NeededPerDwarf[stock_item::clothes_legs] = 20;
     NeededPerDwarf[stock_item::clothes_torso] = 20;

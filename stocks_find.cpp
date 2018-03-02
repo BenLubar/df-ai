@@ -854,7 +854,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, int32_t div = 1, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, std::function<bool(I *)> free = [](I *) -> bool { return true; }, bool count_min = true)
+static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id oidx, std::set<int16_t> idefs, std::function<bool(I *)> pred = [](I *) -> bool { return true; }, std::function<bool(I *)> free = [](I *) -> bool { return true; }, bool count_min = true)
 {
     auto match = [idefs, pred](df::item *item) -> bool
     {
@@ -871,23 +871,7 @@ static Stocks::find_item_info find_item_helper_equip_helper(df::items_other_id o
         return i && idefs.count(i->subtype->subtype) && pred(i);
     };
 
-    auto count = [div](int32_t & init, df::item *i) -> int32_t
-    {
-        if (init == -1)
-        {
-            init = div;
-        }
-        int32_t n = 0;
-        init -= i->getStackSize();
-        while (init <= 0)
-        {
-            n++;
-            init += div;
-        }
-        return n;
-    };
-
-    return Stocks::find_item_info(oidx, match, count, [free](df::item *i) -> bool
+    return Stocks::find_item_info(oidx, match, &Stocks::find_item_info::default_count, [free](df::item *i) -> bool
     {
         return Stocks::is_item_free(i) && free(virtual_cast<I>(i));
     }, idefs, count_min);
@@ -918,7 +902,7 @@ static Stocks::find_item_info find_item_helper_weapon_helper(const std::vector<i
         idefs.insert(id);
     }
 
-    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs, 1, [](df::item_weaponst *) -> bool { return true; }, [](df::item_weaponst *) -> bool { return true; }, count_min);
+    return find_item_helper_equip_helper<df::item_weaponst>(items_other_id::WEAPON, idefs, [](df::item_weaponst *) -> bool { return true; }, [](df::item_weaponst *) -> bool { return true; }, count_min);
 }
 
 Stocks::find_item_info Stocks::find_item_helper_weapon(df::job_skill skill, bool training, bool ranged)
@@ -955,7 +939,7 @@ template<typename D>
 static bool is_armor_metal(D *def) { return def->props.flags.is_set(armor_general_flags::METAL); }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, int32_t div = 1, std::function<bool(decltype(I::subtype))> pred = &is_armor_metal<typename std::remove_pointer<decltype(I::subtype)>::type>)
+static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, std::function<bool(decltype(I::subtype))> pred = &is_armor_metal<typename std::remove_pointer<decltype(I::subtype)>::type>)
 {
     typedef typename std::remove_pointer<decltype(I::subtype)>::type D;
     std::set<int16_t> idefs;
@@ -966,7 +950,7 @@ static Stocks::find_item_info find_item_helper_armor_helper(df::items_other_id o
             idefs.insert(id);
         }
     }
-    return find_item_helper_equip_helper<I>(oidx, idefs, div, [](I *i) -> bool
+    return find_item_helper_equip_helper<I>(oidx, idefs, [](I *i) -> bool
     {
         return i->mat_type == 0; // XXX
     });
@@ -980,22 +964,22 @@ Stocks::find_item_info Stocks::find_item_helper_armor(df::items_other_id oidx)
     case items_other_id::ARMOR:
         return find_item_helper_armor_helper<df::item_armorst>(oidx, ue.armor_id);
     case items_other_id::SHIELD:
-        return find_item_helper_armor_helper<df::item_shieldst>(oidx, ue.shield_id, 1, [](df::itemdef_shieldst *) -> bool { return true; });
+        return find_item_helper_armor_helper<df::item_shieldst>(oidx, ue.shield_id, [](df::itemdef_shieldst *) -> bool { return true; });
     case items_other_id::HELM:
         return find_item_helper_armor_helper<df::item_helmst>(oidx, ue.helm_id);
     case items_other_id::PANTS:
         return find_item_helper_armor_helper<df::item_pantsst>(oidx, ue.pants_id);
     case items_other_id::GLOVES:
-        return find_item_helper_armor_helper<df::item_glovesst>(oidx, ue.gloves_id, 2);
+        return find_item_helper_armor_helper<df::item_glovesst>(oidx, ue.gloves_id);
     case items_other_id::SHOES:
-        return find_item_helper_armor_helper<df::item_shoesst>(oidx, ue.shoes_id, 2);
+        return find_item_helper_armor_helper<df::item_shoesst>(oidx, ue.shoes_id);
     default:
         throw DFHack::Error::InvalidArgument();
     }
 }
 
 template<typename I>
-static Stocks::find_item_info find_item_helper_clothes_helper(df::items_other_id oidx, const std::vector<int16_t> & ids, int32_t div = 1)
+static Stocks::find_item_info find_item_helper_clothes_helper(df::items_other_id oidx, const std::vector<int16_t> & ids)
 {
     typedef typename std::remove_pointer<decltype(I::subtype)>::type D;
     std::set<int16_t> idefs;
@@ -1007,7 +991,7 @@ static Stocks::find_item_info find_item_helper_clothes_helper(df::items_other_id
             idefs.insert(id);
         }
     }
-    return find_item_helper_equip_helper<I>(oidx, idefs, div, [](I *i) -> bool
+    return find_item_helper_equip_helper<I>(oidx, idefs, [](I *i) -> bool
     {
         return i->mat_type != 0; // XXX
     }, [](I *i) -> bool
@@ -1028,9 +1012,9 @@ Stocks::find_item_info Stocks::find_item_helper_clothes(df::items_other_id oidx)
     case items_other_id::PANTS:
         return find_item_helper_clothes_helper<df::item_pantsst>(oidx, ue.pants_id);
     case items_other_id::GLOVES:
-        return find_item_helper_clothes_helper<df::item_glovesst>(oidx, ue.gloves_id, 2);
+        return find_item_helper_clothes_helper<df::item_glovesst>(oidx, ue.gloves_id);
     case items_other_id::SHOES:
-        return find_item_helper_clothes_helper<df::item_shoesst>(oidx, ue.shoes_id, 2);
+        return find_item_helper_clothes_helper<df::item_shoesst>(oidx, ue.shoes_id);
     default:
         throw DFHack::Error::InvalidArgument();
     }
