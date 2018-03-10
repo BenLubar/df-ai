@@ -258,7 +258,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
     int32_t best_reaction_output = -1;
 
     // "make <mi> bars" customreaction
-    for (auto r : world->raws.reactions)
+    for (auto r : world->raws.reactions.reactions)
     {
         // XXX choose best reaction from all reactions
         int32_t prod_mult = -1;

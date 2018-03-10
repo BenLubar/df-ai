@@ -136,7 +136,7 @@ std::string Stocks::is_raw_coke(int32_t mi)
     // mat_index => custom reaction name
     if (raw_coke.empty())
     {
-        for (auto r : world->raws.reactions)
+        for (auto r : world->raws.reactions.reactions)
         {
             if (r->reagents.size() != 1)
                 continue;
