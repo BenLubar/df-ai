@@ -121,17 +121,54 @@ command_result AI::startup(color_ostream & out)
     return res;
 }
 
+class AbandonExclusive : public ExclusiveCallback
+{
+public:
+    AbandonExclusive() : ExclusiveCallback("abandon", 2) {}
+
+    virtual void Run(color_ostream & out)
+    {
+        Do([&]()
+        {
+            auto view = df::allocate<df::viewscreen_optionst>();
+
+            // TODO: These are the options from regular fortress mode. Are they different during a siege?
+            view->options.push_back(df::viewscreen_optionst::Return);
+            view->options.push_back(df::viewscreen_optionst::Save);
+            view->options.push_back(df::viewscreen_optionst::KeyBindings);
+            view->options.push_back(df::viewscreen_optionst::ExportImage);
+            view->options.push_back(df::viewscreen_optionst::MusicSound);
+            view->options.push_back(df::viewscreen_optionst::AbortRetire);
+            view->options.push_back(df::viewscreen_optionst::Abandon);
+
+            Screen::show(view);
+        });
+
+        Delay();
+
+        Do([&]()
+        {
+            auto view = virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true));
+            if (!view)
+            {
+                return;
+            }
+
+            auto option = std::find(view->options.begin(), view->options.end(), df::viewscreen_optionst::Abandon);
+            MoveToItem(view->sel_idx, int32_t(option - view->options.begin()));
+        });
+
+        Key(interface_key::SELECT);
+        Key(interface_key::MENU_CONFIRM);
+
+        // current view switches to a textviewer at this point
+        Key(interface_key::SELECT);
+    }
+};
+
 void AI::abandon(color_ostream &)
 {
-    if (!config.random_embark)
-        return;
-    df::viewscreen_optionst *view = df::allocate<df::viewscreen_optionst>();
-    view->options.push_back(df::viewscreen_optionst::Abandon);
-    Screen::show(view);
-    feed_key(view, interface_key::SELECT);
-    feed_key(view, interface_key::MENU_CONFIRM);
-    // current view switches to a textviewer at this point
-    feed_key(interface_key::SELECT);
+    events.register_exclusive(new AbandonExclusive(), true);
 }
 
 void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)

@@ -61,7 +61,10 @@ bool check_enabled(color_ostream & out)
                         return true;
                     }
                     dwarfAI->onupdate_unregister(out);
-                    dwarfAI->abandon(out);
+                    if (config.random_embark)
+                    {
+                        AI::abandon(out);
+                    }
                     full_reset_requested = true;
                     return true;
                 }
@@ -110,6 +113,8 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         "  Enables AI control of the camera.\n"
         "ai disable camera\n"
         "  Undoes \"ai enable camera\".\n"
+        "ai abandon\n"
+        "  Abandons the current fortress.\n"
     ));
 
     add_weblegends_handler("df-ai", &ai_weblegends_handler, "Artificial Intelligence");
@@ -223,6 +228,17 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         std::ofstream f("df-ai-report.log", std::ofstream::trunc);
         AI::write_df(f, str);
         out << "report written to df-ai-report.log" << std::endl;
+        return CR_OK;
+    }
+    else if (args.size() == 1 && args[0] == "abandon")
+    {
+        if (!Core::getInstance().isWorldLoaded())
+        {
+            out << "cannot abandon while no world is loaded" << std::endl;
+            return CR_OK;
+        }
+
+        AI::abandon(out);
         return CR_OK;
     }
 
