@@ -3038,6 +3038,7 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
     if (r->type == room_type::infirmary)
     {
         AI::feed_key(interface_key::CIVZONE_HOSPITAL);
+        AI::feed_key(interface_key::CIVZONE_ANIMAL_TRAINING); // for the DFHack animal hospital plugin
     }
     else if (r->type == room_type::garbagedump)
     {
