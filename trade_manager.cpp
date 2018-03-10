@@ -397,12 +397,14 @@ void PerformTradeExclusive::Run(color_ostream & out)
             ai->debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
 
             want_items.clear();
+            std::vector<df::item *> want_items_items;
 
             for (auto it = trade->trader_items.begin(); it != trade->trader_items.end(); it++)
             {
-                if (ai->stocks->want_trader_item(out, *it))
+                if (ai->stocks->want_trader_item(out, *it, want_items_items))
                 {
                     want_items.push_back(it - trade->trader_items.begin());
+                    want_items_items.push_back(*it);
                 }
             }
             std::sort(want_items.begin(), want_items.end(), [this, trade](size_t a, size_t b) -> bool

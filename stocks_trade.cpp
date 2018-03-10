@@ -34,7 +34,7 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
     return false;
 }
 
-bool Stocks::want_trader_item(color_ostream &, df::item *item)
+bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector<df::item *> & already_want)
 {
     if (item->hasSpecificImprovements(improvement_type::WRITING) || item->getType() == item_type::BOOK)
     {
@@ -61,12 +61,20 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item)
         return true;
     }
 
-    if (item->getType() == item_type::ANVIL && count_free[stock_item::anvil] == 0 && ai->find_room(room_type::workshop, [](room *r) -> bool
+    if (item->getType() == item_type::ANVIL)
     {
-        return r->workshop_type == workshop_type::MetalsmithsForge && r->status != room_status::plan && !r->dfbuilding();
-    }))
-    {
-        return true;
+        int32_t anvils_wanted = -int32_t(std::count_if(already_want.begin(), already_want.end(), [](df::item *i) -> bool { return i->getType() == item_type::ANVIL; }));
+        anvils_wanted -= count_free[stock_item::anvil];
+        ai->find_room(room_type::workshop, [&anvils_wanted](room *r) -> bool
+        {
+            if (r->workshop_type == workshop_type::MetalsmithsForge && !r->dfbuilding())
+            {
+                anvils_wanted++;
+            }
+            return false;
+        });
+
+        return anvils_wanted >= 0;
     }
 
     return false;
