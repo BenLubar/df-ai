@@ -126,7 +126,7 @@ class AbandonExclusive : public ExclusiveCallback
 public:
     AbandonExclusive() : ExclusiveCallback("abandon", 2) {}
 
-    virtual void Run(color_ostream & out)
+    virtual void Run(color_ostream &)
     {
         Do([&]()
         {
