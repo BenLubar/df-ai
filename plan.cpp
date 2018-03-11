@@ -2228,6 +2228,7 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         building_type = building_type::Trap;
         building_subtype = trap_type::TrackStop;
         stocks_furniture_type = stock_item::mechanism;
+        break;
     case layout_type::traction_bench:
         building_type = building_type::TractionBench;
         stocks_furniture_type = stock_item::traction_bench;
