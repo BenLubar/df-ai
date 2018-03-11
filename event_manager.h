@@ -130,6 +130,7 @@ private:
     void clear();
 
     ExclusiveCallback *exclusive;
+    ExclusiveCallback *delay_delete_exclusive;
     std::list<ExclusiveCallback *> exclusive_queue;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;

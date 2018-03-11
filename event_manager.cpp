@@ -75,6 +75,7 @@ OnstatechangeCallback::OnstatechangeCallback(const std::string & descr, std::fun
 
 EventManager::EventManager() :
     exclusive(),
+    delay_delete_exclusive(),
     exclusive_queue(),
     onupdate_list(),
     onstatechange_list()
@@ -93,6 +94,12 @@ void EventManager::clear()
         TICK_DEBUG("clearing exclusive: " << exclusive->description);
         delete exclusive;
         exclusive = nullptr;
+    }
+    if (delay_delete_exclusive)
+    {
+        TICK_DEBUG("[delayed] clearing exclusive: " << delay_delete_exclusive->description);
+        delete delay_delete_exclusive;
+        delay_delete_exclusive = nullptr;
     }
     TICK_DEBUG("clearing exclusive queue");
     for (auto it : exclusive_queue)
@@ -202,7 +209,15 @@ bool EventManager::register_exclusive(ExclusiveCallback *cb, bool force)
         if (force)
         {
             TICK_DEBUG("forcing registration");
-            delete exclusive;
+            if (delay_delete_exclusive)
+            {
+                // not active
+                delete exclusive;
+            }
+            else
+            {
+                delay_delete_exclusive = exclusive;
+            }
         }
         else
         {
@@ -223,6 +238,13 @@ void EventManager::queue_exclusive(ExclusiveCallback *cb)
 
 void EventManager::onupdate(color_ostream & out)
 {
+    if (delay_delete_exclusive)
+    {
+        TICK_DEBUG("onupdate: [delayed] deleting exclusive: " << delay_delete_exclusive->description);
+        delete delay_delete_exclusive;
+        delay_delete_exclusive = nullptr;
+    }
+
     if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())
     {
         TICK_DEBUG("onupdate: next exclusive from queue");
