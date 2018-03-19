@@ -23,7 +23,8 @@ REQUIRE_GLOBAL(world);
 // check if an item is free to use
 bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
 {
-    if (i->flags.bits.trader || // merchant's item
+    if (!i ||
+        i->flags.bits.trader || // merchant's item
         i->flags.bits.construction ||
         i->flags.bits.encased ||
         i->flags.bits.removed || // deleted object
@@ -65,9 +66,9 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         // is not in a unit's inventory (ignore if it is simply hauled)
         for (auto ir : i->general_refs)
         {
-            if (virtual_cast<df::general_ref_unit_holderst>(ir))
+            if (auto u = virtual_cast<df::general_ref_unit_holderst>(ir) ? ir->getUnit() : nullptr)
             {
-                auto & inv = ir->getUnit()->inventory;
+                auto & inv = u->inventory;
                 for (auto ii : inv)
                 {
                     if (ii->item == i && ii->mode != df::unit_inventory_item::Hauled)
@@ -88,9 +89,9 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         // is not part of a building construction materials
         for (auto ir = i->general_refs.begin(); ir != i->general_refs.end(); ir++)
         {
-            if (virtual_cast<df::general_ref_building_holderst>(*ir))
+            if (auto bld = virtual_cast<df::general_ref_building_holderst>(*ir) ? virtual_cast<df::building_actual>((*ir)->getBuilding()) : nullptr)
             {
-                auto & inv = virtual_cast<df::building_actual>((*ir)->getBuilding())->contained_items;
+                auto & inv = bld->contained_items;
                 for (auto bi = inv.begin(); bi != inv.end(); bi++)
                 {
                     if ((*bi)->use_mode == 2 && (*bi)->item == i)
@@ -103,6 +104,10 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
     }
 
     df::coord pos = Items::getPosition(i);
+    if (!pos.isValid())
+    {
+        return false;
+    }
 
     extern AI *dwarfAI; // XXX
 
