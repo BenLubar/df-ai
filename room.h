@@ -51,6 +51,7 @@ BEGIN_ENUM(room, type) \
     ENUM_ITEM(pond) \
     ENUM_ITEM(stockpile) \
     ENUM_ITEM(tradedepot) \
+    ENUM_ITEM(windmill) \
     ENUM_ITEM(workshop) \
 END_ENUM(room, type) \
 \
@@ -139,7 +140,6 @@ BEGIN_ENUM(layout, type) \
     ENUM_ITEM(vertical_axle) \
     ENUM_ITEM(weapon_rack) \
     ENUM_ITEM(well) \
-    ENUM_ITEM(windmill) \
 END_ENUM(layout, type) \
 \
 BEGIN_ENUM(task, type) \
@@ -152,6 +152,7 @@ BEGIN_ENUM(task, type) \
     ENUM_ITEM(construct_furnace) \
     ENUM_ITEM(construct_stockpile) \
     ENUM_ITEM(construct_tradedepot) \
+    ENUM_ITEM(construct_windmill) \
     ENUM_ITEM(construct_workshop) \
     ENUM_ITEM(dig_cistern) \
     ENUM_ITEM(dig_garbage) \

@@ -137,7 +137,6 @@ public:
     bool try_furnish_well(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
     bool try_furnish_archerytarget(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
     bool try_furnish_construction(color_ostream & out, df::construction_type ctype, df::coord t, std::ostream & reason);
-    bool try_furnish_windmill(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
     bool try_furnish_roller(color_ostream & out, room *r, furniture *f, df::coord t, std::ostream & reason);
 
     bool try_construct_tradedepot(color_ostream & out, room *r, std::ostream & reason);
@@ -145,6 +144,7 @@ public:
     bool try_construct_furnace(color_ostream & out, room *r, std::ostream & reason);
     bool try_construct_stockpile(color_ostream & out, room *r, std::ostream & reason);
     bool try_construct_activityzone(color_ostream & out, room *r, std::ostream & reason);
+    bool try_construct_windmill(color_ostream & out, room *r, std::ostream & reason);
 
     bool monitor_farm_irrigation(color_ostream & out, room *r, std::ostream & reason);
     bool can_place_farm(color_ostream & out, room *r, bool cheat, std::ostream & reason);

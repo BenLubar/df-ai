@@ -403,6 +403,9 @@ void Plan::update(color_ostream &)
             case task_type::construct_activityzone:
                 del = try_construct_activityzone(out, t.r, reason);
                 break;
+            case task_type::construct_windmill:
+                del = try_construct_windmill(out, t.r, reason);
+                break;
             case task_type::monitor_farm_irrigation:
                 del = monitor_farm_irrigation(out, t.r, reason);
                 break;
@@ -1135,10 +1138,6 @@ void Plan::load(std::istream & in)
             else if (f["item"].asString() == "well")
             {
                 (*it)->type = layout_type::well;
-            }
-            else if (f["item"].asString() == "windmill")
-            {
-                (*it)->type = layout_type::windmill;
             }
         }
         find_enum_item(&(*it)->construction, f["construction"].asString());
@@ -2033,6 +2032,12 @@ bool Plan::construct_room(color_ostream & out, room *r)
         return true;
     }
 
+    if (r->type == room_type::windmill)
+    {
+        add_task(task_type::construct_windmill, r);
+        return true;
+    }
+
     if (r->type == room_type::cistern)
     {
         return construct_cistern(out, r);
@@ -2243,8 +2248,6 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         break;
     case layout_type::well:
         return try_furnish_well(out, r, f, tgtile, reason);
-    case layout_type::windmill:
-        return try_furnish_windmill(out, r, f, tgtile, reason);
 
     case layout_type::_layout_type_count:
         return true;
@@ -2475,8 +2478,9 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
     return true;
 }
 
-bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coord t, std::ostream & reason)
+bool Plan::try_construct_windmill(color_ostream &, room *r, std::ostream & reason)
 {
+    df::coord t = r->pos();
     auto sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t)));
     if (sb != tiletype_shape_basic::Open)
     {
@@ -2494,8 +2498,8 @@ bool Plan::try_furnish_windmill(color_ostream &, room *r, furniture *f, df::coor
     df::building *bld = Buildings::allocInstance(t - df::coord(1, 1, 0), building_type::Windmill);
     Buildings::setSize(bld, df::coord(3, 3, 1));
     Buildings::constructWithItems(bld, mat);
-    f->bld_id = bld->id;
-    add_task(task_type::check_furnish, r, f);
+    r->bld_id = bld->id;
+    add_task(task_type::check_construct, r);
     return true;
 }
 
