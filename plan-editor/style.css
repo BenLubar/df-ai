@@ -154,7 +154,20 @@ svg g.active {
 	fill: #000;
 }
 
+svg text {
+	font-size: 0.75px;
+	fill: #222;
+}
+
 svg .layout > g.active {
+	fill: #aaa;
+}
+
+svg .layout > g.active.inv {
+	fill: #222;
+}
+
+svg .layout > g.active.inv text {
 	fill: #aaa;
 }
 

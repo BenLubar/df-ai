@@ -53,7 +53,7 @@ workbox.precaching.precacheAndRoute([
   },
   {
     "url": "plan-editor/enums.js",
-    "revision": "c7d9cf9705034b0cf06b6100c5e5461e"
+    "revision": "5738caf853b04603430bec5777ab2a64"
   },
   {
     "url": "plan-editor/file.js",
@@ -69,11 +69,11 @@ workbox.precaching.precacheAndRoute([
   },
   {
     "url": "plan-editor/room-editor.js",
-    "revision": "f00c5a3f7ba7e702ee8d60564d0b2f07"
+    "revision": "00627f58c8f47c17b4a91bfe936e5bc2"
   },
   {
     "url": "plan-editor/style.css",
-    "revision": "1f4078603d7dc958f348078f5a2d7a34"
+    "revision": "bbbc93becd84f440730b004e11d9d5ef"
   },
   {
     "url": "plan-editor/ui.js",

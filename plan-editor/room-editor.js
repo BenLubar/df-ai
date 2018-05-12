@@ -419,6 +419,9 @@
 			if (selectedLayout === f) {
 				g.classList.add('active');
 			}
+			if (f.inv) {
+				g.classList.add('inv');
+			}
 			svgG.appendChild(g);
 
 			var a = document.createElement('a');
@@ -475,10 +478,15 @@
 			].join(''));
 			pathA.appendChild(path);
 
+			var ch = svgEl('text');
+			ch.setAttribute('x', r.min[0] + f.x + 0.25);
+			ch.setAttribute('y', r.min[1] + f.y + 0.75);
+			ch.textContent = lt.ch;
+			pathA.appendChild(ch);
+
 			var title = svgEl('title');
 			title.textContent = a.textContent;
 			g.appendChild(title);
-
 		}
 
 		var roomAddInst = document.createElement('label');
