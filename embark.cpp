@@ -4,7 +4,7 @@
 #include "event_manager.h"
 #include "hooks.h"
 
-#pragma GCC diagnostic push 
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "LuaTools.h"
 #pragma GCC diagnostic pop

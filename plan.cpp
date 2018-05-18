@@ -5134,23 +5134,23 @@ std::string Plan::status()
     return s.str();
 }
 
-void Plan::report(std::ostream & out, bool html)
+void Plan::report_helper(std::ostream & out, bool html, const std::string & title, const std::list<task *> & tasks, const std::list<task *>::iterator & bg_idx)
 {
     if (html)
     {
-        out << "<h2 id=\"Plan_Tasks_Generic\">Generic</h2><ul>";
+        out << "<h2 id=\"Plan_Tasks_" << title << "\">" << title << "</h2><ul>";
     }
     else
     {
-        out << "## Tasks\n### Generic\n";
+        out << "## Tasks\n### " << title << "\n";
     }
-    for (auto it = tasks_generic.begin(); it != tasks_generic.end(); it++)
+    for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
         if (html)
         {
             out << "<li>";
         }
-        if (bg_idx_generic == it)
+        if (bg_idx == it)
         {
             if (html)
             {
@@ -5219,7 +5219,7 @@ void Plan::report(std::ostream & out, bool html)
     {
         out << "</ul>";
     }
-    if (bg_idx_generic == tasks_generic.end())
+    if (bg_idx == tasks.end())
     {
         int32_t tick_diff = 240 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
         if (html)
@@ -5236,110 +5236,12 @@ void Plan::report(std::ostream & out, bool html)
             out << "\n";
         }
     }
-    if (html)
-    {
-        out << "<h2 id=\"Plan_Tasks_Furniture\">Furniture</h2><ul>";
-    }
-    else
-    {
-        out << "\n### Furniture\n";
-    }
-    for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
-    {
-        if (html)
-        {
-            out << "<li>";
-        }
-        if (bg_idx_furniture == it)
-        {
-            if (html)
-            {
-                out << "<i>--- current position ---</i><br/>";
-            }
-            else
-            {
-                out << "--- current position ---\n";
-            }
-        }
+}
 
-        task *t = *it;
-        if (html)
-        {
-            out << "<b>" << t->type << "</b>";
-        }
-        else
-        {
-            out << "- " << t->type;
-        }
-        if (t->r != nullptr)
-        {
-            if (html)
-            {
-                out << "<br/>";
-            }
-            else
-            {
-                out << "\n  ";
-            }
-            out << AI::describe_room(t->r, html);
-        }
-        if (t->f != nullptr)
-        {
-            if (html)
-            {
-                out << "<br/>";
-            }
-            else
-            {
-                out << "\n  ";
-            }
-            out << AI::describe_furniture(t->f, html);
-        }
-        if (!t->last_status.empty())
-        {
-            if (html)
-            {
-                out << "<br/><i>" << html_escape(t->last_status) << "</i>";
-            }
-            else
-            {
-                out << "\n  " << t->last_status;
-            }
-        }
-        if (html)
-        {
-            out << "</li>";
-        }
-        else
-        {
-            out << "\n";
-        }
-    }
-    if (html)
-    {
-        out << "</ul>";
-    }
-    if (bg_idx_furniture == tasks_furniture.end())
-    {
-        int32_t tick_diff = 240 - ((*cur_year_tick - last_update_tick) + (*cur_year - last_update_year) * 12 * 28 * 24 * 50);
-        if (html)
-        {
-            out << "<p><i>";
-        }
-        out << "--- next check in " << tick_diff << " ticks ---";
-        if (html)
-        {
-            out << "</i></p>";
-        }
-        else
-        {
-            out << "\n";
-        }
-    }
-    if (!html)
-    {
-        out << "\n";
-    }
+void Plan::report(std::ostream & out, bool html)
+{
+    report_helper(out, html, "Generic", tasks_generic, bg_idx_generic);
+    report_helper(out, html, "Furniture", tasks_furniture, bg_idx_furniture);
 }
 
 void Plan::categorize_all()

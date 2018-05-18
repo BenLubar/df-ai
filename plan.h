@@ -213,6 +213,7 @@ public:
     df::coord surface_tile_at(int16_t tx, int16_t ty, bool allow_trees = false);
 
     std::string status();
+    static void report_helper(std::ostream & out, bool html, const std::string & title, const std::list<task *> & tasks, const std::list<task *>::iterator & bg_idx);
     void report(std::ostream & out, bool html);
 
     void categorize_all();
