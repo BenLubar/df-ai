@@ -1,0 +1,91 @@
+@import url(shared.css);
+
+h1 {
+	margin: 0;
+}
+
+.side > h2:first-child {
+	margin: 0;
+}
+
+.main:hover, .side:hover {
+	box-shadow: none;
+}
+
+.twitch {
+	box-sizing: content-box;
+	position: relative;
+	width: 100%;
+	height: 0;
+	padding-bottom: 56.25%; /* 16:9 aspect ratio */
+}
+
+.twitch iframe {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	width: 100%;
+	max-height: 100vh;
+}
+
+.watch-live {
+	flex-grow: 1;
+}
+
+.watch-live h2 {
+	margin: 0;
+	line-height: 2em;
+}
+
+.github {
+	position: absolute;
+	top: 0;
+	right: 0;
+	border: 0;
+	width: 149px;
+	height: 149px;
+	pointer-events: none;
+}
+
+.github img, .github a {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.github a {
+	clip-path: polygon(40% 0%, 100% 60%, 100% 90%, 10% 0%);
+	pointer-events: auto;
+}
+
+@media (max-width: 650px) {
+	html {
+		min-width: unset;
+	}
+
+	.github {
+		display: none;
+	}
+
+	.container {
+		display: block;
+	}
+
+	.main, .side {
+		height: auto;
+	}
+
+	.xkcd {
+		width: 100%;
+		object-fit: contain;
+	}
+}
+
+@media not all and (max-width: 650px) {
+	.watch-live {
+		padding-left: 0.5em;
+	}
+}

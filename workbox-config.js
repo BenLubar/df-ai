@@ -1,16 +1,16 @@
 module.exports = {
 	globDirectory: './',
 	globPatterns: [
-		'shared.*',
+		'*.{js,html,css,json,ico}',
 		'*/*.{js,html,css}',
 		'plan-editor/zipjs/WebContent/**.js'
 	],
 	globIgnores: [
+		'sw.js',
+		'sw.src.js',
+		'workbox-config.js',
 		'plan-editor/sw.js'
 	],
 	swDest: 'sw.js',
-	swSrc: 'sw.src.js',
-	templatedUrls: {
-		'/df-ai/plan-editor/': 'plan-editor/index.html'
-	}
+	swSrc: 'sw.src.js'
 };

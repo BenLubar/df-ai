@@ -1,12 +1,4 @@
-var realDBOpen = indexedDB.open;
-indexedDB.open = function(name) {
-	if (name === 'workbox-precaching') {
-		return realDBOpen.call(indexedDB, 'workbox-precaching-df-ai');
-	}
-	return realDBOpen.apply(indexedDB, arguments);
-};
-
-importScripts('https://storage.googleapis.com/workbox-cdn/releases/3.0.0-beta.0/workbox-sw.js');
+importScripts('https://storage.googleapis.com/workbox-cdn/releases/3.2.0/workbox-sw.js');
 
 workbox.skipWaiting();
 workbox.clientsClaim();
@@ -18,6 +10,16 @@ workbox.routing.registerRoute(
 		plugins: [
 			new workbox.expiration.Plugin({
 				maxEntries: 50
+			})
+		]
+	})
+);
+workbox.routing.registerRoute(
+	/^https:\/\/imgs\.xkcd\.com\/comics\/dwarf_fortress(_2x)?\.png$|^https:\/\/s3\.amazonaws\.com\/github\/ribbons\/forkme_right_gray_6d6d6d\.png$/,
+	workbox.strategies.staleWhileRevalidate({
+		plugins: [
+			new workbox.cacheableResponse.Plugin({
+				statuses: [0, 200]
 			})
 		]
 	})

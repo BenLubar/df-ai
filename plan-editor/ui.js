@@ -54,7 +54,7 @@
 	downloadBlurb.appendChild(document.createTextNode('Don\'t want to start from scratch? Try using the '));
 
 	var downloadLink = document.createElement('a');
-	downloadLink.href = 'https://github.com/BenLubar/df-ai/archive/master.zip';
+	downloadLink.href = 'https://codeload.github.com/BenLubar/df-ai/zip/master';
 	downloadLink.textContent = 'latest development version of df-ai\'s built-in plans';
 	downloadLink.addEventListener('click', function readZipDirectly(e) {
 		e.preventDefault();

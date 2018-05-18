@@ -1,0 +1,10 @@
+{
+	"short_name": "df-ai",
+	"name": "Dwarf Fortress + Artificial Intelligence",
+	"icons": [],
+	"start_url": "/df-ai/",
+	"background_color": "#fff",
+	"display": "standalone",
+	"scope": "/df-ai/",
+	"theme_color": "#fff"
+}

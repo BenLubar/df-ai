@@ -26,3 +26,8 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', 'UA-41367436-1');
+
+// css async loading
+document.querySelectorAll('link[rel="stylesheet"][media="df-ai-deferred"]').forEach(function(l) {
+	l.media = 'all';
+});

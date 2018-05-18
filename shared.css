@@ -1,12 +1,14 @@
-* {
-	box-sizing: border-box;
+
+@media (max-width: 650px) {
+	html {
+		min-width: 650px;
+	}
 }
 
 body, .container {
 	margin: 0;
 	display: flex;
 	flex-direction: row;
-	font-family: sans-serif;
 	overflow: hidden;
 }
 
@@ -17,16 +19,6 @@ html, body, .main, .side {
 
 .main:hover, .side:hover {
 	box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
-}
-
-#loading {
-	font-size: 3.5em;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-	margin: 0;
-	z-index: 10000;
 }
 
 .main {
@@ -76,7 +68,6 @@ ul {
 }
 
 #update-available {
-	display: none;
 	position: absolute;
 	width: 25%;
 	min-width: 450px;

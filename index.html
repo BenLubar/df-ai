@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>df-ai: Dwarf Fortress + Artificial Intelligence</title>
+<link rel="canonical" href="https://benlubar.github.io/df-ai/">
+<meta name="theme-color" content="#fff">
+<link rel="manifest" href="manifest.json">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>*{box-sizing:border-box}body{margin:0;font-family:sans-serif}#loading{font-size:3.5em;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);margin:0;z-index:10000}#update-available{display:none}</style>
+<link rel="stylesheet" href="style.css" media="df-ai-deferred">
+<link rel="icon" href="favicon.ico">
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-41367436-1"></script>
+<script async src="shared.js"></script>
+</head>
+<body>
+<div class="github"><img src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"><a href="https://github.com/BenLubar/df-ai"></a></div>
+<p id="update-available" onclick="location.reload();">An updated version of this app is available. <a href="">Refresh the page</a> to use the latest version.</p>
+<p id="loading">Loading...</p>
+<noscript>JavaScript is required.<style>#loading{display:none}</style></noscript>
+<div class="main">
+<div class="container">
+<div class="main">
+<h1>Dwarf Fortress + Artificial Intelligence</h1>
+<p>df-ai is an <a href="https://en.wikipedia.org/wiki/Expert_system">expert system</a> that runs within <a href="http://bay12games.com/dwarves/">Dwarf Fortress</a>. It was initially developed by <a href="https://github.com/jjyg">Yoann Guillot (jjyg)</a> as a Ruby script, and later the project was taken over by <a href="https://github.com/BenLubar">Ben Lubar</a> and converted to a native DFHack plugin.</p>
+<p>See <a href="https://github.com/BenLubar/df-ai/wiki">the wiki</a> for more technical details. If you want to come by and chat, you can find us in <a href="ircs://chat.freenode.net:6697/#dfhack">#dfhack</a> on Freenode. If you don't have an IRC client, you can <a href="https://webchat.freenode.net/?channels=dfhack">use the web interface</a>.</p>
+</div>
+<div class="side">
+<h2 id="quick_links">Quick Links</h2>
+<ul>
+<li><strong><a href="https://github.com/BenLubar/df-ai/releases">Download df-ai</a></strong></li>
+<li><a href="https://github.com/BenLubar/df-ai/issues">Bug Reports / Feature Requests</a></li>
+<li><a href="https://buildmaster.local.lubar.me/applications/2/">Development Builds</a></li>
+<li><a href="plan-editor/">Plan Editor</a> (work in progress)</li>
+<li><a href="fort-editor/">Fort Editor</a> (work in progress)</li>
+</ul>
+<h2 id="hall_of_fame"><del>Bug</del><ins>Feature</ins> Hall of Fame</h2>
+<ul>
+<li><a href="https://www.reddit.com/r/dwarffortress/comments/45304a/dfai_df_hack_ai_ai_that_plays_dwarf_fortress_fort/">AI decides poets and bards are food</a></li>
+</ul>
+</div>
+</div>
+<div class="container media">
+<a href="https://xkcd.com/1223/" rel="external"><img src="https://imgs.xkcd.com/comics/dwarf_fortress.png" title="I may be the kind of person who wastes a year implementing a Turing-complete computer in Dwarf Fortress, but that makes you the kind of person who wastes ten more getting that computer to run Minecraft." alt="xkcd 1223: Dwarf Fortress" srcset="https://imgs.xkcd.com/comics/dwarf_fortress_2x.png 2x" width="285" height="506" class="xkcd"></a>
+<div class="watch-live">
+<h2>Watch df-ai live!</h2>
+<div class="twitch">
+<iframe src="https://player.twitch.tv/?channel=benlubar" frameborder="0" allowfullscreen="true" scrolling="no" height="450" width="800"></iframe>
+</div>
+</div>
+</div>
+</div>
+<script>
+window.addEventListener('load', function() {
+	document.getElementById('loading').style.display = 'none';
+});
+</script>
+</body>
+</html>
