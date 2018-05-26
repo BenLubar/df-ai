@@ -4,6 +4,7 @@
 #include "df/activity_entry.h"
 #include "df/activity_event_conflictst.h"
 #include "df/creature_raw.h"
+#include "df/job.h"
 #include "df/world.h"
 
 #include "modules/Maps.h"
@@ -70,18 +71,24 @@ bool AI::tag_enemies(color_ostream & out)
             {
                 found = pop->military_random_squad_attack_unit(out, u, "uninvited visitor") || found;
             }
-            else if (is_attacking_citizen(u))
+            else if (auto hunter = is_hunting_target(u))
             {
-                found = pop->military_random_squad_attack_unit(out, u, "attacking citizen") || found;
+                found = pop->military_cancel_attack_order(out, u, "hunting target of " + AI::describe_unit(hunter)) || found;
+            }
+            else if (auto citizen = is_attacking_citizen(u))
+            {
+                found = pop->military_random_squad_attack_unit(out, u, "attacking citizen: " + AI::describe_unit(citizen)) || found;
             }
         }
     }
     return found;
 }
 
-bool AI::is_attacking_citizen(df::unit *u)
+df::unit *AI::is_attacking_citizen(df::unit *u)
 {
-    return is_in_conflict(u, [u](df::activity_event_conflictst *conflict) -> bool
+    df::unit *citizen = nullptr;
+
+    is_in_conflict(u, [u, &citizen](df::activity_event_conflictst *conflict) -> bool
     {
         auto unit_side = std::find_if(conflict->sides.begin(), conflict->sides.end(), [u](const df::activity_event_conflictst::T_sides * side) -> bool
         {
@@ -104,6 +111,7 @@ bool AI::is_attacking_citizen(df::unit *u)
                     {
                         if (Units::isSane(enemy) && Units::isCitizen(enemy))
                         {
+                            citizen = enemy;
                             return true;
                         }
                     }
@@ -113,6 +121,21 @@ bool AI::is_attacking_citizen(df::unit *u)
 
         return false;
     });
+
+    return citizen;
+}
+
+df::unit *AI::is_hunting_target(df::unit *u)
+{
+    for (auto c : world->units.active)
+    {
+        if (Units::isSane(c) && Units::isCitizen(c) && u->job.current_job && u->job.current_job->job_type == job_type::Hunt && c->job.hunt_target == u)
+        {
+            return c;
+        }
+    }
+
+    return nullptr;
 }
 
 bool AI::is_in_conflict(df::unit *u, std::function<bool(df::activity_event_conflictst *)> filter)
