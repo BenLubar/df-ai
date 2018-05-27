@@ -396,7 +396,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         std::set<std::tuple<df::item_type, int16_t, int16_t, int32_t>> forbidden;
         for (size_t i = 0; i < ui->kitchen.item_types.size(); i++)
         {
-            if ((ui->kitchen.exc_types[i] & 1) == 1)
+            if (ui->kitchen.exc_types[i] == kitchen_exc_type::Cook)
             {
                 forbidden.insert(std::make_tuple(ui->kitchen.item_types[i], ui->kitchen.item_subtypes[i], ui->kitchen.mat_types[i], ui->kitchen.mat_indices[i]));
             }
