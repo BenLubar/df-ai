@@ -36,6 +36,47 @@ static T *load_json(const std::string & filename, const std::string & type, cons
     return nullptr;
 }
 
+template<typename T>
+void load_objects(color_ostream & out, const std::string & subtype, std::function<void(const std::string & type, const std::string & path, T *t)> store)
+{
+    std::string error;
+    std::vector<std::string> types;
+    if (!Filesystem::listdir("df-ai-blueprints/rooms/" + subtype, types))
+    {
+        for (auto & type : types)
+        {
+            if (type.find('.') != std::string::npos)
+            {
+                continue;
+            }
+
+            std::vector<std::string> names;
+            if (!Filesystem::listdir("df-ai-blueprints/rooms/" + subtype + "/" + type, names))
+            {
+                for (auto & name : names)
+                {
+                    auto ext = name.rfind(".json");
+                    if (ext == std::string::npos || ext != name.size() - strlen(".json"))
+                    {
+                        continue;
+                    }
+
+                    std::string path = "df-ai-blueprints/rooms/" + subtype + "/" + type + "/" + name;
+
+                    if (auto t = load_json<T>(path, type, name.substr(0, ext), error))
+                    {
+                        store(type, path, t);
+                    }
+                    else
+                    {
+                        out.printerr("%s\n", error.c_str());
+                    }
+                }
+            }
+        }
+    }
+}
+
 blueprints_t::blueprints_t(color_ostream & out)
 {
     if (!Filesystem::isdir("df-ai-blueprints"))
@@ -45,81 +86,18 @@ blueprints_t::blueprints_t(color_ostream & out)
         return;
     }
 
-    std::string error;
-
     std::map<std::string, std::pair<std::vector<std::pair<std::string, room_template *>>, std::vector<std::pair<std::string, room_instance *>>>> rooms;
 
-    std::vector<std::string> types;
-    if (!Filesystem::listdir("df-ai-blueprints/rooms/templates", types))
+    load_objects<room_template>(out, "templates", [&rooms](const std::string & type, const std::string & path, room_template *tmpl)
     {
-        for (auto & type : types)
-        {
-            if (type.find('.') != std::string::npos)
-            {
-                continue;
-            }
-
-            std::vector<std::string> names;
-            if (!Filesystem::listdir("df-ai-blueprints/rooms/templates/" + type, names))
-            {
-                for (auto & name : names)
-                {
-                    auto ext = name.rfind(".json");
-                    if (ext == std::string::npos || ext != name.size() - strlen(".json"))
-                    {
-                        continue;
-                    }
-
-                    std::string path = "df-ai-blueprints/rooms/templates/" + type + "/" + name;
-
-                    if (auto inst = load_json<room_template>(path, type, name.substr(0, ext), error))
-                    {
-                        rooms[type].first.push_back(std::make_pair(path, inst));
-                    }
-                    else
-                    {
-                        out.printerr("%s\n", error.c_str());
-                    }
-                }
-            }
-        }
-    }
-    types.clear();
-    if (!Filesystem::listdir("df-ai-blueprints/rooms/instances", types))
+        rooms[type].first.push_back(std::make_pair(path, tmpl));
+    });
+    load_objects<room_instance>(out, "instances", [&rooms](const std::string & type, const std::string & path, room_instance *inst)
     {
-        for (auto & type : types)
-        {
-            if (type.find('.') != std::string::npos)
-            {
-                continue;
-            }
+        rooms[type].second.push_back(std::make_pair(path, inst));
+    });
 
-            std::vector<std::string> names;
-            if (!Filesystem::listdir("df-ai-blueprints/rooms/instances/" + type, names))
-            {
-                for (auto & name : names)
-                {
-                    auto ext = name.rfind(".json");
-                    if (ext == std::string::npos || ext != name.size() - strlen(".json"))
-                    {
-                        continue;
-                    }
-
-                    std::string path = "df-ai-blueprints/rooms/instances/" + type + "/" + name;
-
-                    if (auto inst = load_json<room_instance>(path, type, name.substr(0, ext), error))
-                    {
-                        rooms[type].second.push_back(std::make_pair(path, inst));
-                    }
-                    else
-                    {
-                        out.printerr("%s\n", error.c_str());
-                    }
-                }
-            }
-        }
-    }
-
+    std::string error;
     for (auto & type : rooms)
     {
         auto & rbs = blueprints[type.first];
