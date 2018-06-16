@@ -103,7 +103,7 @@ void EmbarkExclusive::Run(color_ostream & out)
             df::viewscreen *parent = screen ? screen->parent : nullptr;
             // TODO: get a real focus string for the load_screen_options dialog
             return Gui::getFocusString(screen) == "dfhack/lua" && Gui::getFocusString(parent) == "dfhack/lua/load_screen";
-        }, [&]() { ViewLoadScreenOptions(out); });
+        }, [&]() { ViewLoadScreenOptions(); });
         If(viewscreen_is<df::viewscreen_new_regionst>, [&]() { ViewNewRegion(out); });
         If(viewscreen_is<df::viewscreen_update_regionst>, [&]() { ViewUpdateRegion(out); });
         If(viewscreen_is<df::viewscreen_choose_start_sitest>, [&]() { ViewChooseStartSite(out); });
@@ -393,7 +393,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
     });
 }
 
-void EmbarkExclusive::ViewLoadScreenOptions(color_ostream & out)
+void EmbarkExclusive::ViewLoadScreenOptions()
 {
     unknown_screen = false;
     dfhack_viewscreen *view = dfhack_viewscreen::try_cast(Gui::getCurViewscreen(false));

@@ -25,7 +25,7 @@ private:
     void ViewTitle(color_ostream & out);
     void ViewLoadGame(color_ostream & out);
     void ViewLoadScreen(color_ostream & out);
-    void ViewLoadScreenOptions(color_ostream & out);
+    void ViewLoadScreenOptions();
     void ViewNewRegion(color_ostream & out);
     void ViewUpdateRegion(color_ostream & out);
     void ViewChooseStartSite(color_ostream & out);
