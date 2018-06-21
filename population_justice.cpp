@@ -89,7 +89,7 @@ void Population::update_caged(color_ostream & out)
                     }
                     else
                     {
-                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%d items remain)", AI::describe_unit(u).c_str(), waiting_items));
+                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%zu items remain)", AI::describe_unit(u).c_str(), waiting_items));
                         military_cancel_attack_order(out, u, "caged, but not ready for pitting");
                     }
                 }

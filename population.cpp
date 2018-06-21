@@ -266,7 +266,7 @@ void Population::update_jobs(color_ostream &)
 
 std::string Population::status()
 {
-    return stl_sprintf("%d citizen, %d military, %d pet, %d visitor, %d resident", citizen.size(), military.size(), pet.size(), visitor.size(), resident.size());
+    return stl_sprintf("%zu citizen, %zu military, %zu pet, %zu visitor, %zu resident", citizen.size(), military.size(), pet.size(), visitor.size(), resident.size());
 }
 
 void Population::report(std::ostream & out, bool html)

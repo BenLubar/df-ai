@@ -228,7 +228,7 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
             AI::feed_key(interface_key::BUILDJOB_DEPOT_BRING);
             if (auto bring = virtual_cast<df::viewscreen_layer_assigntradest>(Gui::getCurViewscreen(true)))
             {
-                ai->debug(out, stl_sprintf("[trade] Checking %d possible trade items...", bring->lists[0].size()));
+                ai->debug(out, stl_sprintf("[trade] Checking %zu possible trade items...", bring->lists[0].size()));
                 for (size_t i = 0; i < bring->lists[0].size(); i++)
                 {
                     auto info = bring->info.at(bring->lists[0].at(i));

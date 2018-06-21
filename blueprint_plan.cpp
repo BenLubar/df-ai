@@ -35,7 +35,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
         const blueprint_plan_template & plan = *templates.at(i);
         for (size_t retries = 0; retries < plan.max_retries; retries++)
         {
-            ai->debug(out, stl_sprintf("Trying to create a blueprint using plan %d of %d: %s (attempt %d of %d)", i + 1, templates.size(), plan.name.c_str(), retries + 1, plan.max_retries));
+            ai->debug(out, stl_sprintf("Trying to create a blueprint using plan %zu of %zu: %s (attempt %zu of %zu)", i + 1, templates.size(), plan.name.c_str(), retries + 1, plan.max_retries));
 
             if (build(out, ai, blueprints, plan))
             {
@@ -426,7 +426,7 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
                     failures++;
                     if (config.plan_verbosity >= 3)
                     {
-                        ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %d of %d.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
+                        ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %zu of %zu.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
                     }
                     if (failures >= plan.max_failures)
                     {

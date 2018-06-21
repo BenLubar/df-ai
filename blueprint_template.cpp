@@ -283,7 +283,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (config.plan_verbosity >= 1)
                 {
-                    ai->debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %d and %d.", limit.first.c_str(), limit.second.first, limit.second.second));
+                    ai->debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %zu and %zu.", limit.first.c_str(), limit.second.first, limit.second.second));
                 }
                 ok = false;
             }
@@ -291,7 +291,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (config.plan_verbosity >= 1)
                 {
-                    ai->debug(out, stl_sprintf("have 0 %s (want between %d and %d)", limit.first.c_str(), limit.second.first, limit.second.second));
+                    ai->debug(out, stl_sprintf("have 0 %s (want between %zu and %zu)", limit.first.c_str(), limit.second.first, limit.second.second));
                 }
             }
         }
@@ -301,7 +301,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (config.plan_verbosity >= 1)
                 {
-                    ai->debug(out, stl_sprintf("Requirement not met: have %d %s but want between %d and %d.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                    ai->debug(out, stl_sprintf("Requirement not met: have %zu %s but want between %zu and %zu.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
                 }
                 ok = false;
             }
@@ -309,7 +309,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (config.plan_verbosity >= 1)
                 {
-                    ai->debug(out, stl_sprintf("have %d %s (want between %d and %d)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                    ai->debug(out, stl_sprintf("have %zu %s (want between %zu and %zu)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
                 }
             }
         }
@@ -326,7 +326,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (config.plan_verbosity >= 1)
                     {
-                        ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                     }
                     ok = false;
                 }
@@ -334,7 +334,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (config.plan_verbosity >= 1)
                     {
-                        ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        ai->debug(out, stl_sprintf("have 0 %s/%s (want between %zu and %zu)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                     }
                 }
             }
@@ -350,7 +350,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     {
                         if (config.plan_verbosity >= 1)
                         {
-                            ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %d and %d.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                            ai->debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
                         ok = false;
                     }
@@ -358,7 +358,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     {
                         if (config.plan_verbosity >= 1)
                         {
-                            ai->debug(out, stl_sprintf("have 0 %s/%s (want between %d and %d)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                            ai->debug(out, stl_sprintf("have 0 %s/%s (want between %zu and %zu)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
                     }
                 }
@@ -368,7 +368,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     {
                         if (config.plan_verbosity >= 1)
                         {
-                            ai->debug(out, stl_sprintf("Requirement not met: have %d %s/%s but want between %d and %d.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                            ai->debug(out, stl_sprintf("Requirement not met: have %zu %s/%s but want between %zu and %zu.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
                         ok = false;
                     }
@@ -376,7 +376,7 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                     {
                         if (config.plan_verbosity >= 1)
                         {
-                            ai->debug(out, stl_sprintf("have %d %s/%s (want between %d and %d)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                            ai->debug(out, stl_sprintf("have %zu %s/%s (want between %zu and %zu)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
                         }
                     }
                 }

@@ -227,7 +227,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
             {
                 Do([&]()
                 {
-                    ai->debug(out, stl_sprintf("selecting save #%d (%s)",
+                    ai->debug(out, stl_sprintf("selecting save #%zd (%s)",
                         (save - view->start_savegames.begin()) + 1,
                         (*save)->world_name_str.c_str()));
                 });
@@ -303,7 +303,7 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
         {
             Do([&]()
             {
-                ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+                ai->debug(out, stl_sprintf("selecting save #%zd (%s) (%s)",
                     (save - view->saves.begin()) + 1,
                     (*save)->world_name.c_str(),
                     (*save)->fort_name.c_str()));
@@ -382,7 +382,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 
             Do([&]()
             {
-                ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+                ai->debug(out, stl_sprintf("selecting save #%zd (%s) (%s)",
                     (save - filtered_saves.begin()) + 1,
                     (*save)->world_name.c_str(),
                     (*save)->fort_name.c_str()));
@@ -633,7 +633,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
                     AI::abandon(out);
                     return;
                 }
-                ai->debug(out, stl_sprintf("found sites count: %d", sites.size()));
+                ai->debug(out, stl_sprintf("found sites count: %zu", sites.size()));
                 // Don't embark on the same region every time.
                 std::vector<std::seed_seq::result_type> seeds;
                 seeds.push_back(std::seed_seq::result_type(ai->rng()));
