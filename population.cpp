@@ -205,7 +205,7 @@ void Population::update_citizenlist(color_ostream & out)
                 mother->job.current_job = seek_infant;
             }
         }
-        else if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.diplomat || u->flags1.bits.forest || u->flags2.bits.slaughter)
+        else if (u->flags1.bits.inactive || u->flags1.bits.merchant || u->flags1.bits.diplomat || u->flags1.bits.forest || u->flags2.bits.slaughter)
         {
             // ignore
         }

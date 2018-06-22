@@ -54,7 +54,7 @@ void Population::update_pets(color_ostream & out)
         {
             continue;
         }
-        if (u->flags1.bits.dead || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.visitor || u->flags2.bits.slaughter)
+        if (u->flags1.bits.inactive || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.visitor || u->flags2.bits.slaughter)
         {
             continue;
         }

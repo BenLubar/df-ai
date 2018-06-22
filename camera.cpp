@@ -119,7 +119,7 @@ void Camera::update(color_ostream &)
     {
         df::unit *u = *it;
         df::tile_designation *td = Maps::getTileDesignation(Units::getPosition(u));
-        if (u->flags1.bits.dead || !td || td->bits.hidden)
+        if (u->flags1.bits.inactive || !td || td->bits.hidden)
             continue;
         df::creature_raw *race = df::creature_raw::find(u->race);
         if (race &&
@@ -172,7 +172,7 @@ void Camera::update(color_ostream &)
     for (auto it = world->units.active.begin(); it != world->units.active.end(); it++)
     {
         df::unit *u = *it;
-        if (!u->flags1.bits.dead && Units::isCitizen(u))
+        if (!u->flags1.bits.inactive && Units::isCitizen(u))
         {
             targets2.push_back(u);
         }
