@@ -227,8 +227,8 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
             {
                 Do([&]()
                 {
-                    ai->debug(out, stl_sprintf("selecting save #%zd (%s)",
-                        (save - view->start_savegames.begin()) + 1,
+                    ai->debug(out, stl_sprintf("selecting save #%d (%s)",
+                        int((save - view->start_savegames.begin()) + 1),
                         (*save)->world_name_str.c_str()));
                 });
 
@@ -303,8 +303,8 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
         {
             Do([&]()
             {
-                ai->debug(out, stl_sprintf("selecting save #%zd (%s) (%s)",
-                    (save - view->saves.begin()) + 1,
+                ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+                    int((save - view->saves.begin()) + 1),
                     (*save)->world_name.c_str(),
                     (*save)->fort_name.c_str()));
             });
@@ -382,8 +382,8 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 
             Do([&]()
             {
-                ai->debug(out, stl_sprintf("selecting save #%zd (%s) (%s)",
-                    (save - filtered_saves.begin()) + 1,
+                ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+                    int((save - filtered_saves.begin()) + 1),
                     (*save)->world_name.c_str(),
                     (*save)->fort_name.c_str()));
             });
