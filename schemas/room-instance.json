@@ -2,9 +2,13 @@
 	"$schema": "http://json-schema.org/draft-04/schema",
 	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
 	"type": "object",
+	"title": "Blueprint Room Instance",
+	"description": "A room instance.",
 	"definitions": {
 		"room": {
 			"type": "object",
+			"title": "Room",
+			"description": "",
 			"properties": {
 				"type": { "$ref": "enums.json#room_type" },
 				"corridor_type": { "$ref": "enums.json#corridor_type" },
@@ -106,10 +110,6 @@
 					"type": "boolean",
 					"default": false
 				},
-				"skip": {
-					"type": "boolean",
-					"default": false
-				},
 				"placeholder": {
 					"type": "integer",
 					"minimum": 0
@@ -119,15 +119,19 @@
 		},
 		"furniture": {
 			"type": "object",
+			"title": "Furniture",
+			"description": "",
 			"properties": {
 				"type": {
 					"$ref": "enums.json#layout_type"
 				},
 				"construction": {
-					"$ref": "enums.json#construction_type"
+					"$ref": "enums.json#construction_type",
+					"default": "Floor"
 				},
 				"dig": {
-					"$ref": "enums.json#tile_dig_designation"
+					"$ref": "enums.json#tile_dig_designation",
+					"default": "Default"
 				},
 				"x": {
 					"type": "integer"
@@ -163,10 +167,6 @@
 				"comment": {
 					"$ref": "shared.json#variable-string"
 				},
-				"skip": {
-					"type": "boolean",
-					"default": false
-				},
 				"placeholder": {
 					"type": "integer",
 					"minimum": 0
@@ -177,34 +177,56 @@
 		"not-template": {
 			"properties": {
 				"placeholder": {
+					"description": "Placeholder is only available in room templates, not room instances.",
 					"not": {}
 				}
 			}
 		},
-		"room-placeholder": {
-			"allOf": [
-				{ "$ref": "#/definitions/room" },
-				{ "$ref": "#/definitions/not-template" }
-			]
-		},
-		"furniture-placeholder": {
-			"allOf": [
-				{ "$ref": "#/definitions/furniture" },
-				{ "$ref": "#/definitions/not-template" }
-			]
-		},
 		"room-instance": {
+			"title": "Room Instance",
+			"description": "A room defined inside a room instance.",
 			"allOf": [
 				{ "$ref": "#/definitions/room" },
-				{ "$ref": "#/definitions/not-template" },
-				{ "$ref": "room-template.json#/definitions/not-placeholder" }
+				{ "$ref": "#/definitions/not-template" }
 			]
 		},
 		"furniture-instance": {
+			"title": "Furniture Instance",
+			"description": "Furniture defined inside a room instance.",
 			"allOf": [
 				{ "$ref": "#/definitions/furniture" },
-				{ "$ref": "#/definitions/not-template" },
-				{ "$ref": "room-template.json#/definitions/not-placeholder" }
+				{ "$ref": "#/definitions/not-template" }
+			]
+		},
+		"skip-placeholder": {
+			"type": "object",
+			"title": "Skip Placeholder",
+			"description": "This placeholder causes any room or furniture that references it to be ignored by the blueprint.",
+			"properties": {
+				"skip": {
+					"type": "boolean",
+					"enum": [true]
+				}
+			},
+			"required": [
+				"skip"
+			],
+			"additionalProperties": false
+		},
+		"room-placeholder": {
+			"title": "Room Placeholder",
+			"description": "A placeholder that fills properties for a room from the template.",
+			"oneOf": [
+				{ "$ref": "#/definitions/room-instance" },
+				{ "$ref": "#/definitions/skip-placeholder" }
+			]
+		},
+		"furniture-placeholder": {
+			"title": "Furniture Placeholder",
+			"description": "A placeholder that fills properties for furniture from the template.",
+			"oneOf": [
+				{ "$ref": "#/definitions/furniture-instance" },
+				{ "$ref": "#/definitions/skip-placeholder" }
 			]
 		}
 	},
@@ -212,6 +234,8 @@
 		"$schema": { "type": "string" },
 		"p": {
 			"type": "array",
+			"title": "Instance Placeholders",
+			"description": "Placeholders defined by this instance.",
 			"items": [
 				{
 					"anyOf": [
@@ -223,17 +247,20 @@
 		},
 		"f": {
 			"type": "array",
+			"title": "Instance Furniture",
+			"description": "The furniture defined inside this instance.",
 			"items": {
-				"$ref": "#/definitions/furniture-instance",
-				"additionalProperties": false
+				"$ref": "#/definitions/furniture-instance"
 			}
 		},
 		"r": {
 			"type": "array",
+			"title": "Instance Rooms",
+			"description": "The rooms defined inside this instance.",
 			"items": {
-				"$ref": "#/definitions/room-instance",
-				"additionalProperties": false
-			}
+				"$ref": "#/definitions/room-instance"
+			},
+			"default": []
 		}
 	},
 	"additionalProperties": false

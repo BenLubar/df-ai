@@ -2,25 +2,45 @@
 	"$schema": "http://json-schema.org/draft-04/schema",
 	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan.json",
 	"type": "object",
+	"title": "Blueprint Plan",
+	"description": "A set of constraints used to generate a fortress.",
 	"properties": {
 		"$schema": { "type": "string" },
 		"max_retries": {
 			"type": "integer",
+			"title": "Maximum Retries",
+			"description": "The maximum number of times this plan can be restarted before the AI gives up and tries a different plan.",
 			"minimum": 0,
 			"exclusiveMinimum": true,
 			"default": 25
 		},
 		"max_failures": {
 			"type": "integer",
+			"title": "Maximum Failures",
+			"description": "The maximum number of consecutive room placement failures that can occur before the AI considers this plan failed.",
 			"minimum": 0,
 			"exclusiveMinimum": true,
 			"default": 100
 		},
-		"start": { "$ref": "shared.json#room-name-or-tag" },
-		"padding_x": { "$ref": "shared.json#padding" },
-		"padding_y": { "$ref": "shared.json#padding" },
+		"start": {
+			"title": "Start Room",
+			"description": "The room to place first as the fortress entrance. This room must be at least partially outside.",
+			"$ref": "shared.json#room-name-or-tag"
+		},
+		"padding_x": {
+			"title": "X-Axis Padding",
+			"description": "The number of tiles the west and east edges of the fortress entrance should be extended by to provide enough space for the body of the fortress.",
+			"$ref": "shared.json#padding"
+		},
+		"padding_y": {
+			"title": "Y-Axis Padding",
+			"description": "The number of tiles the north and south edges of the fortress entrance should be extended by to provide enough space for the body of the fortress.",
+			"$ref": "shared.json#padding"
+		},
 		"tags": {
 			"type": "object",
+			"title": "Room Tags",
+			"description": "A collection of tags that can be used in place of room names to refer to a set of rooms simultaneously.",
 			"additionalProperties": {
 				"type": "array",
 				"items": { "$ref": "shared.json#room-name" },
@@ -29,31 +49,61 @@
 		},
 		"outdoor": {
 			"type": "array",
+			"title": "Outdoor Rooms",
+			"description": "A set of rooms to place on the surface in random locations.",
 			"items": { "$ref": "shared.json#room-name-or-tag" },
 			"uniqueItems": true
 		},
 		"limits": {
 			"type": "object",
+			"title": "Room Limits",
+			"description": "The lower and upper bounds on the number of each room that should appear in this plan.",
 			"additionalProperties": { "$ref": "shared.json#limit" }
 		},
 		"instance_limits": {
 			"type": "object",
+			"title": "Room Instance Limits",
+			"description": "The lower and upper bounds on the number of each room instance that should appear in this plan.",
 			"additionalProperties": {
 				"type": "object",
-				"additionalProperties": { "$ref": "shared.json#limit" }
+				"additionalProperties": { "$ref": "shared.json#limit" },
+				"minProperties": 1
 			}
 		},
 		"variables": {
 			"type": "object",
-			"additionalProperties": { "$ref": "shared.json#variable-string" }
+			"title": "Variables",
+			"description": "The default values for variables used in this plan.",
+			"additionalProperties": { "type": "string" }
 		},
 		"priorities": {
 			"type": "array",
+			"title": "Plan Priorities",
+			"description": "A list of tasks the AI will perform in order.",
 			"items": { "$ref": "plan-priority.json" }
 		}
 	},
 	"required": [
-		"start"
+		"start",
+		"priorities"
+	],
+	"anyOf": [
+		{
+			"properties": {
+				"limits": {
+					"minProperties": 1
+				}
+			},
+			"required": ["limits"]
+		},
+		{
+			"properties": {
+				"instance_limits": {
+					"minProperties": 1
+				}
+			},
+			"required": ["instance_limits"]
+		}
 	],
 	"additionalProperties": false
 }

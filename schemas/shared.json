@@ -90,6 +90,7 @@
 					"oneOf": [
 						{
 							"type": "string",
+							"title": "Variable",
 							"pattern": "^\\$.*$"
 						},
 						{
