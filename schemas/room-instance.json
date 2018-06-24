@@ -1,0 +1,240 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema",
+	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"type": "object",
+	"definitions": {
+		"room": {
+			"type": "object",
+			"properties": {
+				"type": { "$ref": "enums.json#room_type" },
+				"corridor_type": { "$ref": "enums.json#corridor_type" },
+				"farm_type": { "$ref": "enums.json#farm_type" },
+				"stockpile_type": { "$ref": "enums.json#stockpile_type" },
+				"nobleroom_type": { "$ref": "enums.json#nobleroom_type" },
+				"outpost_type": { "$ref": "enums.json#outpost_type" },
+				"location_type": { "$ref": "enums.json#location_type" },
+				"cistern_type": { "$ref": "enums.json#cistern_type" },
+				"workshop_type": { "$ref": "enums.json#workshop_type" },
+				"furnace_type": { "$ref": "enums.json#furnace_type" },
+				"raw_type": { "$ref": "shared.json#variable-string" },
+				"comment": { "$ref": "shared.json#variable-string" },
+				"min": { "$ref": "shared.json#coord" },
+				"max": { "$ref": "shared.json#coord" },
+				"exits": {
+					"type": "array",
+					"items": { "$ref": "shared.json#exit-def" },
+					"default": []
+				},
+				"accesspath": {
+					"type": "array",
+					"items": {
+						"type": "number",
+						"minimum": 0
+					},
+					"uniqueItems": true,
+					"default": []
+				},
+				"layout": {
+					"type": "array",
+					"items": {
+						"type": "number",
+						"minimum": 0
+					},
+					"uniqueItems": true,
+					"default": []
+				},
+				"level": {
+					"type": "integer"
+				},
+				"noblesuite": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"queue": {
+					"type": "integer",
+					"default": 0
+				},
+				"workshop": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"stock_disable": {
+					"type": "array",
+					"items": { "$ref": "enums.json#stockpile_list" },
+					"uniqueItems": true,
+					"default": []
+				},
+				"stock_specific1": {
+					"type": "boolean",
+					"default": false
+				},
+				"stock_specific2": {
+					"type": "boolean",
+					"default": false
+				},
+				"has_users": {
+					"type": "integer",
+					"minimum": 0,
+					"default": 0
+				},
+				"temporary": {
+					"type": "boolean",
+					"default": false
+				},
+				"outdoor": {
+					"type": "boolean",
+					"default": false
+				},
+				"single_biome": {
+					"type": "boolean",
+					"default": false
+				},
+				"require_walls": {
+					"type": "boolean",
+					"default": true
+				},
+				"require_floor": {
+					"type": "boolean",
+					"default": true
+				},
+				"require_grass": {
+					"type": "integer",
+					"minimum": 0,
+					"default": 0
+				},
+				"in_corridor": {
+					"type": "boolean",
+					"default": false
+				},
+				"skip": {
+					"type": "boolean",
+					"default": false
+				},
+				"placeholder": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"additionalProperties": false
+		},
+		"furniture": {
+			"type": "object",
+			"properties": {
+				"type": {
+					"$ref": "enums.json#layout_type"
+				},
+				"construction": {
+					"$ref": "enums.json#construction_type"
+				},
+				"dig": {
+					"$ref": "enums.json#tile_dig_designation"
+				},
+				"x": {
+					"type": "integer"
+				},
+				"y": {
+					"type": "integer"
+				},
+				"z": {
+					"type": "integer",
+					"default": 0
+				},
+				"target": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"has_users": {
+					"type": "integer",
+					"minimum": 0,
+					"default": 0
+				},
+				"ignore": {
+					"type": "boolean",
+					"default": false
+				},
+				"makeroom": {
+					"type": "boolean",
+					"default": false
+				},
+				"internal": {
+					"type": "boolean",
+					"default": false
+				},
+				"comment": {
+					"$ref": "shared.json#variable-string"
+				},
+				"skip": {
+					"type": "boolean",
+					"default": false
+				},
+				"placeholder": {
+					"type": "integer",
+					"minimum": 0
+				}
+			},
+			"additionalProperties": false
+		},
+		"not-template": {
+			"properties": {
+				"placeholder": {
+					"not": {}
+				}
+			}
+		},
+		"room-placeholder": {
+			"allOf": [
+				{ "$ref": "#/definitions/room" },
+				{ "$ref": "#/definitions/not-template" }
+			]
+		},
+		"furniture-placeholder": {
+			"allOf": [
+				{ "$ref": "#/definitions/furniture" },
+				{ "$ref": "#/definitions/not-template" }
+			]
+		},
+		"room-instance": {
+			"allOf": [
+				{ "$ref": "#/definitions/room" },
+				{ "$ref": "#/definitions/not-template" },
+				{ "$ref": "room-template.json#/definitions/not-placeholder" }
+			]
+		},
+		"furniture-instance": {
+			"allOf": [
+				{ "$ref": "#/definitions/furniture" },
+				{ "$ref": "#/definitions/not-template" },
+				{ "$ref": "room-template.json#/definitions/not-placeholder" }
+			]
+		}
+	},
+	"properties": {
+		"$schema": { "type": "string" },
+		"p": {
+			"type": "array",
+			"items": [
+				{
+					"anyOf": [
+						{ "$ref": "#/definitions/room-placeholder" },
+						{ "$ref": "#/definitions/furniture-placeholder" }
+					]
+				}
+			]
+		},
+		"f": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/furniture-instance",
+				"additionalProperties": false
+			}
+		},
+		"r": {
+			"type": "array",
+			"items": {
+				"$ref": "#/definitions/room-instance",
+				"additionalProperties": false
+			}
+		}
+	},
+	"additionalProperties": false
+}

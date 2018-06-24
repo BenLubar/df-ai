@@ -1,4 +1,5 @@
 {
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan.json",
 	"start": "legacy_fort_entrance",
 	"padding_x": [-48, 48],
 	"padding_y": [-33, 33],

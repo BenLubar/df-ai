@@ -212,6 +212,11 @@ static inline bool apply_coord(df::coord & var, Json::Value & data, const std::s
 
 static inline bool apply_unhandled_properties(Json::Value & data, const std::string & name, std::string & error)
 {
+    if (data.isMember("$schema"))
+    {
+        data.removeMember("$schema");
+    }
+
     std::vector<std::string> remaining_members(data.getMemberNames());
     if (remaining_members.empty())
     {

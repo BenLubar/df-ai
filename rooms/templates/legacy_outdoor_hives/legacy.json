@@ -1,4 +1,5 @@
 {
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
 	"f": [
 		{
 			"type": "hive",

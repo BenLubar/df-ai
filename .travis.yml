@@ -1,0 +1,9 @@
+language: generic
+sudo: false
+install:
+- npm install ajv-cli
+script:
+- node_modules/.bin/ajv compile -s "schemas/*.json" -r "schemas/*.json"
+- node_modules/.bin/ajv test --valid --errors=text --error-data-path=property --all-errors -s schemas/plan.json -r "schemas/*.json" -d "plans/*.json"
+- node_modules/.bin/ajv test --valid --errors=text --error-data-path=property --all-errors -s schemas/room-instance.json -r "schemas/*.json" -d "rooms/instances/*/*.json"
+- node_modules/.bin/ajv test --valid --errors=text --error-data-path=property --all-errors -s schemas/room-template.json -r "schemas/*.json" -d "rooms/templates/*/*.json"

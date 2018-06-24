@@ -1,0 +1,59 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema",
+	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan.json",
+	"type": "object",
+	"properties": {
+		"$schema": { "type": "string" },
+		"max_retries": {
+			"type": "integer",
+			"minimum": 0,
+			"exclusiveMinimum": true,
+			"default": 25
+		},
+		"max_failures": {
+			"type": "integer",
+			"minimum": 0,
+			"exclusiveMinimum": true,
+			"default": 100
+		},
+		"start": { "$ref": "shared.json#room-name-or-tag" },
+		"padding_x": { "$ref": "shared.json#padding" },
+		"padding_y": { "$ref": "shared.json#padding" },
+		"tags": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "array",
+				"items": { "$ref": "shared.json#room-name" },
+				"uniqueItems": true
+			}
+		},
+		"outdoor": {
+			"type": "array",
+			"items": { "$ref": "shared.json#room-name-or-tag" },
+			"uniqueItems": true
+		},
+		"limits": {
+			"type": "object",
+			"additionalProperties": { "$ref": "shared.json#limit" }
+		},
+		"instance_limits": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "object",
+				"additionalProperties": { "$ref": "shared.json#limit" }
+			}
+		},
+		"variables": {
+			"type": "object",
+			"additionalProperties": { "$ref": "shared.json#variable-string" }
+		},
+		"priorities": {
+			"type": "array",
+			"items": { "$ref": "plan-priority.json" }
+		}
+	},
+	"required": [
+		"start"
+	],
+	"additionalProperties": false
+}

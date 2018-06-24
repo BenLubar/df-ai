@@ -1,0 +1,105 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema",
+	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/shared.json",
+	"room-tag": {
+		"id": "#room-tag",
+		"type": "string"
+	},
+	"room-name": {
+		"id": "#room-name",
+		"type": "string"
+	},
+	"room-name-or-tag": {
+		"id": "#room-name-or-tag",
+		"anyOf": [
+			{ "$ref": "#room-tag" },
+			{ "$ref": "#room-name" }
+		]
+	},
+	"padding": {
+		"id": "#padding",
+		"type": "array",
+		"minItems": 2,
+		"maxItems": 2,
+		"items": [
+			{
+				"type": "integer",
+				"maximum": 0
+			},
+			{
+				"type": "integer",
+				"minimum": 0
+			}
+		],
+		"default": [0, 0]
+	},
+	"limit": {
+		"id": "#limit",
+		"type": "array",
+		"minItems": 2,
+		"maxItems": 2,
+		"items": {
+			"type": "integer",
+			"minimum": 0
+		}
+	},
+	"coord": {
+		"id": "#coord",
+		"type": "array",
+		"minItems": 3,
+		"maxItems": 3,
+		"items": {
+			"type": "integer"
+		}
+	},
+	"exit-def": {
+		"id": "#exit-def",
+		"type": "array",
+		"minItems": 4,
+		"maxItems": 5,
+		"items": [
+			{
+				"$ref": "#room-name-or-tag"
+			},
+			{
+				"type": "integer"
+			},
+			{
+				"type": "integer"
+			},
+			{
+				"type": "integer"
+			},
+			{
+				"type": "object",
+				"additionalProperties": {
+					"$ref": "#variable-string"
+				}
+			}
+		]
+	},
+	"variable-string": {
+		"id": "#variable-string",
+		"anyOf": [
+			{
+				"type": "string"
+			},
+			{
+				"type": "array",
+				"items": {
+					"oneOf": [
+						{
+							"type": "string",
+							"pattern": "^\\$.*$"
+						},
+						{
+							"type": "string",
+							"pattern": "^$|^[^\\$].*$"
+						}
+					]
+				}
+			}
+		],
+		"default": ""
+	}
+}

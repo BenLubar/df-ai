@@ -1,0 +1,403 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema",
+	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan-priority.json",
+	"definitions": {
+		"continue": {
+			"type": "boolean",
+			"default": false
+		},
+		"between_t": {
+			"anyOf": [
+				{
+					"type": "integer"
+				},
+				{
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": ["integer", "null"]
+					}
+				}
+			]
+		},
+		"between_t-non-negative": {
+			"anyOf": [
+				{
+					"type": "integer",
+					"minimum": 0
+				},
+				{
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": ["integer", "null"],
+						"minimum": 0
+					}
+				}
+			]
+		},
+		"optional_vector-room_status": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#room_status"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#room_status" }
+				}
+			]
+		},
+		"optional_vector-room_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#room_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#room_type" }
+				}
+			]
+		},
+		"optional_vector-layout_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#layout_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#layout_type" }
+				}
+			]
+		},
+		"optional_vector-corridor_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#corridor_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#corridor_type" }
+				}
+			]
+		},
+		"optional_vector-farm_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#farm_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#farm_type" }
+				}
+			]
+		},
+		"optional_vector-stockpile_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#stockpile_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#stockpile_type" }
+				}
+			]
+		},
+		"optional_vector-location_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#location_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#location_type" }
+				}
+			]
+		},
+		"optional_vector-outpost_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#outpost_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#outpost_type" }
+				}
+			]
+		},
+		"optional_vector-cistern_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#cistern_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#cistern_type" }
+				}
+			]
+		},
+		"optional_vector-nobleroom_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#nobleroom_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#nobleroom_type" }
+				}
+			]
+		},
+		"optional_vector-construction_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#construction_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#construction_type" }
+				}
+			]
+		},
+		"optional_vector-workshop_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#workshop_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#workshop_type" }
+				}
+			]
+		},
+		"optional_vector-furnace_type": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#furnace_type"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#furnace_type" }
+				}
+			]
+		},
+		"optional_vector-tile_dig_designation": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#tile_dig_designation"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#tile_dig_designation" }
+				}
+			]
+		},
+		"optional_set-string": {
+			"anyOf": [
+				{
+					"type": "string"
+				},
+				{
+					"type": "array",
+					"items": { "type": "string" },
+					"uniqueItems": true
+				}
+			]
+		},
+		"optional_set-stockpile_list": {
+			"anyOf": [
+				{
+					"$ref": "enums.json#stockpile_list"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "enums.json#stockpile_list" },
+					"uniqueItems": true
+				}
+			]
+		},
+		"room_filter_t": {
+			"type": "object",
+			"properties": {
+				"status": { "$ref": "#/definitions/optional_vector-room_status" },
+				"status_not": { "$ref": "#/definitions/optional_vector-room_status" },
+				"type": { "$ref": "#/definitions/optional_vector-room_type" },
+				"type_not": { "$ref": "#/definitions/optional_vector-room_type" },
+				"corridor_type": { "$ref": "#/definitions/optional_vector-corridor_type" },
+				"corridor_type_not": { "$ref": "#/definitions/optional_vector-corridor_type" },
+				"farm_type": { "$ref": "#/definitions/optional_vector-farm_type" },
+				"farm_type_not": { "$ref": "#/definitions/optional_vector-farm_type" },
+				"stockpile_type": { "$ref": "#/definitions/optional_vector-stockpile_type" },
+				"stockpile_type_not": { "$ref": "#/definitions/optional_vector-stockpile_type" },
+				"nobleroom_type": { "$ref": "#/definitions/optional_vector-nobleroom_type" },
+				"nobleroom_type_not": { "$ref": "#/definitions/optional_vector-nobleroom_type" },
+				"outpost_type": { "$ref": "#/definitions/optional_vector-outpost_type" },
+				"outpost_type_not": { "$ref": "#/definitions/optional_vector-outpost_type" },
+				"location_type": { "$ref": "#/definitions/optional_vector-location_type" },
+				"location_type_not": { "$ref": "#/definitions/optional_vector-location_type" },
+				"cistern_type": { "$ref": "#/definitions/optional_vector-cistern_type" },
+				"cistern_type_not": { "$ref": "#/definitions/optional_vector-cistern_type" },
+				"workshop_type": { "$ref": "#/definitions/optional_vector-workshop_type" },
+				"workshop_type_not": { "$ref": "#/definitions/optional_vector-workshop_type" },
+				"furnace_type": { "$ref": "#/definitions/optional_vector-furnace_type" },
+				"furnace_type_not": { "$ref": "#/definitions/optional_vector-furnace_type" },
+				"raw_type": { "$ref": "#/definitions/optional_set-string" },
+				"raw_type_not": { "$ref": "#/definitions/optional_set-string" },
+				"comment": { "$ref": "#/definitions/optional_set-string" },
+				"comment_not": { "$ref": "#/definitions/optional_set-string" },
+				"accesspath": { "$ref": "#/definitions/optional_vector-count_t-room" },
+				"accesspath_not": { "$ref": "#/definitions/optional_vector-count_t-room" },
+				"layout": { "$ref": "#/definitions/optional_vector-count_t-furniture" },
+				"layout_not": { "$ref": "#/definitions/optional_vector-count_t-furniture" },
+				"has_owner": { "type": "boolean" },
+				"has_squad": { "type": "boolean" },
+				"level": { "$ref": "#/definitions/between_t" },
+				"workshop": { "$ref": "#/definitions/optional_vector-room" },
+				"workshop_not": { "$ref": "#/definitions/optional_vector-room" },
+				"users": { "$ref": "#/definitions/between_t-non-negative" },
+				"stock_disable": { "$ref": "#/definitions/optional_set-stockpile_list" },
+				"stock_disable_not": { "$ref": "#/definitions/optional_set-stockpile_list" },
+				"stock_specific1": { "type": "boolean" },
+				"stock_specific2": { "type": "boolean" },
+				"has_users": { "$ref": "#/definitions/between_t-non-negative" },
+				"furnished": { "type": "boolean" },
+				"queue_dig": { "type": "boolean" },
+				"temporary": { "type": "boolean" },
+				"outdoor": { "type": "boolean" },
+				"channeled": { "type": "boolean" }
+			},
+			"additionalProperties": false
+		},
+		"furniture_filter_t": {
+			"type": "object",
+			"properties": {
+				"type": { "$ref": "#/definitions/optional_vector-layout_type" },
+				"type_not": { "$ref": "#/definitions/optional_vector-layout_type" },
+				"construction": { "$ref": "#/definitions/optional_vector-construction_type" },
+				"construction_not": { "$ref": "#/definitions/optional_vector-construction_type" },
+				"dig": { "$ref": "#/definitions/optional_vector-tile_dig_designation" },
+				"dig_not": { "$ref": "#/definitions/optional_vector-tile_dig_designation" },
+				"target": { "$ref": "#/definitions/optional_vector-furniture" },
+				"target_not": { "$ref": "#/definitions/optional_vector-furniture" },
+				"users": { "$ref": "#/definitions/between_t-non-negative" },
+				"has_users": { "$ref": "#/definitions/between_t-non-negative" },
+				"ignore": { "type": "boolean" },
+				"makeroom": { "type": "boolean" },
+				"internal": { "type": "boolean" },
+				"comment": { "$ref": "#/definitions/optional_set-string" },
+				"comment_not": { "$ref": "#/definitions/optional_set-string" }
+			},
+			"additionalProperties": false
+		},
+		"optional_vector-room": {
+			"anyOf": [
+				{
+					"$ref": "#/definitions/room_filter_t"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "#/definitions/room_filter_t" }
+				}
+			]
+		},
+		"optional_vector-furniture": {
+			"anyOf": [
+				{
+					"$ref": "#/definitions/furniture_filter_t"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "#/definitions/furniture_filter_t" }
+				}
+			]
+		},
+		"count_t-room": {
+			"type": "object",
+			"properties": {
+				"match": { "$ref": "#/definitions/optional_vector-room" },
+				"is": { "$ref": "#/definitions/between_t-non-negative" }
+			},
+			"required": [
+				"match",
+				"is"
+			],
+			"additionalProperties": false
+		},
+		"count_t-furniture": {
+			"type": "object",
+			"properties": {
+				"match": { "$ref": "#/definitions/optional_vector-furniture" },
+				"is": { "$ref": "#/definitions/between_t-non-negative" }
+			},
+			"required": [
+				"match",
+				"is"
+			],
+			"additionalProperties": false
+		},
+		"optional_vector-count_t-room": {
+			"anyOf": [
+				{
+					"$ref": "#/definitions/count_t-room"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "#/definitions/count_t-room" }
+				}
+			]
+		},
+		"optional_vector-count_t-furniture": {
+			"anyOf": [
+				{
+					"$ref": "#/definitions/count_t-furniture"
+				},
+				{
+					"type": "array",
+					"items": { "$ref": "#/definitions/count_t-furniture" }
+				}
+			]
+		}
+	},
+	"anyOf": [
+		{
+			"type": "object",
+			"properties": {
+				"continue": { "$ref": "#/definitions/continue" },
+				"action": {
+					"enum": [
+						"dig",
+						"dig_immediate",
+						"unignore_furniture",
+						"finish"
+					]
+				},
+				"match": { "$ref": "#/definitions/optional_vector-room" },
+				"count": { "$ref": "#/definitions/count_t-room" }
+			},
+			"required": [
+				"action",
+				"match"
+			],
+			"additionalProperties": false
+		},
+		{
+			"type": "object",
+			"properties": {
+				"continue": { "$ref": "#/definitions/continue" },
+				"action": {
+					"enum": [
+						"start_ore_search",
+						"past_initial_phase",
+						"deconstruct_wagons",
+						"dig_next_cavern_outpost"
+					]
+				},
+				"count": { "$ref": "#/definitions/count_t-room" }
+			},
+			"required": [
+				"action"
+			],
+			"additionalProperties": false
+		}
+	]
+}

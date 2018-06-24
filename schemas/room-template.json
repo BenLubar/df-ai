@@ -1,0 +1,42 @@
+{
+	"$schema": "http://json-schema.org/draft-04/schema",
+	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"type": "object",
+	"definitions": {
+		"not-placeholder": {
+			"properties": {
+				"skip": {
+					"not": {}
+				}
+			}
+		},
+		"furniture": {
+			"allOf": [
+				{ "$ref": "room-instance.json#/definitions/furniture" },
+				{ "$ref": "#/definitions/not-placeholder" }
+			]
+		},
+		"room": {
+			"allOf": [
+				{ "$ref": "room-instance.json#/definitions/room" },
+				{ "$ref": "#/definitions/not-placeholder" }
+			]
+		}
+	},
+	"properties": {
+		"$schema": { "type": "string" },
+		"f": {
+			"type": "array",
+			"items": { "$ref": "#/definitions/furniture" }
+		},
+		"r": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#/definitions/room" }
+		}
+	},
+	"required": [
+		"r"
+	],
+	"additionalProperties": false
+}
