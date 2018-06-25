@@ -77,10 +77,11 @@ void load_objects(color_ostream & out, const std::string & subtype, std::functio
     }
 }
 
-blueprints_t::blueprints_t(color_ostream & out)
+blueprints_t::blueprints_t(color_ostream & out) : is_valid(true)
 {
     if (!Filesystem::isdir("df-ai-blueprints"))
     {
+        is_valid = false;
         out.printerr("The df-ai-blueprints folder is missing! Download it from https://github.com/BenLubar/df-ai/releases to use the new scriptable blueprint system.\n");
         out.printerr("The df-ai-blueprints folder should be inside %s.\n", Filesystem::getcwd().c_str());
         return;
@@ -104,10 +105,12 @@ blueprints_t::blueprints_t(color_ostream & out)
         rbs.reserve(type.second.first.size() * type.second.second.size());
         if (type.second.first.empty())
         {
+            is_valid = false;
             out.printerr("%s: no templates\n", type.first.c_str());
         }
         if (type.second.second.empty())
         {
+            is_valid = false;
             out.printerr("%s: no instances\n", type.first.c_str());
         }
         for (auto tmpl : type.second.first)
@@ -117,12 +120,14 @@ blueprints_t::blueprints_t(color_ostream & out)
                 room_blueprint *rb = new room_blueprint(tmpl.second, inst.second);
                 if (!rb->apply(error))
                 {
+                    is_valid = false;
                     out.printerr("%s + %s: %s\n", tmpl.first.c_str(), inst.first.c_str(), error.c_str());
                     delete rb;
                     continue;
                 }
                 if (rb->warn(error))
                 {
+                    is_valid = false;
                     out.printerr("%s + %s: %s\n", tmpl.first.c_str(), inst.first.c_str(), error.c_str());
                 }
                 rbs.push_back(rb);
@@ -154,6 +159,7 @@ blueprints_t::blueprints_t(color_ostream & out)
             }
             else
             {
+                is_valid = false;
                 out.printerr("%s\n", error.c_str());
             }
         }

@@ -1,6 +1,7 @@
 // a dwarf fortress autonomous artificial intelligence (more or less)
 
 #include "ai.h"
+#include "blueprint.h"
 #include "event_manager.h"
 #include "hooks.h"
 
@@ -115,6 +116,8 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         "  Undoes \"ai enable camera\".\n"
         "ai abandon\n"
         "  Abandons the current fortress.\n"
+        "ai validate\n"
+        "  Verifies that df-ai-blueprints is set up correctly.\n"
     ));
 
     add_weblegends_handler("df-ai", &ai_weblegends_handler, "Artificial Intelligence");
@@ -202,6 +205,12 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
     {
         ai_version(out);
         return CR_OK;
+    }
+
+    if (args.size() == 1 && args[0] == "validate")
+    {
+        blueprints_t blueprints(out);
+        return blueprints.is_valid ? CR_OK : CR_FAILURE;
     }
 
     if (!check_enabled(out))

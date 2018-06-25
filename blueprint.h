@@ -234,6 +234,8 @@ public:
     blueprints_t(color_ostream & out);
     ~blueprints_t();
 
+    bool is_valid;
+
 private:
     std::map<std::string, std::vector<room_blueprint *>> blueprints;
     std::map<std::string, blueprint_plan_template *> plans;
