@@ -324,6 +324,9 @@ void Population::report(std::ostream & out, bool html)
                     case occupation_type::SCRIBE:
                         out << " (scribe)";
                         break;
+                    case occupation_type::MESSENGER:
+                        out << " (messenger)";
+                        break;
                     }
                 }
             }
