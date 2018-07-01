@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dfhack_shared.h"
-#include "jsoncpp.h"
+#include "json/json.h"
 
 #include <algorithm>
 #include <set>

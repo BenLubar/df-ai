@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-#include "jsoncpp.h"
+#include "json/json.h"
 
 Config config;
 

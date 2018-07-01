@@ -1,6 +1,6 @@
 #include "variable_string.h"
 
-#include "jsoncpp.h"
+#include "json/json.h"
 
 bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append)
 {

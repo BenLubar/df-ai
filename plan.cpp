@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <fstream>
 
-#include "jsoncpp.h"
+#include "json/json.h"
 
 #include "modules/Buildings.h"
 #include "modules/Gui.h"

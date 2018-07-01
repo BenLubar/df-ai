@@ -5,7 +5,7 @@
 #include "plan_priorities.h"
 #include "variable_string.h"
 
-#include "jsoncpp.h"
+#include "json/json.h"
 
 #include <functional>
 
