@@ -328,7 +328,8 @@ bool plan_priority_t::furniture_filter_t::is_match(furniture * const & obj) cons
     } \
     else \
     { \
-        Json::Value val = obj.removeMember(STR(name)); \
+        Json::Value val = obj[STR(name)]; \
+        obj.removeMember(STR(name)); \
         if (val.isArray() && std::find_if(val.begin(), val.end(), [](Json::Value & v) -> bool { return !v.isString(); }) == val.end()) \
         { \
             name.clear(); \
@@ -358,7 +359,8 @@ bool plan_priority_t::furniture_filter_t::is_match(furniture * const & obj) cons
     } \
     else \
     { \
-        Json::Value val = obj.removeMember(STR(name) "_not"); \
+        Json::Value val = obj[STR(name) "_not"]; \
+        obj.removeMember(STR(name) "_not"); \
         if (val.isArray() && std::find_if(val.begin(), val.end(), [](Json::Value & v) -> bool { return !v.isString(); }) == val.end()) \
         { \
             name##_not.clear(); \
@@ -389,7 +391,8 @@ bool plan_priority_t::furniture_filter_t::is_match(furniture * const & obj) cons
     } \
     else \
     { \
-        Json::Value val = obj.removeMember(STR(name)); \
+        Json::Value val = obj[STR(name)]; \
+        obj.removeMember(STR(name)); \
         if (!name.apply(val, error)) \
         { \
             return false; \
@@ -403,7 +406,8 @@ bool plan_priority_t::furniture_filter_t::is_match(furniture * const & obj) cons
     } \
     else \
     { \
-        Json::Value val = obj.removeMember(STR(name)); \
+        Json::Value val = obj[STR(name)]; \
+        obj.removeMember(STR(name)); \
         if (!name.apply(val, error)) \
         { \
             return false; \

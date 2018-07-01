@@ -153,7 +153,8 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
 
         if (data.isMember("exits"))
         {
-            Json::Value value = data.removeMember("exits");
+            Json::Value value = data["exits"];
+            data.removeMember("exits");
             if (!value.isArray())
             {
                 error = "exits has wrong type (should be array)";

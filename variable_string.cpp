@@ -4,7 +4,8 @@
 
 bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     try
     {
         variable_string str(value);

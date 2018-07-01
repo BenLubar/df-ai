@@ -5,7 +5,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 {
     if (data.isMember("max_retries"))
     {
-        Json::Value value = data.removeMember("max_retries");
+        Json::Value value = data["max_retries"];
+        data.removeMember("max_retries");
         if (!value.isIntegral())
         {
             error = "max_retries has wrong type (should be integer)";
@@ -23,7 +24,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("max_failures"))
     {
-        Json::Value value = data.removeMember("max_failures");
+        Json::Value value = data["max_failures"]
+        data.removeMember("max_failures");
         if (!value.isIntegral())
         {
             error = "max_failures has wrong type (should be integer)";
@@ -41,7 +43,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("start"))
     {
-        Json::Value value = data.removeMember("start");
+        Json::Value value = data["start"];
+        data.removeMember("start");
         if (!value.isString())
         {
             error = "start has wrong type (should be string)";
@@ -58,7 +61,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("outdoor"))
     {
-        Json::Value value = data.removeMember("outdoor");
+        Json::Value value = data["outdoor"];
+        data.removeMember("outdoor");
         if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isString(); }) != value.end())
         {
             error = "outdoor has wrong type (should be array of strings)";
@@ -77,7 +81,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("tags"))
     {
-        Json::Value value = data.removeMember("tags");
+        Json::Value value = data["tags"];
+        data.removeMember("tags");
         if (!value.isObject())
         {
             error = "tags has wrong type (should be object)";
@@ -107,7 +112,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("limits"))
     {
-        Json::Value value = data.removeMember("limits");
+        Json::Value value = data["limits"];
+        data.removeMember("limits");
         if (!value.isObject())
         {
             error = "limits has wrong type (should be object)";
@@ -142,7 +148,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("instance_limits"))
     {
-        Json::Value value = data.removeMember("instance_limits");
+        Json::Value value = data["instance_limits"];
+        data.removeMember("instance_limits");
         if (!value.isObject())
         {
             error = "instance_limits has wrong type (should be object)";
@@ -189,7 +196,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("variables"))
     {
-        Json::Value vars = data.removeMember("variables");
+        Json::Value vars = data["vaiables"];
+        data.removeMember("variables");
         if (!vars.isObject())
         {
             error = "variables has wrong type (should be object)";
@@ -212,7 +220,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("padding_x"))
     {
-        Json::Value value = data.removeMember("padding_x");
+        Json::Value value = data["padding_x"];
+        data.removeMember("padding_x");
         if (!value.isArray() || value.size() != 2 || !value[0].isIntegral() || !value[1].isIntegral())
         {
             error = "padding_x has wrong type (should be [integer, integer])";
@@ -236,7 +245,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("padding_y"))
     {
-        Json::Value value = data.removeMember("padding_y");
+        Json::Value value = data["padding_y"];
+        data.removeMember("padding_y");
         if (!value.isArray() || value.size() != 2 || !value[0].isIntegral() || !value[1].isIntegral())
         {
             error = "padding_y has wrong type (should be [integer, integer])";
@@ -260,7 +270,8 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("priorities"))
     {
-        Json::Value p = data.removeMember("priorities");
+        Json::Value p = data["priorities"];
+        data.removeMember("priorities");
         if (!priorities_from_json(priorities, p, error))
         {
             return false;

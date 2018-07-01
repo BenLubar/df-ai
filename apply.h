@@ -10,7 +10,8 @@
 template<typename idx_t>
 static bool apply_index(bool & has_idx, idx_t & idx, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isInt())
     {
         error = name + " has wrong type (should be integer)";
@@ -32,7 +33,8 @@ static bool apply_index(bool & has_idx, idx_t & idx, Json::Value & data, const s
 template<typename idx_t>
 static bool apply_indexes(std::vector<idx_t> & idx, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isInt(); }) != value.end())
     {
         error = name + " has wrong type (should be array of integers)";
@@ -56,7 +58,8 @@ static bool apply_indexes(std::vector<idx_t> & idx, Json::Value & data, const st
 template<typename enum_t>
 static bool apply_enum(enum_t & var, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isString())
     {
         error = name + " has wrong type (should be string)";
@@ -75,7 +78,8 @@ static bool apply_enum(enum_t & var, Json::Value & data, const std::string & nam
 template<typename enum_t>
 static bool apply_enum_set(std::set<enum_t> & var, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isArray() || std::find_if(value.begin(), value.end(), [](Json::Value & v) -> bool { return !v.isString(); }) != value.end())
     {
         error = name + " has wrong type (should be array of strings)";
@@ -104,7 +108,8 @@ static bool apply_enum_set(std::set<enum_t> & var, Json::Value & data, const std
 template<typename int_t>
 static bool apply_int(int_t & var, Json::Value & data, const std::string & name, std::string & error, int_t min_value = std::numeric_limits<int_t>::min(), int_t max_value = std::numeric_limits<int_t>::max())
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isIntegral())
     {
         error = name + " has wrong type (should be integer)";
@@ -149,7 +154,8 @@ static bool apply_int(int_t & var, Json::Value & data, const std::string & name,
 
 static inline bool apply_bool(bool & var, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isBool())
     {
         error = name + " has wrong type (should be true or false)";
@@ -170,7 +176,8 @@ static bool apply_optional_vector(std::vector<element_t> & vec, Json::Value & da
         return true;
     }
 
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isArray())
     {
         vec.resize(1);
@@ -196,7 +203,8 @@ static bool apply_optional_vector(std::vector<element_t> & vec, Json::Value & da
 
 static inline bool apply_coord(df::coord & var, Json::Value & data, const std::string & name, std::string & error)
 {
-    Json::Value value = data.removeMember(name);
+    Json::Value value = data[name];
+    data.removeMember(name);
     if (!value.isArray() || value.size() != 3 || !value[0].isInt() || !value[1].isInt() || !value[2].isInt())
     {
         error = name + " has the wrong type (should be an array of three integers)";

@@ -203,7 +203,8 @@ struct plan_priority_t
                 error += " (match)";
                 return false;
             }
-            Json::Value is_val = val.removeMember("is");
+            Json::Value is_val = val["is"];
+            val.removeMember("is");
             if (!is.apply(is_val, error))
             {
                 error += " (is)";
