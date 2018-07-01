@@ -2,6 +2,8 @@
 
 #include "json/json.h"
 
+#include <sstream>
+
 bool apply_variable_string(variable_string & var, Json::Value & data, const std::string & name, std::string & error, bool append)
 {
     Json::Value value = data[name];

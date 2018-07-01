@@ -24,7 +24,7 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("max_failures"))
     {
-        Json::Value value = data["max_failures"]
+        Json::Value value = data["max_failures"];
         data.removeMember("max_failures");
         if (!value.isIntegral())
         {
