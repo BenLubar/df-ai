@@ -686,15 +686,15 @@ static struct df_ai_renderer : public df::renderer
 
 int egg_init(void)
 {
-    LOCKSTEP_DEBUG("calling DisclaimSuspend");
-    Core::getInstance().DisclaimSuspend(1000000);
+    LOCKSTEP_DEBUG("unlocking CoreSuspendMutex");
+    Core::getInstance().CoreSuspendMutex.unlock();
     return 0;
 }
 
 int egg_shutdown(void)
 {
-    LOCKSTEP_DEBUG("calling ClaimSuspend");
-    Core::getInstance().ClaimSuspend(true);
+    LOCKSTEP_DEBUG("re-locking CoreSuspendMutex");
+    Core::getInstance().CoreSuspendMutex.lock();
     return 0;
 }
 
