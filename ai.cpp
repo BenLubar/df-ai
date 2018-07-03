@@ -141,7 +141,7 @@ public:
             view->options.push_back(df::viewscreen_optionst::AbortRetire);
             view->options.push_back(df::viewscreen_optionst::Abandon);
 
-            Screen::show(view);
+            Screen::show(std::unique_ptr<df::viewscreen>(view));
         });
 
         Delay();
