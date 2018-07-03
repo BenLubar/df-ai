@@ -527,6 +527,7 @@ static bool Hook_Want_Disable()
 
 static void lockstep_loop()
 {
+    CoreSuspendClaimMain claimMain;
     while (!Hook_Want_Disable())
     {
         LOCKSTEP_DEBUG("calling mainloop (A)");
@@ -682,21 +683,6 @@ static struct df_ai_renderer : public df::renderer
     }
 } *lockstep_renderer = nullptr;
 
-// We need to access Core private methods and the egg_* set of functions aren't usually compiled in DFHack, so we steal their names:
-
-int egg_init(void)
-{
-    LOCKSTEP_DEBUG("unlocking CoreSuspendMutex");
-    Core::getInstance().CoreSuspendMutex.unlock();
-    return 0;
-}
-
-int egg_shutdown(void)
-{
-    LOCKSTEP_DEBUG("re-locking CoreSuspendMutex");
-    Core::getInstance().CoreSuspendMutex.lock();
-    return 0;
-}
 
 void Hook_Update()
 {
@@ -756,7 +742,7 @@ void Hook_Update()
         lockstep_renderer = new df_ai_renderer(enabler->renderer);
         enabler->renderer = lockstep_renderer;
 
-        egg_init();
+        CoreSuspendReleaseMain releaser;
 
         SDL_SemWait(enabler->async_zoom.sem);
         enabler->async_zoom.queue.push_back(zoom_commands::zoom_reset);
@@ -793,8 +779,6 @@ void Hook_Update()
 
             tthread::this_thread::sleep_for(tthread::chrono::seconds(1));
         }
-
-        egg_shutdown();
     }
 }
 
