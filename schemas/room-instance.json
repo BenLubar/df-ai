@@ -236,14 +236,12 @@
 			"type": "array",
 			"title": "Instance Placeholders",
 			"description": "Placeholders defined by this instance.",
-			"items": [
-				{
-					"anyOf": [
-						{ "$ref": "#/definitions/room-placeholder" },
-						{ "$ref": "#/definitions/furniture-placeholder" }
-					]
-				}
-			]
+			"items": {
+				"anyOf": [
+					{ "$ref": "#/definitions/room-placeholder" },
+					{ "$ref": "#/definitions/furniture-placeholder" }
+				]
+			}
 		},
 		"f": {
 			"type": "array",
