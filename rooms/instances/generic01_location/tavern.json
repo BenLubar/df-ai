@@ -1,0 +1,37 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"location_type": "tavern"
+		},
+		{
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"comment": "tavern - booze stockpile",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
+			]
+		},
+		{
+			"skip": true
+		}
+	]
+}

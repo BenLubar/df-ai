@@ -1,0 +1,12 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"type": "furnace",
+			"furnace_type": "WoodFurnace"
+		},
+		{
+			"stockpile_type": "wood"
+		}
+	]
+}

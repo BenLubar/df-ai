@@ -1,0 +1,17 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"location_type": "temple"
+		},
+		{
+			"skip": true
+		},
+		{
+			"skip": true
+		},
+		{
+			"skip": true
+		}
+	]
+}

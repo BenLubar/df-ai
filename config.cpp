@@ -188,7 +188,7 @@ void Config::save(color_ostream & out)
     setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
     if (lockstep_debug) // hide from config if not set
         setComment(v["lockstep_debug"], true, "// hidden option: write a LOT of information about lockstep mode to the DFHack console.");
-    setComment(v["plan_verbosity"], Json::Int(plan_verbosity), "// number from -1 to 3: how much information about the blueprint should the AI write to the log? -1: none, 0: summary, 1: room placement summary, 2: placements that succeeded, 3: placements that failed");
+    setComment(v["plan_verbosity"], Json::Int(plan_verbosity), "// number from -1 to 4: how much information about the blueprint should the AI write to the log? -1: none, 0: summary, 1: room placement summary, 2: placements that succeeded, 3: placements that failed, 4: extra information about failure reasons");
     if (tick_debug) // hide from config if not set
         setComment(v["tick_debug"], tick_debug, "// hidden option: write a LOT of information about exclusive mode to the DFHack console.");
     setComment(v["plan_allow_legacy"], plan_allow_legacy, "// true or false: should the AI use the legacy floor plan generator if it fails to generate a floor plan using blueprints?");

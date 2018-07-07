@@ -1,0 +1,19 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"f": [
+		{
+			"type": "nest_box",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		}
+	],
+	"p": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"layout": [0],
+			"comment": "next box"
+		}
+	]
+}

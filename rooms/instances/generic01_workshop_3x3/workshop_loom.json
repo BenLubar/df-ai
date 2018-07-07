@@ -1,0 +1,18 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Loom"
+		},
+		{
+			"stockpile_type": "cloth",
+			"stock_disable": [
+				"ClothSilk",
+				"ClothPlant",
+				"ClothYarn",
+				"ClothMetal"
+			]
+		}
+	]
+}

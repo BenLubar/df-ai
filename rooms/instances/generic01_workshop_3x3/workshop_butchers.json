@@ -1,0 +1,21 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Butchers"
+		},
+		{
+			"stockpile_type": "refuse",
+			"stock_disable": [
+				"RefuseItems",
+				"RefuseSkulls",
+				"RefuseBones",
+				"RefuseShells",
+				"RefuseTeeth",
+				"RefuseHorns",
+				"RefuseHair"
+			]
+		}
+	]
+}

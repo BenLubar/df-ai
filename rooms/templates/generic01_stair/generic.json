@@ -1,0 +1,86 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"f": [
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 2,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-1, -1, 0],
+			"max": [1, 1, 0],
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+			"exits": [
+				["generic01_stair", 1, 1, -1],
+				["generic01_stair", 1, 1, 1],
+				["generic01_corridor", -1, 1, 0],
+				["generic01_corridor", 3, 1, 0],
+				["generic01_corridor", 1, -1, 0],
+				["generic01_corridor", 1, 3, 0]
+			],
+			"comment": "staircase"
+		}
+	]
+}

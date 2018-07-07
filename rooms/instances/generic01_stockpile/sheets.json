@@ -1,0 +1,8 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"stockpile_type": "sheets"
+		}
+	]
+}

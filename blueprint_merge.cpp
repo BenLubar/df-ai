@@ -545,13 +545,13 @@ void room_blueprint::build_cache()
             }
             else
             {
-                interior.insert(r->min + f->pos);
                 if (f->type == layout_type::door)
                 {
                     no_room.insert(r->min + f->pos);
                 }
                 else
                 {
+                    interior.insert(r->min + f->pos);
                     for (int16_t dx = -1; dx <= 1; dx++)
                     {
                         for (int16_t dy = -1; dy <= 1; dy++)
@@ -626,8 +626,11 @@ void room_blueprint::build_cache()
                         {
                             for (int16_t dy = -1; dy <= 1; dy++)
                             {
-                                no_room.insert(t + df::coord(dx, dy, 0));
-                                no_corridor.insert(t + df::coord(dx, dy, 0));
+                                if (r->exits.count(t + df::coord(dx, dy, 0)))
+                                {
+                                    no_room.insert(t + df::coord(dx, dy, 0));
+                                    no_corridor.insert(t + df::coord(dx, dy, 0));
+                                }
                             }
                         }
                     }

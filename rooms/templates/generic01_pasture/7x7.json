@@ -1,0 +1,13 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"r": [
+		{
+			"type": "pasture",
+			"min": [-3, -3, 0],
+			"max": [3, 3, 0],
+			"require_grass": 25,
+			"require_floor": false,
+			"outdoor": true
+		}
+	]
+}

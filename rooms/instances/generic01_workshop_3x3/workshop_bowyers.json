@@ -1,0 +1,12 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"type": "workshop",
+			"workshop_type": "Bowyers"
+		},
+		{
+			"stockpile_type": "wood"
+		}
+	]
+}

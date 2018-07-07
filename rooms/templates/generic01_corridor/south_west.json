@@ -1,0 +1,36 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"f": [
+		{
+			"type": "door",
+			"x": 4,
+			"y": -1,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 6,
+			"y": -1,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"corridor_type": "corridor",
+			"min": [-5, 1, 0],
+			"max": [1, 3, 0],
+			"layout": [0, 1],
+			"exits": [
+				["generic01_corridor", -1, 1, 0],
+				["generic01_generic", 1, -1, 0],
+				["generic01_generic", 1, 3, 0],
+				["generic01_in_corridor", 3, 0, 0],
+				["generic01_in_corridor", 3, 2, 0],
+				["generic01_generic", 5, 3, 0],
+				["generic01_in_corridor", 0, 1, 0],
+				["generic01_in_corridor", 6, 1, 0]
+			]
+		}
+	]
+}

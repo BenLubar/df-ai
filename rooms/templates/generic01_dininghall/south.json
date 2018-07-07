@@ -1,0 +1,322 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"f": [
+		{
+			"type": "door",
+			"x": 7,
+			"y": -1,
+			"z": 0
+		},
+		{
+			"construction": "Wall",
+			"dig": "No",
+			"x": 2,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"construction": "Wall",
+			"dig": "No",
+			"x": 8,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 5,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true,
+			"makeroom": true
+		},
+		{
+			"type": "chair",
+			"x": 5,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 5,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 5,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 4,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 4,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 4,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 4,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 6,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 6,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 6,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 6,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 3,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 3,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 3,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 3,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 7,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 7,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 7,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 7,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 2,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 2,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 2,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 2,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 8,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 8,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 8,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 8,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 1,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 1,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 9,
+			"y": 2,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 9,
+			"y": 1,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "table",
+			"x": 9,
+			"y": 4,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		},
+		{
+			"type": "chair",
+			"x": 9,
+			"y": 5,
+			"z": 0,
+			"has_users": 2,
+			"ignore": true
+		}
+	],
+	"r": [
+		{
+			"type": "dininghall",
+			"min": [-7, 1, 0],
+			"max": [3, 7, 0],
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+		}
+	]
+}

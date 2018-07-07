@@ -321,11 +321,12 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
             if (old_connect != room_connect.end())
             {
                 auto r = rooms.at(old_connect->second.first);
+                df::coord rp = r->min;
                 for (auto exit : old_connect->second.second)
                 {
                     if (c != exit_location || exit.first != rb.type)
                     {
-                        ai->debug(out, stl_sprintf("Removing blocked %s exit on %s at (%d, %d, %d)", exit.first.c_str(), r->blueprint.c_str(), c.x, c.y, c.z));
+                        ai->debug(out, stl_sprintf("Removing blocked %s exit on %s at (%d+%d, %d+%d, %d+%d) - blocked by %s/%s/%s (%d, %d, %d)", exit.first.c_str(), r->blueprint.c_str(), rp.x, c.x - rp.x, rp.y, c.y - rp.y, rp.z, c.z - rp.z, rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), c.x-rb.origin.x, c.y-rb.origin.y, c.z-rb.origin.z));
                     }
                 }
             }

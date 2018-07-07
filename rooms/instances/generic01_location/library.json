@@ -1,0 +1,16 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"p": [
+		{
+			"location_type": "library"
+		},
+		{
+		},
+		{
+			"skip": true
+		},
+		{
+			"type": "bookcase"
+		}
+	]
+}

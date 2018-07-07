@@ -1,0 +1,13 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"r": [
+		{
+			"type": "farmplot",
+			"min": [-1, -2, 0],
+			"max": [1, 2, 0],
+			"outdoor": true,
+			"single_biome": true,
+			"placeholder": 0
+		}
+	]
+}

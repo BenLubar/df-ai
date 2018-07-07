@@ -1,0 +1,89 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"f": [
+		{
+			"type": "coffin",
+			"x": 1,
+			"y": 0,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 2,
+			"y": 0,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 3,
+			"y": 0,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 4,
+			"y": 0,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 1,
+			"y": 2,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 2,
+			"y": 2,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 3,
+			"y": 2,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "coffin",
+			"x": 4,
+			"y": 2,
+			"z": 0,
+			"has_users": 1,
+			"ignore": true
+		},
+		{
+			"type": "door",
+			"x": -1,
+			"y": 1,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "cemetery",
+			"min": [1, -1, 0],
+			"max": [5, 1, 0],
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+			"exits": [
+				["generic01_cemetery", -1, 1, 0],
+				["generic01_cemetery", 5, 1, 0],
+				["generic01_cemetery", 2, -1, 0],
+				["generic01_cemetery", 2, 3, 0]
+			]
+		}
+	]
+}

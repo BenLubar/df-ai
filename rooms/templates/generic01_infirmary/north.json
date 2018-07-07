@@ -1,0 +1,93 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"f": [
+		{
+			"type": "door",
+			"x": 3,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 1,
+			"z": 0,
+			"comment": "north-west"
+		},
+		{
+			"type": "table",
+			"x": 1,
+			"y": 1,
+			"z": 0,
+			"comment": "north"
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 1,
+			"z": 0,
+			"comment": "north-east"
+		},
+		{
+			"type": "traction_bench",
+			"x": 0,
+			"y": 2,
+			"z": 0,
+			"comment": "west"
+		},
+		{
+			"type": "traction_bench",
+			"x": 2,
+			"y": 2,
+			"z": 0,
+			"comment": "east"
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 3,
+			"z": 0,
+			"comment": "south-west"
+		},
+		{
+			"type": "table",
+			"x": 1,
+			"y": 3,
+			"z": 0,
+			"comment": "south"
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 3,
+			"z": 0,
+			"comment": "south-east"
+		},
+		{
+			"type": "chest",
+			"x": 4,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "chest",
+			"x": 4,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "chest",
+			"x": 4,
+			"y": 3,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "infirmary",
+			"min": [-3, -5, 0],
+			"max": [1, -1, 0],
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+		}
+	]
+}

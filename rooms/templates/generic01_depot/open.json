@@ -1,0 +1,20 @@
+{
+	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-template.json",
+	"r": [
+		{
+			"type": "corridor",
+			"min": [-4, -4, 0],
+			"max": [4, 4, 0],
+			"outdoor": true,
+			"comment": "trade depot - surrounding area"
+		},
+		{
+			"type": "tradedepot",
+			"min": [-2, -2, 0],
+			"max": [2, 2, 0],
+			"outdoor": true,
+			"in_corridor": true,
+			"accesspath": [0]
+		}
+	]
+}
