@@ -284,7 +284,7 @@ void AI::debug(color_ostream & out, const std::string & str)
     }
     if (config.write_console)
     {
-        write_df(out, "AI: " + ts + " " + str, "\n", "\n", DF2CONSOLE);
+        write_df(out, "AI: " + ts + " " + str, "\n", "\n", [](const std::string & in) -> std::string { return DF2CONSOLE(in); });
     }
     if (config.write_log)
     {
