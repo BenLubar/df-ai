@@ -53,7 +53,7 @@ void ExclusiveCallback::Delay(size_t frames)
     for (size_t i = 0; i < frames; i++)
     {
         out_proxy.clear();
-        out_proxy.set(pull->get());
+        out_proxy.set(*pull->get());
     }
 }
 
@@ -65,7 +65,7 @@ bool ExclusiveCallback::run(color_ostream & out)
         return false;
     }
 
-    if (push(out))
+    if (push(&out))
     {
         wait_frames = wait_multiplier - 1;
         return false;
@@ -77,7 +77,7 @@ bool ExclusiveCallback::run(color_ostream & out)
 void ExclusiveCallback::init(coroutine_t::pull_type & input)
 {
     pull = &input;
-    out_proxy.set(pull->get());
+    out_proxy.set(*pull->get());
     Run(out_proxy);
     out_proxy.clear();
 }

@@ -69,7 +69,7 @@ private:
         friend class ExclusiveCallback;
     } out_proxy;
 
-    using coroutine_t = boost::coroutines2::coroutine<color_ostream &>;
+    using coroutine_t = boost::coroutines2::coroutine<color_ostream *>;
     coroutine_t::pull_type *pull;
     coroutine_t::push_type push;
     size_t wait_multiplier;
