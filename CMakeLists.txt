@@ -124,11 +124,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} df-ai-biome ${Boost_LIBRARIES})
 
 IF(UNIX)
-    IF(APPLE)
-        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -undefined dynamic_lookup")
-    ELSE()
-        LIST(APPEND PROJECT_LIBS SDL)
-    ENDIF()
+    LIST(APPEND PROJECT_LIBS SDL)
 ENDIF()
 
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DDFAI_RELEASE")
