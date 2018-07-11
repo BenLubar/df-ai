@@ -66,6 +66,7 @@ SET(PROJECT_SRCS
     trade_helpers.cpp
     trade_manager.cpp
     event_manager.cpp
+    exclusive_callback.cpp
     weblegends.cpp
     military.cpp
     pause.cpp
@@ -87,6 +88,7 @@ SET(PROJECT_HDRS
     room.h
     trade.h
     event_manager.h
+    exclusive_callback.h
     dfhack_shared.h
     df-ai-git-describe.h
     apply.h
@@ -96,11 +98,29 @@ SET(PROJECT_HDRS
 ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)
 TARGET_LINK_LIBRARIES(df-ai-biome dfhack)
 
+if(DFHACK_BUILD_ARCH EQUAL 32)
+    set(CMAKE_CXX_COMPILER_ARCHITECTURE_ID X86)
+else()
+    set(CMAKE_CXX_COMPILER_ARCHITECTURE_ID x64)
+endif()
+
 SET_SOURCE_FILES_PROPERTIES( ${PROJECT_HDRS} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 LIST(APPEND PROJECT_SRCS ${PROJECT_HDRS})
 
-LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} df-ai-biome)
+set(BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/boost")
+set(Boost_NO_SYSTEM_PATHS ON)
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_DEBUG_LIBS OFF)
+set(Boost_USE_RELEASE_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+set(Boost_USE_DEBUG_RUNTIME OFF)
+set(Boost_NO_BOOST_CMAKE ON)
+find_package(Boost 1.67.0 REQUIRED COMPONENTS context)
+include_directories(${Boost_INCLUDE_DIRS})
+
+LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} df-ai-biome ${Boost_LIBRARIES})
 
 IF(UNIX)
     IF(APPLE)

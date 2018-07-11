@@ -1,24 +1,24 @@
 #pragma once
 
 #include "event_manager.h"
+#include "exclusive_callback.h"
 
 class AI;
 
 class EmbarkExclusive : public ExclusiveCallback
 {
     AI * const ai;
-    df::coord2d selected_site_diff;
-    bool unknown_screen;
 
 public:
     EmbarkExclusive(AI *ai);
     virtual ~EmbarkExclusive();
 
+    virtual ExclusiveCallback *ReplaceOnScreenChange() { return new EmbarkExclusive(ai); }
     virtual void Run(color_ostream & out);
 
 private:
-    void SelectVerticalMenuItem(int32_t current, int32_t target);
-    void SelectHorizontalMenuItem(int32_t current, int32_t target);
+    void SelectVerticalMenuItem(int32_t *current, int32_t target);
+    void SelectHorizontalMenuItem(int32_t *current, int32_t target);
 
     void ViewWait();
     void ViewMoviePlayer();

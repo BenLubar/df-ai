@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "stocks.h"
+#include "event_manager.h"
 
 #include "modules/Materials.h"
 

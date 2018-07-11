@@ -128,7 +128,6 @@ public:
 
     virtual void Run(color_ostream &)
     {
-        Do([&]()
         {
             auto view = df::allocate<df::viewscreen_optionst>();
 
@@ -142,21 +141,18 @@ public:
             view->options.push_back(df::viewscreen_optionst::Abandon);
 
             Screen::show(std::unique_ptr<df::viewscreen>(view));
-        });
+        }
 
         Delay();
 
-        Do([&]()
+        auto view = virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true));
+        if (!view)
         {
-            auto view = virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true));
-            if (!view)
-            {
-                return;
-            }
+            return;
+        }
 
-            auto option = std::find(view->options.begin(), view->options.end(), df::viewscreen_optionst::Abandon);
-            MoveToItem(view->sel_idx, int32_t(option - view->options.begin()));
-        });
+        auto option = std::find(view->options.begin(), view->options.end(), df::viewscreen_optionst::Abandon);
+        MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
 
         Key(interface_key::SELECT);
         Key(interface_key::MENU_CONFIRM);

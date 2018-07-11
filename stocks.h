@@ -1,6 +1,6 @@
 #pragma once
 
-#include "event_manager.h"
+#include "exclusive_callback.h"
 #include "room.h"
 
 #include "df/biome_type.h"
@@ -19,6 +19,7 @@ namespace df
 }
 
 class AI;
+struct OnupdateCallback;
 struct room;
 
 #define STOCKS_ENUMS \
@@ -152,10 +153,8 @@ class ManagerOrderExclusive : public ExclusiveCallback
 public:
     AI * const ai;
     df::manager_order_template tmpl;
-    std::string quantity;
     int32_t amount;
     std::string search_word;
-    int32_t old_order;
 
     ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount);
     virtual void Run(color_ostream & out);

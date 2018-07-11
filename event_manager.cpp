@@ -2,6 +2,7 @@
 #include "ai.h"
 #include "camera.h"
 #include "embark.h"
+#include "exclusive_callback.h"
 
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_textviewerst.h"
@@ -337,6 +338,14 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
                 return;
             }
         }
+        if (event == SC_VIEWSCREEN_CHANGED)
+        {
+            if (ExclusiveCallback *e2 = exclusive->ReplaceOnScreenChange())
+            {
+                delete exclusive;
+                exclusive = e2;
+            }
+        }
         if (exclusive->SuppressStateChange(out, event))
         {
             return;
@@ -358,239 +367,6 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
             TICK_DEBUG("onstatechange: called: " << (*it)->description);
         }
     }
-}
-
-ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) : wait_multiplier(wait_multiplier), wait_frames(0), description(description)
-{
-    if (wait_multiplier < 1)
-    {
-        wait_multiplier = 1;
-    }
-}
-
-ExclusiveCallback::~ExclusiveCallback()
-{
-}
-
-void ExclusiveCallback::Do(std::function<void()> step)
-{
-    if (step_in())
-    {
-        step();
-        step_out();
-    }
-}
-
-void ExclusiveCallback::If(std::function<bool()> cond, std::function<void()> step_true, std::function<void()> step_false)
-{
-    if (step_in())
-    {
-        bool ok = cond();
-        step_out();
-
-        if (!ok)
-        {
-            step_skip();
-        }
-    }
-
-    if (step_in())
-    {
-        step_true();
-        step_out();
-
-        step_skip();
-    }
-
-    if (step_in())
-    {
-        step_false();
-        step_out();
-    }
-}
-
-void ExclusiveCallback::While(std::function<bool()> cond, std::function<void()> step)
-{
-    if (step_in())
-    {
-        for (;;)
-        {
-            if (step_in())
-            {
-                bool ok = cond();
-                step_out();
-                if (!ok)
-                {
-                    break;
-                }
-            }
-
-            if (step_in())
-            {
-                step();
-                step_out();
-            }
-
-            step_reset();
-        }
-
-        step_out();
-    }
-}
-
-void ExclusiveCallback::Key(df::interface_key key)
-{
-    if (step_in())
-    {
-        AI::feed_key(key);
-        step_out();
-        throw wait_for_next_frame();
-    }
-}
-
-const static char safe_char[128] =
-{
-    'C', 'u', 'e', 'a', 'a', 'a', 'a', 'c', 'e', 'e', 'e', 'i', 'i', 'i', 'A', 'A',
-    'E', 0, 0, 'o', 'o', 'o', 'u', 'u', 'y', 'O', 'U', 0, 0, 0, 0, 0,
-    'a', 'i', 'o', 'u', 'n', 'N', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-};
-
-void ExclusiveCallback::Char(std::function<char()> ch)
-{
-    if (step_in())
-    {
-        char c = ch();
-        if (c < 0)
-        {
-            c = safe_char[(uint8_t)c - 128];
-        }
-        AI::feed_char(c);
-        step_out();
-        throw wait_for_next_frame();
-    }
-}
-
-void ExclusiveCallback::Delay(size_t frames)
-{
-    for (size_t i = 0; i < frames; i++)
-    {
-        if (step_in())
-        {
-            step_out();
-            throw wait_for_next_frame();
-        }
-    }
-}
-
-void ExclusiveCallback::MoveToItem(int32_t current, int32_t target, df::interface_key inc, df::interface_key dec)
-{
-    While([&]() -> bool {return current != target; }, [&]()
-    {
-        If([&]() -> bool { return current < target; }, [&]()
-        {
-            Key(inc);
-        }, [&]()
-        {
-            Key(dec);
-        });
-    });
-}
-
-void ExclusiveCallback::EnterString(const std::string & current, const std::string & target)
-{
-    While([&]() -> bool {return current.size() > target.size() || current != target.substr(0, current.size()); }, [&]()
-    {
-        Key(interface_key::STRING_A000); // backspace
-    });
-
-    While([&]() -> bool { return current.size() < target.size(); }, [&]()
-    {
-        Char([&]() -> char { return target.at(current.size()); });
-    });
-}
-
-bool ExclusiveCallback::run(color_ostream & out)
-{
-    if (wait_frames)
-    {
-        wait_frames--;
-        return false;
-    }
-
-    current_step.clear();
-    current_step.push_back(0);
-
-    try
-    {
-        Run(out);
-        return true;
-    }
-    catch (wait_for_next_frame)
-    {
-        wait_frames = wait_multiplier - 1;
-        last_step = current_step;
-        return false;
-    }
-}
-
-bool ExclusiveCallback::step_in()
-{
-    size_t & step = current_step.back();
-    step++;
-
-    if (!last_step.empty())
-    {
-        for (size_t i = 0; i < current_step.size(); i++)
-        {
-            if (current_step.at(i) != last_step.at(i))
-            {
-                if (i == last_step.size() - 1 && current_step.at(i) == last_step.at(i) + 1)
-                {
-                    // we exited between step_out() and the next step_in().
-                    break;
-                }
-
-                step++;
-                return false;
-            }
-        }
-
-        if (current_step.size() == last_step.size())
-        {
-            last_step.clear();
-        }
-    }
-
-    current_step.push_back(0);
-
-    return true;
-}
-
-void ExclusiveCallback::step_out()
-{
-    if (current_step == last_step)
-    {
-        last_step.clear();
-    }
-    current_step.pop_back();
-    current_step.back()++;
-}
-
-void ExclusiveCallback::step_reset()
-{
-    last_step.clear();
-    current_step.back() = 0;
-}
-
-void ExclusiveCallback::step_skip(size_t steps)
-{
-    last_step = current_step;
-    last_step.back() += steps * 2;
 }
 
 // vim: et:sw=4:ts=4

@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "stocks.h"
+#include "event_manager.h"
 
 #include "modules/Gui.h"
 #include "modules/Materials.h"
@@ -94,10 +95,8 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI *ai, const df::manager_order_tem
     : ExclusiveCallback("add_manager_order: " + AI::describe_job(&tmpl)),
     ai(ai),
     tmpl(tmpl),
-    quantity(),
     amount(amount),
-    search_word(),
-    old_order(-1)
+    search_word()
 {
     search_word = AI::describe_job(&tmpl);
     size_t pos = search_word.find(' ');
@@ -126,7 +125,6 @@ void ManagerOrderExclusive::Run(color_ostream & out)
     Key(interface_key::D_JOBLIST);
     Key(interface_key::UNITJOB_MANAGER);
 
-    Do([&]()
     {
         auto curview = Gui::getCurViewscreen(true);
         auto view = strict_virtual_cast<df::viewscreen_jobmanagementst>(curview);
@@ -145,40 +143,39 @@ void ManagerOrderExclusive::Run(color_ostream & out)
             return;
         }
 
-        If([&]() -> bool
+        bool first = true;
+        bool multiple = false;
+        int32_t old_order = -1;
+        for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
         {
-            bool first = true;
-            for (auto it = world->manager_orders.begin(); it != world->manager_orders.end(); it++)
+            if (template_equals(*it, &tmpl))
             {
-                if (template_equals(*it, &tmpl))
+                if (first)
                 {
-                    if (first)
-                    {
-                        first = false;
-                    }
-                    else if ((*it)->amount_left == (*it)->amount_total)
-                    {
-                        old_order = int32_t(it - world->manager_orders.begin());
-                        amount += (*it)->amount_left;
-                        return true;
-                    }
+                    first = false;
+                }
+                else if ((*it)->amount_left == (*it)->amount_total)
+                {
+                    old_order = int32_t(it - world->manager_orders.begin());
+                    amount += (*it)->amount_left;
+                    multiple = true;
+                    break;
                 }
             }
+        }
 
-            return false;
-        }, [&]()
+        if (multiple)
         {
-            MoveToItem(view->sel_idx, old_order);
+            MoveToItem(&view->sel_idx, old_order);
 
             Key(interface_key::MANAGER_REMOVE);
-        });
+        }
+    }
 
-        quantity = stl_sprintf("%d", std::min(amount, 9999));
-    });
+    auto quantity = stl_sprintf("%d", std::min(amount, 9999));
 
     Key(interface_key::MANAGER_NEW_ORDER);
 
-    Do([&]()
     {
         auto curview = Gui::getCurViewscreen(true);
         auto view = strict_virtual_cast<df::viewscreen_createquotast>(curview);
@@ -199,55 +196,54 @@ void ManagerOrderExclusive::Run(color_ostream & out)
 
         int32_t idx = -1;
         df::manager_order_template *target = nullptr;
-        for (auto it = view->orders.begin(); it != view->orders.end(); it++)
+        auto find_target = [&]() -> bool
         {
-            if (template_equals<df::manager_order_template>(*it, &tmpl))
+            for (auto it = view->orders.begin(); it != view->orders.end(); it++)
             {
-                idx = it - view->orders.begin();
-                target = *it;
-                break;
+                if (template_equals<df::manager_order_template>(*it, &tmpl))
+                {
+                    idx = it - view->orders.begin();
+                    target = *it;
+                    return true;
+                }
             }
+            return false;
+        };
+
+        if (!find_target())
+        {
+            target = df::allocate<df::manager_order_template>();
+            *target = tmpl;
+            idx = int32_t(view->orders.size());
+            view->orders.push_back(target);
+            view->all_orders.push_back(target);
         }
 
-        Do([&]()
-        {
-            if (!target)
-            {
-                target = df::allocate<df::manager_order_template>();
-                *target = tmpl;
-                idx = int32_t(view->orders.size());
-                view->orders.push_back(target);
-                view->all_orders.push_back(target);
-            }
-        });
+        EnterString(&view->str_filter, search_word);
 
-        EnterString(view->str_filter, search_word);
-
-        While([&]() -> bool { return !target && view->str_filter[0]; }, [&]()
+        while (!find_target() && view->str_filter[0])
         {
             Key(interface_key::STRING_A000);
-        });
+        }
 
-        If([&]() -> bool { return target == nullptr; }, [&]()
+        if (!find_target())
         {
             ai->debug(out, "[CHEAT] Failed to get a manager order for " + AI::describe_job(&tmpl) + "; forcing it.");
             *view->orders.at(0) = tmpl;
-        }, [&]()
+        }
+        else
         {
-            MoveToItem(view->sel_idx, idx, interface_key::STANDARDSCROLL_PAGEDOWN, interface_key::STANDARDSCROLL_UP);
-        });
+            MoveToItem(&view->sel_idx, idx, interface_key::STANDARDSCROLL_PAGEDOWN, interface_key::STANDARDSCROLL_UP);
+        }
 
         Key(interface_key::SELECT);
 
-        EnterString(view->str_quantity, quantity);
-    });
+        EnterString(&view->str_quantity, quantity);
+    }
 
     Key(interface_key::SELECT);
 
-    Do([&]()
-    {
-        ai->debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
-    });
+    ai->debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
 
     Key(interface_key::LEAVESCREEN);
     Key(interface_key::LEAVESCREEN);

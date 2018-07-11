@@ -11,8 +11,8 @@
 #include <set>
 #include <tuple>
 
-#ifndef HAVE_NULLPTR
-#define nullptr 0L
+#ifdef nullptr
+#undef nullptr
 #endif
 
 using namespace DFHack;

@@ -1,4 +1,5 @@
 #include "ai.h"
+#include "exclusive_callback.h"
 #include "population.h"
 #include "plan.h"
 
@@ -69,49 +70,43 @@ protected:
     {
         Key(interface_key::D_MILITARY);
 
-        While([&]() -> bool { return !units.empty(); }, [&]()
+        while (!units.empty())
         {
             auto screen = getScreen();
             if (!screen)
             {
                 ai->debug(out, "[ERROR] unable to open military screen");
                 units.pop_front();
-                return;
+                break;
             }
 
             Run(out, screen, units.front());
 
-            Do([&]()
-            {
-                units.pop_front();
-            });
-        });
+            units.pop_front();
+        }
 
         Key(interface_key::LEAVESCREEN);
     }
     virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id) = 0;
     void ScrollTo(int32_t index)
     {
-        Do([&]()
+        auto list = getActiveObject<df::layer_object_listst>();
+        if (!list || index < 0 || index >= list->num_entries)
         {
-            auto list = getActiveObject<df::layer_object_listst>();
-            if (!list || index < 0 || index >= list->num_entries)
-            {
-                return;
-            }
+            return;
+        }
 
-            While([&]() -> bool { return list->getFirstVisible() > index; }, [&]()
-            {
-                Key(interface_key::STANDARDSCROLL_PAGEUP);
-            });
+        while (list->getFirstVisible() > index)
+        {
+            Key(interface_key::STANDARDSCROLL_PAGEUP);
+        }
 
-            While([&]() -> bool { return list->getLastVisible() < index; }, [&]()
-            {
-                Key(interface_key::STANDARDSCROLL_PAGEUP);
-            });
+        while (list->getLastVisible() < index)
+        {
+            Key(interface_key::STANDARDSCROLL_PAGEUP);
+        }
 
-            MoveToItem(list->cursor, index);
-        });
+        MoveToItem(&list->cursor, index);
     }
 
 public:
@@ -121,9 +116,6 @@ public:
 
 class MilitarySetupExclusive::Draft : public MilitarySetupExclusive
 {
-    int32_t selected_uniform;
-    int32_t reassign_as_leader;
-
 public:
     Draft(AI * const ai, unit_iterator begin, unit_iterator end) : MilitarySetupExclusive(ai, "military - draft", begin, end)
     {
@@ -131,195 +123,176 @@ public:
 
     virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id)
     {
-        Do([&]()
+        int32_t squad_size = 10;
+        int32_t num_soldiers = screen->num_soldiers + int32_t(units.size());
+        if (num_soldiers < 4 * 8)
+            squad_size = 8;
+        if (num_soldiers < 4 * 6)
+            squad_size = 6;
+        if (num_soldiers < 3 * 4)
+            squad_size = 4;
+
+        auto selected_squad = std::find_if(screen->squads.list.begin(), screen->squads.list.end(), [&](df::squad *squad) -> bool
         {
-            int32_t squad_size = 10;
-            int32_t num_soldiers = screen->num_soldiers + int32_t(units.size());
-            if (num_soldiers < 4 * 8)
-                squad_size = 8;
-            if (num_soldiers < 4 * 6)
-                squad_size = 6;
-            if (num_soldiers < 3 * 4)
-                squad_size = 4;
-
-            auto selected_squad = std::find_if(screen->squads.list.begin(), screen->squads.list.end(), [&](df::squad *squad) -> bool
+            if (!squad)
             {
-                if (!squad)
-                {
-                    return false;
-                }
+                return false;
+            }
 
-                return std::count_if(squad->positions.begin(), squad->positions.end(), [&](df::squad_position *pos) -> bool
-                {
-                    return pos && pos->occupant != -1;
-                }) < squad_size;
-            });
-
-            If([&]() -> bool { return selected_squad == screen->squads.list.end(); }, [&]()
+            return std::count_if(squad->positions.begin(), squad->positions.end(), [&](df::squad_position *pos) -> bool
             {
-                Do([&]()
-                {
-                    ai->debug(out, "Creating new squad...");
-                });
+                return pos && pos->occupant != -1;
+            }) < squad_size;
+        });
 
-                Do([&]()
-                {
-                    selected_uniform = SelectOrCreateUniform(out, screen->squads.list.size());
-                });
+        if (selected_squad == screen->squads.list.end())
+        {
+            ai->debug(out, "Creating new squad...");
 
-                auto vacant_squad_slot = std::find(screen->squads.list.begin(), screen->squads.list.end(), static_cast<df::squad *>(nullptr));
+            int32_t selected_uniform = SelectOrCreateUniform(out, screen->squads.list.size());
 
-                If([&]() -> bool { return vacant_squad_slot != screen->squads.list.end(); }, [&]()
-                {
-                    ScrollTo(int32_t(vacant_squad_slot - screen->squads.list.begin()));
+            auto vacant_squad_slot = std::find(screen->squads.list.begin(), screen->squads.list.end(), static_cast<df::squad *>(nullptr));
 
-                    Key(interface_key::D_MILITARY_CREATE_SQUAD);
-                }, [&]()
-                {
-                    auto squad_with_leader = std::find(screen->squads.can_appoint.begin(), screen->squads.can_appoint.end(), true);
-
-                    ScrollTo(int32_t(squad_with_leader - screen->squads.can_appoint.begin()));
-
-                    Key(interface_key::D_MILITARY_CREATE_SUB_SQUAD);
-                });
-
-                ScrollTo(selected_uniform);
-
-                Key(interface_key::SELECT);
-            });
-
-            Do([&]()
+            if (vacant_squad_slot != screen->squads.list.end())
             {
-                ai->debug(out, "Selecting squad: " + AI::describe_name((*selected_squad)->name, true));
-            });
+                ScrollTo(int32_t(vacant_squad_slot - screen->squads.list.begin()));
 
-            ScrollTo(int32_t(selected_squad - screen->squads.list.begin()));
-
-            If([&]() -> bool
+                Key(interface_key::D_MILITARY_CREATE_SQUAD);
+            }
+            else
             {
-                if (!ai->pop->resident.count(unit_id))
-                {
-                    return false;
-                }
+                auto squad_with_leader = std::find(screen->squads.can_appoint.begin(), screen->squads.can_appoint.end(), true);
 
-                for (auto pos : (*selected_squad)->positions)
+                ScrollTo(int32_t(squad_with_leader - screen->squads.can_appoint.begin()));
+
+                Key(interface_key::D_MILITARY_CREATE_SUB_SQUAD);
+            }
+
+            ScrollTo(selected_uniform);
+
+            Key(interface_key::SELECT);
+        }
+
+        ai->debug(out, "Selecting squad: " + AI::describe_name((*selected_squad)->name, true));
+
+        ScrollTo(int32_t(selected_squad - screen->squads.list.begin()));
+
+        bool should_reassign_leader = true;
+        if (!ai->pop->resident.count(unit_id))
+        {
+            // Mercenaries can't lead squads.
+            should_reassign_leader = false;
+        }
+        else
+        {
+            for (auto pos : (*selected_squad)->positions)
+            {
+                if (pos)
                 {
-                    if (pos)
+                    if (auto fig = df::historical_figure::find(pos->occupant))
                     {
-                        if (auto fig = df::historical_figure::find(pos->occupant))
+                        if (auto u = df::unit::find(fig->unit_id))
                         {
-                            if (auto u = df::unit::find(fig->unit_id))
+                            if (Units::isAlive(u) && Units::isSane(u))
                             {
-                                if (Units::isAlive(u) && Units::isSane(u))
-                                {
-                                    return false;
-                                }
+                                // Squad already has a leader.
+                                should_reassign_leader = false;
+                                break;
                             }
                         }
                     }
                 }
+            }
+        }
 
-                // Move an existing citizen soldier into this squad as the leader. Mercenaries can't lead squads.
-                reassign_as_leader = -1;
-
-                for (auto squad : screen->squads.list)
+        if (should_reassign_leader)
+        {
+            // Move an existing citizen soldier into this squad as the leader.
+            for (auto squad : screen->squads.list)
+            {
+                if (!squad)
                 {
-                    if (reassign_as_leader != -1)
-                    {
-                        break;
-                    }
+                    continue;
+                }
 
-                    if (!squad)
+                for (auto pos : squad->positions)
+                {
+                    if (!pos)
                     {
                         continue;
                     }
 
-                    for (auto pos : squad->positions)
+                    if (auto fig = df::historical_figure::find(pos->occupant))
                     {
-                        if (!pos)
+                        if (ai->pop->resident.count(fig->unit_id))
                         {
                             continue;
                         }
 
-                        if (auto fig = df::historical_figure::find(pos->occupant))
+                        if (auto u = df::unit::find(fig->unit_id))
                         {
-                            if (ai->pop->resident.count(fig->unit_id))
+                            if (squad->leader_position == u->military.squad_position)
                             {
                                 continue;
                             }
 
-                            if (auto u = df::unit::find(fig->unit_id))
-                            {
-                                if (squad->leader_position == u->military.squad_position)
-                                {
-                                    continue;
-                                }
+                            ai->debug(out, "Reassigning " + AI::describe_unit(u) + " from " + AI::describe_name(squad->name, true) + " to lead new squad " + AI::describe_name((*selected_squad)->name, true));
+                            Key(interface_key::STANDARDSCROLL_LEFT);
 
-                                reassign_as_leader = u->id;
-                                ai->debug(out, "Reassigning " + AI::describe_unit(u) + " from " + AI::describe_name(squad->name, true) + " to lead new squad " + AI::describe_name((*selected_squad)->name, true));
-                                return true;
-                            }
+                            auto selected_unit = std::find(screen->positions.candidates.begin(), screen->positions.candidates.end(), u);
+
+                            ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
+
+                            Key(interface_key::SELECT);
+
+                            Key(interface_key::STANDARDSCROLL_RIGHT);
+
+                            should_reassign_leader = false;
+
+                            break;
                         }
                     }
                 }
 
-                ai->debug(out, "[WARNING] Could not find an existing soldier to lead squad: " + AI::describe_name((*selected_squad)->name, true));
-                return false;
-            }, [&]()
-            {
-                Key(interface_key::STANDARDSCROLL_LEFT);
-
-                Do([&]()
+                if (!should_reassign_leader)
                 {
-                    auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool
-                    {
-                        return u->id == reassign_as_leader;
-                    });
+                    break;
+                }
+            }
 
-                    ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
-                });
-
-                Key(interface_key::SELECT);
-
-                Key(interface_key::STANDARDSCROLL_RIGHT);
-            });
-        });
+            if (should_reassign_leader)
+            {
+                ai->debug(out, "[WARNING] Could not find an existing soldier to lead squad: " + AI::describe_name((*selected_squad)->name, true));
+            }
+        }
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
-        While([&]() -> bool
-        {
-            auto list = getActiveObject<df::layer_object_listst>();
-            return list && screen->positions.assigned.at(size_t(list->cursor));
-        }, [&]()
+        df::layer_object_listst *list;
+        while ((list = getActiveObject<df::layer_object_listst>()) != nullptr && screen->positions.assigned.at(size_t(list->cursor)))
         {
             Key(interface_key::STANDARDSCROLL_DOWN);
-        });
+        }
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
-        Do([&]()
+        auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool
         {
-            auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool
-            {
-                return u->id == unit_id;
-            });
-
-            If([&]() -> bool { return selected_unit == screen->positions.candidates.end(); }, [&]()
-            {
-                ai->debug(out, "Failed to recruit " + AI::describe_unit(df::unit::find(unit_id)) + ": could not find unit on list of candidates");
-            }, [&]()
-            {
-                Do([&]()
-                {
-                    ai->debug(out, "Recruiting new squad member: " + AI::describe_unit(df::unit::find(unit_id)));
-                });
-
-                ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
-
-                Key(interface_key::SELECT);
-            });
+            return u->id == unit_id;
         });
+
+        if (selected_unit == screen->positions.candidates.end())
+        {
+            ai->debug(out, "Failed to recruit " + AI::describe_unit(df::unit::find(unit_id)) + ": could not find unit on list of candidates");
+        }
+        else
+        {
+            ai->debug(out, "Recruiting new squad member: " + AI::describe_unit(df::unit::find(unit_id)));
+
+            ScrollTo(int32_t(selected_unit - screen->positions.candidates.begin()));
+
+            Key(interface_key::SELECT);
+        }
 
         Key(interface_key::STANDARDSCROLL_LEFT);
 
@@ -329,36 +302,32 @@ public:
     int32_t SelectOrCreateUniform(color_ostream & out, size_t existing_squad_count)
     {
         bool ranged = existing_squad_count % 3 == 0;
-        auto selected = ui->main.fortress_entity->uniforms.end();
 
-        Do([&]()
+        df::uniform_indiv_choice indiv_choice;
+        if (ranged)
         {
-            df::uniform_indiv_choice indiv_choice;
-            if (ranged)
-            {
-                indiv_choice.bits.ranged = 1;
-            }
-            else
-            {
-                indiv_choice.bits.melee = 1;
-            }
+            indiv_choice.bits.ranged = 1;
+        }
+        else
+        {
+            indiv_choice.bits.melee = 1;
+        }
 
-            auto check_uniform_item = [](df::entity_uniform *u, df::uniform_category cat, df::item_type item_type, df::entity_material_category mat_class = entity_material_category::Armor, df::uniform_indiv_choice indiv_choice = df::uniform_indiv_choice()) -> bool
-            {
-                return u->uniform_item_types[cat].size() == 1 && u->uniform_item_types[cat].at(0) == item_type && u->uniform_item_info[cat].at(0)->material_class == mat_class && u->uniform_item_info[cat].at(0)->indiv_choice.whole == indiv_choice.whole;
-            };
+        auto check_uniform_item = [](df::entity_uniform *u, df::uniform_category cat, df::item_type item_type, df::entity_material_category mat_class = entity_material_category::Armor, df::uniform_indiv_choice indiv_choice = df::uniform_indiv_choice()) -> bool
+        {
+            return u->uniform_item_types[cat].size() == 1 && u->uniform_item_types[cat].at(0) == item_type && u->uniform_item_info[cat].at(0)->material_class == mat_class && u->uniform_item_info[cat].at(0)->indiv_choice.whole == indiv_choice.whole;
+        };
 
-            selected = std::find_if(ui->main.fortress_entity->uniforms.begin(), ui->main.fortress_entity->uniforms.end(), [&](df::entity_uniform *u) -> bool
-            {
-                return u->flags.bits.exact_matches && !u->flags.bits.replace_clothing &&
-                    check_uniform_item(u, uniform_category::body, item_type::ARMOR) &&
-                    check_uniform_item(u, uniform_category::head, item_type::HELM) &&
-                    check_uniform_item(u, uniform_category::pants, item_type::PANTS) &&
-                    check_uniform_item(u, uniform_category::gloves, item_type::GLOVES) &&
-                    check_uniform_item(u, uniform_category::shoes, item_type::SHOES) &&
-                    check_uniform_item(u, uniform_category::shield, item_type::SHIELD) &&
-                    check_uniform_item(u, uniform_category::weapon, item_type::WEAPON, entity_material_category::None, indiv_choice);
-            });
+        auto selected = std::find_if(ui->main.fortress_entity->uniforms.begin(), ui->main.fortress_entity->uniforms.end(), [&](df::entity_uniform *u) -> bool
+        {
+            return u->flags.bits.exact_matches && !u->flags.bits.replace_clothing &&
+                check_uniform_item(u, uniform_category::body, item_type::ARMOR) &&
+                check_uniform_item(u, uniform_category::head, item_type::HELM) &&
+                check_uniform_item(u, uniform_category::pants, item_type::PANTS) &&
+                check_uniform_item(u, uniform_category::gloves, item_type::GLOVES) &&
+                check_uniform_item(u, uniform_category::shoes, item_type::SHOES) &&
+                check_uniform_item(u, uniform_category::shield, item_type::SHIELD) &&
+                check_uniform_item(u, uniform_category::weapon, item_type::WEAPON, entity_material_category::None, indiv_choice);
         });
 
         if (selected != ui->main.fortress_entity->uniforms.end())
@@ -375,7 +344,7 @@ public:
 
         auto screen = getScreen();
 
-        EnterString(screen->equip.uniforms.back()->name, ranged ? "Heavy ranged" : "Heavy melee");
+        EnterString(&screen->equip.uniforms.back()->name, ranged ? "Heavy ranged" : "Heavy melee");
 
         Key(interface_key::SELECT);
 
@@ -422,15 +391,15 @@ public:
         add_uniform_part(interface_key::D_MILITARY_ADD_SHIELD);
         add_uniform_part(interface_key::D_MILITARY_ADD_WEAPON);
 
-        If([&]() -> bool { return !ui->main.fortress_entity->uniforms.back()->flags.bits.exact_matches; }, [&]()
+        if (!ui->main.fortress_entity->uniforms.back()->flags.bits.exact_matches)
         {
             Key(interface_key::D_MILITARY_EXACT_MATCH);
-        });
+        }
 
-        If([&]() -> bool { return ui->main.fortress_entity->uniforms.back()->flags.bits.replace_clothing; }, [&]()
+        if (ui->main.fortress_entity->uniforms.back()->flags.bits.replace_clothing)
         {
             Key(interface_key::D_MILITARY_REPLACE_CLOTHING);
-        });
+        }
 
         Key(interface_key::D_MILITARY_POSITIONS);
 
@@ -460,46 +429,31 @@ public:
             return;
         }
 
-        bool stop_early = false;
-
-        Do([&]()
+        auto squad = df::squad::find(u->military.squad_id);
+        auto squad_pos = std::find(screen->squads.list.begin(), screen->squads.list.end(), squad);
+        if (!squad || squad_pos == screen->squads.list.end())
         {
-            auto squad = df::squad::find(u->military.squad_id);
-            auto squad_pos = std::find(screen->squads.list.begin(), screen->squads.list.end(), squad);
-            if (!squad || squad_pos == screen->squads.list.end())
-            {
-                ai->debug(out, "[ERROR] Cannot find squad for unit: " + AI::describe_unit(u));
-                stop_early = true;
-                return;
-            }
-
-            ScrollTo(int32_t(squad_pos - screen->squads.list.begin()));
-        });
-
-        if (stop_early)
-        {
+            ai->debug(out, "[ERROR] Cannot find squad for unit: " + AI::describe_unit(u));
             return;
         }
 
+        ScrollTo(int32_t(squad_pos - screen->squads.list.begin()));
+
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
-        Do([&]()
+        auto position = std::find(screen->positions.assigned.begin(), screen->positions.assigned.end(), u);
+        if (position == screen->positions.assigned.end())
         {
-            auto position = std::find(screen->positions.assigned.begin(), screen->positions.assigned.end(), u);
-            if (position == screen->positions.assigned.end())
-            {
-                ai->debug(out, "[ERROR] Cannot find unit in squad: " + AI::describe_unit(u));
-                stop_early = true;
-                return;
-            }
+            ai->debug(out, "[ERROR] Cannot find unit in squad: " + AI::describe_unit(u));
 
-            ScrollTo(int32_t(position - screen->positions.assigned.begin()));
-        });
+            Key(interface_key::STANDARDSCROLL_LEFT);
 
-        If([&]() -> bool { return !stop_early; }, [&]()
-        {
-            Key(interface_key::SELECT);
-        });
+            return;
+        }
+
+        ScrollTo(int32_t(position - screen->positions.assigned.begin()));
+
+        Key(interface_key::SELECT);
 
         Key(interface_key::STANDARDSCROLL_LEFT);
     }
@@ -659,8 +613,6 @@ class MilitarySquadAttackExclusive : public ExclusiveCallback
 {
     AI * const ai;
     std::map<int32_t, std::set<int32_t>> kill_orders;
-    std::map<int32_t, std::set<int32_t>>::const_iterator kill_orders_squad;
-    std::set<int32_t>::const_iterator kill_orders_unit;
 public:
     MilitarySquadAttackExclusive(AI * const ai) : ExclusiveCallback("squad attack updater", 2), ai(ai)
     {
@@ -673,81 +625,73 @@ public:
 
     virtual void Run(color_ostream & out)
     {
-        Do([&]()
+        using change_type = Population::squad_order_change;
+
+        kill_orders.clear();
+
+        for (const auto & change : ai->pop->squad_order_changes)
         {
-            using change_type = Population::squad_order_change;
-
-            kill_orders.clear();
-
-            for (const auto & change : ai->pop->squad_order_changes)
+            auto squad = df::squad::find(change.squad_id);
+            auto unit = df::unit::find(change.unit_id);
+            if (!squad || !unit)
             {
-                auto squad = df::squad::find(change.squad_id);
-                auto unit = df::unit::find(change.unit_id);
-                if (!squad || !unit)
-                {
-                    continue;
-                }
-
-                switch (change.type)
-                {
-                case change_type::kill:
-                    if (!kill_orders.count(squad->id))
-                    {
-                        std::set<int32_t> units;
-
-                        for (auto order : squad->orders)
-                        {
-                            if (auto kill = strict_virtual_cast<df::squad_order_kill_listst>(order))
-                            {
-                                units.insert(kill->units.begin(), kill->units.end());
-                            }
-                        }
-
-                        if (change.remove == (units.count(unit->id) == 0))
-                        {
-                            // This won't cause anything to change, so don't set the squad's orders.
-                            continue;
-                        }
-
-                        kill_orders[squad->id] = units;
-                    }
-
-                    if (change.remove)
-                    {
-                        if (kill_orders.at(squad->id).erase(unit->id))
-                        {
-                            ai->debug(out, "Cancelling squad order for " + AI::describe_name(squad->name, true) + " to kill " + AI::describe_unit(unit) + ": " + change.reason);
-                        }
-                    }
-                    else
-                    {
-                        if (kill_orders.at(squad->id).insert(unit->id).second)
-                        {
-                            ai->debug(out, "Ordering squad " + AI::describe_name(squad->name, true) + " to kill " + AI::describe_unit(unit) + ": " + change.reason);
-                        }
-                    }
-                    break;
-                }
+                continue;
             }
 
-            ai->pop->squad_order_changes.clear();
-        });
-
-        If([&]() -> bool { return !kill_orders.empty(); }, [&]()
-        {
-            Do([&]()
+            switch (change.type)
             {
-                Key(interface_key::D_PAUSE);
-                Key(interface_key::D_SQUADS);
+            case change_type::kill:
+                if (!kill_orders.count(squad->id))
+                {
+                    std::set<int32_t> units;
 
-                kill_orders_squad = kill_orders.begin();
-            });
+                    for (auto order : squad->orders)
+                    {
+                        if (auto kill = strict_virtual_cast<df::squad_order_kill_listst>(order))
+                        {
+                            units.insert(kill->units.begin(), kill->units.end());
+                        }
+                    }
 
-            While([&]() -> bool { return kill_orders_squad != kill_orders.end(); }, [&]()
+                    if (change.remove == (units.count(unit->id) == 0))
+                    {
+                        // This won't cause anything to change, so don't set the squad's orders.
+                        continue;
+                    }
+
+                    kill_orders[squad->id] = units;
+                }
+
+                if (change.remove)
+                {
+                    if (kill_orders.at(squad->id).erase(unit->id))
+                    {
+                        ai->debug(out, "Cancelling squad order for " + AI::describe_name(squad->name, true) + " to kill " + AI::describe_unit(unit) + ": " + change.reason);
+                    }
+                }
+                else
+                {
+                    if (kill_orders.at(squad->id).insert(unit->id).second)
+                    {
+                        ai->debug(out, "Ordering squad " + AI::describe_name(squad->name, true) + " to kill " + AI::describe_unit(unit) + ": " + change.reason);
+                    }
+                }
+                break;
+            }
+        }
+
+        ai->pop->squad_order_changes.clear();
+
+        if (!kill_orders.empty())
+        {
+            Key(interface_key::D_PAUSE);
+            Key(interface_key::D_SQUADS);
+
+            for (auto kill_orders_squad : kill_orders)
             {
                 auto squad_pos = std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [&](df::squad *squad) -> bool
                 {
-                    return squad->id == kill_orders_squad->first;
+                    return squad->id == kill_orders_squad.first;
                 }) - ui->squads.list.begin();
                 auto first_squad = ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
                 {
@@ -755,75 +699,65 @@ public:
                 }) - ui->squads.list.begin() : 0;
 
                 // Menu is guaranteed to be capped at 10 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
-                While([&]() -> bool { return first_squad > squad_pos; }, [&]()
+                while (first_squad > squad_pos)
                 {
                     Key(interface_key::SECONDSCROLL_PAGEUP);
-                });
-                While([&]() -> bool { return first_squad + 10 <= squad_pos; }, [&]()
+                }
+                while (first_squad + 10 <= squad_pos)
                 {
                     Key(interface_key::SECONDSCROLL_PAGEDOWN);
-                });
+                }
 
                 Key(static_cast<df::interface_key>(interface_key::OPTION1 + squad_pos - first_squad));
 
-                If([&]() -> bool { return kill_orders_squad->second.empty(); }, [&]()
+                if (kill_orders_squad.second.empty())
                 {
                     Key(interface_key::D_SQUADS_CANCEL_ORDER);
-                }, [&]()
+                    continue;
+                }
+
+                Key(interface_key::D_SQUADS_KILL);
+                Key(interface_key::D_SQUADS_KILL_LIST);
+
+                for (auto kill_orders_unit : kill_orders_squad.second)
                 {
-                    Do([&]()
+                    auto unit_it = std::find_if(ui->squads.kill_targets.begin(), ui->squads.kill_targets.end(), [&](df::unit *u) -> bool
                     {
-                        Key(interface_key::D_SQUADS_KILL);
-                        Key(interface_key::D_SQUADS_KILL_LIST);
-
-                        kill_orders_unit = kill_orders_squad->second.begin();
+                        return u->id == kill_orders_unit;
                     });
-
-                    While([&]() -> bool { return kill_orders_unit != kill_orders_squad->second.end(); }, [&]()
+                    if (unit_it == ui->squads.kill_targets.end())
                     {
-                        auto unit_it = std::find_if(ui->squads.kill_targets.begin(), ui->squads.kill_targets.end(), [&](df::unit *u) -> bool
-                        {
-                            return u->id == *kill_orders_unit;
-                        });
-                        if (unit_it == ui->squads.kill_targets.end())
-                        {
-                            ai->debug(out, "[ERROR] Cannot find unit for squad kill order: " + AI::describe_unit(df::unit::find(*kill_orders_unit)));
-                            kill_orders_unit++;
-                            return;
-                        }
+                        ai->debug(out, "[ERROR] Cannot find unit for squad kill order: " + AI::describe_unit(df::unit::find(kill_orders_unit)));
+                        continue;
+                    }
 
-                        auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
-                        auto first_unit = ui->squads.unk_f0;
+                    auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
+                    auto first_unit = ui->squads.unk_f0;
 
-                        While([&]() -> bool { return first_unit > unit_pos; }, [&]()
-                        {
-                            Key(interface_key::SECONDSCROLL_PAGEUP);
-                        });
-                        While([&]() -> bool { return first_unit + 10 <= unit_pos; }, [&]()
-                        {
-                            Key(interface_key::SECONDSCROLL_PAGEDOWN);
-                        });
-
-                        Key(static_cast<df::interface_key>(interface_key::SEC_OPTION1 + unit_pos - first_unit));
-
-                        kill_orders_unit++;
-                    });
-
-                    Key(interface_key::SELECT);
-
-                    If([&]() -> bool { return ui->squads.in_kill_list; }, [&]()
+                    while (first_unit > unit_pos)
                     {
-                        Key(interface_key::LEAVESCREEN);
-                        Key(interface_key::LEAVESCREEN);
-                    });
-                });
+                        Key(interface_key::SECONDSCROLL_PAGEUP);
+                    }
+                    while (first_unit + 10 <= unit_pos)
+                    {
+                        Key(interface_key::SECONDSCROLL_PAGEDOWN);
+                    }
 
-                kill_orders_squad++;
-            });
+                    Key(static_cast<df::interface_key>(interface_key::SEC_OPTION1 + unit_pos - first_unit));
+                }
+
+                Key(interface_key::SELECT);
+
+                if (ui->squads.in_kill_list)
+                {
+                    Key(interface_key::LEAVESCREEN);
+                    Key(interface_key::LEAVESCREEN);
+                }
+            }
 
             Key(interface_key::LEAVESCREEN);
             Key(interface_key::D_PAUSE);
-        });
+        }
     }
 };
 

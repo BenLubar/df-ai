@@ -4,8 +4,6 @@
 
 #include <functional>
 
-#include "df/interface_key.h"
-
 struct OnupdateCallback
 {
     std::function<bool(color_ostream &)> callback;
@@ -29,45 +27,7 @@ struct OnstatechangeCallback
     OnstatechangeCallback(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> cb);
 };
 
-class ExclusiveCallback
-{
-protected:
-    ExclusiveCallback(const std::string & description, size_t wait_multiplier = 1);
-    virtual ~ExclusiveCallback();
-
-    void Do(std::function<void()> step);
-    void If(std::function<bool()> cond, std::function<void()> step_true, std::function<void()> step_false = []() {});
-    void While(std::function<bool()> cond, std::function<void()> step);
-    void Key(df::interface_key key);
-    void Char(std::function<char()> ch);
-    void Delay(size_t frames = 1);
-
-    void MoveToItem(int32_t current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP);
-    void EnterString(const std::string & current, const std::string & target);
-
-    virtual bool SuppressStateChange(color_ostream &, state_change_event event) { return event == SC_VIEWSCREEN_CHANGED; }
-    virtual void Run(color_ostream & out) = 0;
-
-    struct wait_for_next_frame {};
-
-private:
-    size_t wait_multiplier;
-    size_t wait_frames;
-    std::vector<size_t> current_step;
-    std::vector<size_t> last_step;
-
-    bool run(color_ostream & out);
-
-    bool step_in();
-    void step_out();
-    void step_reset();
-    void step_skip(size_t steps = 1);
-
-    friend struct EventManager;
-
-public:
-    const std::string description;
-};
+class ExclusiveCallback;
 
 struct EventManager
 {
