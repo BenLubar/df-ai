@@ -99,7 +99,7 @@ SET(PROJECT_HDRS
 ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)
 TARGET_LINK_LIBRARIES(df-ai-biome dfhack)
 
-if(DFHACK_BUILD_ARCH EQUAL 32)
+IF("${DFHACK_BUILD_ARCH}" STREQUAL "32")
     set(CMAKE_CXX_COMPILER_ARCHITECTURE_ID X86)
 else()
     set(CMAKE_CXX_COMPILER_ARCHITECTURE_ID x64)
