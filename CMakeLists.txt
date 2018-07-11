@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.11.0)
 PROJECT (df-ai)
 
 execute_process(COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=8 --long
