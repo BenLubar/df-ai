@@ -120,7 +120,7 @@ set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 set(Boost_USE_DEBUG_RUNTIME OFF)
 set(Boost_NO_BOOST_CMAKE ON)
-find_package(Boost 1.67.0 REQUIRED COMPONENTS context OPTIONAL_COMPONENTS system thread)
+find_package(Boost 1.67.0 REQUIRED COMPONENTS context)
 include_directories(${Boost_INCLUDE_DIRS})
 
 LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} df-ai-biome ${Boost_LIBRARIES})
