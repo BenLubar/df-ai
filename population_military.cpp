@@ -72,6 +72,8 @@ protected:
 
         while (!units.empty())
         {
+            AssertDelayed();
+
             auto screen = getScreen();
             if (!screen)
             {

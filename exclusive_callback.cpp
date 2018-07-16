@@ -11,6 +11,7 @@ ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wai
     push([&](coroutine_t::pull_type & input) { init(input); }),
     wait_multiplier(wait_multiplier),
     wait_frames(0),
+    did_delay(true),
     feed_keys(),
     description(description)
 {
@@ -59,6 +60,16 @@ void ExclusiveCallback::Delay(size_t frames)
         out_proxy.clear();
         out_proxy.set(*(*pull)().get());
     }
+    did_delay = true;
+}
+
+void ExclusiveCallback::AssertDelayed()
+{
+    if (!did_delay)
+    {
+        throw std::exception("previous iteration of exclusive callback did not call Delay.");
+    }
+    did_delay = false;
 }
 
 bool ExclusiveCallback::run(color_ostream & out)

@@ -15,6 +15,7 @@ protected:
     void Key(df::interface_key key);
     void Char(char c);
     void Delay(size_t frames = 1);
+    void AssertDelayed();
 
     inline void MoveToItem(const int32_t *current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP)
     {
@@ -74,6 +75,7 @@ private:
     coroutine_t::push_type push;
     size_t wait_multiplier;
     size_t wait_frames;
+    bool did_delay;
     std::set<df::interface_key> feed_keys;
 
     bool run(color_ostream & out);

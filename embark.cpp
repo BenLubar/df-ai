@@ -60,6 +60,8 @@ void EmbarkExclusive::Run(color_ostream & out)
 {
     while (!viewscreen_is<df::viewscreen_dwarfmodest>())
     {
+        AssertDelayed();
+
         df::viewscreen *curview = Gui::getCurViewscreen();
         if (!curview || curview->breakdown_level != interface_breakdown_types::NONE)
         {
@@ -436,6 +438,8 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
         ai->debug(out, "leaving world gen disclaimer");
 
         Key(interface_key::LEAVESCREEN);
+
+        return;
     }
 
     if (view->simple_mode == 1)
@@ -467,6 +471,8 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
         }
 
         Key(interface_key::MENU_CONFIRM);
+
+        return;
     }
 
     if (!world->entities.all.empty() && view->simple_mode == 0 && world->worldgen_status.state == 10)
@@ -475,7 +481,11 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
         config.set(out, config.random_embark_world, world->cur_savegame.save_dir);
 
         Key(interface_key::SELECT);
+
+        return;
     }
+
+    Delay();
 }
 
 void EmbarkExclusive::ViewUpdateRegion(color_ostream & out)
