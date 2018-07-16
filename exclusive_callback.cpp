@@ -67,7 +67,7 @@ void ExclusiveCallback::AssertDelayed()
 {
     if (!did_delay)
     {
-        throw std::exception("previous iteration of exclusive callback did not call Delay.");
+        throw std::logic_error("previous iteration of exclusive callback did not call Delay.");
     }
     did_delay = false;
 }
