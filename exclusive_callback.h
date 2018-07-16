@@ -74,6 +74,7 @@ private:
     coroutine_t::push_type push;
     size_t wait_multiplier;
     size_t wait_frames;
+    std::set<df::interface_key> feed_keys;
 
     bool run(color_ostream & out);
     void init(coroutine_t::pull_type & input);

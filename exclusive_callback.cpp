@@ -1,6 +1,9 @@
 #include "ai.h"
-
 #include "exclusive_callback.h"
+
+#include "modules/Gui.h"
+
+#include "df/viewscreen.h"
 
 ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) :
     out_proxy(),
@@ -8,6 +11,7 @@ ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wai
     push([&](coroutine_t::pull_type & input) { init(input); }),
     wait_multiplier(wait_multiplier),
     wait_frames(0),
+    feed_keys(),
     description(description)
 {
     if (wait_multiplier < 1)
@@ -22,7 +26,7 @@ ExclusiveCallback::~ExclusiveCallback()
 
 void ExclusiveCallback::Key(df::interface_key key)
 {
-    AI::feed_key(key);
+    feed_keys.insert(key);
     Delay();
 }
 
@@ -53,7 +57,7 @@ void ExclusiveCallback::Delay(size_t frames)
     for (size_t i = 0; i < frames; i++)
     {
         out_proxy.clear();
-        out_proxy.set(*pull->get());
+        out_proxy.set(*(*pull)().get());
     }
 }
 
@@ -65,7 +69,14 @@ bool ExclusiveCallback::run(color_ostream & out)
         return false;
     }
 
-    if (push(&out))
+    bool done = !!push(&out);
+    if (!feed_keys.empty())
+    {
+        Gui::getCurViewscreen()->feed(&feed_keys);
+        feed_keys.clear();
+    }
+
+    if (done)
     {
         wait_frames = wait_multiplier - 1;
         return false;
