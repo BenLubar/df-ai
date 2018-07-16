@@ -123,6 +123,19 @@ public:
     {
     }
 
+    df::squad *find_good_squad(df::viewscreen_layer_militaryst *screen, int32_t squad_size)
+    {
+        for (auto squad : screen->squads.list)
+        {
+            if (squad && std::count_if(squad->positions.begin(), squad->positions.end(), [](df::squad_position *pos) -> bool { return pos && pos->occupant != -1; }) < squad_size)
+            {
+                return squad;
+            }
+        }
+
+        return nullptr;
+    }
+
     virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id)
     {
         int32_t squad_size = 10;
@@ -134,20 +147,9 @@ public:
         if (num_soldiers < 3 * 4)
             squad_size = 4;
 
-        auto selected_squad = std::find_if(screen->squads.list.begin(), screen->squads.list.end(), [&](df::squad *squad) -> bool
-        {
-            if (!squad)
-            {
-                return false;
-            }
+        df::squad *selected_squad = find_good_squad(screen, squad_size);
 
-            return std::count_if(squad->positions.begin(), squad->positions.end(), [&](df::squad_position *pos) -> bool
-            {
-                return pos && pos->occupant != -1;
-            }) < squad_size;
-        });
-
-        if (selected_squad == screen->squads.list.end())
+        if (!selected_squad)
         {
             ai->debug(out, "Creating new squad...");
 
@@ -173,11 +175,14 @@ public:
             ScrollTo(selected_uniform);
 
             Key(interface_key::SELECT);
+
+            selected_squad = find_good_squad(screen, squad_size);
+            CHECK_NULL_POINTER(selected_squad);
         }
 
-        ai->debug(out, "Selecting squad: " + AI::describe_name((*selected_squad)->name, true));
+        ai->debug(out, "Selecting squad: " + AI::describe_name(selected_squad->name, true));
 
-        ScrollTo(int32_t(selected_squad - screen->squads.list.begin()));
+        ScrollTo(linear_index(screen->squads.list, selected_squad));
 
         bool should_reassign_leader = true;
         if (!ai->pop->resident.count(unit_id))
@@ -187,7 +192,7 @@ public:
         }
         else
         {
-            for (auto pos : (*selected_squad)->positions)
+            for (auto pos : selected_squad->positions)
             {
                 if (pos)
                 {
@@ -238,7 +243,7 @@ public:
                                 continue;
                             }
 
-                            ai->debug(out, "Reassigning " + AI::describe_unit(u) + " from " + AI::describe_name(squad->name, true) + " to lead new squad " + AI::describe_name((*selected_squad)->name, true));
+                            ai->debug(out, "Reassigning " + AI::describe_unit(u) + " from " + AI::describe_name(squad->name, true) + " to lead new squad " + AI::describe_name(selected_squad->name, true));
                             Key(interface_key::STANDARDSCROLL_LEFT);
 
                             auto selected_unit = std::find(screen->positions.candidates.begin(), screen->positions.candidates.end(), u);
@@ -264,7 +269,7 @@ public:
 
             if (should_reassign_leader)
             {
-                ai->debug(out, "[WARNING] Could not find an existing soldier to lead squad: " + AI::describe_name((*selected_squad)->name, true));
+                ai->debug(out, "[WARNING] Could not find an existing soldier to lead squad: " + AI::describe_name(selected_squad->name, true));
             }
         }
 
