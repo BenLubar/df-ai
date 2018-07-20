@@ -700,22 +700,25 @@ public:
                 {
                     return squad->id == kill_orders_squad.first;
                 }) - ui->squads.list.begin();
-                auto first_squad = ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
+                auto first_squad = [&]() -> ptrdiff_t
                 {
-                    return squad->id == ui->squads.unk48;
-                }) - ui->squads.list.begin() : 0;
+                    return ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
+                    {
+                        return squad->id == ui->squads.unk48;
+                    }) - ui->squads.list.begin() : 0;
+                };
 
                 // Menu is guaranteed to be capped at 10 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
-                while (first_squad > squad_pos)
+                while (first_squad() > squad_pos)
                 {
                     Key(interface_key::SECONDSCROLL_PAGEUP);
                 }
-                while (first_squad + 10 <= squad_pos)
+                while (first_squad() + 10 <= squad_pos)
                 {
                     Key(interface_key::SECONDSCROLL_PAGEDOWN);
                 }
 
-                Key(static_cast<df::interface_key>(interface_key::OPTION1 + squad_pos - first_squad));
+                Key(static_cast<df::interface_key>(interface_key::OPTION1 + squad_pos - first_squad()));
 
                 if (kill_orders_squad.second.empty())
                 {
@@ -739,7 +742,7 @@ public:
                     }
 
                     auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
-                    auto first_unit = ui->squads.unk_f0;
+                    auto & first_unit = ui->squads.unk_f0;
 
                     while (first_unit > unit_pos)
                     {
