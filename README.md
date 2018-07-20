@@ -6,7 +6,7 @@ Plugin for DFHack.
 
 *Want the latest (probably broken) changes? Download the latest version of df-ai compiled for the current DFHack version from [BuildMaster](https://buildmaster.local.lubar.me/applications/2/).*
 
-Run `enable df-ai` in the dfhack console to start. Run `help ai` for a list of commands.
+Run `enable df-ai` in the dfhack console to start. Run `help ai` for a list of [console commands](https://github.com/BenLubar/df-ai/wiki/Console-Commands).
 
 Does not handle already started forts, but can resume from df-ai saves and handle fresh embarks. Check `dfhack-config/df-ai.json` for settings.
 
