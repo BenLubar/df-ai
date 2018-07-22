@@ -36,12 +36,14 @@ void Population::update_locations(color_ostream & out)
         return;
 
     // accept all petitions
+    // FIXME: maybe actually look at what the petitions are asking for
     while (!ui->petitions.empty())
     {
         size_t petitions_before = ui->petitions.size();
-        AI::feed_key(interface_key::D_PETITIONS);
-        AI::feed_key(interface_key::OPTION1);
-        AI::feed_key(interface_key::LEAVESCREEN);
+        // FIXME: this should be an exclusivecallback.
+        Gui::getCurViewscreen(true)->feed_key(interface_key::D_PETITIONS);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::OPTION1);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         if (petitions_before <= ui->petitions.size())
         {
             // FIXME
@@ -142,7 +144,9 @@ void Population::update_locations(color_ostream & out)
 
 void Population::assign_occupation(color_ostream & out, df::building *, df::abstract_building *loc, df::occupation_type occ)
 {
-    AI::feed_key(interface_key::D_LOCATIONS);
+    // FIXME: this should be an ExclusiveCallback.
+
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_LOCATIONS);
 
     auto view = strict_virtual_cast<df::viewscreen_locationsst>(Gui::getCurViewscreen(true));
     if (!view)
@@ -153,10 +157,10 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
 
     while (view->locations[view->location_idx] != loc)
     {
-        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        view->feed_key(interface_key::STANDARDSCROLL_DOWN);
     }
 
-    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_RIGHT);
 
     while (true)
     {
@@ -165,10 +169,10 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
         {
             break;
         }
-        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
     }
 
-    AI::feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
 
     df::unit *chosen = nullptr;
     int32_t best = std::numeric_limits<int32_t>::max();
@@ -213,9 +217,9 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
     {
         ai->debug(out, "pop: could not find unit for occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true));
 
-        AI::feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 
-        AI::feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 
         return;
     }
@@ -228,10 +232,10 @@ void Population::assign_occupation(color_ostream & out, df::building *, df::abst
         {
             break;
         }
-        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
     }
 
-    AI::feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
 
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 }

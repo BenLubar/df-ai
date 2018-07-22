@@ -57,7 +57,7 @@ bool check_enabled(color_ostream & out)
                     {
                         if (*pause_state)
                         {
-                            AI::feed_key(view, interface_key::D_PAUSE);
+                            view->feed_key(interface_key::D_PAUSE);
                         }
                         return true;
                     }

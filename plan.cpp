@@ -2816,6 +2816,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
 
 bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & reason)
 {
+    // FIXME: this should be an ExclusiveCallback
     if (!r->constructions_done(reason))
         return false;
 
@@ -2828,13 +2829,13 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
 
-    AI::feed_key(interface_key::D_STOCKPILES);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_STOCKPILES);
     cursor->x = r->min.x + 1;
     cursor->y = r->min.y;
     cursor->z = r->min.z;
-    AI::feed_key(interface_key::CURSOR_LEFT);
-    AI::feed_key(interface_key::STOCKPILE_CUSTOM);
-    AI::feed_key(interface_key::STOCKPILE_CUSTOM_SETTINGS);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::STOCKPILE_CUSTOM);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::STOCKPILE_CUSTOM_SETTINGS);
     const static struct stockpile_keys
     {
         std::map<stockpile_type::type, df::stockpile_list> map;
@@ -2867,23 +2868,23 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
     {
         if (view->cur_group == wanted_group)
         {
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
+            view->feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
+            view->feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
         }
         else
         {
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
+           view->feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
         }
-        AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+        view->feed_key(interface_key::STANDARDSCROLL_DOWN);
     }
     while (view->cur_group != wanted_group)
     {
-        AI::feed_key(interface_key::STANDARDSCROLL_UP);
+        view->feed_key(interface_key::STANDARDSCROLL_UP);
     }
-    AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+    view->feed_key(interface_key::STANDARDSCROLL_RIGHT);
     if (r->stockpile_type == stockpile_type::fresh_raw_hide)
     {
-        AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
+        view->feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
         view->settings->refuse.fresh_raw_hide = true;
     }
     else
@@ -2892,32 +2893,32 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
         {
             while (view->cur_list != *it)
             {
-                AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                view->feed_key(interface_key::STANDARDSCROLL_DOWN);
             }
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
+            view->feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
         }
         if (r->stock_specific1)
         {
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
+            view->feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
         }
         if (r->stock_specific2)
         {
-            AI::feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+            view->feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
         }
     }
-    AI::feed_key(interface_key::LEAVESCREEN);
+    view->feed_key(interface_key::LEAVESCREEN);
     size_t buildings_before = world->buildings.all.size();
-    AI::feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
     for (int16_t x = r->min.x; x < r->max.x; x++)
     {
-        AI::feed_key(interface_key::CURSOR_RIGHT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_RIGHT);
     }
     for (int16_t y = r->min.y; y < r->max.y; y++)
     {
-        AI::feed_key(interface_key::CURSOR_DOWN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_DOWN);
     }
-    AI::feed_key(interface_key::SELECT);
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     ai->ignore_pause(start_x, start_y, start_z);
     df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
     if (!bld || buildings_before == world->buildings.all.size())
@@ -2992,6 +2993,7 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
 
 bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & reason)
 {
+    // FIXME: this should be an ExclusiveCallback
     if (!r->constructions_done(reason))
         return false;
 
@@ -3010,67 +3012,67 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
 
-    AI::feed_key(interface_key::D_CIVZONE);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_CIVZONE);
 
     Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
     Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
 
-    AI::feed_key(interface_key::CURSOR_LEFT);
-    AI::feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
 
     for (int16_t x = r->min.x; x < r->max.x; x++)
     {
-        AI::feed_key(interface_key::CURSOR_RIGHT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_RIGHT);
     }
     for (int16_t y = r->min.y; y < r->max.y; y++)
     {
-        AI::feed_key(interface_key::CURSOR_DOWN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_DOWN);
     }
     for (int16_t z = r->min.z; z < r->max.z; z++)
     {
-        AI::feed_key(interface_key::CURSOR_UP_Z);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_UP_Z);
     }
 
-    AI::feed_key(interface_key::SELECT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
     auto bld = virtual_cast<df::building_civzonest>(world->buildings.all.back());
     r->bld_id = bld->id;
 
     if (bld->zone_flags.bits.active != 1)
     {
-        AI::feed_key(interface_key::CIVZONE_ACTIVE);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_ACTIVE);
     }
 
     if (r->type == room_type::infirmary)
     {
-        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
-        AI::feed_key(interface_key::CIVZONE_ANIMAL_TRAINING); // for the DFHack animal hospital plugin
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_HOSPITAL);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_ANIMAL_TRAINING); // for the DFHack animal hospital plugin
     }
     else if (r->type == room_type::garbagedump)
     {
-        AI::feed_key(interface_key::CIVZONE_DUMP);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_DUMP);
     }
     else if (r->type == room_type::pasture)
     {
-        AI::feed_key(interface_key::CIVZONE_PEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_PEN);
     }
     else if (r->type == room_type::pitcage)
     {
-        AI::feed_key(interface_key::CIVZONE_POND);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND);
         if (bld->pit_flags.bits.is_pond != 0)
         {
-            AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
-            AI::feed_key(interface_key::CIVZONE_POND_WATER);
-            AI::feed_key(interface_key::LEAVESCREEN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_OPTIONS);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_WATER);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         }
     }
     else if (r->type == room_type::pond)
     {
-        AI::feed_key(interface_key::CIVZONE_POND);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND);
         if (bld->pit_flags.bits.is_pond != 1)
         {
-            AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
-            AI::feed_key(interface_key::CIVZONE_POND_WATER);
-            AI::feed_key(interface_key::LEAVESCREEN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_OPTIONS);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_WATER);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         }
         if (r->temporary && r->workshop && r->workshop->type == room_type::farmplot)
         {
@@ -3079,23 +3081,23 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
     }
     else if (r->type == room_type::location)
     {
-        AI::feed_key(interface_key::CIVZONE_MEETING);
-        AI::feed_key(interface_key::ASSIGN_LOCATION);
-        AI::feed_key(interface_key::LOCATION_NEW);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_MEETING);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::ASSIGN_LOCATION);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_NEW);
         bool known = false;
         switch (r->location_type)
         {
             case location_type::tavern:
-                AI::feed_key(interface_key::LOCATION_INN_TAVERN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_INN_TAVERN);
                 known = true;
                 break;
             case location_type::library:
-                AI::feed_key(interface_key::LOCATION_LIBRARY);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_LIBRARY);
                 known = true;
                 break;
             case location_type::temple:
-                AI::feed_key(interface_key::LOCATION_TEMPLE);
-                AI::feed_key(interface_key::SELECT); // no specific deity
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_TEMPLE);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT); // no specific deity
                 known = true;
                 break;
 
@@ -3104,12 +3106,12 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
         }
         if (!known)
         {
-            AI::feed_key(interface_key::LEAVESCREEN);
-            AI::feed_key(interface_key::LEAVESCREEN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         }
     }
 
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     ai->ignore_pause(start_x, start_y, start_z);
 
     return true;
@@ -3760,16 +3762,16 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         int32_t start_x, start_y, start_z;
         Gui::getViewCoords(start_x, start_y, start_z);
 
-        AI::feed_key(interface_key::D_CIVZONE);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::D_CIVZONE);
 
         df::coord pos = r->pos();
         Gui::revealInDwarfmodeMap(pos, true);
         Gui::setCursorCoords(pos.x, pos.y, pos.z);
 
-        AI::feed_key(interface_key::CURSOR_LEFT);
-        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
-        AI::feed_key(interface_key::CIVZONE_HOSPITAL);
-        AI::feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_HOSPITAL);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_HOSPITAL);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 
         ai->ignore_pause(start_x, start_y, start_z);
     }

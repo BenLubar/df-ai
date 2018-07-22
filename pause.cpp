@@ -26,11 +26,11 @@ void AI::unpause()
 {
     while (!world->status.popups.empty())
     {
-        feed_key(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CLOSE_MEGA_ANNOUNCEMENT);
     }
     if (*pause_state)
     {
-        feed_key(interface_key::D_PAUSE);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::D_PAUSE);
     }
     ignore_pause(last_good_x, last_good_y, last_good_z);
 }
@@ -210,7 +210,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit diplomat textviewerst:" + stripped);
                 timeout_sameview([](color_ostream &)
                 {
-                    AI::feed_key(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 });
             }
             else if (stripped.find("A vile force of darkness has arrived!") != std::string::npos ||
@@ -221,7 +221,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit siege textviewerst:" + stripped);
                 timeout_sameview([this](color_ostream &)
                 {
-                    AI::feed_key(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                     unpause();
                 });
             }
@@ -235,7 +235,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeetingst");
             timeout_sameview([](color_ostream &)
             {
-                AI::feed_key(interface_key::OPTION1);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::OPTION1);
             });
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_takerequestsst>(curview))
@@ -243,7 +243,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat topicmeeting_takerequestsst");
             timeout_sameview([](color_ostream &)
             {
-                AI::feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
             });
         }
         else if (strict_virtual_cast<df::viewscreen_requestagreementst>(curview))
@@ -251,7 +251,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat requestagreementst");
             timeout_sameview([](color_ostream &)
             {
-                AI::feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
             });
         }
         else if (strict_virtual_cast<df::viewscreen_topicmeeting_fill_land_holder_positionsst>(curview))
@@ -259,7 +259,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             debug(out, "exit diplomat viewscreen_topicmeeting_fill_land_holder_positionsst");
             timeout_sameview([](color_ostream &)
             {
-                AI::feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
             });
         }
         else if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(curview))
@@ -283,7 +283,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                 debug(out, "exit warn-starving dialog");
                 timeout_sameview([](color_ostream &)
                 {
-                    AI::feed_key(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 });
             }
             else if (seen_focus.insert(focus).second)

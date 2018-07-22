@@ -102,11 +102,11 @@ void Stocks::update(color_ostream & out)
     if (ai->eventsJson.is_open())
     {
         // update wealth by opening the status screen
-        AI::feed_key(interface_key::D_STATUS);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::D_STATUS);
         if (auto view = strict_virtual_cast<df::viewscreen_overallstatusst>(Gui::getCurViewscreen(true)))
         {
             // only leave if we're on the status screen
-            AI::feed_key(view, interface_key::LEAVESCREEN);
+            view->feed_key(interface_key::LEAVESCREEN);
         }
         Json::Value payload(Json::objectValue);
         payload["total"] = Json::Int(ui->tasks.wealth.total);

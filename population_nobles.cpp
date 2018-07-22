@@ -154,12 +154,13 @@ void Population::check_noble_appartments(color_ostream & out)
 
 df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::function<bool(df::entity_position *)> filter, df::unit *unit, const std::string & description, int32_t squad_id)
 {
+    // FIXME: this should be an ExclusiveCallback
     if (!AI::is_dwarfmode_viewscreen())
     {
         ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": not on dwarfmode viewscreen");
         return nullptr;
     }
-    AI::feed_key(interface_key::D_NOBLES);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_NOBLES);
     if (auto view = strict_virtual_cast<df::viewscreen_layer_noblelistst>(Gui::getCurViewscreen(true)))
     {
         for (auto assign : view->assignments)
@@ -167,25 +168,25 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
             auto pos = assign ? binsearch_in_vector(ui->main.fortress_entity->positions.own, assign->position_id) : nullptr;
             if (pos && filter(pos) && (assign->histfig == -1 || !df::historical_figure::find(assign->histfig) || df::historical_figure::find(assign->histfig)->died_year != -1) && (squad_id == -1 || assign->squad_id == squad_id))
             {
-                AI::feed_key(interface_key::SELECT);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
                 for (auto c : view->candidates)
                 {
                     if (c->unit == unit)
                     {
-                        AI::feed_key(interface_key::SELECT);
-                        AI::feed_key(interface_key::LEAVESCREEN);
+                        Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
+                        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                         return assign;
                     }
-                    AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
                 }
-                AI::feed_key(interface_key::LEAVESCREEN);
-                AI::feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": unit is not candidate");
                 return nullptr;
             }
-            AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
         }
-        AI::feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": could not find position");
         return nullptr;
     }

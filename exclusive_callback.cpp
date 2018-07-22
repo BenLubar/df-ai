@@ -2,6 +2,7 @@
 #include "exclusive_callback.h"
 
 #include "modules/Gui.h"
+#include "modules/Screen.h"
 
 #include "df/viewscreen.h"
 
@@ -25,9 +26,14 @@ ExclusiveCallback::~ExclusiveCallback()
 {
 }
 
+void ExclusiveCallback::KeyNoDelay(df::interface_key key)
+{
+    feed_keys.push_back(key);
+}
+
 void ExclusiveCallback::Key(df::interface_key key)
 {
-    feed_keys.insert(key);
+    KeyNoDelay(key);
     Delay();
 }
 
@@ -49,8 +55,7 @@ void ExclusiveCallback::Char(char c)
     {
         c = safe_char[(uint8_t)c - 128];
     }
-    AI::feed_char(c);
-    Delay();
+    Key(Screen::charToKey(c));
 }
 
 void ExclusiveCallback::Delay(size_t frames)
@@ -83,7 +88,10 @@ bool ExclusiveCallback::run(color_ostream & out)
     bool done = !!push(&out);
     if (!feed_keys.empty())
     {
-        Gui::getCurViewscreen()->feed(&feed_keys);
+        for (auto key : feed_keys)
+        {
+            Gui::getCurViewscreen(true)->feed_key(key);
+        }
         feed_keys.clear();
     }
 

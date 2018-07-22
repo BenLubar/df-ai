@@ -12,6 +12,7 @@ protected:
     ExclusiveCallback(const std::string & description, size_t wait_multiplier = 1);
     virtual ~ExclusiveCallback();
 
+    void KeyNoDelay(df::interface_key key);
     void Key(df::interface_key key);
     void Char(char c);
     void Delay(size_t frames = 1);
@@ -76,7 +77,7 @@ private:
     size_t wait_multiplier;
     size_t wait_frames;
     bool did_delay;
-    std::set<df::interface_key> feed_keys;
+    std::vector<df::interface_key> feed_keys;
 
     bool run(color_ostream & out);
     void init(coroutine_t::pull_type & input);

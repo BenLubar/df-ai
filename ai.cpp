@@ -67,29 +67,6 @@ AI::~AI()
     events.clear();
 }
 
-bool AI::feed_key(df::viewscreen *view, df::interface_key key)
-{
-    interface_key_set keys;
-    keys.insert(key);
-    view->feed(&keys);
-    return !keys.count(key);
-}
-
-bool AI::feed_key(df::interface_key key)
-{
-    return feed_key(Gui::getCurViewscreen(true), key);
-}
-
-bool AI::feed_char(df::viewscreen *view, char ch)
-{
-    return feed_key(view, Screen::charToKey(ch));
-}
-
-bool AI::feed_char(char ch)
-{
-    return feed_key(Screen::charToKey(ch));
-}
-
 bool AI::is_dwarfmode_viewscreen()
 {
     if (ui->main.mode != ui_sidebar_mode::Default)

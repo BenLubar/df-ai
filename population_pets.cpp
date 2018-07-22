@@ -16,6 +16,7 @@
 #include "df/unit_misc_trait.h"
 #include "df/unit_relationship_type.h"
 #include "df/unit_wound.h"
+#include "df/viewscreen.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(ui);
@@ -218,6 +219,8 @@ void Population::update_pets(color_ostream & out)
 
 void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 {
+    // FIXME: this should be an ExclusiveCallback
+
     if (auto ref = Units::getGeneralRef(u, general_ref_type::BUILDING_CIVZONE_ASSIGNED))
     {
         if (ref->getBuilding() == bld)
@@ -229,7 +232,7 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
 
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
-    AI::feed_key(interface_key::D_CIVZONE);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_CIVZONE);
     if (ui->main.mode != ui_sidebar_mode::Zones)
     {
         // we probably aren't on the main dwarf fortress screen
@@ -237,28 +240,28 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
     }
     Gui::revealInDwarfmodeMap(df::coord(bld->x1 + 1, bld->y1, bld->z), true);
     Gui::setCursorCoords(bld->x1 + 1, bld->y1, bld->z);
-    AI::feed_key(interface_key::CURSOR_LEFT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
     while (ui_sidebar_menus->zone.selected != bld)
     {
-        AI::feed_key(interface_key::CIVZONE_NEXT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_NEXT);
     }
     if (Buildings::isPitPond(bld))
     {
-        AI::feed_key(interface_key::CIVZONE_POND_OPTIONS);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_OPTIONS);
     }
     else if (Buildings::isPenPasture(bld))
     {
-        AI::feed_key(interface_key::CIVZONE_PEN_OPTIONS);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_PEN_OPTIONS);
     }
     if (std::find(ui_building_assign_units->begin(), ui_building_assign_units->end(), u) != ui_building_assign_units->end())
     {
         while (ui_building_assign_units->at(*ui_building_item_cursor) != u)
         {
-            AI::feed_key(interface_key::SECONDSCROLL_DOWN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::SECONDSCROLL_DOWN);
         }
-        AI::feed_key(interface_key::SELECT);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
     }
-    AI::feed_key(interface_key::LEAVESCREEN);
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     ai->ignore_pause(start_x, start_y, start_z);
 }

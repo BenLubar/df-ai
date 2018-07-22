@@ -85,11 +85,6 @@ public:
     static std::string describe_job(const df::unit *u);
     static std::string describe_event(df::history_event *event);
 
-    static bool feed_key(df::viewscreen *view, df::interface_key key);
-    static bool feed_key(df::interface_key key);
-    static bool feed_char(df::viewscreen *view, char ch);
-    static bool feed_char(char ch);
-
     static bool is_dwarfmode_viewscreen();
 
     static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);

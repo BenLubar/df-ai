@@ -665,7 +665,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
     while (view->biome_highlighted)
     {
         int32_t biome_idx = view->biome_idx + 1;
-        AI::feed_key(view, static_cast<df::interface_key>(interface_key::SETUP_BIOME_1 + biome_idx));
+        Key(static_cast<df::interface_key>(interface_key::SETUP_BIOME_1 + biome_idx));
         if (view->biome_highlighted && biome_idx == view->biome_idx)
         {
             Delay(5 * 100);
@@ -697,7 +697,7 @@ void EmbarkExclusive::ViewTextViewer(color_ostream & out)
     Delay(5 * 100);
 
     ai->debug(out, "disabling minimap.");
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     Gui::setMenuWidth(3, 3);
     *standing_orders_gather_refuse_outside = 1;
     *standing_orders_job_cancel_announce = config.cancel_announce;

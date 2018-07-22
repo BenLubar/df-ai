@@ -209,23 +209,23 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
     int32_t start_x, start_y, start_z;
     Gui::getViewCoords(start_x, start_y, start_z);
 
-    AI::feed_key(interface_key::D_BUILDJOB);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_BUILDJOB);
 
     df::coord pos = r->pos();
     Gui::revealInDwarfmodeMap(pos, true);
     Gui::setCursorCoords(pos.x, pos.y, pos.z);
 
-    AI::feed_key(interface_key::CURSOR_LEFT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
     if (toggle_restrict)
     {
-        AI::feed_key(interface_key::BUILDJOB_DEPOT_BROKER_ONLY);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::BUILDJOB_DEPOT_BROKER_ONLY);
     }
     if (bld->trade_flags.bits.trader_requested != should_be_trading)
     {
-        AI::feed_key(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::BUILDJOB_DEPOT_REQUEST_TRADER);
         if (should_be_trading)
         {
-            AI::feed_key(interface_key::BUILDJOB_DEPOT_BRING);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::BUILDJOB_DEPOT_BRING);
             if (auto bring = virtual_cast<df::viewscreen_layer_assigntradest>(Gui::getCurViewscreen(true)))
             {
                 ai->debug(out, stl_sprintf("[trade] Checking %zu possible trade items...", bring->lists[0].size()));
@@ -249,11 +249,11 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
                         ai->debug(out, "[trade] Bringing item to trade depot: " + AI::describe_item(info->item));
                     }
                 }
-                AI::feed_key(interface_key::LEAVESCREEN);
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
             }
         }
     }
-    AI::feed_key(interface_key::LEAVESCREEN);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 
     ai->ignore_pause(start_x, start_y, start_z);
 
@@ -314,14 +314,14 @@ bool Population::perform_trade(color_ostream & out)
 
     Gui::getViewCoords(trade_start_x, trade_start_y, trade_start_z);
 
-    AI::feed_key(interface_key::D_BUILDJOB);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::D_BUILDJOB);
 
     df::coord pos = r->pos();
     Gui::revealInDwarfmodeMap(pos, true);
     Gui::setCursorCoords(pos.x, pos.y, pos.z);
 
-    AI::feed_key(interface_key::CURSOR_LEFT);
-    AI::feed_key(interface_key::BUILDJOB_DEPOT_TRADE);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
+    Gui::getCurViewscreen(true)->feed_key(interface_key::BUILDJOB_DEPOT_TRADE);
     if (auto wait = virtual_cast<df::viewscreen_tradelistst>(Gui::getCurViewscreen(true)))
     {
         if (wait->caravans.size() == 1)
@@ -330,7 +330,7 @@ bool Population::perform_trade(color_ostream & out)
         }
         else
         {
-            AI::feed_key(wait, interface_key::SELECT);
+            wait->feed_key(interface_key::SELECT);
         }
     }
     if (auto trade = virtual_cast<df::viewscreen_tradegoodsst>(Gui::getCurViewscreen(true)))
@@ -341,13 +341,13 @@ bool Population::perform_trade(color_ostream & out)
         }
         ai->debug(out, "[trade] Could not register exclusive context.");
 
-        AI::feed_key(trade, interface_key::LEAVESCREEN);
-        AI::feed_key(interface_key::LEAVESCREEN);
+        trade->feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     }
     else
     {
         ai->debug(out, "[trade] Opening the trade screen failed. Trying again soon.");
-        AI::feed_key(interface_key::LEAVESCREEN);
+        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     }
 
     ai->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
@@ -384,9 +384,8 @@ void PerformTradeExclusive::Run(color_ostream & out)
 
         can_make_offer = false;
 
-        // don't delay
-        AI::feed_key(interface_key::LEAVESCREEN);
-        AI::feed_key(interface_key::LEAVESCREEN);
+        KeyNoDelay(interface_key::LEAVESCREEN);
+        KeyNoDelay(interface_key::LEAVESCREEN);
 
         return;
     }
@@ -695,9 +694,8 @@ void PerformTradeExclusive::Run(color_ostream & out)
 
     Delay();
 
-    // don't delay
-    AI::feed_key(trade, interface_key::LEAVESCREEN);
-    AI::feed_key(interface_key::LEAVESCREEN);
+    KeyNoDelay(interface_key::LEAVESCREEN);
+    KeyNoDelay(interface_key::LEAVESCREEN);
 
     ai->ignore_pause(ai->pop->trade_start_x, ai->pop->trade_start_y, ai->pop->trade_start_z);
     ai->pop->did_trade = true;

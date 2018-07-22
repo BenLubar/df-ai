@@ -205,8 +205,9 @@ void Population::update_crimes(color_ostream & out)
 
         if (crime->flags.bits.needs_trial && criminal && !convicted && AI::is_dwarfmode_viewscreen())
         {
+            // FIXME: this should be an ExclusiveCallback
             ai->debug(out, "[Crime] Convicting " + AI::describe_unit(criminal) + " of " + accusation + with_victim + ".");
-            AI::feed_key(interface_key::D_STATUS);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::D_STATUS);
             if (auto screen = virtual_cast<df::viewscreen_overallstatusst>(Gui::getCurViewscreen(true)))
             {
                 auto page = std::find(screen->visible_pages.begin(), screen->visible_pages.end(), df::viewscreen_overallstatusst::Justice);
@@ -218,16 +219,16 @@ void Population::update_crimes(color_ostream & out)
                 {
                     while (screen->visible_pages.at(screen->page_cursor) != df::viewscreen_overallstatusst::Justice)
                     {
-                        AI::feed_key(interface_key::STANDARDSCROLL_RIGHT);
+                        Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_RIGHT);
                     }
-                    AI::feed_key(interface_key::SELECT);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
                     if (auto justice = virtual_cast<df::viewscreen_justicest>(Gui::getCurViewscreen(true)))
                     {
                         auto it = std::find(justice->cases.begin(), justice->cases.end(), crime);
                         if (it == justice->cases.end())
                         {
                             ai->debug(out, "[Crime] Could not find case. Checking " + std::string(justice->cold_cases ? "recent crimes" : "cold cases"));
-                            AI::feed_key(interface_key::CHANGETAB);
+                            Gui::getCurViewscreen(true)->feed_key(interface_key::CHANGETAB);
                             it = std::find(justice->cases.begin(), justice->cases.end(), crime);
                         }
                         if (it == justice->cases.end())
@@ -238,22 +239,22 @@ void Population::update_crimes(color_ostream & out)
                         {
                             while (justice->cases.size() <= size_t(justice->sel_idx_current) || justice->cases.at(size_t(justice->sel_idx_current)) != crime)
                             {
-                                AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                                Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
                             }
-                            AI::feed_key(interface_key::SELECT);
+                            Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
                             auto convict = std::find(justice->convict_choices.begin(), justice->convict_choices.end(), criminal);
                             if (convict == justice->convict_choices.end())
                             {
                                 ai->debug(out, "[Crime] [ERROR] Criminal is not on list of suspects.");
-                                AI::feed_key(interface_key::LEAVESCREEN);
+                                Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                             }
                             else
                             {
                                 while (justice->convict_choices.at(justice->cursor_right) != criminal)
                                 {
-                                    AI::feed_key(interface_key::STANDARDSCROLL_DOWN);
+                                    Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
                                 }
-                                AI::feed_key(interface_key::SELECT);
+                                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
                             }
                         }
                     }
@@ -261,14 +262,14 @@ void Population::update_crimes(color_ostream & out)
                     {
                         ai->debug(out, "[Crime] [ERROR] Could not open justice tab on status screen.");
                     }
-                    AI::feed_key(interface_key::LEAVESCREEN);
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 }
             }
             else
             {
                 ai->debug(out, "[Crime] [ERROR] Could not open status screen.");
             }
-            AI::feed_key(interface_key::LEAVESCREEN);
+            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         }
 
         if (convicted && !crime->flags.bits.sentenced)
