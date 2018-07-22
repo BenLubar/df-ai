@@ -742,7 +742,7 @@ public:
                     }
 
                     auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
-                    auto & first_unit = ui->squads.unk_f0;
+                    volatile auto & first_unit = ui->squads.unk_f0;
 
                     while (first_unit > unit_pos)
                     {
