@@ -195,6 +195,7 @@ void ai_version(std::ostream & out, bool html)
     out << "DFHack " << DFHACK_GIT_DESCRIPTION << br;
     commit("library", "DFHack/dfhack", DFHACK_GIT_COMMIT);
     commit("structures", "DFHack/df-structures", DFHACK_GIT_XML_COMMIT);
+    out << std::flush;
 }
 
 command_result ai_command(color_ostream & out, std::vector<std::string> & args)
