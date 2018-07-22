@@ -13,6 +13,8 @@
 #include "df/manager_order_template.h"
 #include "df/tool_uses.h"
 #include "df/viewscreen_createquotast.h"
+#include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_joblistst.h"
 #include "df/viewscreen_jobmanagementst.h"
 #include "df/world.h"
 
@@ -122,26 +124,14 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI *ai, const df::manager_order_tem
 
 void ManagerOrderExclusive::Run(color_ostream & out)
 {
+    ExpectScreen<df::viewscreen_dwarfmodest>();
     Key(interface_key::D_JOBLIST);
+    ExpectScreen<df::viewscreen_joblistst>();
     Key(interface_key::UNITJOB_MANAGER);
 
     {
-        auto curview = Gui::getCurViewscreen(true);
-        auto view = strict_virtual_cast<df::viewscreen_jobmanagementst>(curview);
-        if (!view)
-        {
-            std::string name;
-            if (auto ident = virtual_identity::get(curview))
-            {
-                name = ident->getName();
-            }
-            else
-            {
-                name = Gui::getFocusString(curview);
-            }
-            ai->debug(out, "[ERROR] viewscreen when queueing manager job is " + name + ", not viewscreen_jobmanagementst");
-            return;
-        }
+        ExpectScreen<df::viewscreen_jobmanagementst>();
+        ExpectedScreen<df::viewscreen_jobmanagementst> view(this);
 
         bool first = true;
         bool multiple = false;
@@ -177,22 +167,8 @@ void ManagerOrderExclusive::Run(color_ostream & out)
     Key(interface_key::MANAGER_NEW_ORDER);
 
     {
-        auto curview = Gui::getCurViewscreen(true);
-        auto view = strict_virtual_cast<df::viewscreen_createquotast>(curview);
-        if (!view)
-        {
-            std::string name;
-            if (auto ident = virtual_identity::get(curview))
-            {
-                name = ident->getName();
-            }
-            else
-            {
-                name = Gui::getFocusString(curview);
-            }
-            ai->debug(out, "[ERROR] viewscreen when queueing manager job is " + name + ", not viewscreen_createquotast");
-            return;
-        }
+        ExpectScreen<df::viewscreen_createquotast>();
+        ExpectedScreen<df::viewscreen_createquotast> view(this);
 
         int32_t idx = -1;
         df::manager_order_template *target = nullptr;
@@ -245,8 +221,11 @@ void ManagerOrderExclusive::Run(color_ostream & out)
 
     ai->debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
 
+    ExpectScreen<df::viewscreen_jobmanagementst>();
     Key(interface_key::LEAVESCREEN);
+    ExpectScreen<df::viewscreen_joblistst>();
     Key(interface_key::LEAVESCREEN);
+    ExpectScreen<df::viewscreen_dwarfmodest>();
 }
 
 void Stocks::add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount)

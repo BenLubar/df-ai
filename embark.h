@@ -20,8 +20,6 @@ private:
     void SelectVerticalMenuItem(int32_t *current, int32_t target);
     void SelectHorizontalMenuItem(int32_t *current, int32_t target);
 
-    void ViewWait();
-    void ViewMoviePlayer();
     void ViewTitle(color_ostream & out);
     void ViewLoadGame(color_ostream & out);
     void ViewLoadScreen(color_ostream & out);

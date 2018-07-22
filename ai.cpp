@@ -13,6 +13,7 @@
 #include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_optionst.h"
+#include "df/viewscreen_textviewerst.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(enabler);
@@ -117,16 +118,13 @@ public:
             view->options.push_back(df::viewscreen_optionst::AbortRetire);
             view->options.push_back(df::viewscreen_optionst::Abandon);
 
-            Screen::show(std::unique_ptr<df::viewscreen>(view));
+            Screen::show(std::unique_ptr<df::viewscreen_optionst>(view));
+            ExpectScreen<df::viewscreen_optionst>();
         }
 
         Delay();
 
-        auto view = virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true));
-        if (!view)
-        {
-            return;
-        }
+        auto view = GetScreen<df::viewscreen_optionst>();
 
         auto option = std::find(view->options.begin(), view->options.end(), df::viewscreen_optionst::Abandon);
         MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
@@ -135,6 +133,7 @@ public:
         Key(interface_key::MENU_CONFIRM);
 
         // current view switches to a textviewer at this point
+        ExpectScreen<df::viewscreen_textviewerst>();
         Key(interface_key::SELECT);
     }
 };

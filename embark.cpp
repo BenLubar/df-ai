@@ -45,84 +45,80 @@ EmbarkExclusive::~EmbarkExclusive()
 {
 }
 
-template<typename T>
-static bool viewscreen_is(bool skip_dismissed = false)
-{
-    return strict_virtual_cast<T>(Gui::getCurViewscreen(skip_dismissed)) != nullptr;
-}
-
-static inline bool viewscreen_is(const std::string & focus, bool skip_dismissed = false)
-{
-    return Gui::getCurFocus(skip_dismissed) == focus;
-}
-
 void EmbarkExclusive::Run(color_ostream & out)
 {
-    while (!viewscreen_is<df::viewscreen_dwarfmodest>())
+    while (!MaybeExpectScreen<df::viewscreen_dwarfmodest>())
     {
         AssertDelayed();
 
-        df::viewscreen *curview = Gui::getCurViewscreen();
-        if (!curview || curview->breakdown_level != interface_breakdown_types::NONE)
+        if (Screen::isDismissed(Gui::getCurViewscreen(false)))
         {
             Delay();
             continue;
         }
 
-        if (viewscreen_is<df::viewscreen_adopt_regionst>() || viewscreen_is<df::viewscreen_export_regionst>())
+        if (MaybeExpectScreen<df::viewscreen_movieplayerst>())
         {
-            ViewWait();
+            Key(interface_key::LEAVESCREEN);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_movieplayerst>())
-        {
-            ViewMoviePlayer();
-            continue;
-        }
-        if (viewscreen_is<df::viewscreen_titlest>())
+
+        if (MaybeExpectScreen<df::viewscreen_titlest>())
         {
             ViewTitle(out);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_loadgamest>())
+
+        if (MaybeExpectScreen<df::viewscreen_adopt_regionst>() || MaybeExpectScreen<df::viewscreen_export_regionst>())
+        {
+            Delay();
+            continue;
+        }
+
+        if (MaybeExpectScreen<df::viewscreen_loadgamest>())
         {
             ViewLoadGame(out);
             continue;
         }
-        if (viewscreen_is("dfhack/lua/load_screen"))
+
+        if (MaybeExpectScreen<dfhack_lua_viewscreen>("dfhack/lua/load_screen"))
         {
             ViewLoadScreen(out);
             continue;
         }
-        df::viewscreen *screen = Gui::getCurViewscreen(false);
-        df::viewscreen *parent = screen ? screen->parent : nullptr;
+
         // TODO: get a real focus string for the load_screen_options dialog
-        if (Gui::getFocusString(screen) == "dfhack/lua" && Gui::getFocusString(parent) == "dfhack/lua/load_screen")
+        if (MaybeExpectScreen<dfhack_lua_viewscreen>("dfhack/lua", "dfhack/lua/load_screen"))
         {
             ViewLoadScreenOptions();
             continue;
         }
-        if (viewscreen_is<df::viewscreen_new_regionst>())
+
+        if (MaybeExpectScreen<df::viewscreen_new_regionst>())
         {
             ViewNewRegion(out);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_update_regionst>())
+
+        if (MaybeExpectScreen<df::viewscreen_update_regionst>())
         {
             ViewUpdateRegion(out);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_choose_start_sitest>())
+
+        if (MaybeExpectScreen<df::viewscreen_choose_start_sitest>())
         {
             ViewChooseStartSite(out);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_setupdwarfgamest>())
+
+        if (MaybeExpectScreen<df::viewscreen_setupdwarfgamest>())
         {
             ViewSetupDwarfGame(out);
             continue;
         }
-        if (viewscreen_is<df::viewscreen_textviewerst>())
+
+        if (MaybeExpectScreen<df::viewscreen_textviewerst>())
         {
             ViewTextViewer(out);
             return;
@@ -148,23 +144,9 @@ void EmbarkExclusive::SelectHorizontalMenuItem(int32_t *current, int32_t target)
     Key(interface_key::SELECT);
 }
 
-void EmbarkExclusive::ViewWait()
-{
-    Delay();
-}
-
-void EmbarkExclusive::ViewMoviePlayer()
-{
-    Key(interface_key::LEAVESCREEN);
-}
-
 void EmbarkExclusive::ViewTitle(color_ostream & out)
 {
-    df::viewscreen_titlest *view = strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(false));
-    if (!view)
-    {
-        return;
-    }
+    ExpectedScreen<df::viewscreen_titlest> view(this);
 
     ai->camera->check_record_status();
 
@@ -197,8 +179,6 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
         ai->debug(out, "choosing \"New World\"");
 
         SelectVerticalMenuItem(&view->sel_menu_line, int32_t(new_world - view->menu_line_id.begin()));
-
-        return;
     }
 
     if (view->sel_subpage == df::viewscreen_titlest::StartSelectWorld)
@@ -223,6 +203,8 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
             config.set(out, config.random_embark_world, std::string());
 
             Key(interface_key::LEAVESCREEN);
+
+            return;
         }
         else
         {
@@ -232,8 +214,6 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 
             SelectVerticalMenuItem(&view->sel_submenu_line, int32_t(save - view->start_savegames.begin()));
         }
-
-        return;
     }
 
     if (view->sel_subpage == df::viewscreen_titlest::StartSelectMode)
@@ -252,20 +232,14 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
         ai->debug(out, "choosing \"Dwarf Fortress Mode\"");
 
         SelectVerticalMenuItem(&view->sel_menu_line, int32_t(fortress_mode - view->submenu_line_id.begin()));
-
-        return;
     }
 
-    Delay();
+#undef view
 }
 
 void EmbarkExclusive::ViewLoadGame(color_ostream & out)
 {
-    df::viewscreen_loadgamest *view = strict_virtual_cast<df::viewscreen_loadgamest>(Gui::getCurViewscreen(false));
-    if (!view)
-    {
-        return;
-    }
+    ExpectedScreen<df::viewscreen_loadgamest> view(this);
 
     if (view->loading)
     {
@@ -308,12 +282,7 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
 
 void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 {
-    dfhack_viewscreen *view = dfhack_viewscreen::try_cast(Gui::getCurViewscreen(false));
-    df::viewscreen_loadgamest *parent = view ? strict_virtual_cast<df::viewscreen_loadgamest>(view->parent) : nullptr;
-    if (!view || view->getFocusString() != "lua/load_screen" || !parent)
-    {
-        return;
-    }
+    ExpectedScreen<dfhack_lua_viewscreen> view(this);
 
     if (config.random_embark_world.empty())
     {
@@ -325,6 +294,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
     }
 
     std::vector<df::loadgame_save_info *> filtered_saves;
+    auto parent = strict_virtual_cast<df::viewscreen_loadgamest>(view->parent);
     for (auto save : parent->saves)
     {
         size_t len = save->folder_name.length();
@@ -364,7 +334,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
     }
 
     auto L = Lua::Core::State;
-    lua_rawgetp(L, LUA_REGISTRYINDEX, view);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, view.get());
     lua_getfield(L, -1, "sel_idx");
     int32_t sel_idx = static_cast<int32_t>(lua_tointeger(L, -1)) - 1;
     lua_pop(L, 2);
@@ -395,12 +365,10 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 
 void EmbarkExclusive::ViewLoadScreenOptions()
 {
-    dfhack_viewscreen *view = dfhack_viewscreen::try_cast(Gui::getCurViewscreen(false));
-    if (!view)
-        return;
+    ExpectedScreen<dfhack_lua_viewscreen> view(this);
 
     auto L = Lua::Core::State;
-    lua_rawgetp(L, LUA_REGISTRYINDEX, view);
+    lua_rawgetp(L, LUA_REGISTRYINDEX, view.get());
     lua_getfield(L, -1, "save_mtime");
     if (lua_isnoneornil(L, -1))
     {
@@ -425,11 +393,7 @@ void EmbarkExclusive::ViewLoadScreenOptions()
 
 void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 {
-    df::viewscreen_new_regionst *view = strict_virtual_cast<df::viewscreen_new_regionst>(Gui::getCurViewscreen(false));
-    if (!view)
-    {
-        return;
-    }
+    ExpectedScreen<df::viewscreen_new_regionst> view(this);
 
     config.set(out, config.random_embark_world, std::string());
 
@@ -490,11 +454,7 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 
 void EmbarkExclusive::ViewUpdateRegion(color_ostream & out)
 {
-    df::viewscreen_update_regionst *view = strict_virtual_cast<df::viewscreen_update_regionst>(Gui::getCurViewscreen(false));
-    if (!view)
-    {
-        return;
-    }
+    ExpectedScreen<df::viewscreen_update_regionst> view(this);
 
     ai->debug(out, "updating world, goal: " + AI::timestamp(view->year, view->year_tick));
     Delay();
@@ -502,11 +462,7 @@ void EmbarkExclusive::ViewUpdateRegion(color_ostream & out)
 
 void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 {
-    df::viewscreen_choose_start_sitest *view = strict_virtual_cast<df::viewscreen_choose_start_sitest>(Gui::getCurViewscreen(false));
-    if (!view)
-    {
-        return;
-    }
+    ExpectedScreen<df::viewscreen_choose_start_sitest> view(this);
 
     if (view->finder.finder_state == -1)
     {
@@ -715,15 +671,23 @@ RestartWaitExclusive::~RestartWaitExclusive()
 
 void RestartWaitExclusive::Run(color_ostream & out)
 {
+    ExpectScreen<df::viewscreen_textviewerst>();
+
     ai->debug(out, "game over. restarting in 1 minute.");
 
     Delay(60 * 100);
+
+    if (!MaybeExpectScreen<df::viewscreen_textviewerst>())
+    {
+        ai->debug(out, "[ERROR] unexpected screen during restart.");
+        return;
+    }
 
     ai->debug(out, "restarting.");
 
     Key(interface_key::LEAVESCREEN);
 
-    while (!viewscreen_is<df::viewscreen_titlest>(true))
+    while (!MaybeExpectScreen<df::viewscreen_titlest>())
     {
         Delay();
     }

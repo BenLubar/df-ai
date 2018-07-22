@@ -35,27 +35,20 @@ class MilitarySetupExclusive : public ExclusiveCallback
     std::list<int32_t> units;
 
 protected:
+    ExpectedScreen<df::viewscreen_layer_militaryst> screen;
+
+protected:
     typedef typename std::vector<df::unit *>::const_iterator unit_iterator;
-    MilitarySetupExclusive(AI * const ai, const std::string & description, unit_iterator begin, unit_iterator end) : ExclusiveCallback(description, 2), ai(ai)
+    MilitarySetupExclusive(AI * const ai, const std::string & description, unit_iterator begin, unit_iterator end) : ExclusiveCallback(description, 2), ai(ai), units(), screen(this)
     {
         for (auto it = begin; it != end; it++)
         {
             units.push_back((*it)->id);
         }
     }
-    df::viewscreen_layer_militaryst *getScreen() const
-    {
-        return virtual_cast<df::viewscreen_layer_militaryst>(Gui::getCurViewscreen(false));
-    }
     template<typename T>
     T *getActiveObject() const
     {
-        auto screen = getScreen();
-        if (!screen)
-        {
-            return nullptr;
-        }
-
         for (auto obj : screen->layer_objects)
         {
             if (obj->enabled && obj->active)
@@ -70,26 +63,20 @@ protected:
     {
         Key(interface_key::D_MILITARY);
 
+        ExpectScreen<df::viewscreen_layer_militaryst>();
+
         while (!units.empty())
         {
             AssertDelayed();
 
-            auto screen = getScreen();
-            if (!screen)
-            {
-                ai->debug(out, "[ERROR] unable to open military screen");
-                units.pop_front();
-                break;
-            }
-
-            Run(out, screen, units.front());
+            Run(out, units.front());
 
             units.pop_front();
         }
 
         Key(interface_key::LEAVESCREEN);
     }
-    virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id) = 0;
+    virtual void Run(color_ostream & out, int32_t unit_id) = 0;
     void ScrollTo(int32_t index)
     {
         auto list = getActiveObject<df::layer_object_listst>();
@@ -123,7 +110,7 @@ public:
     {
     }
 
-    df::squad *find_good_squad(df::viewscreen_layer_militaryst *screen, int32_t squad_size)
+    df::squad *find_good_squad(int32_t squad_size)
     {
         for (auto squad : screen->squads.list)
         {
@@ -136,7 +123,7 @@ public:
         return nullptr;
     }
 
-    virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id)
+    virtual void Run(color_ostream & out, int32_t unit_id)
     {
         int32_t squad_size = 10;
         int32_t num_soldiers = screen->num_soldiers + int32_t(units.size());
@@ -147,7 +134,7 @@ public:
         if (num_soldiers < 3 * 4)
             squad_size = 4;
 
-        df::squad *selected_squad = find_good_squad(screen, squad_size);
+        df::squad *selected_squad = find_good_squad(squad_size);
 
         if (!selected_squad)
         {
@@ -176,7 +163,7 @@ public:
 
             Key(interface_key::SELECT);
 
-            selected_squad = find_good_squad(screen, squad_size);
+            selected_squad = find_good_squad(squad_size);
             CHECK_NULL_POINTER(selected_squad);
         }
 
@@ -349,8 +336,6 @@ public:
 
         Key(interface_key::D_MILITARY_NAME_UNIFORM);
 
-        auto screen = getScreen();
-
         EnterString(&screen->equip.uniforms.back()->name, ranged ? "Heavy ranged" : "Heavy melee");
 
         Key(interface_key::SELECT);
@@ -428,7 +413,7 @@ public:
     {
     }
 
-    virtual void Run(color_ostream & out, df::viewscreen_layer_militaryst *screen, int32_t unit_id)
+    virtual void Run(color_ostream & out, int32_t unit_id)
     {
         auto u = df::unit::find(unit_id);
         if (!u)

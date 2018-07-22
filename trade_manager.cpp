@@ -288,8 +288,8 @@ class PerformTradeExclusive : public ExclusiveCallback
         return new PerformTradeExclusive(ai);
     }
 
-    void EnterCount(df::viewscreen_tradegoodsst *trade, const std::string & want);
-    void ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, int32_t *cursor, int32_t target);
+    void EnterCount(ExpectedScreen<df::viewscreen_tradegoodsst> & trade, const std::string & want);
+    void ScrollTo(ExpectedScreen<df::viewscreen_tradegoodsst> & trade, bool right, int32_t *cursor, int32_t target);
 
     friend class Population;
 };
@@ -364,11 +364,12 @@ static bool represents_plant_murder(df::item *item)
 
 void PerformTradeExclusive::Run(color_ostream & out)
 {
-    df::viewscreen_tradegoodsst *trade = strict_virtual_cast<df::viewscreen_tradegoodsst>(Gui::getCurViewscreen(true));
-    if (!trade)
+    if (!MaybeExpectScreen<df::viewscreen_tradegoodsst>())
     {
         return;
     }
+
+    ExpectedScreen<df::viewscreen_tradegoodsst> trade(this);
 
     trade->render(); // make sure the item list is populated.
 
@@ -706,7 +707,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
     }
 }
 
-void PerformTradeExclusive::EnterCount(df::viewscreen_tradegoodsst *trade, const std::string & want)
+void PerformTradeExclusive::EnterCount(ExpectedScreen<df::viewscreen_tradegoodsst> & trade, const std::string & want)
 {
     Key(interface_key::SELECT);
 
@@ -718,7 +719,7 @@ void PerformTradeExclusive::EnterCount(df::viewscreen_tradegoodsst *trade, const
     }
 }
 
-void PerformTradeExclusive::ScrollTo(df::viewscreen_tradegoodsst *trade, bool right, int32_t *cursor, int32_t target)
+void PerformTradeExclusive::ScrollTo(ExpectedScreen<df::viewscreen_tradegoodsst> & trade, bool right, int32_t *cursor, int32_t target)
 {
     if (trade->in_right_pane != right)
     {

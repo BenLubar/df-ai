@@ -14,6 +14,9 @@ ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wai
     wait_frames(0),
     did_delay(true),
     feed_keys(),
+    expectedScreen(),
+    expectedFocus(),
+    expectedParentFocus(),
     description(description)
 {
     if (wait_multiplier < 1)
@@ -33,6 +36,7 @@ void ExclusiveCallback::KeyNoDelay(df::interface_key key)
 
 void ExclusiveCallback::Key(df::interface_key key)
 {
+    checkScreen();
     KeyNoDelay(key);
     Delay();
 }
@@ -75,6 +79,50 @@ void ExclusiveCallback::AssertDelayed()
         throw std::logic_error("previous iteration of exclusive callback did not call Delay.");
     }
     did_delay = false;
+}
+
+void ExclusiveCallback::checkScreen()
+{
+    if (!expectedScreen)
+    {
+        return;
+    }
+
+    df::viewscreen *curview = Gui::getCurViewscreen(true);
+
+    bool bad = !expectedScreen->is_instance(curview);
+    bad = bad || (!expectedFocus.empty() && Gui::getFocusString(curview) != expectedFocus);
+    bad = bad || (!expectedParentFocus.empty() && Gui::getFocusString(curview->parent) != expectedFocus);
+
+    if (bad)
+    {
+        out_proxy << "[FATAL ERROR] expected screen to be " << expectedScreen->getName();
+        if (!expectedFocus.empty())
+        {
+            out_proxy << ":" << expectedFocus;
+        }
+        if (!expectedParentFocus.empty())
+        {
+            out_proxy << ":" << expectedParentFocus;
+        }
+        out_proxy << ", but it is " << virtual_identity::get(curview)->getName();
+        if (!expectedFocus.empty())
+        {
+            out_proxy << ":" << Gui::getFocusString(curview);
+        }
+        if (!expectedParentFocus.empty())
+        {
+            out_proxy << ":" << Gui::getFocusString(curview->parent);
+        }
+        out_proxy << std::endl;
+
+        // Force the debugger to breakpoint. This will probably crash if there's no debugger attached.
+#if WIN32
+        __debugbreak();
+#else
+        __asm__ volatile("int $0x03");
+#endif
+    }
 }
 
 bool ExclusiveCallback::run(color_ostream & out)

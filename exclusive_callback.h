@@ -2,9 +2,14 @@
 
 #include "dfhack_shared.h"
 
-#include "df/interface_key.h"
-
 #include <boost/coroutine2/coroutine.hpp>
+#include <type_traits>
+
+#include "Error.h"
+#include "modules/Gui.h"
+
+#include "df/interface_key.h"
+#include "df/viewscreen.h"
 
 class ExclusiveCallback
 {
@@ -12,6 +17,65 @@ protected:
     ExclusiveCallback(const std::string & description, size_t wait_multiplier = 1);
     virtual ~ExclusiveCallback();
 
+    template<typename T>
+    class ExpectedScreen
+    {
+        ExclusiveCallback * const cb;
+
+    public:
+        ExpectedScreen(ExclusiveCallback *cb) : cb(cb) {}
+
+        inline T *get() const
+        {
+            return cb->GetScreen<T>();
+        }
+        inline T *operator->() const
+        {
+            return get();
+        }
+    };
+
+    template<typename T>
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus = std::string(), const std::string & parentFocus = std::string())
+    {
+        expectedScreen = &T::_identity;
+        expectedFocus = focus;
+        expectedParentFocus = parentFocus;
+
+        checkScreen();
+    }
+    template<typename T>
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus = std::string(), const std::string & parentFocus = std::string())
+    {
+        T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
+        if (!screen)
+        {
+            return false;
+        }
+
+        if (!focus.empty() && Gui::getFocusString(screen) != focus)
+        {
+            return false;
+        }
+
+        if (!parentFocus.empty() && Gui::getFocusString(screen->parent) != parentFocus)
+        {
+            return false;
+        }
+
+        ExpectScreen<T>(focus, parentFocus);
+
+        return true;
+    }
+    template<typename T>
+    T *GetScreen()
+    {
+        CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
+
+        checkScreen();
+
+        return strict_virtual_cast<T>(Gui::getCurViewscreen(true));
+    }
     void KeyNoDelay(df::interface_key key);
     void Key(df::interface_key key);
     void Char(char c);
@@ -78,7 +142,11 @@ private:
     size_t wait_frames;
     bool did_delay;
     std::vector<df::interface_key> feed_keys;
+    virtual_identity *expectedScreen;
+    std::string expectedFocus;
+    std::string expectedParentFocus;
 
+    void checkScreen();
     bool run(color_ostream & out);
     void init(coroutine_t::pull_type & input);
 
