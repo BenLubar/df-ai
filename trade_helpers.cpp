@@ -48,7 +48,7 @@ REQUIRE_GLOBAL(gps);
 REQUIRE_GLOBAL(ui);
 
 Trade::Trade(AI & ai) :
-    ai{ ai }
+    ai(ai)
 {
 }
 

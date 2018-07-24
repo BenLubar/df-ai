@@ -160,7 +160,7 @@ Watch::Watch()
 }
 
 Stocks::Stocks(AI & ai) :
-    ai{ ai },
+    ai(ai),
     count_free(),
     count_total(),
     count_subtype(),

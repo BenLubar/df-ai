@@ -37,7 +37,7 @@ REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 Population::Population(AI & ai) :
-    ai{ ai },
+    ai(ai),
     citizen(),
     military(),
     pet(),

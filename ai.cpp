@@ -102,7 +102,7 @@ public:
     virtual void Run(color_ostream &)
     {
         {
-            auto view{ df::allocate<df::viewscreen_optionst>() };
+            auto view = df::allocate<df::viewscreen_optionst>();
 
             // TODO: These are the options from regular fortress mode. Are they different during a siege?
             view->options.push_back(df::viewscreen_optionst::Return);
@@ -113,7 +113,7 @@ public:
             view->options.push_back(df::viewscreen_optionst::AbortRetire);
             view->options.push_back(df::viewscreen_optionst::Abandon);
 
-            Screen::show(std::unique_ptr<df::viewscreen_optionst>(view));
+            Screen::show(std::unique_ptr<df::viewscreen>(view));
             ExpectScreen<df::viewscreen_optionst>("option");
         }
 

@@ -30,7 +30,7 @@ REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 Camera::Camera(AI & ai) :
-    ai{ ai },
+    ai(ai),
     onupdate_handle(nullptr),
     onstatechange_handle(nullptr),
     following(-1),

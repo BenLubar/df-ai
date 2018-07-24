@@ -95,7 +95,7 @@ farm_allowed_materials_t::farm_allowed_materials_t()
 farm_allowed_materials_t farm_allowed_materials;
 
 Plan::Plan(AI & ai) :
-    ai{ ai },
+    ai(ai),
     onupdate_handle(nullptr),
     nrdig(),
     tasks_generic(),

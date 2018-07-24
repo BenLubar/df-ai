@@ -263,7 +263,7 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
 class PerformTradeExclusive : public ExclusiveCallback
 {
 public:
-    PerformTradeExclusive(AI & ai) : ExclusiveCallback{ "perform trade", 2 }, ai{ ai }
+    PerformTradeExclusive(AI & ai) : ExclusiveCallback{ "perform trade", 2 }, ai(ai)
     {
     }
 

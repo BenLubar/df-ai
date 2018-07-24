@@ -95,7 +95,7 @@ int32_t Stocks::count_manager_orders(color_ostream &, const df::manager_order_te
 
 ManagerOrderExclusive::ManagerOrderExclusive(AI & ai, const df::manager_order_template & tmpl, int32_t amount)
     : ExclusiveCallback{ "add_manager_order: " + AI::describe_job(&tmpl) },
-    ai{ ai },
+    ai(ai),
     tmpl(tmpl),
     amount(amount),
     search_word()

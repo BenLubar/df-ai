@@ -37,7 +37,7 @@ REQUIRE_GLOBAL(world);
 
 EmbarkExclusive::EmbarkExclusive(AI & ai) :
     ExclusiveCallback{ "embarking" },
-    ai{ ai }
+    ai(ai)
 {
 }
 

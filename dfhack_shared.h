@@ -16,8 +16,8 @@
 #undef nullptr
 #endif
 
-#if defined(__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ == 8
-// GCC 4.8 does not support std::make_unique for some bizzare reason.
+#if defined(__GNUC__) && __cplusplus == 201103L
+// GCC does not support std::make_unique on C++11, but MSVC does.
 namespace std
 {
     // Doesn't support array types correctly, but it's good enough for df-ai's purposes.
