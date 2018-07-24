@@ -45,13 +45,13 @@ public:
     OnstatechangeCallback *onstatechange_register_once(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> b);
     void onstatechange_unregister(OnstatechangeCallback *&b);
 
-    bool register_exclusive(ExclusiveCallback *cb, bool force = false);
-    void queue_exclusive(ExclusiveCallback *cb);
+    bool register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force = false);
+    void queue_exclusive(std::unique_ptr<ExclusiveCallback> && cb);
     inline bool has_exclusive() const { return exclusive != nullptr; }
     template<typename E>
     inline bool each_exclusive(std::function<bool(const E *)> fn) const
     {
-        if (auto e = dynamic_cast<E *>(exclusive))
+        if (auto e = dynamic_cast<E *>(exclusive.get()))
         {
             if (fn(e))
             {
@@ -59,9 +59,9 @@ public:
             }
         }
 
-        for (auto queued : exclusive_queue)
+        for (auto & queued : exclusive_queue)
         {
-            if (auto e = dynamic_cast<E *>(queued))
+            if (auto e = dynamic_cast<E *>(queued.get()))
             {
                 if (fn(e))
                 {
@@ -77,7 +77,7 @@ public:
     {
         if (!allow_queued)
         {
-            return dynamic_cast<E *>(exclusive) != nullptr;
+            return dynamic_cast<E *>(exclusive.get()) != nullptr;
         }
 
         return each_exclusive<E>([](const E *) -> bool { return true; });
@@ -89,9 +89,9 @@ private:
     friend class AI;
     void clear();
 
-    ExclusiveCallback *exclusive;
-    ExclusiveCallback *delay_delete_exclusive;
-    std::list<ExclusiveCallback *> exclusive_queue;
+    std::unique_ptr<ExclusiveCallback> exclusive;
+    std::unique_ptr<ExclusiveCallback> delay_delete_exclusive;
+    std::list<std::unique_ptr<ExclusiveCallback>> exclusive_queue;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
 };

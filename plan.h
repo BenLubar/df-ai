@@ -40,7 +40,7 @@ struct task
 
 class Plan
 {
-    AI *ai;
+    AI & ai;
     OnupdateCallback *onupdate_handle;
     std::map<int32_t, size_t> nrdig;
     std::list<task *> tasks_generic;
@@ -82,7 +82,7 @@ private:
     int32_t last_update_tick;
 
 public:
-    Plan(AI *ai);
+    Plan(AI & ai);
     ~Plan();
 
     command_result startup(color_ostream & out);
@@ -218,13 +218,7 @@ public:
 
     void categorize_all();
 
-    friend std::string AI::describe_room(room *r, bool html);
-    friend std::string AI::describe_furniture(furniture *f, bool html);
-
-    friend df::coord AI::fort_entrance_pos();
-    friend room *AI::find_room(room_type::type type);
-    friend room *AI::find_room(room_type::type type, std::function<bool(room *)> b);
-    friend room *AI::find_room_at(df::coord t);
+    friend class AI;
 
     void weblegends_write_svg(std::ostream & out);
     bool find_building(df::building *bld, room * & r, furniture * & f);

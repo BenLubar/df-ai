@@ -17,10 +17,10 @@ class AI;
 
 class Trade
 {
-    AI *ai;
+    AI & ai;
 
 public:
-    Trade(AI *ai);
+    Trade(AI & ai);
     ~Trade();
 
     bool can_trade();

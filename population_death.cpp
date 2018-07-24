@@ -32,7 +32,7 @@ void Population::deathwatch(color_ostream & out)
             continue;
         }
 
-        ai->debug(out, "[RIP] " + AI::describe_event(d));
+        ai.debug(out, "[RIP] " + AI::describe_event(d));
     }
 
     seen_death = world->history.events2.size();
@@ -47,7 +47,7 @@ void Population::update_deads(color_ostream & out)
     {
         if (u->flags3.bits.ghostly)
         {
-            ai->stocks->queue_slab(out, u->hist_figure_id);
+            ai.stocks.queue_slab(out, u->hist_figure_id);
         }
         else if (Units::isCitizen(u) && Units::isDead(u) && std::find_if(u->owned_buildings.begin(), u->owned_buildings.end(),
             [](df::building *bld) -> bool { return bld->getType() == building_type::Coffin; }) != u->owned_buildings.end())
@@ -73,13 +73,13 @@ void Population::update_deads(color_ostream & out)
     if (want_coffin > 0)
     {
         // dont dig too early
-        if (!ai->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }))
+        if (!ai.find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }))
         {
             want_coffin = 0;
         }
 
         // count actually allocated (plan wise) coffin buildings
-        ai->find_room(room_type::cemetery, [&want_coffin](room *r) -> bool
+        ai.find_room(room_type::cemetery, [&want_coffin](room *r) -> bool
         {
             for (auto f : r->layout)
             {
@@ -91,7 +91,7 @@ void Population::update_deads(color_ostream & out)
 
         for (int32_t i = 0; i < want_coffin; i++)
         {
-            ai->plan->getcoffin(out);
+            ai.plan.getcoffin(out);
         }
     }
     else if (want_pet_coffin > 0)

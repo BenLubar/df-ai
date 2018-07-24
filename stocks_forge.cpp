@@ -35,8 +35,8 @@ static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & potent
     int32_t count = -1;
     for (auto potential : potential_bars)
     {
-        extern AI *dwarfAI;
-        if (!dwarfAI->stocks->simple_metal_ores.at(potential.first).empty())
+        extern std::unique_ptr<AI> dwarfAI;
+        if (!dwarfAI->stocks.simple_metal_ores.at(potential.first).empty())
         {
             if (count < potential.second)
             {
@@ -127,7 +127,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
     });
 
     std::map<int32_t, int32_t> potential_bars = bars;
-    if (ai->plan->should_search_for_metal)
+    if (ai.plan.should_search_for_metal)
     {
         std::ofstream discard;
         for (auto mi : pref)
@@ -171,7 +171,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
 
         if (potential_bars.empty())
         {
-            reason << (ai->plan->should_search_for_metal ? "no viable ores available\n" : "not ready to mine ores\n");
+            reason << (ai.plan.should_search_for_metal ? "no viable ores available\n" : "not ready to mine ores\n");
             break;
         }
 
@@ -231,13 +231,13 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
         }
     }
 
-    if ((can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && ai->plan->should_search_for_metal) || dry_run)
+    if ((can_melt <= Watch.WatchStock.at(stock_item::metal_ore) && ai.plan.should_search_for_metal) || dry_run)
     {
-        for (auto & k : ai->plan->map_veins)
+        for (auto & k : ai.plan.map_veins)
         {
             if (simple_metal_ores.at(mat_index).count(k.first))
             {
-                can_melt += dry_run ? ai->plan->can_dig_vein(k.first) : ai->plan->dig_vein(out, k.first);
+                can_melt += dry_run ? ai.plan.can_dig_vein(k.first) : ai.plan.dig_vein(out, k.first);
 
                 reason << "mining more " << MaterialInfo(0, k.first).toString() << "\n";
             }
@@ -294,7 +294,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
             df::items_other_id oidx;
             if (!find_enum_item(&oidx, ENUM_KEY_STR(item_type, rri->item_type)))
             {
-                ai->debug(out, "[ERROR] missing items_other_id::" + ENUM_KEY_STR(item_type, rri->item_type));
+                ai.debug(out, "[ERROR] missing items_other_id::" + ENUM_KEY_STR(item_type, rri->item_type));
                 all = false;
                 break;
             }
@@ -350,17 +350,17 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                 }
             }
 
-            if (((has <= 0 && ai->plan->should_search_for_metal) || dry_run) && rri->item_type == item_type::BOULDER)
+            if (((has <= 0 && ai.plan.should_search_for_metal) || dry_run) && rri->item_type == item_type::BOULDER)
             {
                 if (rri->mat_type == 0 && rri->mat_index != -1)
                 {
-                    has += dry_run ? ai->plan->can_dig_vein(rri->mat_index) : ai->plan->dig_vein(out, rri->mat_index);
+                    has += dry_run ? ai.plan.can_dig_vein(rri->mat_index) : ai.plan.dig_vein(out, rri->mat_index);
                 }
                 else if (rri->metal_ore != -1)
                 {
                     for (auto mat : simple_metal_ores.at(rri->metal_ore))
                     {
-                        has += dry_run ? ai->plan->can_dig_vein(mat) : ai->plan->dig_vein(out, mat);
+                        has += dry_run ? ai.plan.can_dig_vein(mat) : ai.plan.dig_vein(out, mat);
                     }
                 }
                 if (has > 0)

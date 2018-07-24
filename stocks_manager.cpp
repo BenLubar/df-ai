@@ -93,9 +93,9 @@ int32_t Stocks::count_manager_orders(color_ostream &, const df::manager_order_te
     return amount;
 }
 
-ManagerOrderExclusive::ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount)
-    : ExclusiveCallback("add_manager_order: " + AI::describe_job(&tmpl)),
-    ai(ai),
+ManagerOrderExclusive::ManagerOrderExclusive(AI & ai, const df::manager_order_template & tmpl, int32_t amount)
+    : ExclusiveCallback{ "add_manager_order: " + AI::describe_job(&tmpl) },
+    ai{ ai },
     tmpl(tmpl),
     amount(amount),
     search_word()
@@ -124,13 +124,13 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI *ai, const df::manager_order_tem
 
 void ManagerOrderExclusive::Run(color_ostream & out)
 {
-    ExpectScreen<df::viewscreen_dwarfmodest>();
+    ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
     Key(interface_key::D_JOBLIST);
-    ExpectScreen<df::viewscreen_joblistst>();
+    ExpectScreen<df::viewscreen_joblistst>("joblist");
     Key(interface_key::UNITJOB_MANAGER);
 
     {
-        ExpectScreen<df::viewscreen_jobmanagementst>();
+        ExpectScreen<df::viewscreen_jobmanagementst>("jobmanagement/Main");
         ExpectedScreen<df::viewscreen_jobmanagementst> view(this);
 
         bool first = true;
@@ -167,7 +167,7 @@ void ManagerOrderExclusive::Run(color_ostream & out)
     Key(interface_key::MANAGER_NEW_ORDER);
 
     {
-        ExpectScreen<df::viewscreen_createquotast>();
+        ExpectScreen<df::viewscreen_createquotast>("createquota");
         ExpectedScreen<df::viewscreen_createquotast> view(this);
 
         int32_t idx = -1;
@@ -204,7 +204,7 @@ void ManagerOrderExclusive::Run(color_ostream & out)
 
         if (!find_target())
         {
-            ai->debug(out, "[CHEAT] Failed to get a manager order for " + AI::describe_job(&tmpl) + "; forcing it.");
+            ai.debug(out, "[CHEAT] Failed to get a manager order for " + AI::describe_job(&tmpl) + "; forcing it.");
             *view->orders.at(0) = tmpl;
         }
         else
@@ -219,13 +219,13 @@ void ManagerOrderExclusive::Run(color_ostream & out)
 
     Key(interface_key::SELECT);
 
-    ai->debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
+    ai.debug(out, "add_manager_order(" + quantity + ") " + AI::describe_job(&tmpl));
 
-    ExpectScreen<df::viewscreen_jobmanagementst>();
+    ExpectScreen<df::viewscreen_jobmanagementst>("jobmanagement/Main");
     Key(interface_key::LEAVESCREEN);
-    ExpectScreen<df::viewscreen_joblistst>();
+    ExpectScreen<df::viewscreen_joblistst>("joblist");
     Key(interface_key::LEAVESCREEN);
-    ExpectScreen<df::viewscreen_dwarfmodest>();
+    ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
 }
 
 void Stocks::add_manager_order(color_ostream & out, const df::manager_order_template & tmpl, int32_t amount)
@@ -250,5 +250,5 @@ void Stocks::add_manager_order(color_ostream & out, const df::manager_order_temp
     }
 
     reason << "queued manager order (" << amount << "): " << AI::describe_job(&tmpl);
-    events.queue_exclusive(new ManagerOrderExclusive(ai, tmpl, amount));
+    events.queue_exclusive(std::make_unique<ManagerOrderExclusive>(ai, tmpl, amount));
 }

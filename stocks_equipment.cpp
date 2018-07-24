@@ -192,7 +192,7 @@ template<typename D>
 static bool is_armordef_metal(D *d) { return d->props.flags.is_set(armor_general_flags::METAL); }
 
 template<typename D, typename I>
-static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::item what, const std::vector<int16_t> & idefs, df::job_type job, std::ostream & reason, int32_t div = 1, std::function<bool(D *)> pred = is_armordef_metal<D>)
+static void queue_need_armor_helper(AI & ai, color_ostream & out, stock_item::item what, const std::vector<int16_t> & idefs, df::job_type job, std::ostream & reason, int32_t div = 1, std::function<bool(D *)> pred = is_armordef_metal<D>)
 {
     for (auto id : idefs)
     {
@@ -203,8 +203,8 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
             continue;
         }
 
-        int32_t cnt = ai->stocks->num_needed(what);
-        cnt -= ai->stocks->count_subtype[what][id].first;
+        int32_t cnt = ai.stocks.num_needed(what);
+        cnt -= ai.stocks.count_subtype[what][id].first;
 
         for (auto mo : world->manager_orders)
         {
@@ -232,10 +232,10 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
         if (need_bars < 1)
             need_bars = 1;
 
-        ai->stocks->queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [ai, &out, &reason, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
+        ai.stocks.queue_need_forge(out, material_flags::ITEMS_ARMOR, need_bars, what, job, [&ai, &out, &reason, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
         {
             std::vector<int32_t> best;
-            const auto & pref = ai->stocks->metal_pref.at(material_flags::ITEMS_ARMOR);
+            const auto & pref = ai.stocks.metal_pref.at(material_flags::ITEMS_ARMOR);
             best.insert(best.end(), pref.begin(), pref.end());
             std::sort(best.begin(), best.end(), [](int32_t a, int32_t b) -> bool
             {
@@ -252,7 +252,7 @@ static void queue_need_armor_helper(AI *ai, color_ostream & out, stock_item::ite
                 }
 
                 std::ostringstream may_forge_reason;
-                if (ai->stocks->may_forge_bars(out, mi, may_forge_reason, need_bars) >= 150)
+                if (ai.stocks.may_forge_bars(out, mi, may_forge_reason, need_bars) >= 150)
                 {
                     reason << may_forge_reason.str();
                     return false;
@@ -294,7 +294,7 @@ void Stocks::queue_need_armor(color_ostream & out, stock_item::item what, std::o
 }
 
 template<typename D, typename I>
-static void queue_need_clothes_helper(AI *ai, color_ostream & out, stock_item::item what, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, std::ostream & reason, int32_t div = 1)
+static void queue_need_clothes_helper(AI & ai, color_ostream & out, stock_item::item what, const std::vector<int16_t> & idefs, int32_t & available_cloth, df::job_type job, std::ostream & reason, int32_t div = 1)
 {
     int32_t thread = 0, yarn = 0, silk = 0;
 
@@ -323,7 +323,7 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, stock_item::i
         }
     }
 
-    int32_t needed = ai->stocks->num_needed(what);
+    int32_t needed = ai.stocks.num_needed(what);
 
     bool first = true;
     for (auto id : idefs)
@@ -335,7 +335,7 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, stock_item::i
         }
 
         int32_t cnt = needed;
-        cnt -= ai->stocks->count_subtype[what][id].first;
+        cnt -= ai.stocks.count_subtype[what][id].first;
 
         bool first_def = true;
         for (auto mo : world->manager_orders)
@@ -414,7 +414,7 @@ static void queue_need_clothes_helper(AI *ai, color_ostream & out, stock_item::i
         {
             first = false;
         }
-        ai->stocks->add_manager_order(out, tmpl, cnt, reason);
+        ai.stocks.add_manager_order(out, tmpl, cnt, reason);
         reason << "\n";
 
         available_cloth -= cnt;

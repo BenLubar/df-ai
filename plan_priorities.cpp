@@ -569,13 +569,13 @@ Json::Value plan_priority_t::furniture_filter_t::to_json() const
 #undef COUNT_PROPERTY
 #undef FILTER_PROPERTY
 
-bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) const
+bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) const
 {
-    auto check_count = [this, ai]() -> bool
+    auto check_count = [this, &ai]() -> bool
     {
         for (auto & c : count)
         {
-            if (!c.is_match(ai->plan->rooms_and_corridors))
+            if (!c.is_match(ai.plan.rooms_and_corridors))
             {
                 return false;
             }
@@ -594,7 +594,7 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
         case plan_priority_action::dig_immediate:
         case plan_priority_action::unignore_furniture:
         case plan_priority_action::finish:
-            for (room *r : ai->plan->rooms_and_corridors)
+            for (room *r : ai.plan.rooms_and_corridors)
             {
                 bool any_match = false;
                 for (auto & f : match_not)
@@ -711,20 +711,20 @@ bool plan_priority_t::act(AI *ai, color_ostream & out, std::ostream & reason) co
     return false;
 }
 
-bool plan_priority_t::do_dig(AI *ai, color_ostream & out, room *r)
+bool plan_priority_t::do_dig(AI & ai, color_ostream & out, room *r)
 {
-    return ai->plan->wantdig(out, r);
+    return ai.plan.wantdig(out, r);
 }
 
-bool plan_priority_t::do_dig_immediate(AI *ai, color_ostream & out, room *r)
+bool plan_priority_t::do_dig_immediate(AI & ai, color_ostream & out, room *r)
 {
-    return ai->plan->digroom(out, r, true);
+    return ai.plan.digroom(out, r, true);
 }
 
-bool plan_priority_t::do_unignore_furniture(AI *ai, color_ostream & out, room *r)
+bool plan_priority_t::do_unignore_furniture(AI & ai, color_ostream & out, room *r)
 {
     bool any = false;
-    for (furniture * f : r->layout)
+    for (furniture *f : r->layout)
     {
         if (f->ignore)
         {
@@ -735,13 +735,13 @@ bool plan_priority_t::do_unignore_furniture(AI *ai, color_ostream & out, room *r
 
     if (any && (r->status == room_status::dug || r->status == room_status::finished))
     {
-        ai->plan->furnish_room(out, r);
+        ai.plan.furnish_room(out, r);
     }
 
     return any;
 }
 
-bool plan_priority_t::do_finish(AI *ai, color_ostream & out, room *r)
+bool plan_priority_t::do_finish(AI & ai, color_ostream & out, room *r)
 {
     if (r->status != room_status::finished)
     {
@@ -760,35 +760,35 @@ bool plan_priority_t::do_finish(AI *ai, color_ostream & out, room *r)
         f->ignore = false;
     }
 
-    ai->plan->furnish_room(out, r);
-    ai->plan->smooth_room(out, r);
+    ai.plan.furnish_room(out, r);
+    ai.plan.smooth_room(out, r);
 
     return true;
 }
 
-bool plan_priority_t::do_start_ore_search(AI *ai, color_ostream &)
+bool plan_priority_t::do_start_ore_search(AI & ai, color_ostream &)
 {
-    if (ai->plan->should_search_for_metal)
+    if (ai.plan.should_search_for_metal)
     {
         return false;
     }
-    ai->plan->should_search_for_metal = true;
+    ai.plan.should_search_for_metal = true;
     return true;
 }
 
-bool plan_priority_t::do_past_initial_phase(AI *ai, color_ostream &)
+bool plan_priority_t::do_past_initial_phase(AI & ai, color_ostream &)
 {
-    if (ai->plan->past_initial_phase)
+    if (ai.plan.past_initial_phase)
     {
         return false;
     }
-    ai->plan->past_initial_phase = true;
+    ai.plan.past_initial_phase = true;
     return true;
 }
 
-bool plan_priority_t::do_deconstruct_wagons(AI *ai, color_ostream &)
+bool plan_priority_t::do_deconstruct_wagons(AI & ai, color_ostream &)
 {
-    if (ai->plan->deconstructed_wagons)
+    if (ai.plan.deconstructed_wagons)
     {
         return false;
     }
@@ -796,14 +796,14 @@ bool plan_priority_t::do_deconstruct_wagons(AI *ai, color_ostream &)
     {
         Buildings::deconstruct(wagon);
     }
-    ai->plan->deconstructed_wagons = true;
+    ai.plan.deconstructed_wagons = true;
     return true;
 }
 
-bool plan_priority_t::do_dig_next_cavern_outpost(AI *ai, color_ostream & out)
+bool plan_priority_t::do_dig_next_cavern_outpost(AI & ai, color_ostream & out)
 {
    bool any_outpost = false;
-   for (auto & t : ai->plan->tasks_generic)
+   for (auto & t : ai.plan.tasks_generic)
    {
        if (t->type != task_type::want_dig && t->type != task_type::dig_room && t->type != task_type::dig_room_immediate)
        {
@@ -815,10 +815,10 @@ bool plan_priority_t::do_dig_next_cavern_outpost(AI *ai, color_ostream & out)
            break;
        }
    }
-   if (!any_outpost && ai->plan->setup_blueprint_caverns(out) == CR_OK)
+   if (!any_outpost && ai.plan.setup_blueprint_caverns(out) == CR_OK)
    {
-       ai->debug(out, "found next cavern");
-       ai->plan->categorize_all();
+       ai.debug(out, "found next cavern");
+       ai.plan.categorize_all();
        return true;
    }
    return false;

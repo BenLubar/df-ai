@@ -69,6 +69,17 @@ void ExclusiveCallback::Delay(size_t frames)
         out_proxy.clear();
         out_proxy.set(*(*pull)().get());
     }
+
+    // Wait until we have an actual viewscreen.
+    while (Screen::isDismissed(Gui::getCurViewscreen(false)))
+    {
+        size_t real_wait_multiplier = wait_multiplier;
+        wait_multiplier = 1;
+        out_proxy.clear();
+        out_proxy.set(*(*pull)().get());
+        wait_multiplier = real_wait_multiplier;
+    }
+
     did_delay = true;
 }
 
@@ -158,4 +169,11 @@ void ExclusiveCallback::init(coroutine_t::pull_type & input)
     out_proxy.set(*pull->get());
     Run(out_proxy);
     out_proxy.clear();
+
+    // Make sure we wait for the screen to go back to normal if our last calls before returning were to KeyNoWait.
+    if (!feed_keys.empty())
+    {
+        wait_multiplier = 1;
+        Delay();
+    }
 }

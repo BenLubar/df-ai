@@ -55,31 +55,31 @@ void Population::update_caged(color_ostream & out)
                 {
                     size_t waiting_items = 0;
 
-                    for (auto ii = u->inventory.begin(); ii != u->inventory.end(); ii++)
+                    for (auto ii : u->inventory)
                     {
-                        if (auto owner = Items::getOwner((*ii)->item))
+                        if (auto owner = Items::getOwner(ii->item))
                         {
-                            ai->debug(out, "pop: cannot strip item " + AI::describe_item((*ii)->item) + " owned by " + AI::describe_unit(owner));
+                            ai.debug(out, "pop: cannot strip item " + AI::describe_item(ii->item) + " owned by " + AI::describe_unit(owner));
                             continue;
                         }
                         waiting_items++;
-                        if ((*ii)->item->flags.bits.dump && !(*ii)->item->flags.bits.forbid)
+                        if (ii->item->flags.bits.dump && !ii->item->flags.bits.forbid)
                         {
                             continue;
                         }
                         count++;
-                        (*ii)->item->flags.bits.dump = 1;
-                        (*ii)->item->flags.bits.forbid = 0;
-                        ai->debug(out, "pop: marked item " + AI::describe_item((*ii)->item) + " for dumping");
+                        ii->item->flags.bits.dump = 1;
+                        ii->item->flags.bits.forbid = 0;
+                        ai.debug(out, "pop: marked item " + AI::describe_item(ii->item) + " for dumping");
                     }
 
                     if (!waiting_items)
                     {
-                        room *r = ai->find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
+                        room *r = ai.find_room(room_type::pitcage, [](room *r) -> bool { return r->dfbuilding(); });
                         if (r && AI::spiral_search(r->pos(), 1, 1, [cage](df::coord t) -> bool { return t == cage->pos; }).isValid())
                         {
                             assign_unit_to_zone(u, virtual_cast<df::building_civzonest>(r->dfbuilding()));
-                            ai->debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
+                            ai.debug(out, "pop: marked " + AI::describe_unit(u) + " for pitting");
                             military_random_squad_attack_unit(out, u, "just in case pitting fails");
                         }
                         else
@@ -89,7 +89,7 @@ void Population::update_caged(color_ostream & out)
                     }
                     else
                     {
-                        ai->debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%zu items remain)", AI::describe_unit(u).c_str(), waiting_items));
+                        ai.debug(out, stl_sprintf("pop: waiting for %s to be stripped for pitting (%zu items remain)", AI::describe_unit(u).c_str(), waiting_items));
                         military_cancel_attack_order(out, u, "caged, but not ready for pitting");
                     }
                 }
@@ -98,7 +98,7 @@ void Population::update_caged(color_ostream & out)
     }
     if (count > 0)
     {
-        ai->debug(out, stl_sprintf("pop: dumped %d items from cages", count));
+        ai.debug(out, stl_sprintf("pop: dumped %d items from cages", count));
     }
 }
 
@@ -172,7 +172,7 @@ void Population::update_crimes(color_ostream & out)
 
         if (crime->discovered_year > not_before_year || (crime->discovered_year == not_before_year && crime->discovered_time >= not_before_tick))
         {
-            ai->debug(out, "[Crime] New crime discovered: " + AI::describe_unit(criminal) + " is accused of " + accusation + with_victim + ".");
+            ai.debug(out, "[Crime] New crime discovered: " + AI::describe_unit(criminal) + " is accused of " + accusation + with_victim + ".");
         }
 
         for (auto report : crime->reports)
@@ -184,20 +184,20 @@ void Population::update_crimes(color_ostream & out)
                 if (report->unk1)
                 {
                     df::unit *witness = df::unit::find(report->witness);
-                    ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " found evidence of " + accusation + with_victim + ".");
+                    ai.debug(out, "[Crime] " + AI::describe_unit(witness) + " found evidence of " + accusation + with_victim + ".");
                 }
                 else
                 {
                     df::unit *witness = df::unit::find(report->witness);
                     df::unit *accuses = df::unit::find(report->accuses);
-                    ai->debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
+                    ai.debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
                     if (accuses == convicted)
                     {
-                        ai->debug(out, "[Crime] The accused has already been convicted.");
+                        ai.debug(out, "[Crime] The accused has already been convicted.");
                     }
                     else if (accuses != criminal)
                     {
-                        ai->debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
+                        ai.debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
                     }
                 }
             }
@@ -206,14 +206,14 @@ void Population::update_crimes(color_ostream & out)
         if (crime->flags.bits.needs_trial && criminal && !convicted && AI::is_dwarfmode_viewscreen())
         {
             // FIXME: this should be an ExclusiveCallback
-            ai->debug(out, "[Crime] Convicting " + AI::describe_unit(criminal) + " of " + accusation + with_victim + ".");
+            ai.debug(out, "[Crime] Convicting " + AI::describe_unit(criminal) + " of " + accusation + with_victim + ".");
             Gui::getCurViewscreen(true)->feed_key(interface_key::D_STATUS);
             if (auto screen = virtual_cast<df::viewscreen_overallstatusst>(Gui::getCurViewscreen(true)))
             {
                 auto page = std::find(screen->visible_pages.begin(), screen->visible_pages.end(), df::viewscreen_overallstatusst::Justice);
                 if (page == screen->visible_pages.end())
                 {
-                    ai->debug(out, "[Crime] [ERROR] Could not find justice tab on status screen.");
+                    ai.debug(out, "[Crime] [ERROR] Could not find justice tab on status screen.");
                 }
                 else
                 {
@@ -227,13 +227,13 @@ void Population::update_crimes(color_ostream & out)
                         auto it = std::find(justice->cases.begin(), justice->cases.end(), crime);
                         if (it == justice->cases.end())
                         {
-                            ai->debug(out, "[Crime] Could not find case. Checking " + std::string(justice->cold_cases ? "recent crimes" : "cold cases"));
+                            ai.debug(out, "[Crime] Could not find case. Checking " + std::string(justice->cold_cases ? "recent crimes" : "cold cases"));
                             Gui::getCurViewscreen(true)->feed_key(interface_key::CHANGETAB);
                             it = std::find(justice->cases.begin(), justice->cases.end(), crime);
                         }
                         if (it == justice->cases.end())
                         {
-                            ai->debug(out, "[Crime] [ERROR] Could not find case.");
+                            ai.debug(out, "[Crime] [ERROR] Could not find case.");
                         }
                         else
                         {
@@ -245,7 +245,7 @@ void Population::update_crimes(color_ostream & out)
                             auto convict = std::find(justice->convict_choices.begin(), justice->convict_choices.end(), criminal);
                             if (convict == justice->convict_choices.end())
                             {
-                                ai->debug(out, "[Crime] [ERROR] Criminal is not on list of suspects.");
+                                ai.debug(out, "[Crime] [ERROR] Criminal is not on list of suspects.");
                                 Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                             }
                             else
@@ -260,21 +260,21 @@ void Population::update_crimes(color_ostream & out)
                     }
                     else
                     {
-                        ai->debug(out, "[Crime] [ERROR] Could not open justice tab on status screen.");
+                        ai.debug(out, "[Crime] [ERROR] Could not open justice tab on status screen.");
                     }
                     Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 }
             }
             else
             {
-                ai->debug(out, "[Crime] [ERROR] Could not open status screen.");
+                ai.debug(out, "[Crime] [ERROR] Could not open status screen.");
             }
             Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
         }
 
         if (convicted && !crime->flags.bits.sentenced)
         {
-            ai->debug(out, "[Crime] Waiting for sentencing for " + AI::describe_unit(convicted) + ", who was convicted of the crime of " + accusation + with_victim + ".");
+            ai.debug(out, "[Crime] Waiting for sentencing for " + AI::describe_unit(convicted) + ", who was convicted of the crime of " + accusation + with_victim + ".");
         }
     }
 
@@ -310,6 +310,6 @@ void Population::update_crimes(color_ostream & out)
                 message += " days";
             }
         }
-        ai->debug(out, message);
+        ai.debug(out, message);
     }
 }

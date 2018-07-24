@@ -316,15 +316,15 @@ std::string AI::status()
     }
 
     std::ostringstream str;
-    str << "Plan: " << plan->status() << "\n";
-    str << "Pop: " << pop->status() << "\n";
-    str << "Stocks: " << stocks->status() << "\n";
-    str << "Camera: " << camera->status();
+    str << "Plan: " << plan.status() << "\n";
+    str << "Pop: " << pop.status() << "\n";
+    str << "Stocks: " << stocks.status() << "\n";
+    str << "Camera: " << camera.status();
     return str.str();
 }
 
 template<typename M>
-static void report_section(std::ostringstream & out, const std::string & name, M *module, bool html)
+static void report_section(std::ostringstream & out, const std::string & name, M & module, bool html)
 {
     if (html)
     {
@@ -334,7 +334,7 @@ static void report_section(std::ostringstream & out, const std::string & name, M
     {
         out << "# " << name << "\n";
     }
-    module->report(out, html);
+    module.report(out, html);
     if (!html)
     {
         out << "\n";

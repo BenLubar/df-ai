@@ -29,9 +29,9 @@ Config::Config() :
     tick_debug(false),
     plan_allow_legacy(true)
 {
-    for (int32_t i = 0; i < embark_options_count; i++)
+    for (int32_t & opt : embark_options)
     {
-        embark_options[i] = -1;
+        opt = -1;
     }
     embark_options[embark_finder_option::DimensionX] = 3;
     embark_options[embark_finder_option::DimensionY] = 2;
@@ -175,7 +175,7 @@ void Config::save(color_ostream & out)
     Json::Value options(Json::objectValue);
     FOR_ENUM_ITEMS(embark_finder_option, o)
     {
-        options[ENUM_KEY_STR(embark_finder_option, o)] = Json::Int(embark_options[o]);
+        options[ENUM_KEY_STR(embark_finder_option, o)] = Json::Int(embark_options.at(o));
     }
     setComment(v["embark_options"], options, "// site finder options. -1 is \"N/A\", 0 is the first option, 1 is the second, and so on.");
 

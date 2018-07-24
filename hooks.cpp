@@ -299,8 +299,8 @@ static int32_t lockstep_write_movie_chunk()
                 int32_t header[3];
                 header[0] = init->display.grid_x;
                 header[1] = init->display.grid_y;
-                extern AI *dwarfAI;
-                if (dwarfAI->camera->movie_started_in_lockstep)
+                extern std::unique_ptr<AI> dwarfAI;
+                if (dwarfAI->camera.movie_started_in_lockstep)
                 {
                     header[1] *= 2;
                 }
@@ -335,8 +335,8 @@ static void lockstep_finish_movie()
     gview->currentblocksize = 0;
     gview->nextfilepos = 0;
     gview->supermovie_pos = 0;
-    extern AI *dwarfAI;
-    dwarfAI->camera->check_record_status();
+    extern std::unique_ptr<AI> dwarfAI;
+    dwarfAI->camera.check_record_status();
 }
 
 static void lockstep_handlemovie(bool flushall)
@@ -357,7 +357,7 @@ static void lockstep_handlemovie(bool flushall)
 
             if (!flushall || gview->supermovie_delaystep == 0)
             {
-                extern AI *dwarfAI;
+                extern std::unique_ptr<AI> dwarfAI;
                 //SAVING CHARACTERS, THEN COLORS
                 short x2, y2;
                 for (x2 = 0; x2 < init->display.grid_x; x2++)
@@ -368,7 +368,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
+                    if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -393,7 +393,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
+                    if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -406,16 +406,16 @@ static void lockstep_handlemovie(bool flushall)
             }
 
             int frame_size = init->display.grid_x * init->display.grid_y * 2;
-            extern AI *dwarfAI;
-            if (dwarfAI->camera->movie_started_in_lockstep)
+            extern std::unique_ptr<AI> dwarfAI;
+            if (dwarfAI->camera.movie_started_in_lockstep)
             {
                 frame_size *= 2;
             }
-            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || !dwarfAI || !dwarfAI->camera->movie_started_in_lockstep)
+            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || dwarfAI == nullptr || !dwarfAI->camera.movie_started_in_lockstep)
             {
                 int length = lockstep_write_movie_chunk();
 
-                if (length > 5000000 || !dwarfAI || !dwarfAI->camera->movie_started_in_lockstep)
+                if (length > 5000000 || dwarfAI == nullptr || !dwarfAI->camera.movie_started_in_lockstep)
                 {
                     lockstep_finish_movie();
                 }
@@ -585,8 +585,8 @@ static void lockstep_loop()
         enabler->renderer->render();
     }
 
-    extern AI *dwarfAI;
-    if (dwarfAI && dwarfAI->camera->movie_started_in_lockstep)
+    extern std::unique_ptr<AI> dwarfAI;
+    if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
     {
         LOCKSTEP_DEBUG("stopping movie started in lockstep to avoid corruption");
         // Stop the current CMV so it doesn't get corrupted on the next frame.

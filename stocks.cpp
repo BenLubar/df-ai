@@ -159,8 +159,8 @@ Watch::Watch()
     AlsoCount.insert(stock_item::thread);
 }
 
-Stocks::Stocks(AI *ai) :
-    ai(ai),
+Stocks::Stocks(AI & ai) :
+    ai{ ai },
     count_free(),
     count_total(),
     count_subtype(),
@@ -182,9 +182,9 @@ Stocks::Stocks(AI *ai) :
     updating_slabs(false),
     updating_ingots(false),
     updating_farmplots(),
-    last_treelist([ai](df::coord a, df::coord b) -> bool
+    last_treelist([&ai](df::coord a, df::coord b) -> bool
     {
-        df::coord fe = ai->fort_entrance_pos();
+        df::coord fe = ai.fort_entrance_pos();
         int16_t ascore = (a.x - fe.x) * (a.x - fe.x) + (a.y - fe.y) * (a.y - fe.y) + (a.z - fe.z) * (a.z - fe.z) * 16;
         int16_t bscore = (b.x - fe.x) * (b.x - fe.x) + (b.y - fe.y) * (b.y - fe.y) + (b.z - fe.z) * (b.z - fe.z) * 16;
         if (ascore < bscore)

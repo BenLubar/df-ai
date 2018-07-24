@@ -29,8 +29,8 @@ REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-Camera::Camera(AI *ai) :
-    ai(ai),
+Camera::Camera(AI & ai) :
+    ai{ ai },
     onupdate_handle(nullptr),
     onstatechange_handle(nullptr),
     following(-1),
@@ -165,7 +165,7 @@ void Camera::update(color_ostream &)
             targets1.push_back(u);
         }
     }
-    auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(0, n - 1)(ai->rng); };
+    auto rnd_shuffle = [this](size_t n) -> size_t { return std::uniform_int_distribution<size_t>(0, n - 1)(ai.rng); };
     std::random_shuffle(targets0.begin(), targets0.end(), rnd_shuffle);
     std::random_shuffle(targets1.begin(), targets1.end(), rnd_shuffle);
     std::vector<df::unit *> targets2;
@@ -271,7 +271,7 @@ void Camera::update(color_ostream &)
         }
         if (following == -1)
         {
-            following_unit = targets0[std::uniform_int_distribution<size_t>(0, targets0.size() - 1)(ai->rng)];
+            following_unit = targets0[std::uniform_int_distribution<size_t>(0, targets0.size() - 1)(ai.rng)];
             following = following_unit->id;
         }
     }
@@ -295,10 +295,10 @@ void AI::ignore_pause(int32_t x, int32_t y, int32_t z)
         return;
     }
 
-    if (df::unit *u = df::unit::find(camera->following))
+    if (df::unit *u = df::unit::find(camera.following))
     {
         Gui::revealInDwarfmodeMap(Units::getPosition(u), true);
-        ui->follow_unit = camera->following;
+        ui->follow_unit = camera.following;
     }
 }
 

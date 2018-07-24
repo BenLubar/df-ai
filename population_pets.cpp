@@ -81,7 +81,7 @@ void Population::update_pets(color_ostream & out)
                 {
                     // animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
                     u->flags2.bits.slaughter = true;
-                    ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (can't reproduce)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
+                    ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (can't reproduce)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
                     continue;
                 }
 
@@ -153,7 +153,7 @@ void Population::update_pets(color_ostream & out)
         {
             flags.bits.grazer = 1;
 
-            if (df::building_civzonest *bld = virtual_cast<df::building_civzonest>(ai->plan->getpasture(out, u->id)))
+            if (auto bld = virtual_cast<df::building_civzonest>(ai.plan.getpasture(out, u->id)))
             {
                 assign_unit_to_zone(u, bld);
                 // TODO monitor grass levels
@@ -162,7 +162,7 @@ void Population::update_pets(color_ostream & out)
             {
                 // TODO slaughter best candidate, keep this one
                 u->flags2.bits.slaughter = 1;
-                ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
+                ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
             }
         }
 
@@ -171,7 +171,7 @@ void Population::update_pets(color_ostream & out)
 
     for (auto p : np)
     {
-        ai->plan->freepasture(out, p.first);
+        ai.plan.freepasture(out, p.first);
         pet.erase(p.first);
     }
 
@@ -193,7 +193,7 @@ void Population::update_pets(color_ostream & out)
                 df::unit *u = it.second;
                 df::creature_raw *race = df::creature_raw::find(u->race);
                 u->flags2.bits.slaughter = 1;
-                ai->debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst.first->caste_id.c_str()));
+                ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (too many adults)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst.first->caste_id.c_str()));
             }
         }
     }
@@ -204,7 +204,7 @@ void Population::update_pets(color_ostream & out)
         tmpl.job_type = job_type::MilkCreature;
         tmpl.mat_index = -1;
 
-        ai->stocks->add_manager_order(out, tmpl, std::min(needmilk, 30));
+        ai.stocks.add_manager_order(out, tmpl, std::min(needmilk, 30));
     }
 
     if (needshear > 0)
@@ -213,7 +213,7 @@ void Population::update_pets(color_ostream & out)
         tmpl.job_type = job_type::ShearCreature;
         tmpl.mat_index = -1;
 
-        ai->stocks->add_manager_order(out, tmpl, std::min(needshear, 30));
+        ai.stocks.add_manager_order(out, tmpl, std::min(needshear, 30));
     }
 }
 
@@ -263,5 +263,5 @@ void Population::assign_unit_to_zone(df::unit *u, df::building_civzonest *bld)
     }
     Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-    ai->ignore_pause(start_x, start_y, start_z);
+    ai.ignore_pause(start_x, start_y, start_z);
 }

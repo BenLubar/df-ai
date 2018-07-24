@@ -109,7 +109,7 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         return false;
     }
 
-    extern AI *dwarfAI; // XXX
+    extern std::unique_ptr<AI> dwarfAI; // XXX
 
     // If no dwarf can walk to it from the fort entrance, it's probably up in
     // a tree or down in the caverns.

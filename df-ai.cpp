@@ -25,7 +25,7 @@ REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
 
 // Protected by CoreSuspender
-AI *dwarfAI = nullptr;
+std::unique_ptr<AI> dwarfAI{ nullptr };
 bool full_reset_requested = false;
 
 command_result ai_command(color_ostream & out, std::vector<std::string> & args);
@@ -37,13 +37,12 @@ bool check_enabled(color_ostream & out)
     {
         if (full_reset_requested && strict_virtual_cast<df::viewscreen_titlest>(Gui::getCurViewscreen(true)))
         {
-            delete dwarfAI;
             dwarfAI = nullptr;
             full_reset_requested = false;
         }
         if (!dwarfAI)
         {
-            dwarfAI = new AI();
+            dwarfAI = std::make_unique<AI>();
 
             events.onupdate_register_once("df-ai start", [](color_ostream & out) -> bool
             {
@@ -78,7 +77,6 @@ bool check_enabled(color_ostream & out)
     {
         dwarfAI->onupdate_unregister(out);
         out << "AI: removed onupdate" << std::endl;
-        delete dwarfAI;
         dwarfAI = nullptr;
         Hook_Shutdown();
     }

@@ -119,7 +119,7 @@ command_result Plan::setup_ready(color_ostream & out)
 {
     auto dig_starting_room = [this, &out](room_type::type rt, std::function<bool(room *)> f, bool want = false)
     {
-        ai->find_room(rt, [this, &out, f, want](room *r) -> bool
+        ai.find_room(rt, [this, &out, f, want](room *r) -> bool
         {
             if (f(r))
             {
@@ -150,28 +150,28 @@ command_result Plan::setup_blueprint_legacy(color_ostream & out)
 {
     if (!config.plan_allow_legacy)
     {
-        ai->debug(out, "not allowed to use legacy plan and blueprint failed. giving up.");
+        ai.debug(out, "not allowed to use legacy plan and blueprint failed. giving up.");
         return CR_FAILURE;
     }
 
-    ai->debug(out, "using legacy layout...");
+    ai.debug(out, "using legacy layout...");
 
     // TODO use existing fort facilities (so we can relay the user or continue from a save)
-    ai->debug(out, "setting up fort blueprint...");
+    ai.debug(out, "setting up fort blueprint...");
     // TODO place fort body first, have main stair stop before surface, and place trade depot on path to surface
     command_result res = scan_fort_entrance(out);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "blueprint found entrance");
+    ai.debug(out, "blueprint found entrance");
     // TODO if no room for fort body, make surface fort
     res = scan_fort_body(out);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "blueprint found body");
+    ai.debug(out, "blueprint found body");
     res = setup_blueprint_rooms(out);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "blueprint found rooms");
+    ai.debug(out, "blueprint found rooms");
     // ensure traps are on the surface
     for (auto i : fort_entrance->layout)
     {
@@ -267,7 +267,7 @@ command_result Plan::scan_fort_entrance(color_ostream & out)
             return scan_fort_entrance(out);
         }
 
-        ai->debug(out, "[ERROR] Can't find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.");
+        ai.debug(out, "[ERROR] Can't find a fortress entrance spot. We need a 3x5 flat area with solid ground for at least 2 tiles on each side.");
         return CR_FAILURE;
     }
 
@@ -368,7 +368,7 @@ command_result Plan::scan_fort_body(color_ostream & out)
         }
     }
 
-    ai->debug(out, "[ERROR] Too many caverns, cant find room for fort. We need more minerals!");
+    ai.debug(out, "[ERROR] Too many caverns, cant find room for fort. We need more minerals!");
     return CR_FAILURE;
 }
 
@@ -389,21 +389,21 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
     res = setup_blueprint_workshops(out, f, fe);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "workshop floor ready");
+    ai.debug(out, "workshop floor ready");
 
     fort_entrance->min.z--;
     f.z--;
     res = setup_blueprint_utilities(out, f, fe);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "utility floor ready");
+    ai.debug(out, "utility floor ready");
 
     fort_entrance->min.z--;
     f.z--;
     res = setup_blueprint_stockpiles(out, f, fe);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "stockpile floor ready");
+    ai.debug(out, "stockpile floor ready");
 
     for (int i = 0; i < 2; i++)
     {
@@ -412,7 +412,7 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
         res = setup_blueprint_bedrooms(out, f, fe, i);
         if (res != CR_OK)
             return res;
-        ai->debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
+        ai.debug(out, stl_sprintf("bedroom floor ready %d/2", i + 1));
     }
 
     fort_entrance->min.z--;
@@ -420,7 +420,7 @@ command_result Plan::setup_blueprint_rooms(color_ostream & out)
     res = setup_blueprint_stockpiles_overflow(out, f, fe);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "stockpile overflow floor ready");
+    ai.debug(out, "stockpile overflow floor ready");
 
     return CR_OK;
 }
@@ -778,7 +778,7 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
                 df::coord tt = t + df::coord(dx, dy, 0);
                 if (!map_tile_in_rock(tt))
                     return false;
-                if (ai->map_tile_intersects_room(tt))
+                if (ai.map_tile_intersects_room(tt))
                     return false;
             }
         }
@@ -790,9 +790,9 @@ command_result Plan::setup_blueprint_workshops(color_ostream &, df::coord f, con
             df::coord ttt = tt + df::coord(0, 0, 1);
             if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ttt))) != tiletype_shape_basic::Floor)
                 return false;
-            if (ai->map_tile_intersects_room(tt))
+            if (ai.map_tile_intersects_room(tt))
                 return false;
-            if (ai->map_tile_intersects_room(ttt))
+            if (ai.map_tile_intersects_room(ttt))
                 return false;
             df::tile_occupancy *occ = Maps::getTileOccupancy(ttt);
             if (occ && occ->bits.building != tile_building_occ::None)
@@ -919,7 +919,7 @@ command_result Plan::setup_blueprint_stockpiles(color_ostream & out, df::coord f
 
 command_result Plan::setup_blueprint_pitcage(color_ostream &)
 {
-    room *gdump = ai->find_room(room_type::garbagedump);
+    room *gdump = ai.find_room(room_type::garbagedump);
     if (!gdump)
         return CR_OK;
     auto layout = [](room *r)
@@ -1095,7 +1095,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
 
     if (allow_ice)
     {
-        ai->debug(out, "icy embark, no well");
+        ai.debug(out, "icy embark, no well");
         booze->min.x -= 2;
     }
     else
@@ -1110,7 +1110,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         else
         {
             // TODO pool, pumps, etc
-            ai->debug(out, "no river, no well");
+            ai.debug(out, "no river, no well");
             booze->min.x -= 2;
         }
     }
@@ -1118,7 +1118,7 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
     // farm plots
     int16_t cx = f.x + 4 * 6; // end of workshop corridor (last ws door)
     int16_t cy = f.y;
-    int16_t cz = ai->find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Farmers; })->min.z;
+    int16_t cz = ai.find_room(room_type::workshop, [](room *r) -> bool { return r->workshop_type == workshop_type::Farmers; })->min.z;
     room *ws_cor = new room(corridor_type::corridor, df::coord(f.x + 3, cy, cz), df::coord(cx + 1, cy, cz), "farm access corridor"); // ws_corr->accesspath ...
     rooms_and_corridors.push_back(ws_cor);
     room *farm_stairs = new room(corridor_type::corridor, df::coord(cx + 2, cy, cz), df::coord(cx + 2, cy, cz), "farm stairs");
@@ -1354,16 +1354,16 @@ command_result Plan::setup_blueprint_utilities(color_ostream & out, df::coord f,
         }
     }
 
-    ai->debug(out, "finished interior utilities");
+    ai.debug(out, "finished interior utilities");
     command_result res;
     res = setup_blueprint_pastures(out);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "finished pastures");
+    ai.debug(out, "finished pastures");
     res = setup_blueprint_outdoor_farms(out, nrfarms * 2);
     if (res != CR_OK)
         return res;
-    ai->debug(out, "finished outdoor farms");
+    ai.debug(out, "finished outdoor farms");
     return CR_OK;
 }
 
@@ -1437,7 +1437,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
     // 1st end: reservoir input
     df::coord p1 = c - df::coord(16, 0, 0);
     move_river(p1);
-    ai->debug(out, stl_sprintf("cistern: reserve/in (%d, %d, %d), river (%d, %d, %d)", p1.x, p1.y, p1.z, src.x, src.y, src.z));
+    ai.debug(out, stl_sprintf("cistern: reserve/in (%d, %d, %d), river (%d, %d, %d)", p1.x, p1.y, p1.z, src.x, src.y, src.z));
 
     df::coord p = p1;
     room *r = reserve;
@@ -1500,7 +1500,7 @@ command_result Plan::setup_blueprint_cistern_fromsource(color_ostream & out, df:
 
     if (channel.isValid())
     {
-        ai->debug(out, stl_sprintf("cistern: out(%d, %d, %d), channel_enable (%d, %d, %d)", output.x, output.y, output.z, channel.x, channel.y, channel.z));
+        ai.debug(out, stl_sprintf("cistern: out(%d, %d, %d), channel_enable (%d, %d, %d)", output.x, output.y, output.z, channel.x, channel.y, channel.z));
     }
 
     // TODO check that 'channel' is easily channelable (eg river in a hole)
@@ -1849,7 +1849,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     room *r = nullptr;
 #define FIND_ROOM(cond, type, lambda) \
     if (r == nullptr && (cond)) \
-        r = ai->find_room(type, lambda)
+        r = ai.find_room(type, lambda)
 
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
@@ -1872,7 +1872,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
     FIND_ROOM(true, room_type::tradedepot, ifplan);
     FIND_ROOM(true, room_type::cistern, ifplan);
     FIND_ROOM(true, room_type::infirmary, ifplan);
-    FIND_ROOM(!ai->find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetery, ifplan);
+    FIND_ROOM(!ai.find_room(room_type::cemetery, [](room *r) -> bool { return r->status != room_status::plan; }), room_type::cemetery, ifplan);
     FIND_ROOM(!important_workshops2.empty(), room_type::furnace, [this](room *r) -> bool
     {
         if (r->furnace_type == important_workshops2.back() &&
@@ -2014,8 +2014,8 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
             return f->has_users && f->users.empty();
         }) != r->layout.end();
     };
-    FIND_ROOM(!ai->find_room(room_type::dininghall, nousers_noplan), room_type::dininghall, nousers_plan);
-    FIND_ROOM(!ai->find_room(room_type::barracks, nousers_noplan), room_type::barracks, nousers_plan);
+    FIND_ROOM(!ai.find_room(room_type::dininghall, nousers_noplan), room_type::dininghall, nousers_plan);
+    FIND_ROOM(!ai.find_room(room_type::barracks, nousers_noplan), room_type::barracks, nousers_plan);
     FIND_ROOM(true, room_type::stockpile, [](room *r) -> bool
     {
         return r->status == room_status::plan &&
@@ -2044,11 +2044,11 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
                 }
                 return false;
             };
-            ai->find_room(room_type::dininghall, unignore_all_furniture);
-            ai->find_room(room_type::barracks, unignore_all_furniture);
-            ai->find_room(room_type::nobleroom, unignore_all_furniture);
-            ai->find_room(room_type::bedroom, unignore_all_furniture);
-            ai->find_room(room_type::cemetery, unignore_all_furniture);
+            ai.find_room(room_type::dininghall, unignore_all_furniture);
+            ai.find_room(room_type::barracks, unignore_all_furniture);
+            ai.find_room(room_type::nobleroom, unignore_all_furniture);
+            ai.find_room(room_type::bedroom, unignore_all_furniture);
+            ai.find_room(room_type::cemetery, unignore_all_furniture);
         }
 
         bool any_outpost = false;
@@ -2066,7 +2066,7 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
         }
         if (!any_outpost && setup_blueprint_caverns(out) == CR_OK)
         {
-            ai->debug(out, "found next cavern");
+            ai.debug(out, "found next cavern");
             categorize_all();
             reason << "digging next outpost";
             return;
@@ -2081,15 +2081,15 @@ void Plan::checkidle_legacy(color_ostream & out, std::ostream & reason)
 
     if (r)
     {
-        ai->debug(out, "checkidle " + AI::describe_room(r));
+        ai.debug(out, "checkidle " + AI::describe_room(r));
         reason << "queued room: " << AI::describe_room(r);
         wantdig(out, r);
         if (r->status == room_status::finished)
         {
             r->furnished = true;
-            for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+            for (auto f : r->layout)
             {
-                (*it)->ignore = false;
+                f->ignore = false;
             }
             reason << " (for finishing)";
             furnish_room(out, r);

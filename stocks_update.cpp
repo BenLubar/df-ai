@@ -28,7 +28,7 @@ void Stocks::update(color_ostream & out)
     if (!updating.empty() && lastupdating != updating.size() + updating_count.size())
     {
         // avoid stall if cb_bg crashed and was unregistered
-        ai->debug(out, "not updating stocks");
+        ai.debug(out, "not updating stocks");
         lastupdating = updating.size() + updating_count.size();
         return;
     }
@@ -90,7 +90,7 @@ void Stocks::update(color_ostream & out)
     updating_ingots = true;
     updating_farmplots.clear();
 
-    ai->find_room(room_type::farmplot, [this](room *r) -> bool
+    ai.find_room(room_type::farmplot, [this](room *r) -> bool
     {
         if (r->dfbuilding())
         {
@@ -99,7 +99,7 @@ void Stocks::update(color_ostream & out)
         return false; // search all farm plots
     });
 
-    if (ai->eventsJson.is_open())
+    if (ai.eventsJson.is_open())
     {
         // update wealth by opening the status screen
         Gui::getCurViewscreen(true)->feed_key(interface_key::D_STATUS);
@@ -119,7 +119,7 @@ void Stocks::update(color_ostream & out)
         payload["held"] = Json::Int(ui->tasks.wealth.held);
         payload["imported"] = Json::Int(ui->tasks.wealth.imported);
         payload["exported"] = Json::Int(ui->tasks.wealth.exported);
-        ai->event("wealth", payload);
+        ai.event("wealth", payload);
     }
 
     // do stocks accounting 'in the background' (ie one bit at a time)
@@ -173,7 +173,7 @@ void Stocks::update(color_ostream & out)
             farmplot(out, r, false);
             return false;
         }
-        if (ai->eventsJson.is_open())
+        if (ai.eventsJson.is_open())
         {
             std::ostringstream stringify;
             Json::Value payload(Json::objectValue);
@@ -210,7 +210,7 @@ void Stocks::update(color_ostream & out)
                 stringify << *it;
                 payload[stringify.str()] = also;
             }
-            ai->event("stocks update", payload);
+            ai.event("stocks update", payload);
         }
         // finished, dismiss callback
         return true;
@@ -268,7 +268,7 @@ void Stocks::update_ingots(color_ostream & out)
 
 void Stocks::update_corpses(color_ostream & out)
 {
-    room *r = ai->find_room(room_type::garbagedump);
+    room *r = ai.find_room(room_type::garbagedump);
     if (!r)
     {
         updating_corpses = false;
@@ -293,7 +293,7 @@ void Stocks::update_corpses(color_ostream & out)
         {
             if (!i->flags.bits.dump && u)
             {
-                ai->debug(out, "stocks: dump " + enum_item_key(i->getType()) + " of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
+                ai.debug(out, "stocks: dump " + enum_item_key(i->getType()) + " of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
             }
             // dump corpses that aren't in a stockpile, a grave, or the dump.
             i->flags.bits.dump = true;
@@ -302,7 +302,7 @@ void Stocks::update_corpses(color_ostream & out)
         {
             if (i->flags.bits.forbid && u)
             {
-                ai->debug(out, "stocks: unforbid " + enum_item_key(i->getType()) + " of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
+                ai.debug(out, "stocks: unforbid " + enum_item_key(i->getType()) + " of " + AI::describe_unit(u) + " (" + AI::describe_item(i) + ")");
             }
             // unforbid corpses in the dump so dwarves get buried before the next year.
             i->flags.bits.forbid = false;
@@ -321,7 +321,7 @@ void Stocks::update_slabs(color_ostream & out)
             df::coord pos;
             pos.clear();
 
-            ai->find_room(room_type::cemetery, [&pos](room *r) -> bool
+            ai.find_room(room_type::cemetery, [&pos](room *r) -> bool
             {
                 if (r->status == room_status::plan)
                     return false;
@@ -359,7 +359,7 @@ void Stocks::update_slabs(color_ostream & out)
                 std::vector<df::item *> item;
                 item.push_back(i);
                 Buildings::constructWithItems(bld, item);
-                ai->debug(out, "slabbing " + AI::describe_unit(df::unit::find(df::historical_figure::find(i->topic)->unit_id)) + ": " + i->description);
+                ai.debug(out, "slabbing " + AI::describe_unit(df::unit::find(df::historical_figure::find(i->topic)->unit_id)) + ": " + i->description);
             }
         }
     }
@@ -371,7 +371,7 @@ int32_t Stocks::num_needed(stock_item::item key)
     int32_t amount = Watch.Needed.at(key);
     if (Watch.NeededPerDwarf.count(key))
     {
-        amount += int32_t(ai->pop->citizen.size()) * Watch.NeededPerDwarf.at(key) / 100;
+        amount += int32_t(ai.pop.citizen.size()) * Watch.NeededPerDwarf.at(key) / 100;
     }
     return amount;
 }

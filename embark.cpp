@@ -35,9 +35,9 @@ REQUIRE_GLOBAL(standing_orders_gather_refuse_outside);
 REQUIRE_GLOBAL(standing_orders_job_cancel_announce);
 REQUIRE_GLOBAL(world);
 
-EmbarkExclusive::EmbarkExclusive(AI *ai) :
-    ExclusiveCallback("embarking"),
-    ai(ai)
+EmbarkExclusive::EmbarkExclusive(AI & ai) :
+    ExclusiveCallback{ "embarking" },
+    ai{ ai }
 {
 }
 
@@ -47,7 +47,7 @@ EmbarkExclusive::~EmbarkExclusive()
 
 void EmbarkExclusive::Run(color_ostream & out)
 {
-    while (!MaybeExpectScreen<df::viewscreen_dwarfmodest>())
+    while (!MaybeExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default"))
     {
         AssertDelayed();
 
@@ -57,31 +57,31 @@ void EmbarkExclusive::Run(color_ostream & out)
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_movieplayerst>())
+        if (MaybeExpectScreen<df::viewscreen_movieplayerst>("movieplayer"))
         {
             Key(interface_key::LEAVESCREEN);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_titlest>())
+        if (MaybeExpectScreen<df::viewscreen_titlest>("title"))
         {
             ViewTitle(out);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_adopt_regionst>() || MaybeExpectScreen<df::viewscreen_export_regionst>())
+        if (MaybeExpectScreen<df::viewscreen_adopt_regionst>("adopt_region") || MaybeExpectScreen<df::viewscreen_export_regionst>("export_region"))
         {
             Delay();
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_loadgamest>())
+        if (MaybeExpectScreen<df::viewscreen_loadgamest>("loadgame"))
         {
             ViewLoadGame(out);
             continue;
         }
 
-        if (MaybeExpectScreen<dfhack_lua_viewscreen>("dfhack/lua/load_screen"))
+        if (MaybeExpectScreen<dfhack_lua_viewscreen>("dfhack/lua/load_screen", "loadgame"))
         {
             ViewLoadScreen(out);
             continue;
@@ -94,38 +94,38 @@ void EmbarkExclusive::Run(color_ostream & out)
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_new_regionst>())
+        if (MaybeExpectScreen<df::viewscreen_new_regionst>("new_region"))
         {
             ViewNewRegion(out);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_update_regionst>())
+        if (MaybeExpectScreen<df::viewscreen_update_regionst>("update_region"))
         {
             ViewUpdateRegion(out);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_choose_start_sitest>())
+        if (MaybeExpectScreen<df::viewscreen_choose_start_sitest>("choose_start_site"))
         {
             ViewChooseStartSite(out);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_setupdwarfgamest>())
+        if (MaybeExpectScreen<df::viewscreen_setupdwarfgamest>("setupdwarfgame"))
         {
             ViewSetupDwarfGame(out);
             continue;
         }
 
-        if (MaybeExpectScreen<df::viewscreen_textviewerst>())
+        if (MaybeExpectScreen<df::viewscreen_textviewerst>("textviewer"))
         {
             ViewTextViewer(out);
             return;
         }
 
         // viewscreen is unknown
-        ai->statechanged(out, SC_VIEWSCREEN_CHANGED);
+        ai.statechanged(out, SC_VIEWSCREEN_CHANGED);
         Delay();
     }
 }
@@ -148,7 +148,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 {
     ExpectedScreen<df::viewscreen_titlest> view(this);
 
-    ai->camera->check_record_status();
+    ai.camera.check_record_status();
 
     if (view->sel_subpage == df::viewscreen_titlest::None)
     {
@@ -156,7 +156,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 
         if (!config.random_embark_world.empty() && continue_game != view->menu_line_id.end() && std::ifstream("data/save/" + config.random_embark_world + "/world.sav").good())
         {
-            ai->debug(out, "choosing \"Continue Game\"");
+            ai.debug(out, "choosing \"Continue Game\"");
 
             SelectVerticalMenuItem(&view->sel_menu_line, int32_t(continue_game - view->menu_line_id.begin()));
 
@@ -167,7 +167,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 
         if (!config.random_embark_world.empty() && start_game != view->menu_line_id.end() && std::ifstream("data/save/" + config.random_embark_world + "/world.dat").good())
         {
-            ai->debug(out, "choosing \"Start Game\"");
+            ai.debug(out, "choosing \"Start Game\"");
 
             SelectVerticalMenuItem(&view->sel_menu_line, int32_t(start_game - view->menu_line_id.begin()));
 
@@ -176,7 +176,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 
         auto new_world = std::find(view->menu_line_id.begin(), view->menu_line_id.end(), df::viewscreen_titlest::NewWorld);
 
-        ai->debug(out, "choosing \"New World\"");
+        ai.debug(out, "choosing \"New World\"");
 
         SelectVerticalMenuItem(&view->sel_menu_line, int32_t(new_world - view->menu_line_id.begin()));
     }
@@ -185,7 +185,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
     {
         if (config.random_embark_world.empty())
         {
-            ai->debug(out, "leaving \"Select World\" (no save name)");
+            ai.debug(out, "leaving \"Select World\" (no save name)");
 
             Key(interface_key::LEAVESCREEN);
 
@@ -199,7 +199,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
 
         if (save == view->start_savegames.end())
         {
-            ai->debug(out, "could not find a save named " + config.random_embark_world);
+            ai.debug(out, "could not find a save named " + config.random_embark_world);
             config.set(out, config.random_embark_world, std::string());
 
             Key(interface_key::LEAVESCREEN);
@@ -208,7 +208,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
         }
         else
         {
-            ai->debug(out, stl_sprintf("selecting save #%d (%s)",
+            ai.debug(out, stl_sprintf("selecting save #%d (%s)",
                 int((save - view->start_savegames.begin()) + 1),
                 (*save)->world_name_str.c_str()));
 
@@ -221,7 +221,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
         auto fortress_mode = std::find(view->submenu_line_id.begin(), view->submenu_line_id.end(), 0);
         if (fortress_mode == view->submenu_line_id.end())
         {
-            ai->debug(out, "leaving \"Select Mode\" (no fortress mode available)");
+            ai.debug(out, "leaving \"Select Mode\" (no fortress mode available)");
             config.set(out, config.random_embark_world, std::string());
 
             Key(interface_key::LEAVESCREEN);
@@ -229,7 +229,7 @@ void EmbarkExclusive::ViewTitle(color_ostream & out)
             return;
         }
 
-        ai->debug(out, "choosing \"Dwarf Fortress Mode\"");
+        ai.debug(out, "choosing \"Dwarf Fortress Mode\"");
 
         SelectVerticalMenuItem(&view->sel_menu_line, int32_t(fortress_mode - view->submenu_line_id.begin()));
     }
@@ -250,7 +250,7 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
 
     if (config.random_embark_world.empty())
     {
-        ai->debug(out, "leaving \"Select World\" (no save name)");
+        ai.debug(out, "leaving \"Select World\" (no save name)");
 
         Key(interface_key::LEAVESCREEN);
 
@@ -264,7 +264,7 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
 
     if (save == view->saves.end())
     {
-        ai->debug(out, "could not find save named " + config.random_embark_world);
+        ai.debug(out, "could not find save named " + config.random_embark_world);
         config.set(out, config.random_embark_world, std::string());
 
         Key(interface_key::LEAVESCREEN);
@@ -272,7 +272,7 @@ void EmbarkExclusive::ViewLoadGame(color_ostream & out)
         return;
     }
 
-    ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+    ai.debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
         int((save - view->saves.begin()) + 1),
         (*save)->world_name.c_str(),
         (*save)->fort_name.c_str()));
@@ -286,7 +286,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 
     if (config.random_embark_world.empty())
     {
-        ai->debug(out, "leaving \"Select World\" (no save name)");
+        ai.debug(out, "leaving \"Select World\" (no save name)");
 
         Key(interface_key::LEAVESCREEN);
 
@@ -325,7 +325,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
 
     if (save == filtered_saves.end())
     {
-        ai->debug(out, "could not find save named " + config.random_embark_world);
+        ai.debug(out, "could not find save named " + config.random_embark_world);
         config.set(out, config.random_embark_world, std::string());
 
         Key(interface_key::LEAVESCREEN);
@@ -339,7 +339,7 @@ void EmbarkExclusive::ViewLoadScreen(color_ostream & out)
     int32_t sel_idx = static_cast<int32_t>(lua_tointeger(L, -1)) - 1;
     lua_pop(L, 2);
 
-    ai->debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
+    ai.debug(out, stl_sprintf("selecting save #%d (%s) (%s)",
         int((save - filtered_saves.begin()) + 1),
         (*save)->world_name.c_str(),
         (*save)->fort_name.c_str()));
@@ -399,7 +399,7 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 
     if (!view->welcome_msg.empty())
     {
-        ai->debug(out, "leaving world gen disclaimer");
+        ai.debug(out, "leaving world gen disclaimer");
 
         Key(interface_key::LEAVESCREEN);
 
@@ -408,7 +408,7 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 
     if (view->simple_mode == 1)
     {
-        ai->debug(out, "choosing \"Generate World\"");
+        ai.debug(out, "choosing \"Generate World\"");
 
         int32_t want_size = std::min(std::max(config.world_size, 0), 4);
 
@@ -441,7 +441,7 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 
     if (!world->entities.all.empty() && view->simple_mode == 0 && world->worldgen_status.state == 10)
     {
-        ai->debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
+        ai.debug(out, "world gen finished, save name is " + world->cur_savegame.save_dir);
         config.set(out, config.random_embark_world, world->cur_savegame.save_dir);
 
         Key(interface_key::SELECT);
@@ -456,7 +456,7 @@ void EmbarkExclusive::ViewUpdateRegion(color_ostream & out)
 {
     ExpectedScreen<df::viewscreen_update_regionst> view(this);
 
-    ai->debug(out, "updating world, goal: " + AI::timestamp(view->year, view->year_tick));
+    ai.debug(out, "updating world, goal: " + AI::timestamp(view->year, view->year_tick));
     Delay();
 }
 
@@ -466,7 +466,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 
     if (view->finder.finder_state == -1)
     {
-        ai->debug(out, "choosing \"Site Finder\"");
+        ai.debug(out, "choosing \"Site Finder\"");
 
         Key(interface_key::SETUP_FIND);
 
@@ -481,7 +481,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 
             if (visible == view->finder.visible_options.end())
             {
-                ai->debug(out, "[CHEAT] Setting hidden site finder option " + enum_item_key(o));
+                ai.debug(out, "[CHEAT] Setting hidden site finder option " + enum_item_key(o));
                 view->finder.options[o] = config.embark_options[o];
 
                 continue;
@@ -531,7 +531,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 
     while (view->finder.search_x != -1 || view->finder.search_y != 0)
     {
-        ai->debug(out, stl_sprintf("searching for a site (%d/%d, %d/%d)",
+        ai.debug(out, stl_sprintf("searching for a site (%d/%d, %d/%d)",
             view->finder.search_x,
             world->world_data->world_width / 16,
             view->finder.search_y,
@@ -540,7 +540,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
         Delay();
     }
 
-    ai->debug(out, "choosing \"Embark\"");
+    ai.debug(out, "choosing \"Embark\"");
 
     Key(interface_key::LEAVESCREEN);
 
@@ -558,16 +558,16 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
     }
     if (sites.empty())
     {
-        ai->debug(out, "leaving embark selector (no good embarks)");
+        ai.debug(out, "leaving embark selector (no good embarks)");
         config.set(out, config.random_embark_world, std::string());
         AI::abandon(out);
         return;
     }
 
-    ai->debug(out, stl_sprintf("found sites count: %zu", sites.size()));
+    ai.debug(out, stl_sprintf("found sites count: %zu", sites.size()));
     // Don't embark on the same region every time.
     std::vector<std::seed_seq::result_type> seeds;
-    seeds.push_back(std::seed_seq::result_type(ai->rng()));
+    seeds.push_back(std::seed_seq::result_type(ai.rng()));
     seeds.push_back(std::seed_seq::result_type(*cur_year));
     seeds.push_back(std::seed_seq::result_type(*cur_year_tick));
     std::seed_seq seeds_seq(seeds.begin(), seeds.end());
@@ -640,7 +640,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 
 void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
 {
-    ai->debug(out, "choosing \"Play Now\"");
+    ai.debug(out, "choosing \"Play Now\"");
 
     Key(interface_key::SELECT);
     // TODO custom embark loadout
@@ -648,18 +648,18 @@ void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
 
 void EmbarkExclusive::ViewTextViewer(color_ostream & out)
 {
-    ai->debug(out, "site is ready.");
+    ai.debug(out, "site is ready.");
 
     Delay(5 * 100);
 
-    ai->debug(out, "disabling minimap.");
+    ai.debug(out, "disabling minimap.");
     Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     Gui::setMenuWidth(3, 3);
     *standing_orders_gather_refuse_outside = 1;
     *standing_orders_job_cancel_announce = config.cancel_announce;
 }
 
-RestartWaitExclusive::RestartWaitExclusive(AI *ai) :
+RestartWaitExclusive::RestartWaitExclusive(AI & ai) :
     ExclusiveCallback("restart wait"),
     ai(ai)
 {
@@ -671,23 +671,23 @@ RestartWaitExclusive::~RestartWaitExclusive()
 
 void RestartWaitExclusive::Run(color_ostream & out)
 {
-    ExpectScreen<df::viewscreen_textviewerst>();
+    ExpectScreen<df::viewscreen_textviewerst>("textviewer");
 
-    ai->debug(out, "game over. restarting in 1 minute.");
+    ai.debug(out, "game over. restarting in 1 minute.");
 
     Delay(60 * 100);
 
-    if (!MaybeExpectScreen<df::viewscreen_textviewerst>())
+    if (!MaybeExpectScreen<df::viewscreen_textviewerst>("textviewer"))
     {
-        ai->debug(out, "[ERROR] unexpected screen during restart.");
+        ai.debug(out, "[ERROR] unexpected screen during restart.");
         return;
     }
 
-    ai->debug(out, "restarting.");
+    ai.debug(out, "restarting.");
 
     Key(interface_key::LEAVESCREEN);
 
-    while (!MaybeExpectScreen<df::viewscreen_titlest>())
+    while (!MaybeExpectScreen<df::viewscreen_titlest>("title"))
     {
         Delay();
     }

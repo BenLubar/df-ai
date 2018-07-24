@@ -36,8 +36,8 @@ REQUIRE_GLOBAL(standing_orders_forbid_used_ammo);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
-Population::Population(AI *ai) :
-    ai(ai),
+Population::Population(AI & ai) :
+    ai{ ai },
     citizen(),
     military(),
     pet(),
@@ -120,7 +120,7 @@ void Population::update(color_ostream & out)
         update_locations(out);
         break;
     case 9:
-        if (ai->eventsJson.is_open())
+        if (ai.eventsJson.is_open())
         {
             Json::Value payload(Json::objectValue);
             payload["citizen"] = Json::UInt(citizen.size());
@@ -128,7 +128,7 @@ void Population::update(color_ostream & out)
             payload["pet"] = Json::UInt(pet.size());
             payload["visitor"] = Json::UInt(visitor.size());
             payload["resident"] = Json::UInt(resident.size());
-            ai->event("population", payload);
+            ai.event("population", payload);
         }
         break;
     }
@@ -137,14 +137,14 @@ void Population::update(color_ostream & out)
 void Population::new_citizen(color_ostream & out, int32_t id)
 {
     citizen.insert(id);
-    ai->plan->new_citizen(out, id);
+    ai.plan.new_citizen(out, id);
 }
 
 void Population::del_citizen(color_ostream & out, int32_t id)
 {
     citizen.erase(id);
     military.erase(id);
-    ai->plan->del_citizen(out, id);
+    ai.plan.del_citizen(out, id);
 }
 
 void Population::update_citizenlist(color_ostream & out)
@@ -167,7 +167,7 @@ void Population::update_citizenlist(color_ostream & out)
             {
                 new_citizen(out, u->id);
 
-                if (ai->eventsJson.is_open())
+                if (ai.eventsJson.is_open())
                 {
                     Json::Value payload(Json::objectValue);
                     payload["id"] = Json::Int(u->id);
@@ -181,7 +181,7 @@ void Population::update_citizenlist(color_ostream & out)
                         payload["caste"] = race->caste.at(u->caste)->caste_id;
                     }
                     payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
-                    ai->event("new citizen", payload);
+                    ai.event("new citizen", payload);
                 }
             }
         }
@@ -191,7 +191,7 @@ void Population::update_citizenlist(color_ostream & out)
             if (mother && Units::isAlive(mother) && Units::isSane(mother) && u->relationship_ids[unit_relationship_type::RiderMount] == -1 && mother->job.current_job == nullptr)
             {
                 // http://www.bay12games.com/dwarves/mantisbt/view.php?id=5551
-                ai->debug(out, "[DF Bug 5551] reuniting mother (" + AI::describe_unit(mother) + ") with infant (" + AI::describe_unit(u) + ")");
+                ai.debug(out, "[DF Bug 5551] reuniting mother (" + AI::describe_unit(mother) + ") with infant (" + AI::describe_unit(u) + ")");
                 auto seek_infant = df::allocate<df::job>();
                 seek_infant->job_type = job_type::SeekInfant;
                 seek_infant->flags.bits.special = 1;
@@ -225,7 +225,7 @@ void Population::update_citizenlist(color_ostream & out)
         // u.counters.death_tg.flags.discovered dead/missing
         del_citizen(out, it);
 
-        if (ai->eventsJson.is_open())
+        if (ai.eventsJson.is_open())
         {
             Json::Value payload(Json::objectValue);
             payload["id"] = Json::Int(it);
@@ -248,7 +248,7 @@ void Population::update_citizenlist(color_ostream & out)
                 }
                 payload["sex"] = u->sex == 0 ? "female" : u->sex == 1 ? "male" : "unknown";
             }
-            ai->event("del citizen", payload);
+            ai.event("del citizen", payload);
         }
     }
 }
@@ -335,7 +335,7 @@ void Population::report(std::ostream & out, bool html)
         int32_t age = days_since(u->birth_year, u->birth_time);
         out << " (age " << (age / 12 / 28) << "y" << ((age / 28) % 12) << "m" << (age % 28) << "d)";
 
-        if (room *r = ai->find_room_at(Units::getPosition(u)))
+        if (room *r = ai.find_room_at(Units::getPosition(u)))
         {
             if (html)
             {
@@ -1248,7 +1248,7 @@ void Population::report(std::ostream & out, bool html)
                 {
                     room *r = nullptr;
                     furniture *f = nullptr;
-                    if (ai->plan->find_building(df::building::find(op->info.bed_id), r, f))
+                    if (ai.plan.find_building(df::building::find(op->info.bed_id), r, f))
                     {
                         out << "Brought to rest in " << AI::describe_furniture(f, html) << " in " << AI::describe_room(r, html) << ".";
                     }
@@ -1366,7 +1366,7 @@ void Population::report(std::ostream & out, bool html)
                 {
                     room *r = nullptr;
                     furniture *f = nullptr;
-                    if (ai->plan->find_building(df::building::find(op->info.bed_id), r, f))
+                    if (ai.plan.find_building(df::building::find(op->info.bed_id), r, f))
                     {
                         out << "Immobilized in " << AI::describe_furniture(f, html) << " in " << AI::describe_room(r, html) << ".";
                     }
@@ -1643,7 +1643,7 @@ void Population::report(std::ostream & out, bool html)
             {
                 room *r = nullptr;
                 furniture *f = nullptr;
-                if (ai->plan->find_building(building, r, f))
+                if (ai.plan.find_building(building, r, f))
                 {
                     if (f)
                     {

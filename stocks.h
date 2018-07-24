@@ -151,18 +151,18 @@ const struct Watch
 class ManagerOrderExclusive : public ExclusiveCallback
 {
 public:
-    AI * const ai;
+    AI & ai;
     df::manager_order_template tmpl;
     int32_t amount;
     std::string search_word;
 
-    ManagerOrderExclusive(AI *ai, const df::manager_order_template & tmpl, int32_t amount);
+    ManagerOrderExclusive(AI & ai, const df::manager_order_template & tmpl, int32_t amount);
     virtual void Run(color_ostream & out);
 };
 
 class Stocks
 {
-    AI *ai;
+    AI & ai;
 public:
     std::map<stock_item::item, int32_t> count_free;
     std::map<stock_item::item, int32_t> count_total;
@@ -212,7 +212,7 @@ private:
     std::set<std::tuple<farm_type::type, df::biome_type, int8_t>> complained_about_no_plants;
 
 public:
-    Stocks(AI *ai);
+    Stocks(AI & ai);
     ~Stocks();
 
     struct find_item_info;

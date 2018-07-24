@@ -35,7 +35,7 @@ class Population
         } bits;
     };
 
-    AI *ai;
+    AI & ai;
 public:
     std::set<int32_t> citizen;
     std::map<int32_t, int32_t> military;
@@ -72,7 +72,7 @@ private:
     friend class MilitarySquadAttackExclusive;
 
 public:
-    Population(AI *ai);
+    Population(AI & ai);
     ~Population();
 
     command_result startup(color_ostream & out);

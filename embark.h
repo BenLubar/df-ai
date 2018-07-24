@@ -7,10 +7,10 @@ class AI;
 
 class EmbarkExclusive : public ExclusiveCallback
 {
-    AI * const ai;
+    AI & ai;
 
 public:
-    EmbarkExclusive(AI *ai);
+    EmbarkExclusive(AI & ai);
     virtual ~EmbarkExclusive();
 
     virtual ExclusiveCallback *ReplaceOnScreenChange() { return new EmbarkExclusive(ai); }
@@ -33,10 +33,10 @@ private:
 
 class RestartWaitExclusive : public ExclusiveCallback
 {
-    AI * const ai;
+    AI & ai;
 
 public:
-    RestartWaitExclusive(AI *ai);
+    RestartWaitExclusive(AI & ai);
     virtual ~RestartWaitExclusive();
 
     virtual void Run(color_ostream & out);

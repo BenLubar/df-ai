@@ -22,25 +22,24 @@ REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 AI::AI() :
-    rng(0),
-    logger("df-ai.log", std::ofstream::out | std::ofstream::app),
-    eventsJson(),
-    pop(new Population(this)),
-    plan(new Plan(this)),
-    stocks(new Stocks(this)),
-    camera(new Camera(this)),
-    trade(new Trade(this)),
-    status_onupdate(nullptr),
-    pause_onupdate(nullptr),
-    tag_enemies_onupdate(nullptr),
-    seen_focus(),
-    seen_cvname(),
-    last_good_x(-1),
-    last_good_y(-1),
-    last_good_z(-1),
-    skip_persist(false)
+    rng{ 0 },
+    logger{ "df-ai.log", std::ofstream::out | std::ofstream::app },
+    eventsJson{},
+    pop{ *this },
+    plan{ *this },
+    stocks{ *this },
+    camera{ *this },
+    trade{ *this },
+    status_onupdate{ nullptr },
+    pause_onupdate{ nullptr },
+    tag_enemies_onupdate{ nullptr },
+    seen_focus{},
+    seen_cvname{ "viewscreen_dwarfmodest" },
+    last_good_x{ -1 },
+    last_good_y{ -1 },
+    last_good_z{ -1 },
+    skip_persist{ false }
 {
-    seen_cvname.insert("viewscreen_dwarfmodest");
     Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
 
     for (int32_t y = 0; y < 25; y++)
@@ -53,19 +52,12 @@ AI::AI() :
 
     if (config.random_embark)
     {
-        events.register_exclusive(new EmbarkExclusive(this));
+        events.register_exclusive(std::make_unique<EmbarkExclusive>(*this));
     }
 }
 
 AI::~AI()
 {
-    delete trade;
-    delete camera;
-    delete stocks;
-    delete plan;
-    delete pop;
-    logger.close();
-    events.clear();
 }
 
 bool AI::is_dwarfmode_viewscreen()
@@ -74,7 +66,10 @@ bool AI::is_dwarfmode_viewscreen()
         return false;
     if (!world->status.popups.empty())
         return false;
-    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(Gui::getCurViewscreen(true)))
+    auto view = Gui::getCurViewscreen(false);
+    if (Screen::isDismissed(view))
+        return false;
+    if (!strict_virtual_cast<df::viewscreen_dwarfmodest>(view))
         return false;
     return true;
 }
@@ -89,13 +84,13 @@ command_result AI::startup(color_ostream & out)
     if (res == CR_OK && config.manage_labors == "labormanager")
         res = Core::getInstance().runCommand(out, "multicmd labormanager max DETAIL 5 ; labormanager priority PLANT 60 ; labormanager priority MINE 30");
     if (res == CR_OK)
-        res = pop->startup(out);
+        res = pop.startup(out);
     if (res == CR_OK)
-        res = plan->startup(out);
+        res = plan.startup(out);
     if (res == CR_OK)
-        res = stocks->startup(out);
+        res = stocks.startup(out);
     if (res == CR_OK)
-        res = camera->startup(out);
+        res = camera.startup(out);
     return res;
 }
 
@@ -107,7 +102,7 @@ public:
     virtual void Run(color_ostream &)
     {
         {
-            auto view = df::allocate<df::viewscreen_optionst>();
+            auto view{ df::allocate<df::viewscreen_optionst>() };
 
             // TODO: These are the options from regular fortress mode. Are they different during a siege?
             view->options.push_back(df::viewscreen_optionst::Return);
@@ -119,12 +114,12 @@ public:
             view->options.push_back(df::viewscreen_optionst::Abandon);
 
             Screen::show(std::unique_ptr<df::viewscreen_optionst>(view));
-            ExpectScreen<df::viewscreen_optionst>();
+            ExpectScreen<df::viewscreen_optionst>("option");
         }
 
         Delay();
 
-        auto view = GetScreen<df::viewscreen_optionst>();
+        ExpectedScreen<df::viewscreen_optionst> view(this);
 
         auto option = std::find(view->options.begin(), view->options.end(), df::viewscreen_optionst::Abandon);
         MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
@@ -133,14 +128,14 @@ public:
         Key(interface_key::MENU_CONFIRM);
 
         // current view switches to a textviewer at this point
-        ExpectScreen<df::viewscreen_textviewerst>();
+        ExpectScreen<df::viewscreen_textviewerst>("textviewer");
         Key(interface_key::SELECT);
     }
 };
 
 void AI::abandon(color_ostream &)
 {
-    events.register_exclusive(new AbandonExclusive(), true);
+    events.register_exclusive(std::make_unique<AbandonExclusive>(), true);
 }
 
 void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> cb)
@@ -171,7 +166,7 @@ void AI::timeout_sameview(int32_t seconds, std::function<void(color_ostream &)> 
             if (!view->is_playing)
             {
                 Screen::dismiss(view);
-                camera->check_record_status();
+                camera.check_record_status();
             }
         }
         if (Gui::getCurViewscreen(true) != curscreen)
@@ -196,13 +191,13 @@ command_result AI::onupdate_register(color_ostream & out)
 {
     command_result res = CR_OK;
     if (res == CR_OK)
-        res = pop->onupdate_register(out);
+        res = pop.onupdate_register(out);
     if (res == CR_OK)
-        res = plan->onupdate_register(out);
+        res = plan.onupdate_register(out);
     if (res == CR_OK)
-        res = stocks->onupdate_register(out);
+        res = stocks.onupdate_register(out);
     if (res == CR_OK)
-        res = camera->onupdate_register(out);
+        res = camera.onupdate_register(out);
     if (res == CR_OK)
     {
         status_onupdate = events.onupdate_register("df-ai status", 3 * 28 * 1200, 3 * 28 * 1200, [this](color_ostream & out) { debug(out, status()); });
@@ -246,13 +241,13 @@ command_result AI::onupdate_unregister(color_ostream & out)
 {
     command_result res = CR_OK;
     if (res == CR_OK)
-        res = camera->onupdate_unregister(out);
+        res = camera.onupdate_unregister(out);
     if (res == CR_OK)
-        res = stocks->onupdate_unregister(out);
+        res = stocks.onupdate_unregister(out);
     if (res == CR_OK)
-        res = plan->onupdate_unregister(out);
+        res = plan.onupdate_unregister(out);
     if (res == CR_OK)
-        res = pop->onupdate_unregister(out);
+        res = pop.onupdate_unregister(out);
     if (res == CR_OK)
     {
         events.onupdate_unregister(status_onupdate);
@@ -269,7 +264,7 @@ command_result AI::persist(color_ostream & out)
         return res;
 
     if (res == CR_OK)
-        res = plan->persist(out);
+        res = plan.persist(out);
     return res;
 }
 
@@ -277,6 +272,6 @@ command_result AI::unpersist(color_ostream & out)
 {
     command_result res = CR_OK;
     if (res == CR_OK)
-        res = plan->unpersist(out);
+        res = plan.unpersist(out);
     return res;
 }

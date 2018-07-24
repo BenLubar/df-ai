@@ -47,8 +47,8 @@
 REQUIRE_GLOBAL(gps);
 REQUIRE_GLOBAL(ui);
 
-Trade::Trade(AI *ai) :
-    ai(ai)
+Trade::Trade(AI & ai) :
+    ai{ ai }
 {
 }
 
@@ -58,7 +58,7 @@ Trade::~Trade()
 
 bool Trade::can_trade()
 {
-    auto room = ai->find_room(room_type::tradedepot);
+    auto room = ai.find_room(room_type::tradedepot);
     auto bld = room ? room->dfbuilding() : nullptr;
 
     for (auto & caravan : ui->caravans)

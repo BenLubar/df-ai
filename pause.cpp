@@ -86,7 +86,7 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     case announcement_type::NOBLE_ARRIVAL:
     case announcement_type::FORT_POSITION_SUCCESSION:
         debug(out, "pause: more minions");
-        plan->make_map_walkable(out); // just in case we missed a frozen river or something during setup
+        plan.make_map_walkable(out); // just in case we missed a frozen river or something during setup
         break;
     case announcement_type::DIPLOMAT_ARRIVAL:
     case announcement_type::LIAISON_ARRIVAL:
@@ -267,7 +267,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
             if (!view->is_playing)
             {
                 Screen::dismiss(curview);
-                camera->check_record_status();
+                camera.check_record_status();
             }
         }
         else if (auto hack = dfhack_viewscreen::try_cast(curview))

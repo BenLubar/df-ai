@@ -2,6 +2,8 @@
 
 #include "dfhack_shared.h"
 
+#include <array>
+
 #include "df/embark_finder_option.h"
 
 constexpr int32_t embark_options_count = df::enum_traits<df::embark_finder_option>::last_item_value + 1;
@@ -33,7 +35,7 @@ struct Config
     bool write_log;
     bool record_movie;
     bool no_quit;
-    int32_t embark_options[embark_options_count];
+    std::array<int32_t, embark_options_count> embark_options;
     int32_t world_size;
     bool camera;
     bool fps_meter;

@@ -9,7 +9,7 @@
 
 #include "df/world.h"
 
-extern AI *dwarfAI;
+extern std::unique_ptr<AI> dwarfAI;
 extern bool & enabled;
 
 REQUIRE_GLOBAL(world);
@@ -100,7 +100,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     } \
     else \
     { \
-        dwarfAI->module->report(handler.cp437_out(), true); \
+        dwarfAI->module.report(handler.cp437_out(), true); \
     }
 
     if (url == "/report/plan")
@@ -150,7 +150,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai blueprint</title><base href=\"..\"/></head>";
         handler.cp437_out() << "<body><p><a href=\"df-ai\">Status</a> - <a href=\"df-ai/report/plan\">Tasks</a> - <a href=\"df-ai/report/population\">Population</a> - <a href=\"df-ai/report/stocks\">Stocks</a> - ";
         handler.cp437_out() << "<b>Blueprint</b> - <a href=\"df-ai/version\">Version</a></p></p>";
-        dwarfAI->plan->weblegends_write_svg(handler.cp437_out());
+        dwarfAI->plan.weblegends_write_svg(handler.cp437_out());
         handler.cp437_out() << "</body></html>";
         return true;
     }

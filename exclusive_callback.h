@@ -13,21 +13,22 @@
 
 class ExclusiveCallback
 {
-protected:
+public:
     ExclusiveCallback(const std::string & description, size_t wait_multiplier = 1);
     virtual ~ExclusiveCallback();
 
+protected:
     template<typename T>
     class ExpectedScreen
     {
-        ExclusiveCallback * const cb;
+        ExclusiveCallback & cb;
 
     public:
-        ExpectedScreen(ExclusiveCallback *cb) : cb(cb) {}
+        ExpectedScreen(ExclusiveCallback *cb) : cb(*cb) {}
 
         inline T *get() const
         {
-            return cb->GetScreen<T>();
+            return cb.getScreen<T>();
         }
         inline T *operator->() const
         {
@@ -36,7 +37,7 @@ protected:
     };
 
     template<typename T>
-    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus = std::string(), const std::string & parentFocus = std::string())
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
         expectedScreen = &T::_identity;
         expectedFocus = focus;
@@ -45,7 +46,7 @@ protected:
         checkScreen();
     }
     template<typename T>
-    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus = std::string(), const std::string & parentFocus = std::string())
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
         T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
         if (!screen)
@@ -66,15 +67,6 @@ protected:
         ExpectScreen<T>(focus, parentFocus);
 
         return true;
-    }
-    template<typename T>
-    T *GetScreen()
-    {
-        CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
-
-        checkScreen();
-
-        return strict_virtual_cast<T>(Gui::getCurViewscreen(true));
     }
     void KeyNoDelay(df::interface_key key);
     void Key(df::interface_key key);
@@ -134,6 +126,18 @@ private:
         void clear() { *this << std::flush; target = nullptr; }
         friend class ExclusiveCallback;
     } out_proxy;
+
+    template<typename T>
+    friend class ExpectedScreen;
+    template<typename T>
+    T *getScreen()
+    {
+        CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
+
+        checkScreen();
+
+        return strict_virtual_cast<T>(Gui::getCurViewscreen(true));
+    }
 
     using coroutine_t = boost::coroutines2::coroutine<color_ostream *>;
     coroutine_t::pull_type *pull;

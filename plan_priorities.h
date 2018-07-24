@@ -347,20 +347,20 @@ struct plan_priority_t
     FILTER_PROPERTY(room_filter_t, match)
     COUNT_PROPERTY(room_filter_t, count)
 
-    bool act(AI *ai, color_ostream & out, std::ostream & reason) const;
+    bool act(AI & ai, color_ostream & out, std::ostream & reason) const;
 
     bool apply(Json::Value & val, std::string & error);
     Json::Value to_json() const;
 
 private:
-    static bool do_dig(AI *ai, color_ostream & out, room *r);
-    static bool do_dig_immediate(AI *ai, color_ostream & out, room *r);
-    static bool do_unignore_furniture(AI *ai, color_ostream & out, room *r);
-    static bool do_finish(AI *ai, color_ostream & out, room *r);
-    static bool do_start_ore_search(AI *ai, color_ostream & out);
-    static bool do_past_initial_phase(AI *ai, color_ostream & out);
-    static bool do_deconstruct_wagons(AI *ai, color_ostream & out);
-    static bool do_dig_next_cavern_outpost(AI *ai, color_ostream & out);
+    static bool do_dig(AI & ai, color_ostream & out, room *r);
+    static bool do_dig_immediate(AI & ai, color_ostream & out, room *r);
+    static bool do_unignore_furniture(AI & ai, color_ostream & out, room *r);
+    static bool do_finish(AI & ai, color_ostream & out, room *r);
+    static bool do_start_ore_search(AI & ai, color_ostream & out);
+    static bool do_past_initial_phase(AI & ai, color_ostream & out);
+    static bool do_deconstruct_wagons(AI & ai, color_ostream & out);
+    static bool do_dig_next_cavern_outpost(AI & ai, color_ostream & out);
 };
 
 #undef AI_ENUM_PROPERTY

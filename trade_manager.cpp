@@ -30,7 +30,7 @@ REQUIRE_GLOBAL(world);
 
 void Population::update_trading(color_ostream & out)
 {
-    bool any_traders = ai->trade->can_move_goods();
+    bool any_traders = ai.trade.can_move_goods();
 
     if (any_traders && did_trade)
     {
@@ -46,11 +46,11 @@ void Population::update_trading(color_ostream & out)
     {
         if (any_traders)
         {
-            ai->debug(out, "[trade] Requested broker at depot.");
+            ai.debug(out, "[trade] Requested broker at depot.");
         }
         else
         {
-            ai->debug(out, "[trade] Dismissed broker from depot: no traders");
+            ai.debug(out, "[trade] Dismissed broker from depot: no traders");
         }
         return;
     }
@@ -69,7 +69,7 @@ void Population::update_trading(color_ostream & out)
         }
         else if ((*it)->trade_state == df::caravan_state::Approaching)
         {
-            ai->debug(out, "[trade] Waiting for the traders from " + AI::describe_name(df::historical_entity::find((*it)->entity)->name) + " to arrive at the depot...");
+            ai.debug(out, "[trade] Waiting for the traders from " + AI::describe_name(df::historical_entity::find((*it)->entity)->name) + " to arrive at the depot...");
         }
     }
 
@@ -81,14 +81,14 @@ void Population::update_trading(color_ostream & out)
     auto broker_pos = std::find_if(ui->main.fortress_entity->positions.own.begin(), ui->main.fortress_entity->positions.own.end(), [](df::entity_position *pos) -> bool { return pos->responsibilities[entity_position_responsibility::TRADE]; });
     if (broker_pos == ui->main.fortress_entity->positions.own.end())
     {
-        ai->debug(out, "[trade] Could not find broker position!");
+        ai.debug(out, "[trade] Could not find broker position!");
         return;
     }
 
     auto broker_assignment = std::find_if(ui->main.fortress_entity->positions.assignments.begin(), ui->main.fortress_entity->positions.assignments.end(), [broker_pos](df::entity_position_assignment *asn) -> bool { return asn->position_id == (*broker_pos)->id; });
     if (broker_assignment == ui->main.fortress_entity->positions.assignments.end())
     {
-        ai->debug(out, "[trade] Could not find broker assignment!");
+        ai.debug(out, "[trade] Could not find broker assignment!");
         return;
     }
 
@@ -121,32 +121,32 @@ void Population::update_trading(color_ostream & out)
         df::historical_figure *broker_hf = df::historical_figure::find((*broker_assignment)->histfig);
         if (!broker_hf)
         {
-            ai->debug(out, "[trade] Could not find broker!");
+            ai.debug(out, "[trade] Could not find broker!");
             return;
         }
 
         broker = df::unit::find(broker_hf->unit_id);
         if (!broker)
         {
-            ai->debug(out, "[trade] Could not find broker unit!");
+            ai.debug(out, "[trade] Could not find broker unit!");
             return;
         }
 
         if (!broker->job.current_job || broker->job.current_job->job_type != job_type::TradeAtDepot)
         {
-            ai->debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_unit(broker) + "(currently: " + AI::describe_job(broker) + ") " + AI::describe_room(ai->find_room_at(Units::getPosition(broker))));
+            ai.debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_unit(broker) + "(currently: " + AI::describe_job(broker) + ") " + AI::describe_room(ai.find_room_at(Units::getPosition(broker))));
             if (caravan->time_remaining < 1000 && set_up_trading(out, true, true))
             {
-                ai->debug(out, "[trade] Broker took too long. Allowing any dwarf to trade this season.");
+                ai.debug(out, "[trade] Broker took too long. Allowing any dwarf to trade this season.");
             }
             return;
         }
     }
 
-    room *depot = ai->find_room(room_type::tradedepot, [broker](room *r) -> bool { return r->include(Units::getPosition(broker)); });
+    room *depot = ai.find_room(room_type::tradedepot, [broker](room *r) -> bool { return r->include(Units::getPosition(broker)); });
     if (!depot)
     {
-        ai->debug(out, "[trade] Broker en route to depot: " + AI::describe_unit(broker) + " (Currently at " + AI::describe_room(ai->find_room_at(Units::getPosition(broker))) + ")");
+        ai.debug(out, "[trade] Broker en route to depot: " + AI::describe_unit(broker) + " (Currently at " + AI::describe_room(ai.find_room_at(Units::getPosition(broker))) + ")");
         return;
     }
 
@@ -163,11 +163,11 @@ void Population::update_trading(color_ostream & out)
     {
         if (caravan->time_remaining < 1000)
         {
-            ai->debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot, but time is running out. Trading with what we have.", waiting_for_items));
+            ai.debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot, but time is running out. Trading with what we have.", waiting_for_items));
         }
         else
         {
-            ai->debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot.", waiting_for_items));
+            ai.debug(out, stl_sprintf("[trade] Waiting for %d more items to arrive at the depot.", waiting_for_items));
             return;
         }
     }
@@ -178,14 +178,14 @@ void Population::update_trading(color_ostream & out)
 
         if (set_up_trading(out, false))
         {
-            ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+            ai.debug(out, "[trade] Dismissed broker from depot: finished trade");
         }
     }
 }
 
 bool Population::set_up_trading(color_ostream & out, bool should_be_trading, bool allow_any_dwarf)
 {
-    room *r = ai->find_room(room_type::tradedepot);
+    room *r = ai.find_room(room_type::tradedepot);
     if (!r)
     {
         return false;
@@ -228,7 +228,7 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
             Gui::getCurViewscreen(true)->feed_key(interface_key::BUILDJOB_DEPOT_BRING);
             if (auto bring = virtual_cast<df::viewscreen_layer_assigntradest>(Gui::getCurViewscreen(true)))
             {
-                ai->debug(out, stl_sprintf("[trade] Checking %zu possible trade items...", bring->lists[0].size()));
+                ai.debug(out, stl_sprintf("[trade] Checking %zu possible trade items...", bring->lists[0].size()));
                 for (size_t i = 0; i < bring->lists[0].size(); i++)
                 {
                     auto info = bring->info.at(bring->lists[0].at(i));
@@ -243,10 +243,10 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
                             info->status = df::assign_trade_status::RemoveTrading;
                         }
                     }
-                    else if (info->status == df::assign_trade_status::None && ai->stocks->willing_to_trade_item(out, info->item))
+                    else if (info->status == df::assign_trade_status::None && ai.stocks.willing_to_trade_item(out, info->item))
                     {
                         info->status = df::assign_trade_status::AddPending;
-                        ai->debug(out, "[trade] Bringing item to trade depot: " + AI::describe_item(info->item));
+                        ai.debug(out, "[trade] Bringing item to trade depot: " + AI::describe_item(info->item));
                     }
                 }
                 Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
@@ -255,18 +255,20 @@ bool Population::set_up_trading(color_ostream & out, bool should_be_trading, boo
     }
     Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 
-    ai->ignore_pause(start_x, start_y, start_z);
+    ai.ignore_pause(start_x, start_y, start_z);
 
     return true;
 }
 
 class PerformTradeExclusive : public ExclusiveCallback
 {
-    PerformTradeExclusive(AI *ai) : ExclusiveCallback("perform trade", 2), ai(ai)
+public:
+    PerformTradeExclusive(AI & ai) : ExclusiveCallback{ "perform trade", 2 }, ai{ ai }
     {
     }
 
-    AI * const ai;
+private:
+    AI & ai;
 
     std::vector<size_t> want_items;
     std::string want_qty;
@@ -283,7 +285,7 @@ class PerformTradeExclusive : public ExclusiveCallback
     {
         if (can_make_offer)
         {
-            ai->debug(Core::getInstance().getConsole(), "[trade] Unexpected viewscreen. Bailing.");
+            ai.debug(Core::getInstance().getConsole(), "[trade] Unexpected viewscreen. Bailing.");
         }
         return new PerformTradeExclusive(ai);
     }
@@ -296,7 +298,7 @@ class PerformTradeExclusive : public ExclusiveCallback
 
 bool Population::perform_trade(color_ostream & out)
 {
-    room *r = ai->find_room(room_type::tradedepot);
+    room *r = ai.find_room(room_type::tradedepot);
     if (!r)
     {
         return false;
@@ -335,22 +337,22 @@ bool Population::perform_trade(color_ostream & out)
     }
     if (auto trade = virtual_cast<df::viewscreen_tradegoodsst>(Gui::getCurViewscreen(true)))
     {
-        if (events.register_exclusive(new PerformTradeExclusive(ai)))
+        if (events.register_exclusive(std::make_unique<PerformTradeExclusive>(ai)))
         {
             return false;
         }
-        ai->debug(out, "[trade] Could not register exclusive context.");
+        ai.debug(out, "[trade] Could not register exclusive context.");
 
         trade->feed_key(interface_key::LEAVESCREEN);
         Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     }
     else
     {
-        ai->debug(out, "[trade] Opening the trade screen failed. Trying again soon.");
+        ai.debug(out, "[trade] Opening the trade screen failed. Trying again soon.");
         Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
     }
 
-    ai->ignore_pause(trade_start_x, trade_start_y, trade_start_z);
+    ai.ignore_pause(trade_start_x, trade_start_y, trade_start_z);
 
     return false;
 }
@@ -364,7 +366,7 @@ static bool represents_plant_murder(df::item *item)
 
 void PerformTradeExclusive::Run(color_ostream & out)
 {
-    if (!MaybeExpectScreen<df::viewscreen_tradegoodsst>())
+    if (!MaybeExpectScreen<df::viewscreen_tradegoodsst>("")) // allow any type of tradegoods screen
     {
         return;
     }
@@ -379,7 +381,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
 
     if (trade->is_unloading)
     {
-        ai->debug(out, "[trade] Waiting for caravan to unload. Trying again soon.");
+        ai.debug(out, "[trade] Waiting for caravan to unload. Trying again soon.");
 
         Delay();
 
@@ -391,14 +393,14 @@ void PerformTradeExclusive::Run(color_ostream & out)
         return;
     }
 
-    ai->debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
+    ai.debug(out, "[trade] Scanning goods offered by " + trade->merchant_name + " from " + trade->merchant_entity + "...");
 
     want_items.clear();
     std::vector<df::item *> want_items_items;
 
     for (auto it = trade->trader_items.begin(); it != trade->trader_items.end(); it++)
     {
-        if (ai->stocks->want_trader_item(out, *it, want_items_items))
+        if (ai.stocks.want_trader_item(out, *it, want_items_items))
         {
             want_items.push_back(it - trade->trader_items.begin());
             want_items_items.push_back(*it);
@@ -406,7 +408,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
     }
     std::sort(want_items.begin(), want_items.end(), [this, trade](size_t a, size_t b) -> bool
     {
-        return ai->stocks->want_trader_item_more(trade->trader_items.at(a), trade->trader_items.at(b));
+        return ai.stocks.want_trader_item_more(trade->trader_items.at(a), trade->trader_items.at(b));
     });
 
     max_offer_value = 0;
@@ -421,10 +423,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
         {
             continue;
         }
-        max_offer_value += ai->trade->item_or_container_price_for_caravan(it, trade->caravan, trade->entity, creature, it->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
+        max_offer_value += ai.trade.item_or_container_price_for_caravan(it, trade->caravan, trade->entity, creature, it->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
     }
 
-    ai->debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", max_offer_value));
+    ai.debug(out, stl_sprintf("[trade] We have %d dorfbux of items we're willing to trade.", max_offer_value));
 
     request_value = 0;
     offer_value = 0;
@@ -435,9 +437,9 @@ void PerformTradeExclusive::Run(color_ostream & out)
     {
         df::item *item = trade->trader_items.at(*want_items_it);
 
-        if ((request_value + ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, 1, trade->caravan->buy_prices, trade->caravan->sell_prices)) * 11 / 10 >= max_offer_value)
+        if ((request_value + ai.trade.item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, 1, trade->caravan->buy_prices, trade->caravan->sell_prices)) * 11 / 10 >= max_offer_value)
         {
-            ai->debug(out, "[trade] Cannot afford any of item, skipping: " + AI::describe_item(item));
+            ai.debug(out, "[trade] Cannot afford any of item, skipping: " + AI::describe_item(item));
             auto index = want_items_it - want_items.begin();
             want_items.erase(want_items_it);
             want_items_it = size_t(index) < want_items.size() ? want_items.begin() + index : want_items.end();
@@ -449,21 +451,21 @@ void PerformTradeExclusive::Run(color_ostream & out)
 
         for (int32_t qty = item->getStackSize(); qty > 0; qty--)
         {
-            int32_t item_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+            int32_t item_value = ai.trade.item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
 
             if ((request_value + item_value) * 11 / 10 >= max_offer_value)
             {
                 if (qty > 1)
                 {
-                    ai->debug(out, stl_sprintf("[trade] Cannot afford %d of item, trying again with fewer: ", qty) + AI::describe_item(item));
+                    ai.debug(out, stl_sprintf("[trade] Cannot afford %d of item, trying again with fewer: ", qty) + AI::describe_item(item));
                 }
                 continue;
             }
 
             want_qty = stl_sprintf("%d", qty);
             request_value += item_value;
-            ai->debug(out, stl_sprintf("[trade] Requesting %d of item: ", qty) + AI::describe_item(item));
-            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+            ai.debug(out, stl_sprintf("[trade] Requesting %d of item: ", qty) + AI::describe_item(item));
+            ai.debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
             break;
         }
 
@@ -487,12 +489,12 @@ void PerformTradeExclusive::Run(color_ostream & out)
                 {
                     auto offer_item = trade->broker_items.at(i);
 
-                    int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
+                    int32_t existing_offer_value = current_count ? ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
 
                     int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
                     for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
                     {
-                        int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                        int32_t new_offer_value = ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                         if (offer_value - existing_offer_value + new_offer_value > request_value * 11 / 10)
                         {
                             over_offer_qty = offer_qty;
@@ -503,10 +505,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
                         }
                     }
 
-                    int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                    int32_t new_offer_value = ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                     offer_value = offer_value - existing_offer_value + new_offer_value;
-                    ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: ", over_offer_qty - current_count, current_count ? " more" : "") + AI::describe_item(offer_item));
-                    ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+                    ai.debug(out, stl_sprintf("[trade] Offering %d%s of item: ", over_offer_qty - current_count, current_count ? " more" : "") + AI::describe_item(offer_item));
+                    ai.debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
 
                     broker_item = int32_t(i);
                     broker_qty = stl_sprintf("%d", over_offer_qty);
@@ -533,12 +535,12 @@ void PerformTradeExclusive::Run(color_ostream & out)
     {
         if (request_value <= 0 || offer_value <= 0)
         {
-            ai->debug(out, "[trade] Cancelling trade.");
+            ai.debug(out, "[trade] Cancelling trade.");
             can_make_offer = false;
             break;
         }
 
-        ai->debug(out, "[trade] Making offer...");
+        ai.debug(out, "[trade] Making offer...");
 
         Key(interface_key::TRADE_TRADE);
 
@@ -546,23 +548,23 @@ void PerformTradeExclusive::Run(color_ostream & out)
         trade->render();
 
         std::string reply, mood;
-        ai->trade->read_trader_reply(reply, mood);
+        ai.trade.read_trader_reply(reply, mood);
 
-        ai->debug(out, "[trade] Trader reply: " + reply);
+        ai.debug(out, "[trade] Trader reply: " + reply);
         if (!mood.empty())
         {
-            ai->debug(out, "[trade] Trader mood: " + mood);
+            ai.debug(out, "[trade] Trader mood: " + mood);
         }
 
         if (!trade->counteroffer.empty())
         {
             for (auto it : trade->counteroffer)
             {
-                ai->debug(out, "[trade] Trader requests item: " + AI::describe_item(it));
-                offer_value += ai->trade->item_or_container_price_for_caravan(it, trade->caravan, trade->entity, creature, it->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
-                ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+                ai.debug(out, "[trade] Trader requests item: " + AI::describe_item(it));
+                offer_value += ai.trade.item_or_container_price_for_caravan(it, trade->caravan, trade->entity, creature, it->getStackSize(), trade->caravan->buy_prices, trade->caravan->sell_prices);
+                ai.debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
             }
-            ai->debug(out, "[trade] Accepting counter-offer.");
+            ai.debug(out, "[trade] Accepting counter-offer.");
 
             Key(interface_key::SELECT);
         }
@@ -570,14 +572,14 @@ void PerformTradeExclusive::Run(color_ostream & out)
         {
             if (std::find_if(trade->broker_selected.begin(), trade->broker_selected.end(), [](int32_t count) -> bool { return count != 0; }) == trade->broker_selected.end())
             {
-                ai->debug(out, "[trade] Offer was accepted.");
+                ai.debug(out, "[trade] Offer was accepted.");
                 can_make_offer = false;
                 break;
             }
 
             if (!trade->has_traders)
             {
-                ai->debug(out, "[trade] Trader no longer wants to trade. Giving up.");
+                ai.debug(out, "[trade] Trader no longer wants to trade. Giving up.");
                 can_make_offer = false;
                 break;
             }
@@ -585,7 +587,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
             if (max_offer_value > offer_value * 6 / 5)
             {
                 ten_percent = std::max(offer_value * 6 / 5 - offer_value, 1);
-                ai->debug(out, stl_sprintf("[trade] Attempting to add %d dorfbux of offered goods...", ten_percent));
+                ai.debug(out, stl_sprintf("[trade] Attempting to add %d dorfbux of offered goods...", ten_percent));
 
                 while (ten_percent > 0)
                 {
@@ -604,12 +606,12 @@ void PerformTradeExclusive::Run(color_ostream & out)
                         {
                             auto offer_item = trade->broker_items.at(i);
 
-                            int32_t existing_offer_value = current_count ? ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
+                            int32_t existing_offer_value = current_count ? ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, current_count, trade->caravan->buy_prices, trade->caravan->sell_prices) : 0;
 
                             int32_t over_offer_qty = trade->broker_items.at(i)->getStackSize();
                             for (int32_t offer_qty = over_offer_qty - 1; offer_qty > 0; offer_qty--)
                             {
-                                int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                                int32_t new_offer_value = ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                                 if (new_offer_value - existing_offer_value >= ten_percent)
                                 {
                                     over_offer_qty = offer_qty;
@@ -620,10 +622,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
                                 }
                             }
 
-                            int32_t new_offer_value = ai->trade->item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                            int32_t new_offer_value = ai.trade.item_or_container_price_for_caravan(offer_item, trade->caravan, trade->entity, creature, over_offer_qty, trade->caravan->buy_prices, trade->caravan->sell_prices);
                             offer_value = offer_value - existing_offer_value + new_offer_value;
                             ten_percent = ten_percent + existing_offer_value - new_offer_value;
-                            ai->debug(out, stl_sprintf("[trade] Offering %d%s of item: %s. %d dorfbux remain.", over_offer_qty - current_count, current_count ? " more" : "", AI::describe_item(offer_item).c_str(), ten_percent));
+                            ai.debug(out, stl_sprintf("[trade] Offering %d%s of item: %s. %d dorfbux remain.", over_offer_qty - current_count, current_count ? " more" : "", AI::describe_item(offer_item).c_str(), ten_percent));
 
                             broker_item = int32_t(i);
                             broker_qty = stl_sprintf("%d", over_offer_qty);
@@ -639,7 +641,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
             else
             {
                 ten_percent = std::max(request_value / 10, 1);
-                ai->debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", ten_percent));
+                ai.debug(out, stl_sprintf("[trade] Attempting to remove %d dorfbux of requested goods...", ten_percent));
                 want_items_it = want_items.end();
 
                 while (ten_percent > 0 && want_items_it != want_items.begin())
@@ -657,7 +659,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
                     }
 
                     int32_t max_count = current_count;
-                    int32_t max_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                    int32_t max_value = ai.trade.item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, max_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
                     int32_t remove_count = max_count;
                     int32_t remove_value = max_value;
                     int32_t less_count = 0;
@@ -667,14 +669,14 @@ void PerformTradeExclusive::Run(color_ostream & out)
                         remove_count = max_count - less_count;
                         remove_value = max_value - less_value;
                         less_count++;
-                        less_value = ai->trade->item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
+                        less_value = ai.trade.item_or_container_price_for_caravan(item, trade->caravan, trade->entity, creature, less_count, trade->caravan->buy_prices, trade->caravan->sell_prices);
                     }
 
                     remove_item = int32_t(*want_items_it);
                     remove_qty = stl_sprintf("%d", current_count - remove_count);
                     request_value -= remove_value;
                     ten_percent -= remove_value;
-                    ai->debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), ten_percent));
+                    ai.debug(out, stl_sprintf("[trade] Removing %d of item: %s. %d dorfbux remain.", remove_count, AI::describe_item(item).c_str(), ten_percent));
 
                     if (current_count == remove_count)
                     {
@@ -689,7 +691,7 @@ void PerformTradeExclusive::Run(color_ostream & out)
                 }
             }
 
-            ai->debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
+            ai.debug(out, stl_sprintf("[trade] Requested: %d Offered: %d", request_value, offer_value));
         }
     }
 
@@ -698,12 +700,12 @@ void PerformTradeExclusive::Run(color_ostream & out)
     KeyNoDelay(interface_key::LEAVESCREEN);
     KeyNoDelay(interface_key::LEAVESCREEN);
 
-    ai->ignore_pause(ai->pop->trade_start_x, ai->pop->trade_start_y, ai->pop->trade_start_z);
-    ai->pop->did_trade = true;
+    ai.ignore_pause(ai.pop.trade_start_x, ai.pop.trade_start_y, ai.pop.trade_start_z);
+    ai.pop.did_trade = true;
 
-    if (ai->pop->set_up_trading(out, false))
+    if (ai.pop.set_up_trading(out, false))
     {
-        ai->debug(out, "[trade] Dismissed broker from depot: finished trade");
+        ai.debug(out, "[trade] Dismissed broker from depot: finished trade");
     }
 }
 

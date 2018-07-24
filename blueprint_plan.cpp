@@ -20,7 +20,7 @@ blueprint_plan::~blueprint_plan()
     clear();
 }
 
-bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blueprints)
+bool blueprint_plan::build(color_ostream & out, AI & ai, const blueprints_t & blueprints)
 {
     std::vector<const blueprint_plan_template *> templates;
     for (auto & bp : blueprints.plans)
@@ -28,28 +28,28 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
         templates.push_back(bp.second);
     }
 
-    std::shuffle(templates.begin(), templates.end(), ai->rng);
+    std::shuffle(templates.begin(), templates.end(), ai.rng);
 
     for (size_t i = 0; i < templates.size(); i++)
     {
         const blueprint_plan_template & plan = *templates.at(i);
         for (size_t retries = 0; retries < plan.max_retries; retries++)
         {
-            ai->debug(out, stl_sprintf("Trying to create a blueprint using plan %zu of %zu: %s (attempt %zu of %zu)", i + 1, templates.size(), plan.name.c_str(), retries + 1, plan.max_retries));
+            ai.debug(out, stl_sprintf("Trying to create a blueprint using plan %zu of %zu: %s (attempt %zu of %zu)", i + 1, templates.size(), plan.name.c_str(), retries + 1, plan.max_retries));
 
             if (build(out, ai, blueprints, plan))
             {
                 priorities = plan.priorities;
-                ai->debug(out, stl_sprintf("Successfully created a blueprint using plan: %s", plan.name.c_str()));
+                ai.debug(out, stl_sprintf("Successfully created a blueprint using plan: %s", plan.name.c_str()));
                 return true;
             }
 
-            ai->debug(out, "Plan failed. Resetting.");
+            ai.debug(out, "Plan failed. Resetting.");
             clear();
         }
     }
 
-    ai->debug(out, "Ran out of plans. Failed to create a blueprint.");
+    ai.debug(out, "Ran out of plans. Failed to create a blueprint.");
     return false;
 }
 
@@ -152,8 +152,8 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_r
             {
                 for (t.y = in->min.y; t.y <= in->max.y; t.y++)
                 {
-                    extern AI *dwarfAI;
-                    int16_t z = dwarfAI->plan->surface_tile_at(t.x, t.y, true).z;
+                    extern std::unique_ptr<AI> dwarfAI;
+                    int16_t z = (dwarfAI->plan).surface_tile_at(t.x, t.y, true).z;
                     for (t.z = in->min.z; t.z <= in->max.z; t.z++)
                     {
                         bool has_layout = false;
@@ -229,7 +229,7 @@ void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_r
     real_priorities = priorities;
 }
 
-bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb, std::string & error, df::coord exit_location)
+bool blueprint_plan::add(color_ostream & out, AI & ai, const room_blueprint & rb, std::string & error, df::coord exit_location)
 {
     for (auto c : rb.corridor)
     {
@@ -296,7 +296,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
                 df::coord c = r->min + exit.first;
                 for (auto t : exit.second)
                 {
-                    ai->debug(out, stl_sprintf("Not adding already-blocked %s exit on %s at (%d, %d, %d)", t.first.c_str(), r->blueprint.c_str(), c.x, c.y, c.z));
+                    ai.debug(out, stl_sprintf("Not adding already-blocked %s exit on %s at (%d, %d, %d)", t.first.c_str(), r->blueprint.c_str(), c.x, c.y, c.z));
                 }
             }
         }
@@ -326,7 +326,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
                 {
                     if (c != exit_location || exit.first != rb.type)
                     {
-                        ai->debug(out, stl_sprintf("Removing blocked %s exit on %s at (%d+%d, %d+%d, %d+%d) - blocked by %s/%s/%s (%d, %d, %d)", exit.first.c_str(), r->blueprint.c_str(), rp.x, c.x - rp.x, rp.y, c.y - rp.y, rp.z, c.z - rp.z, rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), c.x - rb.origin.x, c.y - rb.origin.y, c.z - rb.origin.z));
+                        ai.debug(out, stl_sprintf("Removing blocked %s exit on %s at (%d+%d, %d+%d, %d+%d) - blocked by %s/%s/%s (%d, %d, %d)", exit.first.c_str(), r->blueprint.c_str(), rp.x, c.x - rp.x, rp.y, c.y - rp.y, rp.z, c.z - rp.z, rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), c.x - rb.origin.x, c.y - rb.origin.y, c.z - rb.origin.z));
                     }
                 }
             }
@@ -342,7 +342,7 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     return true;
 }
 
-bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location)
+bool blueprint_plan::add(color_ostream & out, AI & ai, const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location)
 {
     parent += (~rooms.size()) + 1;
 
@@ -355,34 +355,34 @@ bool blueprint_plan::add(color_ostream & out, AI *ai, const room_blueprint & rb,
     return add(out, ai, rb_parent, error, exit_location);
 }
 
-bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+bool blueprint_plan::build(color_ostream & out, AI & ai, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::map<std::string, size_t> counts;
     std::map<std::string, std::map<std::string, size_t>> instance_counts;
 
     if (config.plan_verbosity >= 0)
     {
-        ai->debug(out, "Placing starting room...");
+        ai.debug(out, "Placing starting room...");
     }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_start);
     if (rooms.empty())
     {
         if (config.plan_verbosity >= 0)
         {
-            ai->debug(out, "No rooms placed by initial phase. Cannot continue building.");
+            ai.debug(out, "No rooms placed by initial phase. Cannot continue building.");
         }
         return false;
     }
 
     if (config.plan_verbosity >= 0)
     {
-        ai->debug(out, "Placing outdoor rooms...");
+        ai.debug(out, "Placing outdoor rooms...");
     }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_outdoor, &blueprint_plan::try_add_room_outdoor);
 
     if (config.plan_verbosity >= 0)
     {
-        ai->debug(out, "Building remainder of fortress...");
+        ai.debug(out, "Building remainder of fortress...");
     }
     place_rooms(out, ai, counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_connect, &blueprint_plan::try_add_room_connect);
 
@@ -390,7 +390,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     {
         if (config.plan_verbosity >= 0)
         {
-            ai->debug(out, "Cannot place rooms, but minimum requirements were not met.");
+            ai.debug(out, "Cannot place rooms, but minimum requirements were not met.");
         }
         return false;
     }
@@ -398,7 +398,7 @@ bool blueprint_plan::build(color_ostream & out, AI *ai, const blueprints_t & blu
     return true;
 }
 
-void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, blueprint_plan::find_fn find, blueprint_plan::try_add_fn try_add)
+void blueprint_plan::place_rooms(color_ostream & out, AI & ai, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, blueprint_plan::find_fn find, blueprint_plan::try_add_fn try_add)
 {
     std::vector<const room_blueprint *> available_blueprints;
     for (;;)
@@ -409,12 +409,12 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
         {
             if (config.plan_verbosity >= 3)
             {
-                ai->debug(out, "No available blueprints.");
+                ai.debug(out, "No available blueprints.");
             }
             break;
         }
 
-        std::shuffle(available_blueprints.begin(), available_blueprints.end(), ai->rng);
+        std::shuffle(available_blueprints.begin(), available_blueprints.end(), ai.rng);
 
         bool stop = false;
         size_t failures = 0;
@@ -427,7 +427,7 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
                     failures++;
                     if (config.plan_verbosity >= 3)
                     {
-                        ai->debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %zu of %zu.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
+                        ai.debug(out, stl_sprintf("Failed to place room %s/%s/%s. Failure count: %zu of %zu.", rb->type.c_str(), rb->tmpl_name.c_str(), rb->name.c_str(), failures, plan.max_failures));
                     }
                     if (failures >= plan.max_failures)
                     {
@@ -446,7 +446,7 @@ void blueprint_plan::place_rooms(color_ostream & out, AI *ai, std::map<std::stri
         {
             if (config.plan_verbosity >= 0)
             {
-                ai->debug(out, "Failed too many times in a row.");
+                ai.debug(out, "Failed too many times in a row.");
             }
             break;
         }
@@ -475,7 +475,7 @@ void blueprint_plan::clear()
     no_corridor.clear();
 }
 
-void blueprint_plan::find_available_blueprints(color_ostream &, AI *, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
+void blueprint_plan::find_available_blueprints(color_ostream &, AI &, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
 {
     const static std::map<std::string, size_t> no_instance_counts;
     const static std::map<std::string, std::pair<size_t, size_t>> no_instance_limits;
@@ -544,7 +544,7 @@ void blueprint_plan::find_available_blueprints(color_ostream &, AI *, std::vecto
     }
 }
 
-void blueprint_plan::find_available_blueprints_start(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void blueprint_plan::find_available_blueprints_start(color_ostream & out, AI & ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::set<std::string> available_tags;
     available_tags.insert(plan.start);
@@ -563,7 +563,7 @@ void blueprint_plan::find_available_blueprints_start(color_ostream & out, AI *ai
     });
 }
 
-void blueprint_plan::find_available_blueprints_outdoor(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void blueprint_plan::find_available_blueprints_outdoor(color_ostream & out, AI & ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, plan.outdoor, [](const room_blueprint & rb) -> bool
     {
@@ -579,7 +579,7 @@ void blueprint_plan::find_available_blueprints_outdoor(color_ostream & out, AI *
     });
 }
 
-void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI *ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI & ai, std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::set<std::string> available_tags;
     for (auto & c : room_connect)
@@ -593,7 +593,7 @@ void blueprint_plan::find_available_blueprints_connect(color_ostream & out, AI *
     find_available_blueprints(out, ai, available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint &) -> bool { return true; });
 }
 
-bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_blueprint & rb, df::coord pos)
+bool blueprint_plan::can_add_room(color_ostream & out, AI & ai, const room_blueprint & rb, df::coord pos)
 {
     for (auto c : rb.no_room)
     {
@@ -601,7 +601,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
         {
             if (config.plan_verbosity >= 3)
             {
-                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d+%d, %d+%d, %d+%d): out of bounds (0-%d, 0-%d, 0-%d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, c.x, pos.y, c.y, pos.z, c.z, world->map.x_count - 1, world->map.y_count - 1, world->map.z_count - 1));
+                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d+%d, %d+%d, %d+%d): out of bounds (0-%d, 0-%d, 0-%d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, c.x, pos.y, c.y, pos.z, c.z, world->map.x_count - 1, world->map.y_count - 1, world->map.z_count - 1));
             }
             return false;
         }
@@ -616,7 +616,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
         {
             if (config.plan_verbosity >= 3)
             {
-                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): out of bounds", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
             }
             return false;
         }
@@ -634,16 +634,16 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is underground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is underground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }
 
-                        if (r->require_floor && ai->plan->surface_tile_at(t.x, t.y, true).z != t.z)
+                        if (r->require_floor && ai.plan.surface_tile_at(t.x, t.y, true).z != t.z)
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is not on the ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is not on the ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }
@@ -653,7 +653,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
                             }
                             return false;
                         }
@@ -689,7 +689,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                 {
                     if (config.plan_verbosity >= 3)
                     {
-                        ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): need at least %d square meters of grass, but only have %d", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, r->require_grass, grass_count));
+                        ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): need at least %d square meters of grass, but only have %d", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, r->require_grass, grass_count));
                     }
                     return false;
                 }
@@ -713,7 +713,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             {
                                 if (config.plan_verbosity >= 3)
                                 {
-                                    ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): area contains multiple biomes (%s and %s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(base_biome), enum_item_key_str(biome)));
+                                    ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): area contains multiple biomes (%s and %s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(base_biome), enum_item_key_str(biome)));
                                 }
                                 return false;
                             }
@@ -739,7 +739,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                             {
                                 if (config.plan_verbosity >= 3)
                                 {
-                                    ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s is directly above a cavern", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(f->dig)));
+                                    ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s is directly above a cavern", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, enum_item_key_str(f->dig)));
                                 }
                                 return false;
                             }
@@ -760,7 +760,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) has water", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) has water", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }
@@ -774,7 +774,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is above ground", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                             }
                             return false;
                         }
@@ -784,7 +784,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                         {
                             if (config.plan_verbosity >= 3)
                             {
-                                ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
+                                ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) contains building (%s)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z, enum_item_key_str(building)));
                             }
                             return false;
                         }
@@ -803,7 +803,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
                     {
                         if (config.plan_verbosity >= 3)
                         {
-                            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is ice", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
+                            ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): (%d, %d, %d) is ice", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, t.x, t.y, t.z));
                         }
                         return false;
                     }
@@ -815,7 +815,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI *ai, const room_bluepr
     return true;
 }
 
-bool blueprint_plan::try_add_room_start(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool blueprint_plan::try_add_room_start(color_ostream & out, AI & ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = plan.padding_x.first, max_x = plan.padding_x.second, min_y = plan.padding_y.first, max_y = plan.padding_y.second;
     for (auto c : rb.no_room)
@@ -826,13 +826,13 @@ bool blueprint_plan::try_add_room_start(color_ostream & out, AI *ai, const room_
         max_y = std::max(max_y, c.y);
     }
 
-    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
-    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai.rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai.rng);
 
     return try_add_room_outdoor_shared(out, ai, rb, counts, instance_counts, plan, x, y);
 }
 
-bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI & ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
     for (auto c : rb.no_room)
@@ -843,21 +843,21 @@ bool blueprint_plan::try_add_room_outdoor(color_ostream & out, AI *ai, const roo
         max_y = std::max(max_y, c.y);
     }
 
-    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai->rng);
-    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai->rng);
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai.rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai.rng);
 
     return try_add_room_outdoor_shared(out, ai, rb, counts, instance_counts, plan, x, y);
 }
 
-bool blueprint_plan::try_add_room_outdoor_shared(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y)
+bool blueprint_plan::try_add_room_outdoor_shared(color_ostream & out, AI & ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y)
 {
-    df::coord pos = ai->plan->surface_tile_at(x, y, true);
+    df::coord pos = ai.plan.surface_tile_at(x, y, true);
 
     if (!pos.isValid())
     {
         if (config.plan_verbosity >= 3)
         {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
+            ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, ?): no surface position", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), x, y));
         }
         return false;
     }
@@ -871,21 +871,21 @@ bool blueprint_plan::try_add_room_outdoor_shared(color_ostream & out, AI *ai, co
             instance_counts[rb.type][rb.name]++;
             if (config.plan_verbosity >= 2)
             {
-                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+                ai.debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
             }
             return true;
         }
 
         if (config.plan_verbosity >= 3)
         {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
+            ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z, error.c_str()));
         }
     }
 
     return false;
 }
 
-bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool blueprint_plan::try_add_room_connect(color_ostream & out, AI & ai, const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     std::set<std::string> tags;
     tags.insert(rb.type);
@@ -911,7 +911,7 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
         }
     }
 
-    auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(ai->rng));
+    auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(ai.rng));
 
     if (can_add_room(out, ai, rb, std::get<1>(chosen)))
     {
@@ -922,14 +922,14 @@ bool blueprint_plan::try_add_room_connect(color_ostream & out, AI *ai, const roo
             instance_counts[rb.type][rb.name]++;
             if (config.plan_verbosity >= 2)
             {
-                ai->debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
+                ai.debug(out, stl_sprintf("Placed %s/%s/%s at (%d, %d, %d).", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
             }
             return true;
         }
 
         if (config.plan_verbosity >= 3)
         {
-            ai->debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z, error.c_str()));
+            ai.debug(out, stl_sprintf("Error placing %s/%s/%s at (%d, %d, %d): %s", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z, error.c_str()));
         }
     }
 

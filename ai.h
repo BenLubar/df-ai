@@ -37,12 +37,12 @@ namespace DFHack
     }
 }
 
-struct OnupdateCallback;
-class Population;
-class Plan;
-class Stocks;
-class Camera;
-class Trade;
+#include "event_manager.h"
+#include "population.h"
+#include "plan.h"
+#include "stocks.h"
+#include "camera.h"
+#include "trade.h"
 
 std::string html_escape(const std::string & str);
 void ai_version(std::ostream & out, bool html = false);
@@ -55,11 +55,11 @@ public:
     std::mt19937 rng;
     std::ofstream logger;
     std::ofstream eventsJson;
-    Population *pop;
-    Plan *plan;
-    Stocks *stocks;
-    Camera *camera;
-    Trade *trade;
+    Population pop;
+    Plan plan;
+    Stocks stocks;
+    Camera camera;
+    Trade trade;
 
     OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;

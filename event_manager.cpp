@@ -93,20 +93,18 @@ void EventManager::clear()
     if (exclusive)
     {
         TICK_DEBUG("clearing exclusive: " << exclusive->description);
-        delete exclusive;
         exclusive = nullptr;
     }
     if (delay_delete_exclusive)
     {
         TICK_DEBUG("[delayed] clearing exclusive: " << delay_delete_exclusive->description);
-        delete delay_delete_exclusive;
         delay_delete_exclusive = nullptr;
     }
     TICK_DEBUG("clearing exclusive queue");
-    for (auto it : exclusive_queue)
+    for (auto & e : exclusive_queue)
     {
-        TICK_DEBUG("clearing exclusive: " << it->description);
-        delete it;
+        TICK_DEBUG("clearing exclusive: " << e->description);
+        e = nullptr;
     }
     exclusive_queue.clear();
     TICK_DEBUG("clearing event listeners");
@@ -201,7 +199,7 @@ void EventManager::onstatechange_unregister(OnstatechangeCallback *&b)
     b = nullptr;
 }
 
-bool EventManager::register_exclusive(ExclusiveCallback *cb, bool force)
+bool EventManager::register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force)
 {
     TICK_DEBUG("register_exclusive: " << cb->description);
     if (exclusive)
@@ -213,28 +211,26 @@ bool EventManager::register_exclusive(ExclusiveCallback *cb, bool force)
             if (delay_delete_exclusive)
             {
                 // not active
-                delete exclusive;
             }
             else
             {
-                delay_delete_exclusive = exclusive;
+                delay_delete_exclusive = std::move(exclusive);
             }
         }
         else
         {
-            delete cb;
             return false;
         }
     }
     TICK_DEBUG("exclusive registered");
-    exclusive = cb;
+    exclusive = std::move(cb);
     return true;
 }
 
-void EventManager::queue_exclusive(ExclusiveCallback *cb)
+void EventManager::queue_exclusive(std::unique_ptr<ExclusiveCallback> && cb)
 {
     TICK_DEBUG("queue_exclusive: " << cb->description);
-    exclusive_queue.push_back(cb);
+    exclusive_queue.push_back(std::move(cb));
 }
 
 void EventManager::onupdate(color_ostream & out)
@@ -242,14 +238,13 @@ void EventManager::onupdate(color_ostream & out)
     if (delay_delete_exclusive)
     {
         TICK_DEBUG("onupdate: [delayed] deleting exclusive: " << delay_delete_exclusive->description);
-        delete delay_delete_exclusive;
         delay_delete_exclusive = nullptr;
     }
 
     if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())
     {
         TICK_DEBUG("onupdate: next exclusive from queue");
-        exclusive = exclusive_queue.front();
+        exclusive = std::move(exclusive_queue.front());
         exclusive_queue.pop_front();
     }
 
@@ -258,7 +253,6 @@ void EventManager::onupdate(color_ostream & out)
         if (exclusive->run(out))
         {
             TICK_DEBUG("onupdate: exclusive completed: " << exclusive->description);
-            delete exclusive;
             exclusive = nullptr;
         }
         else
@@ -269,7 +263,7 @@ void EventManager::onupdate(color_ostream & out)
     }
 
     // make a copy
-    std::vector<OnupdateCallback *> list = onupdate_list;
+    std::vector<OnupdateCallback *> list{ onupdate_list.cbegin(), onupdate_list.cend() };
 
     for (auto it = list.begin(); it != list.end(); it++)
     {
@@ -298,7 +292,7 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
                     text == "Your settlement has crumbled to its end." ||
                     text == "Your settlement has been abandoned.")
                 {
-                    extern AI *dwarfAI;
+                    extern std::unique_ptr<AI> dwarfAI;
                     if (dwarfAI)
                     {
                         dwarfAI->debug(out, "you just lost the game: " + text);
@@ -314,7 +308,7 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
 
                         if (config.random_embark)
                         {
-                            register_exclusive(new RestartWaitExclusive(dwarfAI), true);
+                            register_exclusive(std::make_unique<RestartWaitExclusive>(*dwarfAI), true);
                         }
 
                         // don't unpause, to allow for 'die'
@@ -333,8 +327,8 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
             {
                 TICK_DEBUG("onstatechange: dismissing recording finished for exclusive");
                 Screen::dismiss(view);
-                extern AI *dwarfAI;
-                dwarfAI->camera->check_record_status();
+                extern std::unique_ptr<AI> dwarfAI;
+                dwarfAI->camera.check_record_status();
                 return;
             }
         }
@@ -342,8 +336,7 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
         {
             if (ExclusiveCallback *e2 = exclusive->ReplaceOnScreenChange())
             {
-                delete exclusive;
-                exclusive = e2;
+                exclusive.reset(e2);
             }
         }
         if (exclusive->SuppressStateChange(out, event))
@@ -353,7 +346,7 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
     }
 
     // make a copy
-    std::vector<OnstatechangeCallback *> list = onstatechange_list;
+    std::vector<OnstatechangeCallback *> list{ onstatechange_list.cbegin(), onstatechange_list.cend() };
 
     for (auto it = list.begin(); it != list.end(); it++)
     {

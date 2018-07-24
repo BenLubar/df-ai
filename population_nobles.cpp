@@ -67,7 +67,7 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::MANAGE_PRODUCTION].empty() && !cz.empty())
     {
-        ai->debug(out, "assigning new manager: " + AI::describe_unit(cz.back()));
+        ai.debug(out, "assigning new manager: " + AI::describe_unit(cz.back()));
         // TODO do check population caps, ...
         assign_new_noble(out, entity_position_responsibility::MANAGE_PRODUCTION, cz.back());
         cz.pop_back();
@@ -79,7 +79,7 @@ void Population::update_nobles(color_ostream & out)
         {
             if (!(*it)->status.labors[unit_labor::MINE])
             {
-                ai->debug(out, "assigning new bookkeeper: " + AI::describe_unit(*it));
+                ai.debug(out, "assigning new bookkeeper: " + AI::describe_unit(*it));
                 assign_new_noble(out, entity_position_responsibility::ACCOUNTING, *it);
                 ui->bookkeeper_settings = 4;
                 cz.erase(it.base() - 1);
@@ -88,9 +88,9 @@ void Population::update_nobles(color_ostream & out)
         }
     }
 
-    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai->find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
+    if (ent->assignments_by_type[entity_position_responsibility::HEALTH_MANAGEMENT].empty() && ai.find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }) && !cz.empty())
     {
-        ai->debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
+        ai.debug(out, "assigning new chief medical dwarf: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, entity_position_responsibility::HEALTH_MANAGEMENT, cz.back());
         cz.pop_back();
     }
@@ -111,21 +111,21 @@ void Population::update_nobles(color_ostream & out)
 
     if (ent->assignments_by_type[entity_position_responsibility::TRADE].empty() && !cz.empty())
     {
-        ai->debug(out, "assigning new broker: " + AI::describe_unit(cz.back()));
+        ai.debug(out, "assigning new broker: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, entity_position_responsibility::TRADE, cz.back());
         cz.pop_back();
     }
 
     if (ent->assignments_by_type[entity_position_responsibility::LAW_ENFORCEMENT].empty() && !cz.empty())
     {
-        ai->debug(out, "assigning new sheriff: " + AI::describe_unit(cz.back()));
+        ai.debug(out, "assigning new sheriff: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, entity_position_responsibility::LAW_ENFORCEMENT, cz.back());
         cz.pop_back();
     }
 
     if (ent->assignments_by_type[entity_position_responsibility::EXECUTIONS].empty() && !cz.empty())
     {
-        ai->debug(out, "assigning new hammerer: " + AI::describe_unit(cz.back()));
+        ai.debug(out, "assigning new hammerer: " + AI::describe_unit(cz.back()));
         assign_new_noble(out, entity_position_responsibility::EXECUTIONS, cz.back());
         cz.pop_back();
     }
@@ -149,7 +149,7 @@ void Population::check_noble_appartments(color_ostream & out)
         }
     }
 
-    ai->plan->attribute_noblerooms(out, noble_ids);
+    ai.plan.attribute_noblerooms(out, noble_ids);
 }
 
 df::entity_position_assignment *Population::assign_new_noble(color_ostream & out, std::function<bool(df::entity_position *)> filter, df::unit *unit, const std::string & description, int32_t squad_id)
@@ -157,7 +157,7 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
     // FIXME: this should be an ExclusiveCallback
     if (!AI::is_dwarfmode_viewscreen())
     {
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": not on dwarfmode viewscreen");
+        ai.debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": not on dwarfmode viewscreen");
         return nullptr;
     }
     Gui::getCurViewscreen(true)->feed_key(interface_key::D_NOBLES);
@@ -181,15 +181,15 @@ df::entity_position_assignment *Population::assign_new_noble(color_ostream & out
                 }
                 Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
                 Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-                ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": unit is not candidate");
+                ai.debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + pos->code + ": unit is not candidate");
                 return nullptr;
             }
             Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
         }
         Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-        ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": could not find position");
+        ai.debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": could not find position");
         return nullptr;
     }
-    ai->debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": nobles screen did not appear");
+    ai.debug(out, "[ERROR] cannot assign " + AI::describe_unit(unit) + " as " + description + ": nobles screen did not appear");
     return nullptr;
 }

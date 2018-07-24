@@ -222,11 +222,11 @@ struct room
     room(df::furnace_type subtype, df::coord min, df::coord max, std::string comment = "");
     ~room();
 
-    inline df::coord size() const { return max - min + df::coord(1, 1, 1); }
+    inline df::coord size() const { return max - min + df::coord{ 1, 1, 1 }; }
     inline df::coord pos() const
     {
-        df::coord s = size();
-        return min + df::coord(s.x / 2, s.y / 2, s.z / 2);
+        df::coord s{ size() };
+        return df::coord{ uint16_t(min.x + s.x / 2), uint16_t(min.y + s.y / 2), uint16_t(min.z + s.z / 2) };
     }
 
     void dig(bool plan = false, bool channel = false);

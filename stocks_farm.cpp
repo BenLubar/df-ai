@@ -15,7 +15,7 @@ REQUIRE_GLOBAL(world);
 void Stocks::count_seeds(color_ostream &)
 {
     farmplots.clear();
-    ai->find_room(room_type::farmplot, [this](room *r) -> bool
+    ai.find_room(room_type::farmplot, [this](room *r) -> bool
     {
         df::building_farmplotst *bld = virtual_cast<df::building_farmplotst>(r->dfbuilding());
         if (!bld)
@@ -53,7 +53,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
     df::plant_raw_flags plant_biome;
     if (!find_enum_item(&plant_biome, "BIOME_" + enum_item_key(biome)))
     {
-        ai->debug(out, "[ERROR] stocks: could not find plant raw flag for biome: " + enum_item_key(biome));
+        ai.debug(out, "[ERROR] stocks: could not find plant raw flag for biome: " + enum_item_key(biome));
         return;
     }
 
@@ -172,7 +172,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
             str << r->farm_type;
             if (!isfirst && complained_about_no_plants.insert(std::make_tuple(r->farm_type, biome, season)).second)
             {
-                ai->debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", str.str().c_str(), enum_item_key_str(biome), season));
+                ai.debug(out, stl_sprintf("[ERROR] stocks: no legal plants for %s farm plot (%s) for season %d", str.str().c_str(), enum_item_key_str(biome), season));
             }
         }
         else
@@ -256,7 +256,7 @@ df::coord Stocks::cuttrees(color_ostream &, int32_t amount, std::ostream & reaso
 // expensive method, dont call often
 std::set<df::coord, std::function<bool(df::coord, df::coord)>> Stocks::tree_list()
 {
-    uint16_t walkable = Maps::getTileWalkable(ai->fort_entrance_pos());
+    uint16_t walkable = Maps::getTileWalkable(ai.fort_entrance_pos());
 
     auto is_walkable = [walkable](df::coord t) -> bool
     {

@@ -6,16 +6,16 @@ class AI;
 
 class Camera
 {
-    AI *ai;
+    AI & ai;
     OnupdateCallback *onupdate_handle;
     OnstatechangeCallback *onstatechange_handle;
 
     int32_t following;
     std::vector<int32_t> following_prev;
-    friend void AI::ignore_pause(int32_t, int32_t, int32_t);
+    friend class AI;
 
 public:
-    Camera(AI *ai);
+    Camera(AI & ai);
     ~Camera();
 
     command_result startup(color_ostream & out);

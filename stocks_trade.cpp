@@ -65,7 +65,7 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector
     {
         int32_t anvils_wanted = -int32_t(std::count_if(already_want.begin(), already_want.end(), [](df::item *i) -> bool { return i->getType() == item_type::ANVIL; }));
         anvils_wanted -= count_free[stock_item::anvil];
-        ai->find_room(room_type::workshop, [&anvils_wanted](room *r) -> bool
+        ai.find_room(room_type::workshop, [&anvils_wanted](room *r) -> bool
         {
             if (r->workshop_type == workshop_type::MetalsmithsForge && !r->dfbuilding())
             {

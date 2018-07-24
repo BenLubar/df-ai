@@ -225,9 +225,9 @@ df::tile_dig_designation room::dig_mode(df::coord t) const
     bool wantdown = include(t - df::coord(0, 0, 1));
 
     // XXX
-    extern AI *dwarfAI;
-    wantup = wantup || dwarfAI->plan->corridor_include_hack(this, t, t + df::coord(0, 0, 1));
-    wantdown = wantdown || dwarfAI->plan->corridor_include_hack(this, t, t - df::coord(0, 0, 1));
+    extern std::unique_ptr<AI> dwarfAI;
+    wantup = wantup || dwarfAI->plan.corridor_include_hack(this, t, t + df::coord(0, 0, 1));
+    wantdown = wantdown || dwarfAI->plan.corridor_include_hack(this, t, t - df::coord(0, 0, 1));
 
     if (wantup)
         return wantdown ? tile_dig_designation::UpDownStair : tile_dig_designation::UpStair;

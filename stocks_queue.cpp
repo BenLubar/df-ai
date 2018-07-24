@@ -316,13 +316,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::gypsum:
     {
-        if (ai->plan->should_search_for_metal)
+        if (ai.plan.should_search_for_metal)
         {
-            for (auto vein : ai->plan->map_veins)
+            for (auto & vein : ai.plan.map_veins)
             {
                 if (is_gypsum(vein.first))
                 {
-                    if (ai->plan->dig_vein(out, vein.first, amount))
+                    if (ai.plan.dig_vein(out, vein.first, amount))
                     {
                         reason << "marked " << MaterialInfo(0, vein.first).toString() << " vein for excavation";
                         return;
@@ -373,7 +373,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         // XXX fish/hunt/cook ?
         if (last_warn_food_year != *cur_year)
         {
-            ai->debug(out, stl_sprintf("need %d more food", amount));
+            ai.debug(out, stl_sprintf("need %d more food", amount));
             last_warn_food_year = *cur_year;
         }
         reason << "waiting for ingredients and cooks";
@@ -446,13 +446,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::raw_coke:
     {
-        if (ai->plan->should_search_for_metal)
+        if (ai.plan.should_search_for_metal)
         {
-            for (auto vein : ai->plan->map_veins)
+            for (auto vein : ai.plan.map_veins)
             {
                 if (!is_raw_coke(vein.first).empty())
                 {
-                    if (ai->plan->dig_vein(out, vein.first, amount))
+                    if (ai.plan.dig_vein(out, vein.first, amount))
                     {
                         reason << "marked " << MaterialInfo(0, vein.first).toString() << " vein for excavation";
                         return;

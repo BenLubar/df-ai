@@ -225,7 +225,7 @@ static inline bool apply_unhandled_properties(Json::Value & data, const std::str
         data.removeMember("$schema");
     }
 
-    std::vector<std::string> remaining_members(data.getMemberNames());
+    std::vector<std::string> remaining_members{ std::move(data.getMemberNames()) };
     if (remaining_members.empty())
     {
         return true;

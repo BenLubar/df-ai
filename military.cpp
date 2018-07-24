@@ -25,59 +25,59 @@ bool AI::tag_enemies(color_ostream & out)
         {
             if (race && race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: megabeast") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: megabeast") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: semi-megabeast") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: semi-megabeast") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: forgotten beast") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: forgotten beast") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_TITAN))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: titan") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: titan") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "primary antagonist: demon") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: demon") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_DEMON))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "antagonist: demon") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "antagonist: demon") || found;
             }
             else if (race && race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY))
             {
-                found = pop->military_all_squads_attack_unit(out, u, "antagonist: night creature") || found;
+                found = pop.military_all_squads_attack_unit(out, u, "antagonist: night creature") || found;
             }
             else if (Units::isUndead(u))
             {
-                found = pop->military_random_squad_attack_unit(out, u, "undead") || found;
+                found = pop.military_random_squad_attack_unit(out, u, "undead") || found;
             }
             else if (u->flags1.bits.marauder)
             {
-                found = pop->military_random_squad_attack_unit(out, u, "marauder") || found;
+                found = pop.military_random_squad_attack_unit(out, u, "marauder") || found;
             }
             else if (u->flags1.bits.active_invader)
             {
-                found = pop->military_random_squad_attack_unit(out, u, "active invader") || found;
+                found = pop.military_random_squad_attack_unit(out, u, "active invader") || found;
             }
             else if (u->flags2.bits.underworld)
             {
-                found = pop->military_random_squad_attack_unit(out, u, "underworld creature") || found;
+                found = pop.military_random_squad_attack_unit(out, u, "underworld creature") || found;
             }
             else if (u->flags2.bits.visitor_uninvited)
             {
-                found = pop->military_random_squad_attack_unit(out, u, "uninvited visitor") || found;
+                found = pop.military_random_squad_attack_unit(out, u, "uninvited visitor") || found;
             }
             else if (auto hunter = is_hunting_target(u))
             {
-                found = pop->military_cancel_attack_order(out, u, "hunting target of " + AI::describe_unit(hunter)) || found;
+                found = pop.military_cancel_attack_order(out, u, "hunting target of " + AI::describe_unit(hunter)) || found;
             }
             else if (auto citizen = is_attacking_citizen(u))
             {
-                found = pop->military_random_squad_attack_unit(out, u, "attacking citizen: " + AI::describe_unit(citizen)) || found;
+                found = pop.military_random_squad_attack_unit(out, u, "attacking citizen: " + AI::describe_unit(citizen)) || found;
             }
         }
     }
