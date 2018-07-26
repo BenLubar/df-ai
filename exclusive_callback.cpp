@@ -14,6 +14,10 @@
 #include "df/plant.h"
 #include "df/unit.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 #define STATIC_FIELDS_GROUP
 #include "../../library/DataStaticsFields.cpp"
 
@@ -41,6 +45,8 @@ static const struct_field_info dfhack_lua_viewscreen_fields[] = {
 };
 #undef CUR_STRUCT
 virtual_identity dfhack_44_12_viewscreen_wrapper<dfhack_lua_viewscreen>::_identity(sizeof(dfhack_lua_viewscreen), nullptr, "dfhack_lua_viewscreen", nullptr, &dfhack_viewscreen::_identity, dfhack_lua_viewscreen_fields);
+
+#pragma GCC diagnostic pop
 
 #endif
 
