@@ -11,6 +11,41 @@
 #include "df/interface_key.h"
 #include "df/viewscreen.h"
 
+#if 1
+
+#include "modules/Screen.h"
+
+template<typename T>
+struct dfhack_44_12_viewscreen_wrapper
+{
+    static inline virtual_identity & get_identity()
+    {
+        return T::_identity;
+    }
+};
+
+template<>
+struct dfhack_44_12_viewscreen_wrapper<dfhack_viewscreen>
+{
+    static virtual_identity _identity;
+    static inline virtual_identity & get_identity()
+    {
+        return _identity;
+    }
+};
+
+template<>
+struct dfhack_44_12_viewscreen_wrapper<dfhack_lua_viewscreen>
+{
+    static virtual_identity _identity;
+    static inline virtual_identity & get_identity()
+    {
+        return _identity;
+    }
+};
+
+#endif
+
 class ExclusiveCallback
 {
 public:
@@ -39,7 +74,7 @@ protected:
     template<typename T>
     typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
-        expectedScreen = &T::_identity;
+        expectedScreen = &dfhack_44_12_viewscreen_wrapper<T>::get_identity();
         expectedFocus = focus;
         expectedParentFocus = parentFocus;
 
@@ -48,7 +83,12 @@ protected:
     template<typename T>
     typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
+#if 0
         T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
+#else
+        auto curview = Gui::getCurViewscreen(true);
+        T *screen = dfhack_44_12_viewscreen_wrapper<T>::get_identity().is_direct_instance(curview) ? static_cast<T *>(curview) : nullptr;
+#endif
         if (!screen)
         {
             return false;
@@ -132,7 +172,7 @@ private:
     template<typename T>
     T *getScreen()
     {
-        CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
+        CHECK_INVALID_ARGUMENT(&dfhack_44_12_viewscreen_wrapper<T>::get_identity() == expectedScreen);
 
         checkScreen();
 
