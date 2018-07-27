@@ -1,4 +1,5 @@
 #include "ai.h"
+#include "debug.h"
 #include "population.h"
 #include "plan.h"
 #include "stocks.h"
@@ -23,7 +24,7 @@ REQUIRE_GLOBAL(world);
 
 AI::AI() :
     rng{ 0 },
-    logger{ "df-ai.log", std::ofstream::out | std::ofstream::app },
+    logger{ "df-ai.log", std::ios::out | std::ios::app },
     eventsJson{},
     pop{ *this },
     plan{ *this },
@@ -125,7 +126,6 @@ public:
         MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
 
         Key(interface_key::SELECT);
-        Key(interface_key::MENU_CONFIRM);
 
         // current view switches to a textviewer at this point
         ExpectScreen<df::viewscreen_textviewerst>("textviewer");
@@ -274,4 +274,34 @@ command_result AI::unpersist(color_ostream & out)
     if (res == CR_OK)
         res = plan.unpersist(out);
     return res;
+}
+
+BOOST_NOINLINE std::ostream & dfai_debug_log()
+{
+    static std::ofstream log;
+
+    if (BOOST_UNLIKELY(!log.is_open()))
+    {
+        log.open("df-ai-debug.log", std::ios::out | std::ios::app);
+        log << "\n\ndf-ai debug log opened. version information follows:" << std::endl;
+        ai_version(log);
+
+        color_ostream_proxy out(Core::getInstance().getConsole());
+        out << std::endl;
+        out << std::endl;
+        out << COLOR_LIGHTRED << "It was inevitable. ";
+        out << COLOR_YELLOW << "df-ai has encountered an issue." << std::endl;
+        out << "Some information that might help fix this has been written to a file named ";
+        out << COLOR_LIGHTCYAN << "df-ai-debug.log";
+        out << COLOR_YELLOW << " in your Dwarf Fortress folder." << std::endl;
+        out << "If you would like to help, create an issue at https://github.com/BenLubar/df-ai/issues/new (you can drag or copy and paste the log file into the editor)." << std::endl;
+
+#ifndef DFAI_RELEASE
+        out << COLOR_LIGHTRED << "If your game crashes after this message, please attach a debugger or use a release mode version of df-ai." << std::endl;
+#endif
+        out << std::endl;
+        out << std::endl;
+    }
+
+    return log;
 }

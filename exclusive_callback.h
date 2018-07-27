@@ -11,7 +11,9 @@
 #include "df/interface_key.h"
 #include "df/viewscreen.h"
 
-#if 1
+#define DFHACK_44_12_TEMP
+
+#ifdef DFHACK_44_12_TEMP
 
 #include "modules/Screen.h"
 
@@ -83,11 +85,11 @@ protected:
     template<typename T>
     typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
-#if 0
-        T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
-#else
+#ifdef DFHACK_44_12_TEMP
         auto curview = Gui::getCurViewscreen(true);
         T *screen = dfhack_44_12_viewscreen_wrapper<T>::get_identity().is_direct_instance(curview) ? static_cast<T *>(curview) : nullptr;
+#else
+        T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
 #endif
         if (!screen)
         {

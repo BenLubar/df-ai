@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "plan.h"
+#include "debug.h"
 #include "population.h"
 #include "stocks.h"
 #include "blueprint.h"
@@ -1220,7 +1221,8 @@ void Plan::load(std::istream & in)
 
 uint16_t Maps::getTileWalkable(df::coord t)
 {
-    if (df::map_block *b = getTileBlock(t))
+    DFAI_ASSERT_VALID_TILE(t, "");
+    if (BOOST_LIKELY(df::map_block *b = getTileBlock(t)))
         return b->walkable[t.x & 0xf][t.y & 0xf];
     return 0;
 }
@@ -1893,7 +1895,8 @@ void Plan::set_owner(color_ostream &, room *r, int32_t uid)
 
 void AI::dig_tile(df::coord t, df::tile_dig_designation dig)
 {
-    if (ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::TREE && dig != tile_dig_designation::No)
+    DFAI_ASSERT_VALID_TILE(t, " (designation: " << enum_item_key(dig) << ")");
+    if (BOOST_UNLIKELY(ENUM_ATTR(tiletype, material, *Maps::getTileType(t)) == tiletype_material::TREE && dig != tile_dig_designation::No))
     {
         dig = tile_dig_designation::Default;
         t = Plan::find_tree_base(t);
@@ -1902,9 +1905,9 @@ void AI::dig_tile(df::coord t, df::tile_dig_designation dig)
     df::tile_designation *des = Maps::getTileDesignation(t);
     if (dig != tile_dig_designation::No && des->bits.dig == tile_dig_designation::No)
     {
-        for (auto job = world->jobs.list.next; job != nullptr; job = job->next)
+        for (auto job : world->jobs.list)
         {
-            if ((ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Digging || ENUM_ATTR(job_type, type, job->item->job_type) == job_type_class::Gathering) && job->item->pos == t)
+            if ((ENUM_ATTR(job_type, type, job->job_type) == job_type_class::Digging || ENUM_ATTR(job_type, type, job->job_type) == job_type_class::Gathering) && job->pos == t)
             {
                 // someone already enroute to dig here, avoid 'Inappropriate
                 // dig square' spam
@@ -2101,7 +2104,10 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         return true;
     if (f->ignore)
         return true;
+
     df::coord tgtile = r->min + f->pos;
+    DFAI_ASSERT_VALID_TILE(tgtile, " (furniture position for " << AI::describe_furniture(f) << " in room " << AI::describe_room(r) << ")");
+
     df::tiletype tt = *Maps::getTileType(tgtile);
     if (f->construction != construction_type::NONE)
     {
@@ -3321,17 +3327,17 @@ bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
 void Plan::smooth_room_access(color_ostream & out, room *r)
 {
     smooth_room(out, r);
-    for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
+    for (auto it : r->accesspath)
     {
-        smooth_room_access(out, *it);
+        smooth_room_access(out, it);
     }
 }
 
 void Plan::smooth_cistern(color_ostream & out, room *r)
 {
-    for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
+    for (auto it : r->accesspath)
     {
-        smooth_cistern_access(out, *it);
+        smooth_cistern_access(out, it);
     }
 
     std::set<df::coord> tiles;
@@ -3375,9 +3381,9 @@ void Plan::smooth_cistern_access(color_ostream & out, room *r)
         }
     }
     smooth(tiles);
-    for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
+    for (auto it : r->accesspath)
     {
-        smooth_cistern_access(out, *it);
+        smooth_cistern_access(out, it);
     }
 }
 
@@ -3411,9 +3417,9 @@ bool Plan::dump_items_access(color_ostream & out, room *r)
         found = true;
         i->flags.bits.dump = 1;
     });
-    for (auto it = r->accesspath.begin(); it != r->accesspath.end(); it++)
+    for (auto it : r->accesspath)
     {
-        found = dump_items_access(out, *it) || found;
+        found = dump_items_access(out, it) || found;
     }
     return found;
 }
@@ -3428,13 +3434,13 @@ void Plan::room_items(color_ostream &, room *r, std::function<void(df::item *)> 
             for (int16_t y = r->min.y & -16; y <= r->max.y; y += 16)
             {
                 auto & items = Maps::getTileBlock(x, y, z)->items;
-                for (auto it = items.begin(); it != items.end(); it++)
+                for (auto id : items)
                 {
-                    df::item *i = df::item::find(*it);
-                    if (i->flags.bits.on_ground &&
+                    auto i = df::item::find(id);
+                    if (BOOST_LIKELY(i && i->flags.bits.on_ground &&
                         r->min.x <= i->pos.x && i->pos.x <= r->max.x &&
                         r->min.y <= i->pos.y && i->pos.y <= r->max.y &&
-                        z == i->pos.z)
+                        z == i->pos.z))
                     {
                         f(i);
                     }
@@ -3509,22 +3515,22 @@ bool Plan::smooth(std::set<df::coord> tiles, bool engrave)
     }
 
     // remove tiles that are already being smoothed
-    for (auto j = world->jobs.list.next; j != nullptr; j = j->next)
+    for (auto j : world->jobs.list)
     {
-        if (j->item->job_type == job_type::DetailWall ||
-            j->item->job_type == job_type::DetailFloor)
+        if (j->job_type == job_type::DetailWall ||
+            j->job_type == job_type::DetailFloor)
         {
             all_already_smooth = false;
-            tiles.erase(j->item->pos);
+            tiles.erase(j->pos);
         }
     }
 
     // mark the tiles to be smoothed!
-    for (auto it = tiles.begin(); it != tiles.end(); it++)
+    for (auto t : tiles)
     {
-        Maps::getTileDesignation(*it)->bits.smooth = engrave ? 2 : 1;
-        Maps::getTileOccupancy(*it)->bits.dig_marked = 0;
-        Maps::getTileBlock(*it)->flags.bits.designated = 1;
+        Maps::getTileDesignation(t)->bits.smooth = engrave ? 2 : 1;
+        Maps::getTileOccupancy(t)->bits.dig_marked = 0;
+        Maps::getTileBlock(t)->flags.bits.designated = 1;
     }
 
     return all_already_smooth;

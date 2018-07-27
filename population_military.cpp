@@ -2,6 +2,7 @@
 #include "exclusive_callback.h"
 #include "population.h"
 #include "plan.h"
+#include "debug.h"
 
 #include "modules/Gui.h"
 #include "modules/Units.h"
@@ -27,6 +28,7 @@
 #include "df/viewscreen_layer_militaryst.h"
 #include "df/world.h"
 
+REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
@@ -709,6 +711,7 @@ public:
         {
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
             Key(interface_key::D_PAUSE);
+            DFAI_ASSERT(*pause_state, "squad target update failed to pause the game");
             Key(interface_key::D_SQUADS);
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Squads");
 
@@ -744,8 +747,12 @@ public:
                     continue;
                 }
 
+                DFAI_ASSERT(std::count(ui->squads.sel_squads.begin(), ui->squads.sel_squads.end(), true) == 1, "did not select a single squad (selected " << std::count(ui->squads.sel_squads.begin(), ui->squads.sel_squads.end(), true) << ")");
+                DFAI_ASSERT(!ui->squads.in_kill_order && !ui->squads.in_kill_list, "in target mode early");
                 Key(interface_key::D_SQUADS_KILL);
+                DFAI_ASSERT(ui->squads.in_kill_order && !ui->squads.in_kill_list, "failed to enter target mode");
                 Key(interface_key::D_SQUADS_KILL_LIST);
+                DFAI_ASSERT(ui->squads.in_kill_list, "failed to enter target list");
 
                 for (auto kill_orders_unit : kill_orders_squad.second)
                 {
@@ -775,17 +782,27 @@ public:
                 }
 
                 Key(interface_key::SELECT);
+                Delay();
 
                 if (ui->squads.in_kill_list)
                 {
                     Key(interface_key::LEAVESCREEN);
-                    Key(interface_key::LEAVESCREEN);
+                    Delay();
                 }
+
+                if (ui->squads.in_kill_order)
+                {
+                    Key(interface_key::LEAVESCREEN);
+                    Delay();
+                }
+
+                DFAI_ASSERT(!ui->squads.in_kill_order && !ui->squads.in_kill_list, "failed to return to squad list");
             }
 
             Key(interface_key::LEAVESCREEN);
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
             Key(interface_key::D_PAUSE);
+            DFAI_ASSERT(!*pause_state, "squad target update failed to unpause the game");
         }
     }
 };

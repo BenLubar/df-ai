@@ -2,6 +2,7 @@
 #include "hooks.h"
 #include "camera.h"
 #include "tinythread.h"
+#include "debug.h"
 
 #include "MemAccess.h"
 #include "SDL_events.h"
@@ -28,7 +29,7 @@
 #ifdef DFAI_RELEASE
 #define LOCKSTEP_DEBUG(msg)
 #else
-#define LOCKSTEP_DEBUG(msg) do { if (config.lockstep_debug) { Core::getInstance().getConsole() << "[df-ai] LOCKSTEP DEBUG: " << msg << std::endl; } } while (0)
+#define LOCKSTEP_DEBUG(msg) do { if (BOOST_UNLIKELY(config.lockstep_debug)) { Core::getInstance().getConsole() << "[df-ai] LOCKSTEP DEBUG: " << msg << std::endl; } } while (0)
 #endif
 
 REQUIRE_GLOBAL(enabler);
@@ -206,20 +207,18 @@ static void lockstep_remove_to_first()
 static constexpr int32_t MOVIEBUFFSIZE = sizeof(df::interfacest::supermoviebuffer) / sizeof(df::interfacest::supermoviebuffer[0]);
 static constexpr int32_t COMPMOVIEBUFFSIZE = sizeof(df::interfacest::supermoviebuffer_comp) / sizeof(df::interfacest::supermoviebuffer_comp[0]);
 
-static bool CHECK_ERR(int err, const char* msg)
+static BOOST_NOINLINE bool zlibError(int err, const char* msg)
 {
-    if (err != Z_OK)
-    {
-        std::cerr << "zlib error (CMV \"" << gview->movie_file << "\" is probably corrupted): " << msg << ": " << zError(err) << std::endl;
-        return true;
-    }
+    std::cerr << "zlib error (CMV \"" << gview->movie_file << "\" is probably corrupted): " << msg << ": " << zError(err) << std::endl;
     return false;
 }
+
+#define CHECK_ERR(err, msg) BOOST_UNLIKELY(((err) != Z_OK) && zlibError(err, msg))
 
 static int32_t lockstep_write_movie_chunk()
 {
     int32_t inputsize = gview->supermovie_pos;
-    if (inputsize > MOVIEBUFFSIZE)
+    if (BOOST_UNLIKELY(inputsize > MOVIEBUFFSIZE))
     {
         inputsize = MOVIEBUFFSIZE;
     }
@@ -278,20 +277,19 @@ static int32_t lockstep_write_movie_chunk()
 
     if (c_stream.total_out > 0)
     {
-        if (gview->first_movie_write)
+        if (BOOST_UNLIKELY(gview->first_movie_write))
         {
             //GET RID OF ANY EXISTING MOVIES IF THIS IS THE FIRST TIME THROUGH
             unlink(gview->movie_file.c_str());
         }
 
         //OPEN UP THE MOVIE FILE AND APPEND
-        std::fstream f;
-        f.open(gview->movie_file.c_str(), std::fstream::out | std::fstream::binary | std::fstream::app);
+        std::ofstream f(gview->movie_file, std::ios::out | std::ios::binary | std::ios::app);
 
-        if (f.is_open())
+        if (BOOST_LIKELY(f.is_open()))
         {
             //WRITE A HEADER
-            if (gview->first_movie_write)
+            if (BOOST_UNLIKELY(gview->first_movie_write))
             {
                 const int32_t movie_version = 10000;
                 f.write((const char *)&movie_version, sizeof(int32_t));
@@ -300,7 +298,7 @@ static int32_t lockstep_write_movie_chunk()
                 header[0] = init->display.grid_x;
                 header[1] = init->display.grid_y;
                 extern std::unique_ptr<AI> dwarfAI;
-                if (dwarfAI->camera.movie_started_in_lockstep)
+                if (BOOST_LIKELY(dwarfAI->camera.movie_started_in_lockstep))
                 {
                     header[1] *= 2;
                 }
@@ -313,10 +311,8 @@ static int32_t lockstep_write_movie_chunk()
             f.write((const char *)&compsize, sizeof(uint32_t));
             f.write((const char *)gview->supermoviebuffer_comp, c_stream.total_out);
 
-            f.seekg(0, std::ios::end);
-            length = f.tellg();
-
-            f.close();
+            f.seekp(0, std::ios::end);
+            length = f.tellp();
         }
         else
         {
@@ -344,13 +340,13 @@ static void lockstep_handlemovie(bool flushall)
     //SAVE A MOVIE FRAME INTO THE CURRENT MOVIE BUFFER
     if (gview->supermovie_on == 1)
     {
-        if (gview->supermovie_delaystep > 0 && !flushall)
+        if (BOOST_UNLIKELY(gview->supermovie_delaystep > 0 && !flushall))
         {
             gview->supermovie_delaystep--;
         }
         else
         {
-            if (!flushall)
+            if (BOOST_LIKELY(!flushall))
             {
                 gview->supermovie_delaystep = gview->supermovie_delayrate;
             }
@@ -368,7 +364,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
+                    if (BOOST_LIKELY(dwarfAI && dwarfAI->camera.movie_started_in_lockstep))
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -393,7 +389,7 @@ static void lockstep_handlemovie(bool flushall)
 
                         gview->supermovie_pos++;
                     }
-                    if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
+                    if (BOOST_LIKELY(dwarfAI && dwarfAI->camera.movie_started_in_lockstep))
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
@@ -407,11 +403,11 @@ static void lockstep_handlemovie(bool flushall)
 
             int frame_size = init->display.grid_x * init->display.grid_y * 2;
             extern std::unique_ptr<AI> dwarfAI;
-            if (dwarfAI->camera.movie_started_in_lockstep)
+            if (BOOST_LIKELY(dwarfAI->camera.movie_started_in_lockstep))
             {
                 frame_size *= 2;
             }
-            if (gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || dwarfAI == nullptr || !dwarfAI->camera.movie_started_in_lockstep)
+            if (BOOST_UNLIKELY(gview->supermovie_pos + frame_size >= MOVIEBUFFSIZE || flushall || !dwarfAI || !dwarfAI->camera.movie_started_in_lockstep))
             {
                 int length = lockstep_write_movie_chunk();
 
@@ -431,7 +427,10 @@ static void lockstep_handlemovie(bool flushall)
 static bool lockstep_mainloop()
 {
     //NO INTERFACE LEFT, QUIT
-    if (gview->view.child == 0)return true;
+    if (BOOST_UNLIKELY(gview->view.child == 0))
+    {
+        return true;
+    }
 
     //GRAB CURRENT SCREEN AT THE END OF THE LIST
     df::viewscreen *currentscreen = Gui::getCurViewscreen(false);
@@ -518,7 +517,7 @@ static bool lockstep_drain_sdl()
 
 static bool Hook_Want_Disable()
 {
-    if (!config.lockstep || !enabled || disabling_plugin || unloading_plugin)
+    if (BOOST_UNLIKELY(!config.lockstep || !enabled || disabling_plugin || unloading_plugin))
     {
         lockstep_want_shutdown = true;
     }
@@ -528,10 +527,10 @@ static bool Hook_Want_Disable()
 static void lockstep_loop()
 {
     CoreSuspendClaimMain claimMain;
-    while (!Hook_Want_Disable())
+    while (BOOST_LIKELY(!Hook_Want_Disable()))
     {
         LOCKSTEP_DEBUG("calling mainloop (A)");
-        if (lockstep_mainloop())
+        if (BOOST_UNLIKELY(lockstep_mainloop()))
         {
             LOCKSTEP_DEBUG("want shutdown (A)");
             Hook_Shutdown_Now();
@@ -539,16 +538,16 @@ static void lockstep_loop()
         }
         LOCKSTEP_DEBUG("calling DFHack (A)");
         SDL_NumJoysticks();
-        if (Hook_Want_Disable())
+        if (BOOST_UNLIKELY(Hook_Want_Disable()))
         {
             LOCKSTEP_DEBUG("want disable (A)");
             break;
         }
         lockstep_tick_count += 10;
-        if (!enabler->flag.bits.maxfps && !ui->main.autosave_request)
+        if (BOOST_LIKELY(!enabler->flag.bits.maxfps && !ui->main.autosave_request))
         {
             LOCKSTEP_DEBUG("calling mainloop (B)");
-            if (lockstep_mainloop())
+            if (BOOST_UNLIKELY(lockstep_mainloop()))
             {
                 LOCKSTEP_DEBUG("want shutdown (B)");
                 Hook_Shutdown_Now();
@@ -556,7 +555,7 @@ static void lockstep_loop()
             }
             LOCKSTEP_DEBUG("calling DFHack (B)");
             SDL_NumJoysticks();
-            if (Hook_Want_Disable())
+            if (BOOST_UNLIKELY(Hook_Want_Disable()))
             {
                 LOCKSTEP_DEBUG("want disable (B)");
                 break;
@@ -570,7 +569,7 @@ static void lockstep_loop()
         enabler->last_tick = lockstep_tick_count;
         enabler->clock = lockstep_tick_count;
         LOCKSTEP_DEBUG("draining events");
-        if (lockstep_drain_sdl())
+        if (BOOST_UNLIKELY(lockstep_drain_sdl()))
         {
             LOCKSTEP_DEBUG("user requested quit");
             break;
@@ -686,7 +685,7 @@ static struct df_ai_renderer : public df::renderer
 
 void Hook_Update()
 {
-    if (SDL_ThreadID() == enabler->renderer_threadid)
+    if (BOOST_LIKELY(SDL_ThreadID() == enabler->renderer_threadid))
     {
         return;
     }
@@ -799,7 +798,7 @@ void Hook_Shutdown()
     Remove_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
     LOCKSTEP_DEBUG("unhooked ticks");
 
-    if (lockstep_renderer == enabler->renderer)
+    if (BOOST_LIKELY(lockstep_renderer == enabler->renderer))
     {
         enabler->renderer = lockstep_renderer->real_renderer;
     }

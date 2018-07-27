@@ -7,6 +7,8 @@
 
 #include <fstream>
 
+#include "git-describe.h"
+#define NO_DFHACK_VERSION_MACROS
 #include "DFHackVersion.h"
 #include "df-ai-git-describe.h"
 #include "thirdparty/weblegends/weblegends-plugin.h"
@@ -163,14 +165,14 @@ void ai_version(std::ostream & out, bool html)
 #else
     constexpr int bits = 32;
 #endif
-#ifdef WIN32
+#if defined(WIN32)
     constexpr const char *os = "Windows";
-#elif _LINUX
+#elif defined(_LINUX)
     constexpr const char *os = "Linux";
-#elif _DARWIN
+#elif defined(_DARWIN)
     constexpr const char *os = "Mac";
 #else
-    constexpr const char *os = "UNKNOWN";
+#error Unknown operating system.
 #endif
     const char *br = html ? "<br/>" : "\n";
     auto commit = [&out, br, html](const std::string & name, const std::string & repo, const std::string & commit)
@@ -186,13 +188,19 @@ void ai_version(std::ostream & out, bool html)
         }
         out << br;
     };
-    out << "Dwarf Fortress " << DF_VERSION << br;
+    out << "Dwarf Fortress " << DFHack::Version::df_version() << br;
     out << "  " << os << " " << bits << "-bit" << br;
-    out << "df-ai " << DF_AI_GIT_DESCRIPTION << br;
+    out << "df-ai " << DF_AI_GIT_DESCRIPTION;
+    if (*DFHACK_BUILD_ID)
+        out << " (Build ID: " << DFHACK_BUILD_ID << ")";
+    out << br;
     commit("code", "BenLubar/df-ai", DF_AI_GIT_COMMIT);
-    out << "DFHack " << DFHACK_GIT_DESCRIPTION << br;
-    commit("library", "DFHack/dfhack", DFHACK_GIT_COMMIT);
-    commit("structures", "DFHack/df-structures", DFHACK_GIT_XML_COMMIT);
+    out << "DFHack " << DFHack::Version::git_description();
+    if (*DFHack::Version::dfhack_build_id())
+        out << " (Build ID: " << DFHack::Version::dfhack_build_id() << ")";
+    out << br;
+    commit("library", "DFHack/dfhack", DFHack::Version::git_commit());
+    commit("structures", "DFHack/df-structures", DFHack::Version::git_xml_commit());
     out << std::flush;
 }
 

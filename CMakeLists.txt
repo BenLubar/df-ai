@@ -78,6 +78,7 @@ SET(PROJECT_SRCS
 SET(PROJECT_HDRS
     ai.h
     config.h
+    debug.h
     hooks.h
     population.h
     plan.h

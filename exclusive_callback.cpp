@@ -1,12 +1,13 @@
 #include "ai.h"
 #include "exclusive_callback.h"
+#include "debug.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 
 #include "df/viewscreen.h"
 
-#if 1
+#ifdef DFHACK_44_12_TEMP
 
 #include "df/building.h"
 #include "df/item.h"
@@ -129,10 +130,7 @@ void ExclusiveCallback::Delay(size_t frames)
 
 void ExclusiveCallback::AssertDelayed()
 {
-    if (!did_delay)
-    {
-        throw std::logic_error("previous iteration of exclusive callback did not call Delay.");
-    }
+    DFAI_ASSERT(did_delay, "previous iteration of exclusive callback \"" << description << "\" did not call Delay.");
     did_delay = false;
 }
 
@@ -145,39 +143,11 @@ void ExclusiveCallback::checkScreen()
 
     df::viewscreen *curview = Gui::getCurViewscreen(true);
 
-    bool bad = !expectedScreen->is_instance(curview);
-    bad = bad || (!expectedFocus.empty() && Gui::getFocusString(curview) != expectedFocus);
-    bad = bad || (!expectedParentFocus.empty() && Gui::getFocusString(curview->parent) != expectedFocus);
-
-    if (bad)
-    {
-        out_proxy << "[FATAL ERROR] expected screen to be " << expectedScreen->getName();
-        if (!expectedFocus.empty())
-        {
-            out_proxy << ":" << expectedFocus;
-        }
-        if (!expectedParentFocus.empty())
-        {
-            out_proxy << ":" << expectedParentFocus;
-        }
-        out_proxy << ", but it is " << virtual_identity::get(curview)->getName();
-        if (!expectedFocus.empty())
-        {
-            out_proxy << ":" << Gui::getFocusString(curview);
-        }
-        if (!expectedParentFocus.empty())
-        {
-            out_proxy << ":" << Gui::getFocusString(curview->parent);
-        }
-        out_proxy << std::endl;
-
-        // Force the debugger to breakpoint. This will probably crash if there's no debugger attached.
-#if WIN32
-        __debugbreak();
-#else
-        __asm__ volatile("int $0x03");
-#endif
-    }
+    DFAI_ASSERT(expectedScreen->is_instance(curview) &&
+        (expectedFocus.empty() || Gui::getFocusString(curview) == expectedFocus) &&
+        (expectedParentFocus.empty() || Gui::getFocusString(curview->parent) == expectedFocus),
+        "expected screen to be " << expectedScreen->getName() << ":" << expectedFocus << ":" << expectedParentFocus <<
+        ", but it is " << virtual_identity::get(curview)->getName() << ":" << Gui::getFocusString(curview) << ":" << Gui::getFocusString(curview->parent));
 }
 
 bool ExclusiveCallback::run(color_ostream & out)
@@ -188,7 +158,7 @@ bool ExclusiveCallback::run(color_ostream & out)
         return false;
     }
 
-    bool done = !!push(&out);
+    bool done = !push(&out);
     if (!feed_keys.empty())
     {
         for (auto key : feed_keys)
@@ -198,7 +168,7 @@ bool ExclusiveCallback::run(color_ostream & out)
         feed_keys.clear();
     }
 
-    if (done)
+    if (!done)
     {
         wait_frames = wait_multiplier - 1;
         return false;
