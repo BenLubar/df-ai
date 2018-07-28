@@ -718,16 +718,20 @@ public:
 
             for (auto kill_orders_squad : kill_orders)
             {
-                auto squad_pos = std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [&](df::squad *squad) -> bool
+                static_assert(offsetof(df::ui::T_squads, list) == 0, "squad structures were corrected");
+                DFAI_ASSERT(ui->squads.unk_44_12i.size() == ui->squads.sel_squads.size(), "squad structures were corrected");
+                auto squad_pos = std::find_if(ui->squads.unk_44_12i.begin(), ui->squads.unk_44_12i.end(), [&](void *psquad) -> bool
                 {
+                    auto squad = reinterpret_cast<df::squad *>(psquad);
                     return squad->id == kill_orders_squad.first;
-                }) - ui->squads.list.begin();
+                }) - ui->squads.unk_44_12i.begin();
                 auto first_squad = [&]() -> ptrdiff_t
                 {
-                    return ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](df::squad *squad)
+                    return ui->squads.unk_44_12i.size() > 9 ? std::find_if(ui->squads.unk_44_12i.begin(), ui->squads.unk_44_12i.end(), [](void *psquad)
                     {
+                        auto squad = reinterpret_cast<df::squad *>(psquad);
                         return squad->id == ui->squads.unk48;
-                    }) - ui->squads.list.begin() : 0;
+                    }) - ui->squads.unk_44_12i.begin() : 0;
                 };
 
                 // Menu is guaranteed to be capped at 10 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
