@@ -4737,6 +4737,7 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
     // dig whole block
     // TODO have the dwarves search for the vein
     // TODO mine in (visible?) chunks
+    DFAI_ASSERT_VALID_TILE(b, " (base position for dig_vein(" << world->raws.inorganics[mat]->id << ")");
     df::map_block *block = Maps::getTileBlock(b);
     int16_t minx = 16, maxx = -1, miny = 16, maxy = -1;
     for (int16_t dx = 0; dx < 16; dx++)
@@ -4770,7 +4771,7 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         for (int16_t dy = miny; dy <= maxy; dy++)
         {
             df::coord t = b + df::coord(dx, dy, 0);
-            if (disallow_tile.count(t))
+            if (!Maps::isValidTilePos(t) || disallow_tile.count(t))
             {
                 continue;
             }
@@ -4835,6 +4836,13 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
         {
             vert = df::coord(vert.x, vert.y - 30, b.z);
         }
+
+        if (!Maps::isValidTilePos(vert))
+        {
+            vert.y = fort_entrance->pos().y * 2 - vert.y;
+        }
+        DFAI_ASSERT_VALID_TILE(vert, "mineshaft vertical location");
+
         if (vert.z % 32 > 16)
             vert.x++; // XXX check this
 
