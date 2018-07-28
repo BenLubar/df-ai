@@ -710,7 +710,8 @@ public:
         if (!kill_orders.empty())
         {
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
-            Key(interface_key::D_PAUSE);
+            if (!*pause_state)
+                Key(interface_key::D_PAUSE);
             DFAI_ASSERT(*pause_state, "squad target update failed to pause the game");
             Key(interface_key::D_SQUADS);
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Squads");
