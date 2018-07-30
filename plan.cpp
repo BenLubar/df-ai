@@ -1222,7 +1222,8 @@ void Plan::load(std::istream & in)
 uint16_t Maps::getTileWalkable(df::coord t)
 {
     DFAI_ASSERT_VALID_TILE(t, "");
-    if (BOOST_LIKELY(df::map_block *b = getTileBlock(t)))
+    df::map_block *b = getTileBlock(t);
+    if (BOOST_LIKELY(b))
         return b->walkable[t.x & 0xf][t.y & 0xf];
     return 0;
 }
