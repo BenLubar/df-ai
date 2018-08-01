@@ -113,7 +113,7 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
             break;
         default: // default to status page, unless DF-AI isn't active
             title = "DF-AI - Status";
-            baseURL = "/";
+            baseURL = "./";
             if (!enabled || !dwarfAI)
             {
                 title = "DF-AI - Not Active";
@@ -208,7 +208,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     if (!enabled || !dwarfAI)
     {
         handler.status_code() = 503;
-        handler.status_description() = "df-ai - Not Active";
+        handler.status_description() = "Service Unavailable";
         handler.cp437_out() << "<body><p><i>AI is not active.</i></p>";
         handler.cp437_out() << "<p>Enter <tt>enable df-ai</tt> in the DFHack console to start DF-AI</p>";
         handler.cp437_out() << "<p>Enter <tt>help ai</tt> for a list of console commands.</p>";
