@@ -120,7 +120,6 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
                 currentPage = AIPages::NotActive;
             }
             break;
-
     }
     // Build Nav Menu =========
     handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head>";
