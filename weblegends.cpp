@@ -14,14 +14,15 @@ extern bool & enabled;
 
 REQUIRE_GLOBAL(world);
 
-enum AIPages {
+enum class AIPages
+{
     Status,             // Status
-    //Report,           // Report - No longer used
     Report_Plan,        // Tasks
     Report_Population,  // Population
     Report_Stocks,      // Stocks
     Plan,               // Blueprints
     Version,            // Version
+    NotActive,          // DF-AI not active or enabled
 };
 
 // https://stackoverflow.com/a/24315631/2664560
@@ -45,114 +46,115 @@ std::string html_escape(const std::string & str)
     return escaped;
 }
 
-std::string getAIPageURL(const int currentPage){
+std::string getAIPageURL(const AIPages currentPage)
+{
     switch (currentPage)
     {
-        // case AIPages::Report:
-        //     return "\"df-ai/report\"";
         case AIPages::Report_Plan: // Tasks
-            return "\"df-ai/report/plan\"";
+            return "df-ai/report/plan";
         case AIPages::Report_Population:
-            return "\"df-ai/report/population\"";
+            return "df-ai/report/population";
         case AIPages::Report_Stocks:
-            return "\"df-ai/report/stocks\"";
+            return "df-ai/report/stocks";
         case AIPages::Plan: // Blueprints
-            return "\"df-ai/plan\"";
+            return "df-ai/plan";
         case AIPages::Version:
-            return "\"df-ai/version\"";
-            break;
-        default: // default to status page
-            return "\"df-ai\"";
+            return "df-ai/version";
+        default: // default to status page, even if DF-AI isn't active
+            return "df-ai";
     }
 }
 
-int getAIPage(const std::string url){
-    // if (url == "/report")
-    //     return Report;
+AIPages getAIPage(const std::string & url)
+{
     if (url == "/report/plan")
         return AIPages::Report_Plan; // Tasks
-    else if (url == "/report/population")
+    if (url == "/report/population")
         return AIPages::Report_Population;
-    else if (url == "/report/stocks")
+    if (url == "/report/stocks")
         return AIPages::Report_Stocks;
-    else if (url == "/plan")
+    if (url == "/plan")
         return AIPages::Plan; // Blueprints
-    else if (url == "/version")
+    if (url == "/version")
         return AIPages::Version;
-    else // default to status page
-        return AIPages::Status;
+    // default to status page
+    return AIPages::Status;
 }
 
 void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
 {
-    std::string title;
-    int currentPage = 0;
+    std::string title;  // page title
+    std::string baseURL;
+    AIPages currentPage;
     // Get current page
     currentPage = getAIPage(url);
     // Set the title based on current page
     switch ((AIPages)currentPage)
     {
-        // case AIPages::Report:
-        //     title = "DF-AI - Report";
-        //     break;
         case AIPages::Report_Plan:
             title = "DF-AI - Tasks";
+            baseURL = "../../";
             break;
         case AIPages::Report_Population:
             title = "DF-AI - Population";
+            baseURL = "../../";
             break;
         case AIPages::Report_Stocks:
             title = "DF-AI - Stocks";
+            baseURL = "../../";
             break;
         case AIPages::Plan:
             title = "DF-AI - Blueprints";
+            baseURL = "../";
             break;
         case AIPages::Version:
             title = "DF-AI - Version";
+            baseURL = "../";
             break;
-        default: // default to status page
+        default: // default to status page, unless DF-AI isn't active
             title = "DF-AI - Status";
+            baseURL = "/";
+            if (!enabled || !dwarfAI)
+            {
+                title = "DF-AI - Not Active";
+                currentPage = AIPages::NotActive;
+            }
+            break;
+
     }
     // Build Nav Menu =========
-    handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>" << title << "</title><base href=\"../..\"/><link rel=\"stylesheet\" href=\"style.css\"/><link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/></head>";
-    handler.cp437_out() << "<body><p>";
+    handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head>";
+    // Title
+    handler.cp437_out() << "<title>" << title << "</title>";
+    // Base
+    handler.cp437_out() << "<base href=\"" << baseURL << "\"/>";
+    // CSS
+    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"style.css\"/><link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/>";
+    handler.cp437_out() << "</head><body><p>";
     // Weblegends Home
-    handler.cp437_out() << "<a href=\"\">Home</a> - ";
+    handler.cp437_out() << "<a class=\"navItem\" href=\"\">Home</a>";
+    
+    auto doPageLink = [&](AIPages page, const std::string & name)
+    {
+        handler.cp437_out() << "<a href=\"" << getAIPageURL(page) << "\" class=\"navItem";
+        if (currentPage == page)
+        {
+            handler.cp437_out() << " navSelected";
+        }
+        handler.cp437_out() << "\">" << name << "</a>";
+    };
     // Status
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Status);
-    if ((AIPages)currentPage == AIPages::Status)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Status</a> - ";
-    // Report - old, split into sub-pages
-    // handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Report);
-    // if ((AIPages)currentPage == Report)
-    //     handler.cp437_out() << " class=\"navSelected\"";
-    // handler.cp437_out() << ">Report</a> - ";
+    doPageLink(AIPages::Status, "Status");
     // Tasks
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Report_Plan);
-    if ((AIPages)currentPage == AIPages::Report_Plan)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Tasks</a> - ";
+    doPageLink(AIPages::Report_Plan, "Tasks");
     // Population
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Report_Population);
-    if ((AIPages)currentPage == AIPages::Report_Population)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Population</a> - ";
+    doPageLink(AIPages::Report_Population, "Population");
     // Stocks
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Report_Stocks);
-    if ((AIPages)currentPage == AIPages::Report_Stocks)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Stocks</a> - ";
+    doPageLink(AIPages::Report_Stocks, "Stocks");
     // Blueprint
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Plan);
-    if ((AIPages)currentPage == AIPages::Plan)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Blueprint</a> - ";
+    doPageLink(AIPages::Plan, "Blueprints");
     // Version
-    handler.cp437_out() << "<a href=" << getAIPageURL(AIPages::Version);
-    if ((AIPages)currentPage == AIPages::Version)
-        handler.cp437_out() << " class=\"navSelected\"";
-    handler.cp437_out() << ">Version</a> ";
+    doPageLink(AIPages::Version, "Version");
     // close P from beginning of menu
     handler.cp437_out() << "</p>";
     return;
@@ -161,7 +163,7 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
 
 bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & url)
 {
-    // Requesting Sytlesheet
+    // Requesting Stylesheet
     if (url == "/aistyle.css")
     {
         handler.headers()["Content-Type"] = "text/css; charset=utf-8";
@@ -185,21 +187,35 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
             "tbody th {\n"
             "\ttext-align: left;\n"
             "}\n"
+            ".navItem {\n"
+            "\tpadding-right: 12px;\n"
+            "}\n"
             ".navSelected {\n"
             "\tcolor: inherit;\n"
             "\ttext-decoration: none;\n"
             "\tfont-weight: bold;\n"
+            "}\n"
+            "tt {\n"
+            "\tbackground-color: #eff0f1;\n"
             "}\n";
         return true;
     }
+
+    //===================
+    // Create nav menu
+    create_nav_menu(handler,url);
 
     // df-ai is not loaded or enabled
     if (!enabled || !dwarfAI)
     {
         handler.status_code() = 503;
-        handler.status_description() = "Service Unavailable";
-        handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai - Service Unavailable</title></head>";
-        handler.cp437_out() << "<body><p><i>AI is not active.</i></p></body></html>";
+        handler.status_description() = "df-ai - Not Active";
+        handler.cp437_out() << "<body><p><i>AI is not active.</i></p>";
+        handler.cp437_out() << "<p>Enter <tt>enable df-ai</tt> in the DFHack console to start DF-AI</p>";
+        handler.cp437_out() << "<p>Enter <tt>help ai</tt> for a list of console commands.</p>";
+        //  future - change link to df-ai - weblegends help?
+        handler.cp437_out() << "<p><a target=\"_blank\" href=\"https://github.com/BenLubar/df-ai/wiki\">See DF-AI  Wiki for more details</a></p>";
+        handler.cp437_out() << "</body></html>";
         return true;
     }
 
@@ -213,10 +229,6 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.cp437_out() << "<body><p><a href=\"report/population\">Report has been split into sub-pages.</a></p></body></html>";
         return true;
     }
-
-    //===================
-    // Create nav menu
-    create_nav_menu(handler,url);
     
     // Status
     if (url == "")
