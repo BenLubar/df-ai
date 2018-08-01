@@ -1223,7 +1223,7 @@ uint16_t Maps::getTileWalkable(df::coord t)
 {
     DFAI_ASSERT_VALID_TILE(t, "");
     df::map_block *b = getTileBlock(t);
-    if (BOOST_LIKELY(b))
+    if (BOOST_LIKELY(b != nullptr))
         return b->walkable[t.x & 0xf][t.y & 0xf];
     return 0;
 }
