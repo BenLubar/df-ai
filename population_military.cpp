@@ -108,6 +108,7 @@ protected:
 public:
     class Draft;
     class Dismiss;
+    class UnequipTool;
 };
 
 class MilitarySetupExclusive::Draft : public MilitarySetupExclusive
@@ -489,8 +490,242 @@ public:
     }
 };
 
+class MilitarySetupExclusive::UnequipTool : public MilitarySetupExclusive
+{
+    bool movedToEquips;
+
+public:
+    UnequipTool(AI & ai, unit_iterator begin, unit_iterator end) : MilitarySetupExclusive(ai, "military - unequip tool", begin, end), movedToEquips(false)
+    {
+    }
+
+    virtual void Run(color_ostream & out, int32_t unit_id)
+    {
+        if (!movedToEquips)
+        {
+            Key(interface_key::D_MILITARY_EQUIP);
+            movedToEquips = true;
+        }
+        ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Squads");
+
+        auto u = df::unit::find(unit_id);
+        if (!u)
+        {
+            return;
+        }
+
+        auto squad = df::squad::find(u->military.squad_id);
+        auto squad_pos = std::find(screen->squads.list.begin(), screen->squads.list.end(), squad);
+        if (!squad || squad_pos == screen->squads.list.end())
+        {
+            ai.debug(out, "[ERROR] Cannot find squad for unit: " + AI::describe_unit(u));
+            return;
+        }
+
+        ScrollTo(int32_t(squad_pos - screen->squads.list.begin()));
+
+        Key(interface_key::STANDARDSCROLL_RIGHT);
+
+        ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Positions");
+
+        auto position = std::find(screen->positions.assigned.begin(), screen->positions.assigned.end(), u);
+        if (position == screen->positions.assigned.end())
+        {
+            ai.debug(out, "[ERROR] Cannot find unit in squad: " + AI::describe_unit(u));
+
+            Key(interface_key::STANDARDSCROLL_LEFT);
+
+            return;
+        }
+
+        ScrollTo(int32_t(position - screen->positions.assigned.begin()));
+
+        Key(interface_key::STANDARDSCROLL_RIGHT);
+
+        ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Choices");
+
+        for (size_t i = 0; i < screen->equip.assigned.category.size(); i++)
+        {
+            if (screen->equip.assigned.category.at(i) == uniform_category::weapon)
+            {
+                for (auto item_id : screen->equip.assigned.spec.at(i)->assigned)
+                {
+                    auto weapon = virtual_cast<df::item_weaponst>(df::item::find(item_id));
+
+                    if (!weapon)
+                    {
+                        continue;
+                    }
+                    if (weapon->subtype->flags.is_set(weapon_flags::TRAINING))
+                    {
+                        continue;
+                    }
+                    if (weapon->subtype->skill_melee != job_skill::AXE && weapon->subtype->skill_melee != job_skill::MINING)
+                    {
+                        continue;
+                    }
+
+                    ai.debug(out, "Confiscating " + AI::describe_item(weapon) + " from " + AI::describe_unit(u) + ": item needed for civilian labor.");
+
+                    ScrollTo(int32_t(i));
+                    Key(interface_key::SELECT);
+
+                    Key(interface_key::D_MILITARY_ADD_WEAPON);
+                    ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/Weapon/Choices");
+
+                    ScrollTo(SelectReplacementWeaponType(out));
+                    Key(interface_key::SELECT);
+                    ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Choices");
+                }
+            }
+        }
+
+        Key(interface_key::STANDARDSCROLL_LEFT);
+        ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Positions");
+
+        Key(interface_key::STANDARDSCROLL_LEFT);
+        ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Squads");
+    }
+
+    int32_t SelectReplacementWeaponType(color_ostream & out)
+    {
+        int32_t best = -1;
+        int32_t best_score = 0;
+        std::string name;
+
+        for (size_t i = 0; i < screen->equip.add_item.subtype.size(); i++)
+        {
+            if (screen->equip.add_item.type.at(i) != item_type::WEAPON)
+            {
+                continue;
+            }
+            auto def = df::itemdef_weaponst::find(screen->equip.add_item.subtype.at(i));
+            if (!def)
+            {
+                continue;
+            }
+            if (def->skill_ranged != job_skill::NONE)
+            {
+                continue;
+            }
+            if (def->skill_melee == job_skill::AXE || def->skill_melee == job_skill::MINING)
+            {
+                continue;
+            }
+
+            int32_t score = 0;
+            auto in_stock = ai.stocks.count_subtype.at(stock_item::weapon_melee).find(screen->equip.add_item.subtype.at(i));
+            if (in_stock != ai.stocks.count_subtype.at(stock_item::weapon_melee).end())
+            {
+                score = in_stock->first;
+            }
+            if (!screen->equip.add_item.foreign.at(i))
+            {
+                score = (score + 1) * 2;
+            }
+            if (best_score < score)
+            {
+                best = int32_t(i);
+                best_score = score;
+                name = def->name;
+            }
+        }
+
+        ai.debug(out, "Assigning weapon type " + name + " instead.");
+
+        return best;
+    }
+};
+
 void Population::update_military(color_ostream & out)
 {
+    bool need_pick = false, need_axe = false;
+    for (auto job : world->jobs.list)
+    {
+        if (!ENUM_ATTR(job_type, is_designation, job->job_type))
+        {
+            continue;
+        }
+
+        if (ENUM_ATTR(job_type, skill, job->job_type) == job_skill::MINING)
+        {
+            need_pick = true;
+        }
+        else if (ENUM_ATTR(job_type, skill, job->job_type) == job_skill::WOODCUTTING)
+        {
+            need_axe = true;
+        }
+
+        if (need_pick && need_axe)
+        {
+            break;
+        }
+    }
+
+    if (need_pick && ai.stocks.count_free.at(stock_item::pick) != 0)
+    {
+        need_pick = false;
+    }
+    if (need_axe && ai.stocks.count_free.at(stock_item::axe) != 0)
+    {
+        need_axe = false;
+    }
+
+    if (need_pick || need_axe)
+    {
+        for (auto u : world->units.active)
+        {
+            if (!Units::isCitizen(u) || !Units::isAdult(u) || !Units::isAlive(u) || !Units::isSane(u))
+            {
+                continue;
+            }
+
+            if (u->military.squad_id != -1)
+            {
+                continue;
+            }
+
+            if (u->status.labors[unit_labor::MINE] && std::any_of(u->inventory.begin(), u->inventory.end(), [](df::unit_inventory_item *item) -> bool { return item->item->isWeapon() && item->item->getMeleeSkill() == job_skill::MINING && virtual_cast<df::item_weaponst>(item->item)->subtype->flags.is_set(weapon_flags::TRAINING); }))
+            {
+                need_pick = false;
+            }
+
+            if (u->status.labors[unit_labor::CUTWOOD] && std::any_of(u->inventory.begin(), u->inventory.end(), [](df::unit_inventory_item *item) -> bool { return item->item->isWeapon() && item->item->getMeleeSkill() == job_skill::AXE && virtual_cast<df::item_weaponst>(item->item)->subtype->flags.is_set(weapon_flags::TRAINING); }))
+            {
+                need_axe = false;
+            }
+
+            if (!need_pick && !need_axe)
+            {
+                break;
+            }
+        }
+    }
+
+    if (need_pick || need_axe)
+    {
+        std::vector<df::unit *> confiscate_weapons_from;
+
+        for (auto m : military)
+        {
+            auto u = df::unit::find(m.first);
+            if (!Units::isCitizen(u) || AI::is_in_conflict(u))
+            {
+                continue;
+            }
+
+            if (std::any_of(u->inventory.begin(), u->inventory.end(), [&](df::unit_inventory_item *item) -> bool { return item->item->isWeapon() && ((need_axe && item->item->getMeleeSkill() == job_skill::AXE) || (need_pick && item->item->getMeleeSkill() == job_skill::MINING)) && !virtual_cast<df::item_weaponst>(item->item)->subtype->flags.is_set(weapon_flags::TRAINING); }))
+            {
+                confiscate_weapons_from.push_back(u);
+            }
+        }
+
+        if (!confiscate_weapons_from.empty())
+        {
+            events.queue_exclusive(std::make_unique<MilitarySetupExclusive::UnequipTool>(ai, confiscate_weapons_from.begin(), confiscate_weapons_from.end()));
+        }
+    }
+
     std::vector<df::unit *> soldiers;
     std::vector<df::unit *> want_draft;
     std::vector<df::unit *> draft_pool;
@@ -564,18 +799,8 @@ void Population::update_military(color_ostream & out)
         }
     }
 
-    size_t axes = 0, picks = 0;
-    for (const auto & st : ai.stocks.count_subtype[stock_item::axe])
-    {
-        axes += size_t(st.second.second);
-    }
-    for (const auto & st : ai.stocks.count_subtype[stock_item::pick])
-    {
-        picks += size_t(st.second.second);
-    }
-
-    size_t max_military = std::min(citizen.size() * 3 / 4, std::min(axes ? axes - 1 : 0, picks ? picks - 1 : 0));
-    size_t min_military = std::min(citizen.size() / 4, max_military);
+    size_t max_military = citizen.size() * 3 / 4;
+    size_t min_military = citizen.size() / 4;
     size_t citizen_military = std::count_if(military.begin(), military.end(), [this](const std::pair<const int32_t, int32_t> & member) -> bool
     {
         return citizen.count(member.first);
