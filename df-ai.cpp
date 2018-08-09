@@ -220,6 +220,14 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         return blueprints.is_valid ? CR_OK : CR_FAILURE;
     }
 
+    if (args.size() == 2 && args[0] == "validate")
+    {
+        blueprints_t blueprints(out);
+        std::ofstream f(args[1]);
+        blueprints.write_rooms(f);
+        return blueprints.is_valid ? CR_OK : CR_FAILURE;
+    }
+
     if (!check_enabled(out))
     {
         out << "The AI is currently not running. Use enable df-ai to enable the AI." << std::endl;

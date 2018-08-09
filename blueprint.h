@@ -158,6 +158,7 @@ struct room_blueprint
     bool apply(std::string & error);
     bool warn(std::string & error);
     void build_cache();
+    void write_layout(std::ostream & f);
 };
 
 struct blueprint_plan_template;
@@ -235,6 +236,7 @@ public:
     ~blueprints_t();
 
     bool is_valid;
+    void write_rooms(std::ostream & f);
 
 private:
     std::map<std::string, std::vector<room_blueprint *>> blueprints;

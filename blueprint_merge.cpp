@@ -639,3 +639,76 @@ void room_blueprint::build_cache()
         }
     }
 }
+
+void room_blueprint::write_layout(std::ostream & f)
+{
+    df::coord min, max;
+    auto find_minmax = [&](const std::set<df::coord> & coords)
+    {
+        for (df::coord c : coords)
+        {
+            if (!min.isValid())
+            {
+                min = c;
+            }
+            if (!max.isValid())
+            {
+                max = c;
+            }
+            min.x = std::min(min.x, c.x);
+            min.y = std::min(min.y, c.y);
+            min.z = std::min(min.z, c.z);
+            max.x = std::max(max.x, c.x);
+            max.y = std::max(max.y, c.y);
+            max.z = std::max(max.z, c.z);
+        }
+    };
+
+    find_minmax(corridor);
+    find_minmax(interior);
+    find_minmax(no_corridor);
+    find_minmax(no_room);
+
+    for (int16_t z = min.z; z <= max.z; z++)
+    {
+        f << "z = " << z << std::endl;
+        for (int16_t y = min.y; y <= max.y; y++)
+        {
+            if (y != min.y)
+            {
+                f << " ";
+                for (int16_t x = min.x; x <= max.x; x++)
+                {
+                    f << "--";
+                    if (x != max.x)
+                    {
+                        f << "+";
+                    }
+                }
+                f << std::endl;
+            }
+            f << " ";
+            for (int16_t x = min.x; x <= max.x; x++)
+            {
+                f << (corridor.count(df::coord(x, y, z)) ? "c" : " ");
+                f << (no_corridor.count(df::coord(x, y, z)) ? "n" : " ");
+                if (x != max.x)
+                {
+                    f << "|";
+                }
+            }
+            f << std::endl << " ";
+            for (int16_t x = min.x; x <= max.x; x++)
+            {
+                f << (interior.count(df::coord(x, y, z)) ? "i" : " ");
+                f << (no_room.count(df::coord(x, y, z)) ? "r" : " ");
+                if (x != max.x)
+                {
+                    f << "|";
+                }
+            }
+            f << std::endl;
+        }
+        f << std::endl;
+    }
+}

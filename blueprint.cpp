@@ -181,3 +181,16 @@ blueprints_t::~blueprints_t()
         delete plan.second;
     }
 }
+
+void blueprints_t::write_rooms(std::ostream & f)
+{
+    for (auto & type : blueprints)
+    {
+        for (auto rb : type.second)
+        {
+            f << rb->type << " / " << rb->tmpl_name << " / " << rb->name << std::endl;
+            rb->write_layout(f);
+            f << std::endl;
+        }
+    }
+}
