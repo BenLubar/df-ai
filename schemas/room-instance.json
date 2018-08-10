@@ -29,6 +29,11 @@
 					"items": { "$ref": "shared.json#exit-def" },
 					"default": []
 				},
+				"optional_walls": {
+					"type": "array",
+					"items": { "$ref": "shared.json#coord" },
+					"default": []
+				},
 				"accesspath": {
 					"type": "array",
 					"items": {

@@ -188,6 +188,32 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         }
     }
 
+    if (data.isMember("optional_walls"))
+    {
+        Json::Value value = data["optional_walls"];
+        data.removeMember("optional_walls");
+        if (!value.isArray())
+        {
+            error = "optional_walls has wrong type (should be array)";
+        }
+
+        for (auto optwall : value)
+        {
+            if (!optwall.isArray() || optwall.size() != 3 || !optwall[0].isInt() || !optwall[1].isInt() || !optwall[2].isInt())
+            {
+                error = "optional_walls element has the wrong type (should be an array of three integers)";
+                return false;
+            }
+
+            // ensure key exists
+            exits[df::coord(
+                uint16_t(optwall[0].asInt()),
+                uint16_t(optwall[1].asInt()),
+                uint16_t(optwall[2].asInt())
+            )];
+        }
+    }
+
     if (data.isMember("accesspath") && !apply_indexes(accesspath, data, "accesspath", error))
     {
         return false;

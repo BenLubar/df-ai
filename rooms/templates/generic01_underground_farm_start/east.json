@@ -74,6 +74,11 @@
 			"stock_specific1": true,
 			"min": [1, -1, 0],
 			"max": [3, 1, 0],
+			"optional_walls": [
+				[3, 1, 0],
+				[1, -1, 0],
+				[1, 3, 0]
+			],
 			"workshop": 0,
 			"comment": "seeds"
 		},
