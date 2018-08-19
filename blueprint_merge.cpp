@@ -517,7 +517,7 @@ bool room_blueprint::warn(std::string & error)
         size_t doorsNearEntrance = 0;
         for (auto fi : room0->layout)
         {
-            auto & f = furniture.at(fi);
+            auto & f = layout.at(fi);
             if (f->type != layout_type::door && (f->dig != tile_dig_designation::Default || f->construction != construction_type::Floor))
             {
                 continue;
