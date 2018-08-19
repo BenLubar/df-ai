@@ -510,6 +510,43 @@ bool room_blueprint::warn(std::string & error)
             return true;
         }
     }
+    auto & room0 = rooms.at(0);
+    if (!room0->outdoor && (room0->min.x > 0 || room0->min.y > 0 || room0->max.x < 0 || room0->max.y < 0))
+    {
+        bool doorAtEntrance = false;
+        size_t doorsNearEntrance = 0;
+        for (auto fi : room0->layout)
+        {
+            auto & f = furniture.at(fi);
+            if (f->type != layout_type::door && (f->dig != tile_dig_designation::Default || f->construction != construction_type::Floor))
+            {
+                continue;
+            }
+
+            df::coord dpos = f->pos - room0->min;
+            if (dpos.x == 0 && dpos.y == 0 && dpos.z == 0)
+            {
+                doorAtEntrance = true;
+                break;
+            }
+
+            if ((room0->min.x == 1 || room0->max.x == -1) && dpos.x == 0 && dpos.y >= -1 && dpos.y <= 1 && dpos.z == 0)
+            {
+                doorsNearEntrance++;
+                continue;
+            }
+            if ((room0->min.y == 1 || room0->max.y == -1) && dpos.x >= -1 && dpos.x <= 1 && dpos.y == 0 && dpos.z == 0)
+            {
+                doorsNearEntrance++;
+                continue;
+            }
+        }
+        if (!doorAtEntrance && doorsNearEntrance < 2)
+        {
+            error = "room has no door at entrance";
+            return true;
+        }
+    }
     return false;
 }
 
