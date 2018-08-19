@@ -523,7 +523,7 @@ bool room_blueprint::warn(std::string & error)
                 continue;
             }
 
-            df::coord dpos = f->pos - room0->min;
+            df::coord dpos = f->pos + room0->min;
             if (dpos.x == 0 && dpos.y == 0 && dpos.z == 0)
             {
                 doorAtEntrance = true;
