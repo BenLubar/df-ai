@@ -81,6 +81,14 @@ AIPages getAIPage(const std::string & url)
     return AIPages::Status;
 }
 
+void add_styles_and_scripts(weblegends_handler_v1 & handler)
+{
+    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"style.css\"/>";
+    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/>";
+    //handler.cp437_out() << "<script type=\"text/javascript\" src=\"jquery.js\"></script>";
+    return;
+}
+
 void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
 {
     std::string title;  // page title
@@ -127,8 +135,8 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
     handler.cp437_out() << "<title>" << title << "</title>";
     // Base
     handler.cp437_out() << "<base href=\"" << baseURL << "\"/>";
-    // CSS
-    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"style.css\"/><link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/>";
+    // CSS & scripts
+    add_styles_and_scripts(handler);
     handler.cp437_out() << "</head><body><p>";
     // Weblegends Home
     handler.cp437_out() << "<a class=\"navItem\" href=\"\">Home</a>";
@@ -232,6 +240,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     // Status
     if (url == "")
     {
+        // Run log.cpp - AI::status()
         handler.cp437_out() << "<p>" << html_escape(dwarfAI->status()) << "</p></body></html>";
         return true;
     }

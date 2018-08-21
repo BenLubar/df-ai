@@ -68,6 +68,7 @@ std::string AI::describe_name(const df::language_name & name, bool in_english, b
 
 std::string AI::describe_unit(df::unit *u, bool html)
 {
+	// Unknown Unit
     if (!u)
     {
         if (html)
@@ -77,16 +78,21 @@ std::string AI::describe_unit(df::unit *u, bool html)
         return "(unknown unit)";
     }
 
+	// Name
     std::string s = describe_name(u->name);
     if (!s.empty())
     {
         s += ", ";
     }
+
+	// Curse Name
     if (!u->curse.name.empty())
     {
         s += u->curse.name;
         s += " ";
     }
+
+	// Profession Name
     s += Units::getProfessionName(u);
     if (html)
     {

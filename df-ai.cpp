@@ -236,6 +236,7 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
 
     if (args.empty())
     {
+        // Run log.cpp - AI::status()
         AI::write_df(out, dwarfAI->status(), "\n", "\n", [](const std::string & s) -> std::string { return DF2CONSOLE(s); });
         return CR_OK;
     }
