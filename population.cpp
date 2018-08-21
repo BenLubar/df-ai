@@ -271,7 +271,7 @@ std::string Population::status()
 
 void Population::report(std::ostream & out, bool html)
 {
-	// Single Unit lookup
+    // Single Unit lookup
     auto do_unit = [this, &out, html](int32_t id, bool skip_end = false)
     {
         auto u = df::unit::find(id);
@@ -284,8 +284,8 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "- ";
         }
-		
-		// Name & Profession
+
+        // Name & Profession
         out << "<b>" << AI::describe_unit(u, html) << "</b>";
 
         if (u == nullptr)
@@ -301,7 +301,7 @@ void Population::report(std::ostream & out, bool html)
             return;
         }
 
-		// Occupation
+        // Occupation
         if (resident.count(u->id))
         {
             for (auto occ : u->occupations)
@@ -336,7 +336,7 @@ void Population::report(std::ostream & out, bool html)
             }
         }
 
-		// Age
+        // Age
         int32_t age = days_since(u->birth_year, u->birth_time);
         out << " (age " << (age / 12 / 28) << "y" << ((age / 28) % 12) << "m" << (age % 28) << "d)";
 
@@ -353,7 +353,7 @@ void Population::report(std::ostream & out, bool html)
             out << AI::describe_room(r, html);
         }
 
-		// Current Job
+        // Current Job
         std::string job = AI::describe_job(u);
         if (!job.empty())
         {
@@ -381,25 +381,25 @@ void Population::report(std::ostream & out, bool html)
 
     if (html)
     {
-		out << "<p>";
-		auto doPageAnchorLink = [&](const std::string & name, const std::string & anchor)
-		{
-			out << "<a href=\"/df-ai/report/population#" << anchor << "\" class=\"navItem\">" << name << "</a>";
-		};
-		doPageAnchorLink("Citizens", "Population_Citizens");
-		doPageAnchorLink("Military", "Population_Military");
-		doPageAnchorLink("Pets", "Population_Pets");
-		doPageAnchorLink("Visitors", "Population_Visitors");
-		doPageAnchorLink("Residents", "Population_Residents");
-		doPageAnchorLink("Crimes", "Population_Crimes");
-		doPageAnchorLink("Health", "Population_Health");
-		doPageAnchorLink("Deaths", "Population_Deaths");
-		doPageAnchorLink("Active Jobs", "Population_Jobs_Active");
-		doPageAnchorLink("Waiting Jobs", "Population_Jobs_Waiting");
-		out << "</p>";
-	}
+        out << "<p>";
+        auto doPageAnchorLink = [&](const std::string & name, const std::string & anchor)
+        {
+            out << "<a href=\"/df-ai/report/population#" << anchor << "\" class=\"navItem\">" << name << "</a>";
+        };
+        doPageAnchorLink("Citizens", "Population_Citizens");
+        doPageAnchorLink("Military", "Population_Military");
+        doPageAnchorLink("Pets", "Population_Pets");
+        doPageAnchorLink("Visitors", "Population_Visitors");
+        doPageAnchorLink("Residents", "Population_Residents");
+        doPageAnchorLink("Crimes", "Population_Crimes");
+        doPageAnchorLink("Health", "Population_Health");
+        doPageAnchorLink("Deaths", "Population_Deaths");
+        doPageAnchorLink("Active Jobs", "Population_Jobs_Active");
+        doPageAnchorLink("Waiting Jobs", "Population_Jobs_Waiting");
+        out << "</p>";
+    }
 
-	// Citizens ==================
+    // Citizens ==================
     if (html)
     {
         out << "<h2 id=\"Population_Citizens\">Citizens</h2><ul>";
@@ -408,13 +408,13 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "## Citizens\n";
     }
-	// Output all citizens
+    // Output all citizens
     for (auto u : citizen)
     {
         do_unit(u);
     }
 
-	// Military ==================
+    // Military ==================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Military\">Military</h2>";
@@ -423,8 +423,8 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Military\n";
     }
-	
-	// Output all Miltary Squads, their Members, and their target 
+
+    // Output all Miltary Squads, their Members, and their target 
     for (auto sqid : ui->main.fortress_entity->squads)
     {
         df::squad *sq = df::squad::find(sqid);
@@ -438,7 +438,7 @@ void Population::report(std::ostream & out, bool html)
             out << "### " << AI::describe_name(sq->name, false) << ", " << AI::describe_name(sq->name, true) << "\n";
         }
 
-		// Members
+        // Members
         if (html)
         {
             out << "<h4>Members</h4><ul>";
@@ -467,7 +467,7 @@ void Population::report(std::ostream & out, bool html)
             }
         }
 
-		// Target
+        // Target
         if (html)
         {
             out << "</ul><h4>Targets</h4><ul>";
@@ -527,7 +527,7 @@ void Population::report(std::ostream & out, bool html)
         }
     }
 
-	// Pets ======================
+    // Pets ======================
     if (html)
     {
         out << "<h2 id=\"Population_Pets\">Pets</h2><ul>";
@@ -536,7 +536,7 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Pets\n";
     }
-	// Output all pets
+    // Output all pets
     for (auto it : pet)
     {
         do_unit(it.first, true);
@@ -603,7 +603,7 @@ void Population::report(std::ostream & out, bool html)
         }
     }
 
-	// Visitors ==================
+    // Visitors ==================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Visitors\">Visitors</h2><ul>";
@@ -617,7 +617,7 @@ void Population::report(std::ostream & out, bool html)
         do_unit(it);
     }
 
-	// Residents =================
+    // Residents =================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Residents\">Residents</h2><ul>";
@@ -631,7 +631,7 @@ void Population::report(std::ostream & out, bool html)
         do_unit(it);
     }
 
-	// Crimes ====================
+    // Crimes ====================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Crimes\">Crimes</h2><ul>";
@@ -640,7 +640,7 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Crimes\n";
     }
-	// Output all Crimes
+    // Output all Crimes
     for (auto crime : world->crimes.all)
     {
         if (crime->site != ui->site_id)
@@ -808,7 +808,7 @@ void Population::report(std::ostream & out, bool html)
         out << (html ? "</ul></li>" : "\n");
     }
 
-	// Health ====================
+    // Health ====================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Health\">Health</h2><ul>";
@@ -1468,7 +1468,7 @@ void Population::report(std::ostream & out, bool html)
         out << (html ? "</li>" : "\n");
     }
 
-	// Deaths ====================
+    // Deaths ====================
     if (html)
     {
         out << "</ul><h2 id=\"Population_Deaths\">Deaths</h2><ul>";
@@ -1730,7 +1730,7 @@ void Population::report(std::ostream & out, bool html)
         }
     };
 
-	// Jobs - Active =============
+    // Jobs - Active =============
     if (html)
     {
         out << "</ul><h2 id=\"Population_Jobs\">Jobs</h2><h3 id=\"Population_Jobs_Active\">Active</h3><ul>";
@@ -1748,7 +1748,7 @@ void Population::report(std::ostream & out, bool html)
         }
     }
 
-	// Jobs - Waiting ============
+    // Jobs - Waiting ============
     if (html)
     {
         out << "</ul><h3 id=\"Population_Jobs_Waiting\">Waiting</h3><ul>";
