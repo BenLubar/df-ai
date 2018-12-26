@@ -943,20 +943,18 @@ public:
 
             for (auto kill_orders_squad : kill_orders)
             {
-                static_assert(offsetof(df::ui::T_squads, list) == 0, "squad structures were corrected");
-                DFAI_ASSERT(ui->squads.unk_44_12i.size() == ui->squads.sel_squads.size(), "squad structures were corrected");
-                auto squad_pos = std::find_if(ui->squads.unk_44_12i.begin(), ui->squads.unk_44_12i.end(), [&](void *psquad) -> bool
+                auto squad_pos = std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [&](void *psquad) -> bool
                 {
                     auto squad = reinterpret_cast<df::squad *>(psquad);
                     return squad->id == kill_orders_squad.first;
-                }) - ui->squads.unk_44_12i.begin();
+                }) - ui->squads.list.begin();
                 auto first_squad = [&]() -> ptrdiff_t
                 {
-                    return ui->squads.unk_44_12i.size() > 9 ? std::find_if(ui->squads.unk_44_12i.begin(), ui->squads.unk_44_12i.end(), [](void *psquad)
+                    return ui->squads.list.size() > 9 ? std::find_if(ui->squads.list.begin(), ui->squads.list.end(), [](void *psquad)
                     {
                         auto squad = reinterpret_cast<df::squad *>(psquad);
-                        return squad->id == ui->squads.unk48;
-                    }) - ui->squads.unk_44_12i.begin() : 0;
+                        return squad->id == ui->squads.squad_list_first_id;
+                    }) - ui->squads.list.begin() : 0;
                 };
 
                 // Menu is guaranteed to be capped at 10 squads: a, b, c, d, e, f, g, h, i, j. k is reserved for kill orders.
@@ -997,7 +995,7 @@ public:
                     }
 
                     auto unit_pos = int32_t(unit_it - ui->squads.kill_targets.begin());
-                    volatile auto & first_unit = ui->squads.unk_f0;
+                    volatile auto & first_unit = ui->squads.kill_list_scroll;
 
                     while (first_unit > unit_pos)
                     {
