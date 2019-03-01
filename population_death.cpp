@@ -16,14 +16,14 @@ REQUIRE_GLOBAL(world);
 
 void Population::deathwatch(color_ostream & out)
 {
-    if (world->history.events2.size() == seen_death)
+    if (world->history.events_death.size() == seen_death)
     {
         return;
     }
 
-    auto it = world->history.events2.begin();
+    auto it = world->history.events_death.begin();
     std::advance(it, seen_death);
-    for (; it != world->history.events2.end(); it++)
+    for (; it != world->history.events_death.end(); it++)
     {
         auto d = virtual_cast<df::history_event_hist_figure_diedst>(*it);
 
@@ -35,7 +35,7 @@ void Population::deathwatch(color_ostream & out)
         ai.debug(out, "[RIP] " + AI::describe_event(d));
     }
 
-    seen_death = world->history.events2.size();
+    seen_death = world->history.events_death.size();
 }
 
 void Population::update_deads(color_ostream & out)

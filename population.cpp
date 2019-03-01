@@ -1477,7 +1477,7 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Deaths\n";
     }
-    for (auto e : world->history.events2)
+    for (auto e : world->history.events_death)
     {
         auto d = virtual_cast<df::history_event_hist_figure_diedst>(e);
 
