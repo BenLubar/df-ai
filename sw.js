@@ -31,7 +31,7 @@ workbox.precaching.precacheAndRoute([
   },
   {
     "url": "index.html",
-    "revision": "ad5c1c34b03850c052cc698935826637"
+    "revision": "ad1d22f80760399c9eae52f35db56aad"
   },
   {
     "url": "manifest.json",
@@ -55,7 +55,7 @@ workbox.precaching.precacheAndRoute([
   },
   {
     "url": "fort-editor/index.html",
-    "revision": "dcaaa269455e141b67b7c26bae642a11"
+    "revision": "34d0f4fe88fa7f8b70f4630466895aaf"
   },
   {
     "url": "fort-editor/style.css",
@@ -79,7 +79,7 @@ workbox.precaching.precacheAndRoute([
   },
   {
     "url": "plan-editor/index.html",
-    "revision": "4b19f56a6cceeb30093b9a6f68785016"
+    "revision": "c6f30e1b932f066d2748d8950df66ed1"
   },
   {
     "url": "plan-editor/plan-editor.js",
