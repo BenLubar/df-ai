@@ -4,12 +4,14 @@ function set_test_stage(stage)
     f:close()
 end
 
-print('running tests')
+print('Running tests')
 
-local output, status = dfhack.run_command_silent('ai', 'validate')
-if status ~= CR_OK then
-    print('ai validate failed!')
-    print(output)
+print('Running file: main')
+local status = dfhack.run_command('ai', 'validate')
+if status == CR_OK then
+    print('test passed: ai validate')
+else
+    dfhack.printerr('test errored: ai validate: status=' .. tostring(status))
     set_test_stage('fail')
     dfhack.run_command('die')
 end
