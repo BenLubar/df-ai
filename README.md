@@ -4,7 +4,7 @@ Plugin for DFHack.
 
 **[Download a pre-built version from the releases page.](https://github.com/BenLubar/df-ai/releases)**
 
-*Want the latest (probably broken) changes? Download the latest version of df-ai compiled for the current DFHack version from [BuildMaster](https://buildmaster.local.lubar.me/applications/2/).*
+*Want the latest (probably broken) changes? Download the latest version of df-ai compiled for the current DFHack version from [BuildMaster](https://buildmaster.lubar.me/applications/2/overview).*
 
 Run `enable df-ai` in the dfhack console to start. Run `help ai` for a list of [console commands](https://github.com/BenLubar/df-ai/wiki/Console-Commands).
 
