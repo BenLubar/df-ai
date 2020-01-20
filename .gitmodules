@@ -1,6 +1,3 @@
-[submodule "thirdparty/exportmaps"]
-	path = thirdparty/exportmaps
-	url = ../../ragundo/exportmaps.git
 [submodule "thirdparty/weblegends"]
 	path = thirdparty/weblegends
 	url = ../../BenLubar/weblegends.git

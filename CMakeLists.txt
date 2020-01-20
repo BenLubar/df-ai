@@ -97,9 +97,6 @@ SET(PROJECT_HDRS
     variable_string.h
 )
 
-ADD_LIBRARY(df-ai-biome STATIC thirdparty/exportmaps/cpp/df_utils/biome_type.cpp thirdparty/exportmaps/cpp/util/ofsub.cpp)
-TARGET_LINK_LIBRARIES(df-ai-biome dfhack)
-
 IF("${DFHACK_BUILD_ARCH}" STREQUAL "32")
     set(CMAKE_CXX_COMPILER_ARCHITECTURE_ID X86)
     set(CMAKE_SIZEOF_VOID_P 4)
@@ -124,7 +121,7 @@ set(Boost_NO_BOOST_CMAKE ON)
 find_package(Boost 1.67.0 REQUIRED COMPONENTS context)
 include_directories(${Boost_INCLUDE_DIRS})
 
-LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} df-ai-biome ${Boost_LIBRARIES})
+LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} ${Boost_LIBRARIES})
 
 IF(UNIX)
     IF(APPLE)

@@ -698,8 +698,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI & ai, const room_bluep
             if (r->single_biome)
             {
                 df::coord2d base_region(Maps::getTileBiomeRgn(min));
-                extern int get_biome_type(int world_coord_x, int world_coord_y);
-                df::biome_type base_biome = static_cast<df::biome_type>(get_biome_type(base_region.x, base_region.y));
+                df::biome_type base_biome = Maps::GetBiomeType(base_region.x, base_region.y);
 
                 for (df::coord t = min; t.x <= max.x; t.x++)
                 {
@@ -708,7 +707,7 @@ bool blueprint_plan::can_add_room(color_ostream & out, AI & ai, const room_bluep
                         for (t.z = min.z; t.z <= max.z; t.z++)
                         {
                             df::coord2d region(Maps::getTileBiomeRgn(t));
-                            df::biome_type biome = region == base_region ? base_biome : static_cast<df::biome_type>(get_biome_type(region.x, region.y));
+                            df::biome_type biome = region == base_region ? base_biome : Maps::GetBiomeType(region.x, region.y);
                             if (biome != base_biome)
                             {
                                 if (config.plan_verbosity >= 3)
