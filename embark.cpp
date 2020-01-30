@@ -397,6 +397,12 @@ void EmbarkExclusive::ViewNewRegion(color_ostream & out)
 
     config.set(out, config.random_embark_world, std::string());
 
+    while (view->load_world_params)
+    {
+        // wait for screen to initialize
+        Delay();
+    }
+
     if (!view->welcome_msg.empty())
     {
         ai.debug(out, "leaving world gen disclaimer");
