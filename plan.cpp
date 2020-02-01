@@ -5306,7 +5306,6 @@ std::string AI::describe_room(room *r, bool html)
     {
         return "(unknown room)";
     }
-    std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & str) -> std::string { return str; };
 
     std::ostringstream s;
     s << r->type;
@@ -5324,7 +5323,7 @@ std::string AI::describe_room(room *r, bool html)
     case room_type::furnace:
         if (r->furnace_type == furnace_type::Custom)
         {
-            s << " (\"" << escape(r->raw_type) << "\")";
+            s << " (\"" << maybe_escape(r->raw_type, html) << "\")";
         }
         else
         {
@@ -5346,7 +5345,7 @@ std::string AI::describe_room(room *r, bool html)
                         {
                             s << "<a href=\"site-" << civzone->site_id << "/bld-" << loc->id << "\">";
                         }
-                        s << escape(AI::describe_name(*name, false)) << " \"" << escape(AI::describe_name(*name, true)) << "\"";
+                        s << maybe_escape(AI::describe_name(*name, false), html) << " \"" << maybe_escape(AI::describe_name(*name, true), html) << "\"";
                         if (html)
                         {
                             s << "</a>";
@@ -5369,7 +5368,7 @@ std::string AI::describe_room(room *r, bool html)
     case room_type::workshop:
         if (r->workshop_type == workshop_type::Custom)
         {
-            s << " (\"" << escape(r->raw_type) << "\")";
+            s << " (\"" << maybe_escape(r->raw_type, html) << "\")";
         }
         else
         {
@@ -5382,7 +5381,7 @@ std::string AI::describe_room(room *r, bool html)
 
     if (!r->comment.empty())
     {
-        s << " (" << escape(r->comment) << ")";
+        s << " (" << maybe_escape(r->comment, html) << ")";
     }
 
     if (df::unit *u = df::unit::find(r->owner))
@@ -5397,7 +5396,7 @@ std::string AI::describe_room(room *r, bool html)
 
     if (df::squad *squad = df::squad::find(r->squad_id))
     {
-        s << " (used by " << escape(AI::describe_name(squad->name, true)) << ")";
+        s << " (used by " << maybe_escape(AI::describe_name(squad->name, true), html) << ")";
     }
 
     if (r->level != -1)

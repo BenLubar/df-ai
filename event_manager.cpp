@@ -232,6 +232,138 @@ void EventManager::queue_exclusive(std::unique_ptr<ExclusiveCallback> && cb)
     TICK_DEBUG("queue_exclusive: " << cb->description);
     exclusive_queue.push_back(std::move(cb));
 }
+std::string EventManager::status()
+{
+    std::ostringstream str;
+
+    if (exclusive)
+    {
+        str << "exclusive: " << exclusive->description;
+    }
+    else
+    {
+        str << "(no exclusive)";
+    }
+
+    return str.str();
+}
+void EventManager::report(std::ostream & out, bool html)
+{
+    if (html)
+    {
+        if (onupdate_list.empty() && onstatechange_list.empty())
+        {
+            out << "<p><i>(no listeners)</i></p>";
+        }
+        else
+        {
+            out << "<ul>";
+            for (auto & u : onupdate_list)
+            {
+                if (u->hasTickLimit)
+                {
+                    continue;
+                }
+                out << "<li><b>Every Tick:</b> " << html_escape(u->description) << "</li>";
+            }
+            for (auto & u : onupdate_list)
+            {
+                if (!u->hasTickLimit)
+                {
+                    continue;
+                }
+                out << "<li><b>Once Per " << u->ticklimit << " ticks";
+                // TODO: int32_t minyear;
+                // TODO: int32_t minyeartick;
+                out << ":</b> " << html_escape(u->description) << "</li>";
+            }
+            for (auto & c : onstatechange_list)
+            {
+                out << "<li><b>State Change:</b> " << html_escape(c->description) << "</li>";
+            }
+            out << "</ul>";
+        }
+    }
+    else
+    {
+        if (onupdate_list.empty() && onstatechange_list.empty())
+        {
+            out << "(no listeners)\n\n";
+        }
+        else
+        {
+            for (auto & u : onupdate_list)
+            {
+                out << "- ";
+                int32_t ticklimit;
+                int32_t minyear;
+                int32_t minyeartick;
+                std::string description;
+                bool hasTickLimit;
+            }
+        }
+        out << "\n## State Change Listeners\n\n";
+        if (onstatechange_list.empty())
+        {
+            out << "(none)\n";
+        }
+        else
+        {
+            for (auto & c : onstatechange_list)
+            {
+                out << "- " << c->description << "\n";
+            }
+        }
+    }
+    if (html)
+    {
+        out << "<h2 id=\"Events_Exclusive\">Exclusive</h2><p>";
+    }
+    else
+    {
+        out << "## Exclusive\n\n";
+    }
+    if (exclusive)
+    {
+        out << maybe_escape(exclusive->description, html);
+    }
+    else
+    {
+        out << (html ? "<i>(none)</i>" : "(none)");
+    }
+    if (html)
+    {
+        out << "</p><h3 id=\"Events_Exclusive_Queue\">Queue</h3>";
+        if (exclusive_queue.empty())
+        {
+            out << "<p><i>(empty)</i></p>";
+        }
+        else
+        {
+            out << "<ul>";
+            for (auto & e : exclusive_queue)
+            {
+                out << "<li>" << html_escape(e->description) << "</li>";
+            }
+            out << "</ul>";
+        }
+    }
+    else
+    {
+        out << "\n\n### Queue\n\n";
+        if (exclusive_queue.empty())
+        {
+            out << "(empty)\n";
+        }
+        else
+        {
+            for (auto & e : exclusive_queue)
+            {
+                out << "- " << e->description << "\n";
+            }
+        }
+    }
+}
 
 void EventManager::onupdate(color_ostream & out)
 {

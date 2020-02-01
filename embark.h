@@ -27,6 +27,7 @@ private:
     void ViewNewRegion(color_ostream & out);
     void ViewUpdateRegion(color_ostream & out);
     void ViewChooseStartSite(color_ostream & out);
+    void DisplayEmbarkSite(color_ostream & out);
     void ViewSetupDwarfGame(color_ostream & out);
     void ViewTextViewer(color_ostream & out);
 };

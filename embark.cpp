@@ -470,6 +470,31 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 {
     ExpectedScreen<df::viewscreen_choose_start_sitest> view(this);
 
+    bool no_preference = true;
+
+    FOR_ENUM_ITEMS(embark_finder_option, o)
+    {
+        if (o == embark_finder_option::DimensionX || o == embark_finder_option::DimensionY)
+        {
+            continue;
+        }
+
+        if (config.embark_options[o] != -1)
+        {
+            no_preference = false;
+            break;
+        }
+    }
+
+    if (no_preference)
+    {
+        ai.debug(out, "no embark preferences; skipping site finder");
+
+        DisplayEmbarkSite(out);
+
+        return;
+    }
+
     if (view->finder.finder_state == -1)
     {
         ai.debug(out, "choosing \"Site Finder\"");
@@ -608,6 +633,13 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
 
         Key(interface_key::CURSOR_UP);
     }
+
+    DisplayEmbarkSite(out);
+}
+
+void EmbarkExclusive::DisplayEmbarkSite(color_ostream & out)
+{
+    ExpectedScreen<df::viewscreen_choose_start_sitest> view(this);
 
     Delay(5 * 100);
 

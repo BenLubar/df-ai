@@ -45,6 +45,10 @@ namespace DFHack
 #include "trade.h"
 
 std::string html_escape(const std::string & str);
+inline std::string maybe_escape(const std::string & str, bool html)
+{
+    return html ? html_escape(str) : str;
+}
 void ai_version(std::ostream & out, bool html = false);
 class weblegends_handler_v1;
 bool ai_weblegends_handler(weblegends_handler_v1 & out, const std::string & url);

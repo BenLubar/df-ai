@@ -560,14 +560,7 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << ", ";
             }
-            if (html)
-            {
-                out << html_escape(name);
-            }
-            else
-            {
-                out << name;
-            }
+            out << maybe_escape(name, html);
         };
 
         if (it.second.bits.milkable)
@@ -1311,7 +1304,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.bandage.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << (html ? html_escape(desc) : desc);
+                        out << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1327,7 +1320,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.bandage.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << (html ? html_escape(desc) : desc);
+                        out << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1347,7 +1340,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.bandage.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << " with " << (html ? html_escape(desc) : desc);
+                        out << " with " << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1378,7 +1371,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.bandage.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << (html ? html_escape(desc) : desc);
+                        out << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1423,7 +1416,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.crutch.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << (html ? html_escape(desc) : desc);
+                        out << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1439,7 +1432,7 @@ void Population::report(std::ostream & out, bool html)
                     if (auto item = df::item::find(op->info.bandage.item_id))
                     {
                         auto desc = AI::describe_item(item);
-                        out << (html ? html_escape(desc) : desc);
+                        out << maybe_escape(desc, html);
                     }
                     else
                     {
@@ -1498,8 +1491,6 @@ void Population::report(std::ostream & out, bool html)
         }
     }
 
-    std::function<std::string(const std::string &)> escape = html ? html_escape : [](const std::string & s) -> std::string { return s; };
-
     auto write_job = [&](df::job_list_link *j)
     {
         if (html)
@@ -1523,7 +1514,7 @@ void Population::report(std::ostream & out, bool html)
                 out << "  ";
             }
             out << "item (" << enum_item_key(item->role) << "): ";
-            out << escape(AI::describe_item(item->item));
+            out << maybe_escape(AI::describe_item(item->item), html);
             if (item->is_fetching)
             {
                 out << " (fetching)";
@@ -1553,15 +1544,15 @@ void Population::report(std::ostream & out, bool html)
             ItemTypeInfo typ(item);
             if (mat.isValid())
             {
-                out << escape(mat.toString()) << " ";
+                out << maybe_escape(mat.toString(), html) << " ";
             }
             if (typ.isValid())
             {
-                out << escape(typ.toString()) << " ";
+                out << maybe_escape(typ.toString(), html) << " ";
             }
             if (!item->has_material_reaction_product.empty())
             {
-                out << "(has product: " << escape(item->has_material_reaction_product) << ") ";
+                out << "(has product: " << maybe_escape(item->has_material_reaction_product, html) << ") ";
             }
             if (item->has_tool_use != tool_uses::NONE)
             {
@@ -1569,7 +1560,7 @@ void Population::report(std::ostream & out, bool html)
             }
             if (auto ore = df::inorganic_raw::find(item->metal_ore))
             {
-                out << "(ore of " << escape(ore->material.state_name[matter_state::Solid]) << ") ";
+                out << "(ore of " << maybe_escape(ore->material.state_name[matter_state::Solid], html) << ") ";
             }
             std::vector<std::string> flags;
             bitfield_to_string(&flags, item->flags1);
@@ -1670,7 +1661,7 @@ void Population::report(std::ostream & out, bool html)
             }
             if (auto item = ref->getItem())
             {
-                out << escape(AI::describe_item(item));
+                out << maybe_escape(AI::describe_item(item), html);
             }
             if (auto unit = ref->getUnit())
             {

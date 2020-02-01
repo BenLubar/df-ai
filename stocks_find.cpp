@@ -194,8 +194,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::BOX, [](df::item *i) -> bool
         {
-            MaterialInfo mat(i);
-            return mat.isAnyCloth() || mat.material->flags.is_set(material_flags::LEATHER);
+            return i->isBag();
         });
     }
     case stock_item::bag_plant:
@@ -275,7 +274,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::BOX, [](df::item *i) -> bool
         {
-            return i->getMaterial() == 0;
+            return !i->isBag();
         });
     }
     case stock_item::clay:

@@ -325,7 +325,8 @@ std::string AI::status()
     str << "Plan: " << plan.status() << "\n";
     str << "Pop: " << pop.status() << "\n";
     str << "Stocks: " << stocks.status() << "\n";
-    str << "Camera: " << camera.status();
+    str << "Camera: " << camera.status() << "\n";
+    str << "Event: " << events.status();
     return str.str();
 }
 
@@ -362,5 +363,6 @@ std::string AI::report(bool html)
     report_section(str, "Plan", plan, html);
     report_section(str, "Population", pop, html);
     report_section(str, "Stocks", stocks, html);
+    report_section(str, "Events", events, html);
     return str.str();
 }

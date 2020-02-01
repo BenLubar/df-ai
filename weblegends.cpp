@@ -20,6 +20,7 @@ enum class AIPages
     Report_Plan,        // Tasks
     Report_Population,  // Population
     Report_Stocks,      // Stocks
+    Report_Events,      // Events
     Plan,               // Blueprints
     Version,            // Version
     NotActive,          // DF-AI not active or enabled
@@ -56,6 +57,8 @@ std::string getAIPageURL(const AIPages currentPage)
             return "df-ai/report/population";
         case AIPages::Report_Stocks:
             return "df-ai/report/stocks";
+        case AIPages::Report_Events:
+            return "df-ai/report/events";
         case AIPages::Plan: // Blueprints
             return "df-ai/plan";
         case AIPages::Version:
@@ -73,6 +76,8 @@ AIPages getAIPage(const std::string & url)
         return AIPages::Report_Population;
     if (url == "/report/stocks")
         return AIPages::Report_Stocks;
+    if (url == "/report/events")
+        return AIPages::Report_Events;
     if (url == "/plan")
         return AIPages::Plan; // Blueprints
     if (url == "/version")
@@ -109,6 +114,10 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
             break;
         case AIPages::Report_Stocks:
             title = "DF-AI - Stocks";
+            baseURL = "../../";
+            break;
+        case AIPages::Report_Events:
+            title = "DF-AI - Events";
             baseURL = "../../";
             break;
         case AIPages::Plan:
@@ -158,6 +167,8 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
     doPageLink(AIPages::Report_Population, "Population");
     // Stocks
     doPageLink(AIPages::Report_Stocks, "Stocks");
+    // Events
+    doPageLink(AIPages::Report_Events, "Events");
     // Blueprint
     doPageLink(AIPages::Plan, "Blueprints");
     // Version
@@ -244,7 +255,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.cp437_out() << "<p>" << html_escape(dwarfAI->status()) << "</p></body></html>";
         return true;
     }
-#define REPORT(module) \
+#define REPORT_GLOBAL(module) \
     if (events.has_exclusive<EmbarkExclusive>()) \
     { \
         handler.status_code() = 503; \
@@ -254,8 +265,9 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     } \
     else \
     { \
-        dwarfAI->module.report(handler.cp437_out(), true); \
+        module.report(handler.cp437_out(), true); \
     }
+#define REPORT(module) REPORT_GLOBAL(dwarfAI->module)
 
     // Tasks Report
     if (url == "/report/plan")
@@ -281,7 +293,16 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.cp437_out() << "</body></html>";
         return true;
     }
+    // Events Report
+    if (url == "/report/events")
+    {
+        handler.cp437_out() << "<h1 id=\"Events\">Events</h1>";
+        REPORT_GLOBAL(events);
+        handler.cp437_out() << "</body></html>";
+        return true;
+    }
 #undef REPORT
+#undef REPORT_GLOBAL
     // Blueprints
     if (url == "/plan")
     {

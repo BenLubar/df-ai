@@ -82,6 +82,8 @@ public:
 
         return each_exclusive<E>([](const E *) -> bool { return true; });
     }
+    std::string status();
+    void report(std::ostream & out, bool html);
 
     void onstatechange(color_ostream & out, state_change_event event);
     void onupdate(color_ostream & out);
