@@ -26,12 +26,6 @@
 #include <sys/time.h>
 #endif
 
-#ifdef DFAI_RELEASE
-#define LOCKSTEP_DEBUG(msg)
-#else
-#define LOCKSTEP_DEBUG(msg) do { if (BOOST_UNLIKELY(config.lockstep_debug)) { Core::getInstance().getConsole() << "[df-ai] LOCKSTEP DEBUG: " << msg << std::endl; } } while (0)
-#endif
-
 REQUIRE_GLOBAL(enabler);
 REQUIRE_GLOBAL(gps);
 REQUIRE_GLOBAL(gview);
@@ -489,7 +483,7 @@ static bool lockstep_drain_sdl()
 
     while (SDL_PollEvent(&event))
     {
-        LOCKSTEP_DEBUG("event: " << event.type);
+        DFAI_DEBUG(lockstep, 1, "event: " << event.type);
         // Handle SDL events
         switch ((SDL::EventType)event.type) {
         case SDL::ET_KEYDOWN:
@@ -529,65 +523,65 @@ static void lockstep_loop()
     CoreSuspendClaimMain claimMain;
     while (BOOST_LIKELY(!Hook_Want_Disable()))
     {
-        LOCKSTEP_DEBUG("calling mainloop (A)");
+        DFAI_DEBUG(lockstep, 1, "calling mainloop (A)");
         if (BOOST_UNLIKELY(lockstep_mainloop()))
         {
-            LOCKSTEP_DEBUG("want shutdown (A)");
+            DFAI_DEBUG(lockstep, 1, "want shutdown (A)");
             Hook_Shutdown_Now();
             break;
         }
-        LOCKSTEP_DEBUG("calling DFHack (A)");
+        DFAI_DEBUG(lockstep, 1, "calling DFHack (A)");
         SDL_NumJoysticks();
         if (BOOST_UNLIKELY(Hook_Want_Disable()))
         {
-            LOCKSTEP_DEBUG("want disable (A)");
+            DFAI_DEBUG(lockstep, 1, "want disable (A)");
             break;
         }
         lockstep_tick_count += 10;
         if (BOOST_LIKELY(!enabler->flag.bits.maxfps && !ui->main.autosave_request))
         {
-            LOCKSTEP_DEBUG("calling mainloop (B)");
+            DFAI_DEBUG(lockstep, 1, "calling mainloop (B)");
             if (BOOST_UNLIKELY(lockstep_mainloop()))
             {
-                LOCKSTEP_DEBUG("want shutdown (B)");
+                DFAI_DEBUG(lockstep, 1, "want shutdown (B)");
                 Hook_Shutdown_Now();
                 break;
             }
-            LOCKSTEP_DEBUG("calling DFHack (B)");
+            DFAI_DEBUG(lockstep, 1, "calling DFHack (B)");
             SDL_NumJoysticks();
             if (BOOST_UNLIKELY(Hook_Want_Disable()))
             {
-                LOCKSTEP_DEBUG("want disable (B)");
+                DFAI_DEBUG(lockstep, 1, "want disable (B)");
                 break;
             }
         }
         else
         {
-            LOCKSTEP_DEBUG((enabler->flag.bits.maxfps ? "maxfps" : "autosave_request"));
+            DFAI_DEBUG(lockstep, 1, (enabler->flag.bits.maxfps ? "maxfps" : "autosave_request"));
         }
         lockstep_tick_count += 10;
         enabler->last_tick = lockstep_tick_count;
         enabler->clock = lockstep_tick_count;
-        LOCKSTEP_DEBUG("draining events");
+        DFAI_DEBUG(lockstep, 1, "draining events");
         if (BOOST_UNLIKELY(lockstep_drain_sdl()))
         {
-            LOCKSTEP_DEBUG("user requested quit");
+            DFAI_DEBUG(lockstep, 1, "user requested quit");
             break;
         }
-        LOCKSTEP_DEBUG("swap_arrays");
+        DFAI_DEBUG(lockstep, 1, "swap_arrays");
         lockstep_swap_arrays();
-        LOCKSTEP_DEBUG("render_things");
+        DFAI_DEBUG(lockstep, 1, "render_things");
         lockstep_render_things();
-        LOCKSTEP_DEBUG("update_all");
+        DFAI_DEBUG(lockstep, 1, "update_all");
         enabler->renderer->update_all();
-        LOCKSTEP_DEBUG("render");
+        DFAI_DEBUG(lockstep, 1, "render");
         enabler->renderer->render();
     }
 
     extern std::unique_ptr<AI> dwarfAI;
     if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
     {
-        LOCKSTEP_DEBUG("stopping movie started in lockstep to avoid corruption");
+        DFAI_DEBUG(lockstep, 1, "stopping movie started in lockstep to avoid corruption");
         // Stop the current CMV so it doesn't get corrupted on the next frame.
         lockstep_handlemovie(true);
     }
@@ -648,9 +642,9 @@ static struct df_ai_renderer : public df::renderer
 
         enabler->renderer = real_renderer;
 
-        LOCKSTEP_DEBUG("lockstep_loop started");
+        DFAI_DEBUG(lockstep, 1, "lockstep_loop started");
         lockstep_loop();
-        LOCKSTEP_DEBUG("lockstep_loop ended");
+        DFAI_DEBUG(lockstep, 1, "lockstep_loop ended");
 
         lockstep_ready_for_shutdown = true;
     }
@@ -696,14 +690,14 @@ void Hook_Update()
         {
             tthread::this_thread::yield();
         }
-        LOCKSTEP_DEBUG("trying to unhook");
+        DFAI_DEBUG(lockstep, 1, "trying to unhook");
         lockstep_want_shutdown = false;
         lockstep_ready_for_shutdown = false;
         Hook_Shutdown();
     }
     else if (!lockstep_hooked && config.lockstep && !Hook_Want_Disable() && !lockstep_want_shutdown_now)
     {
-        LOCKSTEP_DEBUG("trying to hook");
+        DFAI_DEBUG(lockstep, 1, "trying to hook");
         if (init->display.flag.is_set(init_display_flags::TEXT))
         {
             auto & out = Core::getInstance().getConsole();
@@ -715,7 +709,7 @@ void Hook_Update()
 
         if (strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(false)))
         {
-            LOCKSTEP_DEBUG("not hooking while movie player is present");
+            DFAI_DEBUG(lockstep, 1, "not hooking while movie player is present");
             return;
         }
 
@@ -723,18 +717,18 @@ void Hook_Update()
 
 #ifdef _WIN32
         lockstep_tick_count = GetTickCount();
-        LOCKSTEP_DEBUG("initial lockstep_tick_count is " << lockstep_tick_count);
+        DFAI_DEBUG(lockstep, 1, "initial lockstep_tick_count is " << lockstep_tick_count);
         Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
         struct timeval tv;
         gettimeofday(&tv, nullptr);
         lockstep_tick_count = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-        LOCKSTEP_DEBUG("initial lockstep_tick_count is " << lockstep_tick_count);
+        DFAI_DEBUG(lockstep, 1, "initial lockstep_tick_count is " << lockstep_tick_count);
         Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
-        LOCKSTEP_DEBUG("hooked time");
+        DFAI_DEBUG(lockstep, 1, "hooked time");
         Add_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
-        LOCKSTEP_DEBUG("hooked ticks");
+        DFAI_DEBUG(lockstep, 1, "hooked ticks");
         enabler->outstanding_gframes = 0;
         enabler->outstanding_frames = 0;
 
@@ -796,13 +790,13 @@ void Hook_Shutdown()
     Remove_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
     Remove_Hook((void *)SDL_GetTicks, Real_SDL_GetTicks, (void *)Fake_SDL_GetTicks);
-    LOCKSTEP_DEBUG("unhooked ticks");
+    DFAI_DEBUG(lockstep, 1, "unhooked ticks");
 
     if (BOOST_LIKELY(lockstep_renderer == enabler->renderer))
     {
         enabler->renderer = lockstep_renderer->real_renderer;
     }
-    LOCKSTEP_DEBUG("deleting df_ai_renderer");
+    DFAI_DEBUG(lockstep, 1, "deleting df_ai_renderer");
     delete lockstep_renderer;
     lockstep_renderer = nullptr;
 

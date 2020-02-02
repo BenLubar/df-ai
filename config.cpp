@@ -1,4 +1,5 @@
 #include "config.h"
+#include "debug.h"
 
 #include <algorithm>
 #include <fstream>
@@ -6,6 +7,7 @@
 #include "json/json.h"
 
 Config config;
+DebugCategoryConfig debug_category_config;
 
 const static std::string config_name("dfhack-config/df-ai.json");
 
@@ -24,9 +26,7 @@ Config::Config() :
     manage_nobles(true),
     cancel_announce(0),
     lockstep(false),
-    lockstep_debug(false),
     plan_verbosity(2),
-    tick_debug(false),
     plan_allow_legacy(true)
 {
     for (int32_t & opt : embark_options)
@@ -131,22 +131,36 @@ void Config::load(color_ostream & out)
             {
                 lockstep = v["lockstep"].asBool();
             }
-            if (v.isMember("lockstep_debug"))
-            {
-                lockstep_debug = v["lockstep_debug"].asBool();
-            }
             if (v.isMember("plan_verbosity"))
             {
                 plan_verbosity = v["plan_verbosity"].asInt();
-            }
-            if (v.isMember("tick_debug"))
-            {
-                tick_debug = v["tick_debug"].asBool();
             }
             if (v.isMember("plan_allow_legacy"))
             {
                 plan_allow_legacy = v["plan_allow_legacy"].asBool();
             }
+#define DFAI_DEBUG_CATEGORY(x) \
+            if (v.isMember(#x "_debug")) \
+            { \
+                debug_category_config.x = v[#x "_debug"].isBool() ? \
+                    (v[#x "_debug"].asBool() ? 1 : 0) : \
+                    v[#x "_debug"].asInt(); \
+                if (debug_category_config.x < 0) \
+                { \
+                    out << "AI warning: debug levels cannot be negative (" #x << " level was set to " << debug_category_config.x << ")" << std::endl; \
+                    debug_category_config.x = 0; \
+                } \
+                if (DFAI_IS_RELEASE && debug_category_config.x > 3) \
+                { \
+                    out << "AI warning: debug levels higher than 3 are not supported in release builds (" #x << " level is set to " << debug_category_config.x << ")" << std::endl; \
+                } \
+            } \
+            else \
+            { \
+                debug_category_config.x = 0; \
+            }
+DFAI_DEBUG_CATEGORIES
+#undef DFAI_DEBUG_CATEGORY
         }
         catch (Json::Exception & ex)
         {
@@ -186,12 +200,14 @@ void Config::save(color_ostream & out)
     setComment(v["manage_nobles"], manage_nobles, "// true or false: should the AI assign administrators in the fortress?");
     setComment(v["cancel_announce"], Json::Int(cancel_announce), "// how many job cancellation notices to show. 0: none, 1: some, 2: most, 3: all");
     setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
-    if (lockstep_debug) // hide from config if not set
-        setComment(v["lockstep_debug"], true, "// hidden option: write a LOT of information about lockstep mode to the DFHack console.");
     setComment(v["plan_verbosity"], Json::Int(plan_verbosity), "// number from -1 to 4: how much information about the blueprint should the AI write to the log? -1: none, 0: summary, 1: room placement summary, 2: placements that succeeded, 3: placements that failed, 4: exits being discarded");
-    if (tick_debug) // hide from config if not set
-        setComment(v["tick_debug"], tick_debug, "// hidden option: write a LOT of information about exclusive mode to the DFHack console.");
     setComment(v["plan_allow_legacy"], plan_allow_legacy, "// true or false: should the AI use the legacy floor plan generator if it fails to generate a floor plan using blueprints?");
+
+#define DFAI_DEBUG_CATEGORY(x) \
+    if (!DFAI_IS_RELEASE || debug_category_config.x) \
+        setComment(v[#x "_debug"], debug_category_config.x, "// hidden option: write a LOT of information to the DFHack console.");
+DFAI_DEBUG_CATEGORIES
+#undef DFAI_DEBUG_CATEGORY
 
     std::ofstream f(config_name, std::ofstream::trunc);
     f << v;
