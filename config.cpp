@@ -205,7 +205,7 @@ void Config::save(color_ostream & out)
 
 #define DFAI_DEBUG_CATEGORY(x) \
     if (!DFAI_IS_RELEASE || debug_category_config.x) \
-        setComment(v[#x "_debug"], debug_category_config.x, "// hidden option: write a LOT of information to the DFHack console.");
+        setComment(v[#x "_debug"], debug_category_config.x, "// hidden option; writes a LOT of information to df-ai-debug.log");
 DFAI_DEBUG_CATEGORIES
 #undef DFAI_DEBUG_CATEGORY
 
