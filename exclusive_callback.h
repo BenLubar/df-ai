@@ -11,43 +11,6 @@
 #include "df/interface_key.h"
 #include "df/viewscreen.h"
 
-#define DFHACK_44_12_TEMP
-
-#ifdef DFHACK_44_12_TEMP
-
-#include "modules/Screen.h"
-
-template<typename T>
-struct dfhack_44_12_viewscreen_wrapper
-{
-    static inline virtual_identity & get_identity()
-    {
-        return T::_identity;
-    }
-};
-
-template<>
-struct dfhack_44_12_viewscreen_wrapper<dfhack_viewscreen>
-{
-    static virtual_identity _identity;
-    static inline virtual_identity & get_identity()
-    {
-        return _identity;
-    }
-};
-
-template<>
-struct dfhack_44_12_viewscreen_wrapper<dfhack_lua_viewscreen>
-{
-    static virtual_identity _identity;
-    static inline virtual_identity & get_identity()
-    {
-        return _identity;
-    }
-};
-
-#endif
-
 class ExclusiveCallback
 {
 public:
@@ -76,7 +39,7 @@ protected:
     template<typename T>
     typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
-        expectedScreen = &dfhack_44_12_viewscreen_wrapper<T>::get_identity();
+        expectedScreen = &T::_identity;
         expectedFocus = focus;
         expectedParentFocus = parentFocus;
 
@@ -85,12 +48,7 @@ protected:
     template<typename T>
     typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
     {
-#ifdef DFHACK_44_12_TEMP
-        auto curview = Gui::getCurViewscreen(true);
-        T *screen = dfhack_44_12_viewscreen_wrapper<T>::get_identity().is_direct_instance(curview) ? static_cast<T *>(curview) : nullptr;
-#else
         T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
-#endif
         if (!screen)
         {
             return false;
@@ -174,7 +132,7 @@ private:
     template<typename T>
     T *getScreen()
     {
-        CHECK_INVALID_ARGUMENT(&dfhack_44_12_viewscreen_wrapper<T>::get_identity() == expectedScreen);
+        CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
 
         checkScreen();
 
