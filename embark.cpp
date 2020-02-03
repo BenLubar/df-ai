@@ -637,7 +637,7 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
     DisplayEmbarkSite(out);
 }
 
-void EmbarkExclusive::DisplayEmbarkSite(color_ostream & out)
+void EmbarkExclusive::DisplayEmbarkSite(color_ostream &)
 {
     ExpectedScreen<df::viewscreen_choose_start_sitest> view(this);
 

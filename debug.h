@@ -11,6 +11,7 @@
 #endif
 
 #define DFAI_DEBUG_CATEGORIES \
+    DFAI_DEBUG_CATEGORY(camera) \
     DFAI_DEBUG_CATEGORY(lockstep) \
     DFAI_DEBUG_CATEGORY(tick) \
     /* end of list (so last line can have a backslash) */
@@ -67,6 +68,7 @@ static inline constexpr const char *dfai_debug_basename(const char *lastSlash, c
         static_assert(level < 666, "debug log level too high"); \
         if (BOOST_UNLIKELY(level < 4 && debug_category_config.category >= level)) \
         { \
+            /* in release builds, write to debug file */ \
             dfai_debug_log() << "[DEBUG:" #category ":" #level << "] " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << message << std::endl; \
         } \
     } while (false)
@@ -78,7 +80,8 @@ static inline constexpr const char *dfai_debug_basename(const char *lastSlash, c
         static_assert(level < 666, "debug log level too high"); \
         if (BOOST_UNLIKELY(debug_category_config.category >= level)) \
         { \
-            dfai_debug_log() << "[DEBUG:" #category ":" #level << "] " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << message << std::endl; \
+            /* in debug builds, write to console */ \
+            Core::getInstance().getConsole() << "[DEBUG:" #category ":" #level << "] " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << message << std::endl; \
         } \
         if (BOOST_UNLIKELY(debug_category_config.category == 666)) \
         { \

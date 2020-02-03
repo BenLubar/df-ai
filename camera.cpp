@@ -1,6 +1,7 @@
 #include "ai.h"
 #include "camera.h"
 #include "hooks.h"
+#include "debug.h"
 
 #include <sstream>
 
@@ -109,6 +110,7 @@ void Camera::update(color_ostream &)
 
     if (following != ui->follow_unit)
     {
+        DFAI_DEBUG(camera, 1, "followed unit changed externally! was " << following << ", now " << ui->follow_unit);
         following = ui->follow_unit;
         return;
     }
@@ -131,6 +133,7 @@ void Camera::update(color_ostream &)
                 race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
                 race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))
         {
+            DFAI_DEBUG(camera, 4, "adding candidate: " << AI::describe_unit(u) << " (primary antagonist)");
             targets0.push_back(u);
         }
         else if (u->flags1.bits.marauder ||
@@ -162,6 +165,7 @@ void Camera::update(color_ostream &)
                 }) != s.end();
             }) != u->syndromes.active.end())
         {
+            DFAI_DEBUG(camera, 4, "adding candidate: " << AI::describe_unit(u) << " (conflict)");
             targets1.push_back(u);
         }
     }
@@ -174,6 +178,7 @@ void Camera::update(color_ostream &)
         df::unit *u = *it;
         if (!u->flags1.bits.inactive && Units::isCitizen(u))
         {
+            DFAI_DEBUG(camera, 5, "adding candidate: " << AI::describe_unit(u) << " (citizen)");
             targets2.push_back(u);
         }
     }
@@ -265,6 +270,7 @@ void Camera::update(color_ostream &)
             if (std::find(following_prev.begin(), following_prev.end(), u->id) == following_prev.end() && !u->flags1.bits.caged)
             {
                 following_unit = u;
+                DFAI_DEBUG(camera, 1, "fallback: following candidate " << (it - targets0.begin()) << ": " << AI::describe_unit(following_unit));
                 following = u->id;
                 break;
             }
@@ -272,8 +278,13 @@ void Camera::update(color_ostream &)
         if (following == -1)
         {
             following_unit = targets0[std::uniform_int_distribution<size_t>(0, targets0.size() - 1)(ai.rng)];
+            DFAI_DEBUG(camera, 1, "fallback: following unit " << AI::describe_unit(following_unit));
             following = following_unit->id;
         }
+    }
+    else
+    {
+        DFAI_DEBUG(camera, 1, "no good follow candidates");
     }
 
     if (following != -1 && !*pause_state)
