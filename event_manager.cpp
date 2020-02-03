@@ -289,25 +289,28 @@ void EventManager::report(std::ostream & out, bool html)
         {
             for (auto & u : onupdate_list)
             {
-                out << "- ";
-                int32_t ticklimit;
-                int32_t minyear;
-                int32_t minyeartick;
-                std::string description;
-                bool hasTickLimit;
+                if (u->hasTickLimit)
+                {
+                    continue;
+                }
+                out << "- Every Tick: " << u->description << "\n";
             }
-        }
-        out << "\n## State Change Listeners\n\n";
-        if (onstatechange_list.empty())
-        {
-            out << "(none)\n";
-        }
-        else
-        {
+            for (auto & u : onupdate_list)
+            {
+                if (!u->hasTickLimit)
+                {
+                    continue;
+                }
+                out << "- Once Per " << u->ticklimit << " ticks";
+                // TODO: int32_t minyear;
+                // TODO: int32_t minyeartick;
+                out << ": " << html_escape(u->description) << "\n";
+            }
             for (auto & c : onstatechange_list)
             {
-                out << "- " << c->description << "\n";
+                out << "- State Change: " << html_escape(c->description) << "\n";
             }
+            out << "\n";
         }
     }
     if (html)
