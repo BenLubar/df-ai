@@ -110,16 +110,7 @@ public:
     static int32_t unit_totalxp(const df::unit *u);
 
     void update_nobles(color_ostream & out);
-    void check_noble_appartments(color_ostream & out);
-
-    df::entity_position_assignment *assign_new_noble(color_ostream & out, std::function<bool(df::entity_position *)> filter, df::unit *unit, const std::string & description, int32_t squad_id = -1);
-    df::entity_position_assignment *assign_new_noble(color_ostream & out, df::entity_position_responsibility responsibility, df::unit *unit, int32_t squad_id = -1)
-    {
-        return assign_new_noble(out, [responsibility](df::entity_position *pos) -> bool
-        {
-            return pos->responsibilities[responsibility];
-        }, unit, "position with responsibility " + enum_item_key(responsibility), squad_id);
-    }
+    void check_noble_apartments(color_ostream & out);
 
     void update_pets(color_ostream & out);
 
