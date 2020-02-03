@@ -79,6 +79,9 @@ protected:
             units.pop_front();
         }
 
+        // focus string doesn't matter here (we're about to leave)
+        ExpectScreen<df::viewscreen_layer_militaryst>("");
+
         Key(interface_key::LEAVESCREEN);
 
         ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
