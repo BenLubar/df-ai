@@ -5474,29 +5474,7 @@ std::string AI::describe_furniture(furniture *f, bool html)
         {
             users_count--;
         }
-        s << " (" << users_count << " users";
-        if (users_count != 0 && html)
-        {
-            bool first = true;
-            for (auto u : f->users)
-            {
-                if (u == -1)
-                {
-                    continue;
-                }
-                if (first)
-                {
-                    s << ": ";
-                    first = false;
-                }
-                else
-                {
-                    s << ", ";
-                }
-                s << AI::describe_unit(df::unit::find(u), true);
-            }
-        }
-        s << ")";
+        s << " (" << users_count << " users)";
     }
 
     if (f->ignore)

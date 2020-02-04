@@ -19,6 +19,8 @@
 #include "df/job.h"
 #include "df/job_item.h"
 #include "df/occupation.h"
+#include "df/reaction.h"
+#include "df/reaction_reagent.h"
 #include "df/squad.h"
 #include "df/squad_order_kill_listst.h"
 #include "df/squad_position.h"
@@ -1551,8 +1553,26 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << "  ";
             }
-            out << "item (" << enum_item_key(item->role) << "): ";
-            out << maybe_escape(AI::describe_item(item->item), html);
+            out << "item";
+            if (item->role == df::job_item_ref::T_role::Reagent)
+            {
+                auto ji = vector_get(j->item->job_items, item->job_item_idx);
+                auto reaction = ji != nullptr ? df::reaction::find(ji->reaction_id) : nullptr;
+                auto reagent = reaction != nullptr ? vector_get(reaction->reagents, ji->reagent_index) : nullptr;
+                if (reagent)
+                {
+                    out << " (" << reagent->code << ")";
+                }
+                else
+                {
+                    out << " (" << enum_item_key(item->role) << ")";
+                }
+            }
+            else if (item->role != 0)
+            {
+                out << " (" << enum_item_key(item->role) << ")";
+            }
+            out << ": " << maybe_escape(AI::describe_item(item->item), html);
             if (item->is_fetching)
             {
                 out << " (fetching)";
