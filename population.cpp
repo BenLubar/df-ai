@@ -531,6 +531,11 @@ void Population::report(std::ostream & out, bool html)
     if (html)
     {
         out << "<h2 id=\"Population_Pets\">Pets</h2><ul>";
+
+        if (pet.empty())
+        {
+            out << "<li><i>(none)</i></li>";
+        }
     }
     else
     {
@@ -600,6 +605,11 @@ void Population::report(std::ostream & out, bool html)
     if (html)
     {
         out << "</ul><h2 id=\"Population_Visitors\">Visitors</h2><ul>";
+
+        if (visitor.empty())
+        {
+            out << "<li><i>(none)</i></li>";
+        }
     }
     else
     {
@@ -614,6 +624,11 @@ void Population::report(std::ostream & out, bool html)
     if (html)
     {
         out << "</ul><h2 id=\"Population_Residents\">Residents</h2><ul>";
+
+        if (resident.empty())
+        {
+            out << "<li><i>(none)</i></li>";
+        }
     }
     else
     {
@@ -634,12 +649,15 @@ void Population::report(std::ostream & out, bool html)
         out << "\n## Crimes\n";
     }
     // Output all Crimes
+    bool any_crimes = false;
     for (auto crime : world->crimes.all)
     {
         if (crime->site != ui->site_id)
         {
             continue;
         }
+
+        any_crimes = true;
 
         auto convicted = df::unit::find(crime->convicted);
         auto criminal = df::unit::find(crime->criminal);
@@ -801,6 +819,11 @@ void Population::report(std::ostream & out, bool html)
         out << (html ? "</ul></li>" : "\n");
     }
 
+    if (html && !any_crimes)
+    {
+        out << "<li><i>(none)</i></li>";
+    }
+
     // Health ====================
     if (html)
     {
@@ -820,6 +843,7 @@ void Population::report(std::ostream & out, bool html)
 
         return (wound->flags.whole &~df::unit_wound::T_flags::mask_diagnosed) || syn || wound->dizziness || wound->fever || wound->nausea || wound->numbness || wound->pain || wound->paralysis || !wound->parts.empty();
     };
+    bool any_interesting_wounds = false;
     for (auto u : world->units.active)
     {
         bool is_dead = Units::isDead(u);
@@ -842,6 +866,8 @@ void Population::report(std::ostream & out, bool html)
         {
             continue;
         }
+
+        any_interesting_wounds = true;
 
         out << (html ? "<li><b>" : "- ");
         out << AI::describe_unit(u, html);
@@ -1461,6 +1487,11 @@ void Population::report(std::ostream & out, bool html)
         out << (html ? "</li>" : "\n");
     }
 
+    if (html && !any_interesting_wounds)
+    {
+        out << "<li><i>(no injuries)</i></li>";
+    }
+
     // Deaths ====================
     if (html)
     {
@@ -1470,6 +1501,7 @@ void Population::report(std::ostream & out, bool html)
     {
         out << "\n## Deaths\n";
     }
+    bool any_deaths = false;
     for (auto e : world->history.events_death)
     {
         auto d = virtual_cast<df::history_event_hist_figure_diedst>(e);
@@ -1478,6 +1510,8 @@ void Population::report(std::ostream & out, bool html)
         {
             continue;
         }
+
+        any_deaths = true;
 
         if (html)
         {
@@ -1489,6 +1523,10 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "- " << AI::describe_event(d) << "\n";
         }
+    }
+    if (html && !any_deaths)
+    {
+        out << "<li><i>(no deaths&mdash;yet)</i></li>";
     }
 
     auto write_job = [&](df::job_list_link *j)
