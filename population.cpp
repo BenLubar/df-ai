@@ -386,7 +386,7 @@ void Population::report(std::ostream & out, bool html)
         out << "<p>";
         auto doPageAnchorLink = [&](const std::string & name, const std::string & anchor)
         {
-            out << "<a href=\"#" << anchor << "\" class=\"navItem\">" << name << "</a>";
+            out << "<a href=\"df-ai/report/population#" << anchor << "\" class=\"navItem\">" << name << "</a>";
         };
         doPageAnchorLink("Citizens", "Population_Citizens");
         doPageAnchorLink("Military", "Population_Military");
