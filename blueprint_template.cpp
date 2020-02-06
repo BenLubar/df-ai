@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "blueprint.h"
+#include "debug.h"
 
 bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 {
@@ -281,7 +282,7 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
     return apply_unhandled_properties(data, "", error);
 }
 
-bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI & ai, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const
+bool blueprint_plan_template::have_minimum_requirements(const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const
 {
     bool ok = true;
 
@@ -292,36 +293,24 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
         {
             if (limit.second.first > 0)
             {
-                if (config.plan_verbosity >= 1)
-                {
-                    ai.debug(out, stl_sprintf("Requirement not met: have 0 %s but want between %zu and %zu.", limit.first.c_str(), limit.second.first, limit.second.second));
-                }
+                DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
                 ok = false;
             }
             else
             {
-                if (config.plan_verbosity >= 1)
-                {
-                    ai.debug(out, stl_sprintf("have 0 %s (want between %zu and %zu)", limit.first.c_str(), limit.second.first, limit.second.second));
-                }
+                DFAI_DEBUG(blueprint, 2, "have 0 " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
             }
         }
         else
         {
             if (limit.second.first > type->second)
             {
-                if (config.plan_verbosity >= 1)
-                {
-                    ai.debug(out, stl_sprintf("Requirement not met: have %zu %s but want between %zu and %zu.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
-                }
+                DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << type->second << " " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
                 ok = false;
             }
             else
             {
-                if (config.plan_verbosity >= 1)
-                {
-                    ai.debug(out, stl_sprintf("have %zu %s (want between %zu and %zu)", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
-                }
+                DFAI_DEBUG(blueprint, 2, "have " << type->second << " " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
             }
         }
     }
@@ -335,18 +324,12 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
             {
                 if (limit.second.first > 0)
                 {
-                    if (config.plan_verbosity >= 1)
-                    {
-                        ai.debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                    }
+                    DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
                     ok = false;
                 }
                 else
                 {
-                    if (config.plan_verbosity >= 1)
-                    {
-                        ai.debug(out, stl_sprintf("have 0 %s/%s (want between %zu and %zu)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                    }
+                    DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
                 }
             }
         }
@@ -359,36 +342,24 @@ bool blueprint_plan_template::have_minimum_requirements(color_ostream & out, AI 
                 {
                     if (limit.second.first > 0)
                     {
-                        if (config.plan_verbosity >= 1)
-                        {
-                            ai.debug(out, stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                        }
+                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
                         ok = false;
                     }
                     else
                     {
-                        if (config.plan_verbosity >= 1)
-                        {
-                            ai.debug(out, stl_sprintf("have 0 %s/%s (want between %zu and %zu)", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                        }
+                        DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
                     }
                 }
                 else
                 {
                     if (limit.second.first > count->second)
                     {
-                        if (config.plan_verbosity >= 1)
-                        {
-                            ai.debug(out, stl_sprintf("Requirement not met: have %zu %s/%s but want between %zu and %zu.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                        }
+                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << count->second << " " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
                         ok = false;
                     }
                     else
                     {
-                        if (config.plan_verbosity >= 1)
-                        {
-                            ai.debug(out, stl_sprintf("have %zu %s/%s (want between %zu and %zu)", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
-                        }
+                        DFAI_DEBUG(blueprint, 2, "have " << count->second << " " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
                     }
                 }
             }

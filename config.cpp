@@ -26,8 +26,7 @@ Config::Config() :
     manage_nobles(true),
     cancel_announce(0),
     lockstep(false),
-    plan_verbosity(2),
-    plan_allow_legacy(true)
+    plan_allow_legacy(false)
 {
     for (int32_t & opt : embark_options)
     {
@@ -133,7 +132,11 @@ void Config::load(color_ostream & out)
             }
             if (v.isMember("plan_verbosity"))
             {
-                plan_verbosity = v["plan_verbosity"].asInt();
+                debug_category_config.blueprint = v["plan_verbosity"].asInt();
+                if (debug_category_config.blueprint < 0)
+                {
+                    debug_category_config.blueprint = 0;
+                }
             }
             if (v.isMember("plan_allow_legacy"))
             {
@@ -200,7 +203,6 @@ void Config::save(color_ostream & out)
     setComment(v["manage_nobles"], manage_nobles, "// true or false: should the AI assign administrators in the fortress?");
     setComment(v["cancel_announce"], Json::Int(cancel_announce), "// how many job cancellation notices to show. 0: none, 1: some, 2: most, 3: all");
     setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
-    setComment(v["plan_verbosity"], Json::Int(plan_verbosity), "// number from -1 to 4: how much information about the blueprint should the AI write to the log? -1: none, 0: summary, 1: room placement summary, 2: placements that succeeded, 3: placements that failed, 4: exits being discarded");
     setComment(v["plan_allow_legacy"], plan_allow_legacy, "// true or false: should the AI use the legacy floor plan generator if it fails to generate a floor plan using blueprints?");
 
 #define DFAI_DEBUG_CATEGORY(x) \

@@ -5795,7 +5795,7 @@ command_result Plan::setup_blueprint(color_ostream & out)
     command_result res;
     blueprints_t blueprints(out);
     blueprint_plan plan;
-    if (plan.build(out, ai, blueprints))
+    if (plan.build(blueprints))
     {
         plan.create(fort_entrance, rooms_and_corridors, priorities);
 

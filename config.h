@@ -43,7 +43,6 @@ struct Config
     bool manage_nobles;
     uint8_t cancel_announce;
     volatile bool lockstep;
-    int32_t plan_verbosity;
     bool plan_allow_legacy;
 };
 
