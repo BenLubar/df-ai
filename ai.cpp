@@ -126,6 +126,11 @@ public:
         MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
 
         Key(interface_key::SELECT);
+        Key(interface_key::MENU_CONFIRM);
+        while (MaybeExpectScreen<df::viewscreen_optionst>("option"))
+        {
+            Delay();
+        }
 
         // current view switches to a textviewer at this point
         ExpectScreen<df::viewscreen_textviewerst>("textviewer");
