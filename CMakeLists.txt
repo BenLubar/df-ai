@@ -45,11 +45,13 @@ SET(PROJECT_SRCS
     plan.cpp
     plan_legacy.cpp
     plan_priorities.cpp
+    plan_setup.cpp
+    plan_setup_blueprint.cpp
+    plan_setup_screen.cpp
     blueprint.cpp
     blueprint_furniture.cpp
     blueprint_room.cpp
     blueprint_merge.cpp
-    blueprint_plan.cpp
     blueprint_template.cpp
     stocks.cpp
     stocks_detect.cpp
@@ -83,6 +85,7 @@ SET(PROJECT_HDRS
     population.h
     plan.h
     plan_priorities.h
+    plan_setup.h
     blueprint.h
     stocks.h
     camera.h

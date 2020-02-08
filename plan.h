@@ -234,6 +234,7 @@ private:
     bool corridor_include_hack(const room *r, df::coord t1, df::coord t2);
     friend struct room;
     friend struct plan_priority_t;
+    friend class PlanSetup;
 };
 
 struct farm_allowed_materials_t

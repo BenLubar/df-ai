@@ -3,7 +3,7 @@
 #include "debug.h"
 #include "population.h"
 #include "stocks.h"
-#include "blueprint.h"
+#include "plan_setup.h"
 
 #include <cstdio>
 #include <sstream>
@@ -5790,51 +5790,9 @@ void Plan::add_task(task_type::type type, room *r, furniture *f)
     tasks.push_back(new task(type, r, f));
 }
 
-command_result Plan::setup_blueprint(color_ostream & out)
+command_result Plan::setup_blueprint(color_ostream &)
 {
-    command_result res;
-    blueprints_t blueprints(out);
-    blueprint_plan plan;
-    if (plan.build(blueprints))
-    {
-        plan.create(fort_entrance, rooms_and_corridors, priorities);
-
-        categorize_all();
-
-        if (priorities.empty())
-        {
-            res = setup_ready(out);
-            if (res != CR_OK)
-                return res;
-        }
-    }
-    else
-    {
-        res = setup_blueprint_legacy(out);
-        if (res != CR_OK)
-            return res;
-    }
-
-    res = list_map_veins(out);
-    if (res != CR_OK)
-        return res;
-    ai.debug(out, "blueprint found veins");
-
-    res = setup_outdoor_gathering_zones(out);
-    if (res != CR_OK)
-        return res;
-    ai.debug(out, "blueprint outdoor gathering zones");
-
-    res = setup_blueprint_caverns(out);
-    if (res == CR_OK)
-        ai.debug(out, "blueprint found caverns");
-
-    res = make_map_walkable(out);
-    if (res != CR_OK)
-        return res;
-    ai.debug(out, "LET THE GAME BEGIN!");
-
-    categorize_all();
+    events.queue_exclusive(std::make_unique<PlanSetup>(ai));
 
     return CR_OK;
 }

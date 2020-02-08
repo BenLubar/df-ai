@@ -32,4 +32,5 @@ namespace std
 using namespace DFHack;
 using namespace df::enums;
 
+DFhackDataExport extern DFHack::Plugin *plugin_self;
 DFhackDataExport extern std::vector<std::string> *plugin_globals;

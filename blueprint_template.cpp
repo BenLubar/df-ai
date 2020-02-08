@@ -1,6 +1,5 @@
 #include "ai.h"
 #include "blueprint.h"
-#include "debug.h"
 
 bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 {
@@ -280,91 +279,4 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
     }
 
     return apply_unhandled_properties(data, "", error);
-}
-
-bool blueprint_plan_template::have_minimum_requirements(const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts) const
-{
-    bool ok = true;
-
-    for (auto & limit : limits)
-    {
-        auto type = counts.find(limit.first);
-        if (type == counts.end())
-        {
-            if (limit.second.first > 0)
-            {
-                DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
-                ok = false;
-            }
-            else
-            {
-                DFAI_DEBUG(blueprint, 2, "have 0 " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
-            }
-        }
-        else
-        {
-            if (limit.second.first > type->second)
-            {
-                DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << type->second << " " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
-                ok = false;
-            }
-            else
-            {
-                DFAI_DEBUG(blueprint, 2, "have " << type->second << " " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
-            }
-        }
-    }
-
-    for (auto & type_limits : instance_limits)
-    {
-        auto type_counts = instance_counts.find(type_limits.first);
-        if (type_counts == instance_counts.end())
-        {
-            for (auto & limit : type_limits.second)
-            {
-                if (limit.second.first > 0)
-                {
-                    DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
-                    ok = false;
-                }
-                else
-                {
-                    DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
-                }
-            }
-        }
-        else
-        {
-            for (auto & limit : type_limits.second)
-            {
-                auto count = type_counts->second.find(limit.first);
-                if (count == type_counts->second.end())
-                {
-                    if (limit.second.first > 0)
-                    {
-                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
-                        ok = false;
-                    }
-                    else
-                    {
-                        DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
-                    }
-                }
-                else
-                {
-                    if (limit.second.first > count->second)
-                    {
-                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << count->second << " " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
-                        ok = false;
-                    }
-                    else
-                    {
-                        DFAI_DEBUG(blueprint, 2, "have " << count->second << " " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
-                    }
-                }
-            }
-        }
-    }
-
-    return ok;
 }

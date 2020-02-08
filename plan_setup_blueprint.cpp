@@ -1,6 +1,6 @@
 #include "ai.h"
 #include "blueprint.h"
-#include "plan.h"
+#include "plan_setup.h"
 #include "debug.h"
 
 #include "modules/Maps.h"
@@ -15,231 +15,7 @@
 
 REQUIRE_GLOBAL(world);
 
-static std::mt19937 & rng()
-{
-    extern std::unique_ptr<AI> dwarfAI;
-    return dwarfAI->rng;
-}
-
-blueprint_plan::blueprint_plan() :
-    next_noblesuite(0)
-{
-}
-
-blueprint_plan::~blueprint_plan()
-{
-    clear();
-}
-
-bool blueprint_plan::build(const blueprints_t & blueprints)
-{
-    std::vector<const blueprint_plan_template *> templates;
-    for (auto & bp : blueprints.plans)
-    {
-        templates.push_back(bp.second);
-    }
-
-    std::shuffle(templates.begin(), templates.end(), rng());
-
-    for (size_t i = 0; i < templates.size(); i++)
-    {
-        const blueprint_plan_template & plan = *templates.at(i);
-        for (size_t retries = 0; retries < plan.max_retries; retries++)
-        {
-            DFAI_DEBUG(blueprint, 1, "Trying to create a blueprint using plan " << (i + 1) << " of " << templates.size() << ": " << plan.name << " (attempt " << (retries + 1) << " of " << plan.max_retries << ")");
-
-            if (build(blueprints, plan))
-            {
-                priorities = plan.priorities;
-                DFAI_DEBUG(blueprint, 1, "Successfully created a blueprint using plan: " << plan.name);
-                return true;
-            }
-
-            DFAI_DEBUG(blueprint, 1, "Plan failed. Resetting.");
-            clear();
-        }
-    }
-
-    DFAI_DEBUG(blueprint, 1, "Ran out of plans. Failed to create a blueprint.");
-    return false;
-}
-
-void blueprint_plan::create(room * & fort_entrance, std::vector<room *> & real_rooms_and_corridors, std::vector<plan_priority_t> & real_priorities) const
-{
-    std::vector<furniture *> real_layout;
-
-    for (size_t i = 0; i < layout.size(); i++)
-    {
-        real_layout.push_back(new furniture());
-    }
-    for (size_t i = 0; i < rooms.size(); i++)
-    {
-        real_rooms_and_corridors.push_back(new room(room_type::type(), df::coord(), df::coord()));
-    }
-
-    for (size_t i = 0; i < layout.size(); i++)
-    {
-        auto in = layout.at(i);
-        auto out = real_layout.at(i);
-
-        out->type = in->type;
-        out->construction = in->construction;
-        out->dig = in->dig;
-        out->pos = in->pos;
-
-        if (in->has_target)
-        {
-            out->target = real_layout.at(in->target);
-        }
-        else
-        {
-            out->target = nullptr;
-        }
-
-        out->has_users = in->has_users;
-        out->ignore = in->ignore;
-        out->makeroom = in->makeroom;
-        out->internal = in->internal;
-
-        out->comment = in->comment(in->context);
-    }
-    for (size_t i = 0; i < rooms.size(); i++)
-    {
-        auto in = rooms.at(i);
-        auto out = real_rooms_and_corridors.at(i);
-
-        out->type = in->type;
-
-        out->corridor_type = in->corridor_type;
-        out->farm_type = in->farm_type;
-        out->stockpile_type = in->stockpile_type;
-        out->nobleroom_type = in->nobleroom_type;
-        out->outpost_type = in->outpost_type;
-        out->location_type = in->location_type;
-        out->cistern_type = in->cistern_type;
-        out->workshop_type = in->workshop_type;
-        out->furnace_type = in->furnace_type;
-
-        out->raw_type = in->raw_type(in->context);
-
-        out->comment = in->comment(in->context);
-
-        out->min = in->min;
-        out->max = in->max;
-
-        for (auto ri : in->accesspath)
-        {
-            out->accesspath.push_back(real_rooms_and_corridors.at(ri));
-        }
-        for (auto fi : in->layout)
-        {
-            out->layout.push_back(real_layout.at(fi));
-        }
-
-        out->level = in->level;
-        out->noblesuite = in->noblesuite;
-        out->queue = in->queue;
-
-        if (in->has_workshop)
-        {
-            out->workshop = real_rooms_and_corridors.at(in->workshop);
-        }
-        else
-        {
-            out->workshop = nullptr;
-        }
-
-        out->stock_disable = in->stock_disable;
-        out->stock_specific1 = in->stock_specific1;
-        out->stock_specific2 = in->stock_specific2;
-
-        out->has_users = in->has_users;
-        out->temporary = in->temporary;
-        out->outdoor = in->outdoor;
-
-        if (in->outdoor && !in->require_floor)
-        {
-            for (df::coord t = in->min; t.x <= in->max.x; t.x++)
-            {
-                for (t.y = in->min.y; t.y <= in->max.y; t.y++)
-                {
-                    int16_t z = Plan::surface_tile_at(t.x, t.y, true).z;
-                    for (t.z = in->min.z; t.z <= in->max.z; t.z++)
-                    {
-                        bool has_layout = false;
-                        for (auto f : out->layout)
-                        {
-                            if (in->min + f->pos == t)
-                            {
-                                has_layout = true;
-                                break;
-                            }
-                        }
-                        if (!has_layout)
-                        {
-                            furniture *f = new furniture();
-                            if (t.z == z)
-                            {
-                                f->construction = construction_type::Floor;
-                            }
-                            else
-                            {
-                                f->dig = tile_dig_designation::Channel;
-                            }
-                            f->pos = t - in->min;
-                            out->layout.push_back(f);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fort_entrance = real_rooms_and_corridors.at(0);
-    std::sort(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), [fort_entrance](const room *a, const room *b) -> bool
-    {
-        if (b == fort_entrance)
-        {
-            return false;
-        }
-        if (a == fort_entrance)
-        {
-            return true;
-        }
-        df::coord da(fort_entrance->pos() - a->pos());
-        df::coord db(fort_entrance->pos() - b->pos());
-        df::coord da_abs(std::abs(da.x), std::abs(da.y), std::abs(da.z));
-        df::coord db_abs(std::abs(db.x), std::abs(db.y), std::abs(db.z));
-        if (da_abs.z != db_abs.z)
-        {
-            return da_abs.z < db_abs.z;
-        }
-        if (da.z != db.z)
-        {
-            return da.z < db.z;
-        }
-        if (da_abs.x != db_abs.x)
-        {
-            return da_abs.x < db_abs.x;
-        }
-        if (da.x != db.x)
-        {
-            return da.x < db.x;
-        }
-        if (da_abs.y != db_abs.y)
-        {
-            return da_abs.y < db_abs.y;
-        }
-        if (da.y != db.y)
-        {
-            return da.y < db.y;
-        }
-        return false;
-    });
-    real_priorities = priorities;
-}
-
-bool blueprint_plan::add(const room_blueprint & rb, std::string & error, df::coord exit_location)
+bool PlanSetup::add(const room_blueprint & rb, std::string & error, df::coord exit_location)
 {
     for (auto c : rb.corridor)
     {
@@ -353,7 +129,7 @@ bool blueprint_plan::add(const room_blueprint & rb, std::string & error, df::coo
     return true;
 }
 
-bool blueprint_plan::add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location)
+bool PlanSetup::add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location)
 {
     parent += (~rooms.size()) + 1;
 
@@ -366,13 +142,13 @@ bool blueprint_plan::add(const room_blueprint & rb, room_base::roomindex_t paren
     return add(rb_parent, error, exit_location);
 }
 
-bool blueprint_plan::build(const blueprints_t & blueprints, const blueprint_plan_template & plan)
+bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::map<std::string, size_t> counts;
     std::map<std::string, std::map<std::string, size_t>> instance_counts;
 
     DFAI_DEBUG(blueprint, 1, "Placing starting room...");
-    place_rooms(counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_start, &blueprint_plan::try_add_room_start);
+    place_rooms(counts, instance_counts, blueprints, plan, &PlanSetup::find_available_blueprints_start, &PlanSetup::try_add_room_start);
     if (rooms.empty())
     {
         DFAI_DEBUG(blueprint, 1, "No rooms placed by initial phase. Cannot continue building.");
@@ -380,12 +156,12 @@ bool blueprint_plan::build(const blueprints_t & blueprints, const blueprint_plan
     }
 
     DFAI_DEBUG(blueprint, 1, "Placing outdoor rooms...");
-    place_rooms(counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_outdoor, &blueprint_plan::try_add_room_outdoor);
+    place_rooms(counts, instance_counts, blueprints, plan, &PlanSetup::find_available_blueprints_outdoor, &PlanSetup::try_add_room_outdoor);
 
     DFAI_DEBUG(blueprint, 1, "Building remainder of fortress...");
-    place_rooms(counts, instance_counts, blueprints, plan, &blueprint_plan::find_available_blueprints_connect, &blueprint_plan::try_add_room_connect);
+    place_rooms(counts, instance_counts, blueprints, plan, &PlanSetup::find_available_blueprints_connect, &PlanSetup::try_add_room_connect);
 
-    if (!plan.have_minimum_requirements(counts, instance_counts))
+    if (!have_minimum_requirements(counts, instance_counts, plan))
     {
         DFAI_DEBUG(blueprint, 1, "Cannot place rooms, but minimum requirements were not met.");
         return false;
@@ -394,7 +170,7 @@ bool blueprint_plan::build(const blueprints_t & blueprints, const blueprint_plan
     return true;
 }
 
-void blueprint_plan::place_rooms(std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, blueprint_plan::find_fn find, blueprint_plan::try_add_fn try_add)
+void PlanSetup::place_rooms(std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, PlanSetup::find_fn find, PlanSetup::try_add_fn try_add)
 {
     std::vector<const room_blueprint *> available_blueprints;
     for (;;)
@@ -407,7 +183,7 @@ void blueprint_plan::place_rooms(std::map<std::string, size_t> & counts, std::ma
             break;
         }
 
-        std::shuffle(available_blueprints.begin(), available_blueprints.end(), rng());
+        std::shuffle(available_blueprints.begin(), available_blueprints.end(), ai.rng);
 
         bool stop = false;
         size_t failures = 0;
@@ -440,7 +216,7 @@ void blueprint_plan::place_rooms(std::map<std::string, size_t> & counts, std::ma
     }
 }
 
-void blueprint_plan::clear()
+void PlanSetup::clear()
 {
     for (auto f : layout)
     {
@@ -462,7 +238,7 @@ void blueprint_plan::clear()
     no_corridor.clear();
 }
 
-void blueprint_plan::find_available_blueprints(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
+void PlanSetup::find_available_blueprints(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, const std::set<std::string> & available_tags_base, const std::function<bool(const room_blueprint &)> & check)
 {
     const static std::map<std::string, size_t> no_instance_counts;
     const static std::map<std::string, std::pair<size_t, size_t>> no_instance_limits;
@@ -531,7 +307,7 @@ void blueprint_plan::find_available_blueprints(std::vector<const room_blueprint 
     }
 }
 
-void blueprint_plan::find_available_blueprints_start(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void PlanSetup::find_available_blueprints_start(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::set<std::string> available_tags;
     available_tags.insert(plan.start);
@@ -550,7 +326,7 @@ void blueprint_plan::find_available_blueprints_start(std::vector<const room_blue
     });
 }
 
-void blueprint_plan::find_available_blueprints_outdoor(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void PlanSetup::find_available_blueprints_outdoor(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     find_available_blueprints(available_blueprints, counts, instance_counts, blueprints, plan, plan.outdoor, [](const room_blueprint & rb) -> bool
     {
@@ -566,7 +342,7 @@ void blueprint_plan::find_available_blueprints_outdoor(std::vector<const room_bl
     });
 }
 
-void blueprint_plan::find_available_blueprints_connect(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
+void PlanSetup::find_available_blueprints_connect(std::vector<const room_blueprint *> & available_blueprints, const std::map<std::string, size_t> & counts, const std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::set<std::string> available_tags;
     for (auto & c : room_connect)
@@ -580,7 +356,7 @@ void blueprint_plan::find_available_blueprints_connect(std::vector<const room_bl
     find_available_blueprints(available_blueprints, counts, instance_counts, blueprints, plan, available_tags, [](const room_blueprint &) -> bool { return true; });
 }
 
-bool blueprint_plan::can_add_room(const room_blueprint & rb, df::coord pos)
+bool PlanSetup::can_add_room(const room_blueprint & rb, df::coord pos)
 {
     for (auto c : rb.no_room)
     {
@@ -765,7 +541,7 @@ bool blueprint_plan::can_add_room(const room_blueprint & rb, df::coord pos)
     return true;
 }
 
-bool blueprint_plan::try_add_room_start(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool PlanSetup::try_add_room_start(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = plan.padding_x.first, max_x = plan.padding_x.second, min_y = plan.padding_y.first, max_y = plan.padding_y.second;
     for (auto c : rb.no_room)
@@ -776,13 +552,13 @@ bool blueprint_plan::try_add_room_start(const room_blueprint & rb, std::map<std:
         max_y = std::max(max_y, c.y);
     }
 
-    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(rng());
-    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(rng());
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai.rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai.rng);
 
     return try_add_room_outdoor_shared(rb, counts, instance_counts, plan, x, y);
 }
 
-bool blueprint_plan::try_add_room_outdoor(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool PlanSetup::try_add_room_outdoor(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     int16_t min_x = 0, max_x = 0, min_y = 0, max_y = 0;
     for (auto c : rb.no_room)
@@ -793,13 +569,13 @@ bool blueprint_plan::try_add_room_outdoor(const room_blueprint & rb, std::map<st
         max_y = std::max(max_y, c.y);
     }
 
-    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(rng());
-    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(rng());
+    int16_t x = std::uniform_int_distribution<int16_t>(2 - min_x, world->map.x_count - 3 - max_x)(ai.rng);
+    int16_t y = std::uniform_int_distribution<int16_t>(2 - min_y, world->map.y_count - 3 - max_y)(ai.rng);
 
     return try_add_room_outdoor_shared(rb, counts, instance_counts, plan, x, y);
 }
 
-bool blueprint_plan::try_add_room_outdoor_shared(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y)
+bool PlanSetup::try_add_room_outdoor_shared(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan, int16_t x, int16_t y)
 {
     df::coord pos = Plan::surface_tile_at(x, y, true);
 
@@ -817,6 +593,7 @@ bool blueprint_plan::try_add_room_outdoor_shared(const room_blueprint & rb, std:
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(pos) << ".");
+            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
             return true;
         }
 
@@ -826,7 +603,7 @@ bool blueprint_plan::try_add_room_outdoor_shared(const room_blueprint & rb, std:
     return false;
 }
 
-bool blueprint_plan::try_add_room_connect(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+bool PlanSetup::try_add_room_connect(const room_blueprint & rb, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
 {
     std::set<std::string> tags;
     tags.insert(rb.type);
@@ -852,7 +629,7 @@ bool blueprint_plan::try_add_room_connect(const room_blueprint & rb, std::map<st
         }
     }
 
-    auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(rng()));
+    auto chosen = connectors.at(std::uniform_int_distribution<size_t>(0, connectors.size() - 1)(ai.rng));
 
     if (can_add_room(rb, std::get<1>(chosen)))
     {
@@ -862,6 +639,7 @@ bool blueprint_plan::try_add_room_connect(const room_blueprint & rb, std::map<st
             counts[rb.type]++;
             instance_counts[rb.type][rb.name]++;
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(std::get<1>(chosen)) << ".");
+            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
             return true;
         }
 
@@ -869,4 +647,96 @@ bool blueprint_plan::try_add_room_connect(const room_blueprint & rb, std::map<st
     }
 
     return false;
+}
+
+bool PlanSetup::have_minimum_requirements(std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan)
+{
+    bool ok = true;
+
+    for (auto & limit : plan.limits)
+    {
+        auto type = counts.find(limit.first);
+        if (type == counts.end())
+        {
+            if (limit.second.first > 0)
+            {
+                DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
+                Log(stl_sprintf("Requirement not met: have 0 %s but want between %zu and %zu.", limit.first.c_str(), limit.second.first, limit.second.second));
+                ok = false;
+            }
+            else
+            {
+                DFAI_DEBUG(blueprint, 2, "have 0 " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
+            }
+        }
+        else
+        {
+            if (limit.second.first > type->second)
+            {
+                DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << type->second << " " << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
+                Log(stl_sprintf("Requirement not met: have %zu %s but want between %zu and %zu.", type->second, limit.first.c_str(), limit.second.first, limit.second.second));
+                ok = false;
+            }
+            else
+            {
+                DFAI_DEBUG(blueprint, 2, "have " << type->second << " " << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
+            }
+        }
+    }
+
+    for (auto & type_limits : plan.instance_limits)
+    {
+        auto type_counts = instance_counts.find(type_limits.first);
+        if (type_counts == instance_counts.end())
+        {
+            for (auto & limit : type_limits.second)
+            {
+                if (limit.second.first > 0)
+                {
+                    DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
+                    Log(stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                    ok = false;
+                }
+                else
+                {
+                    DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
+                }
+            }
+        }
+        else
+        {
+            for (auto & limit : type_limits.second)
+            {
+                auto count = type_counts->second.find(limit.first);
+                if (count == type_counts->second.end())
+                {
+                    if (limit.second.first > 0)
+                    {
+                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have 0 " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
+                        Log(stl_sprintf("Requirement not met: have 0 %s/%s but want between %zu and %zu.", type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        ok = false;
+                    }
+                    else
+                    {
+                        DFAI_DEBUG(blueprint, 2, "have 0 " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
+                    }
+                }
+                else
+                {
+                    if (limit.second.first > count->second)
+                    {
+                        DFAI_DEBUG(blueprint, 2, "Requirement not met: have " << count->second << " " << type_limits.first << "/" << limit.first << " but want between " << limit.second.first << " and " << limit.second.second << ".");
+                        Log(stl_sprintf("Requirement not met: have %zu %s/%s but want between %zu and %zu.", count->second, type_limits.first.c_str(), limit.first.c_str(), limit.second.first, limit.second.second));
+                        ok = false;
+                    }
+                    else
+                    {
+                        DFAI_DEBUG(blueprint, 2, "have " << count->second << " " << type_limits.first << "/" << limit.first << " (want between " << limit.second.first << " and " << limit.second.second << ")");
+                    }
+                }
+            }
+        }
+    }
+
+    return ok;
 }
