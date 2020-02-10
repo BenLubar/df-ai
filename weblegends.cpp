@@ -4,6 +4,7 @@
 #include "plan.h"
 #include "population.h"
 #include "stocks.h"
+#include "plan_setup.h"
 
 #include "thirdparty/weblegends/weblegends-plugin.h"
 
@@ -256,11 +257,12 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         return true;
     }
 #define REPORT_GLOBAL(module) \
-    if (events.has_exclusive<EmbarkExclusive>()) \
+    if (events.has_exclusive<EmbarkExclusive>() || events.has_exclusive<PlanSetup>()) \
     { \
         handler.status_code() = 503; \
         handler.status_description() = "Service Unavailable"; \
-        handler.headers()["Retry-After"] = "1"; \
+        handler.headers()["Retry-After"] = "5"; \
+        handler.headers()["Refresh"] = "5"; \
         handler.cp437_out() << "<p><i>Report is not available during embark.</i></p>"; \
     } \
     else \

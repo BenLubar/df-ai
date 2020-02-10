@@ -3,6 +3,7 @@
 #include "embark.h"
 #include "plan.h"
 #include "population.h"
+#include "plan_setup.h"
 
 #include "modules/Gui.h"
 #include "modules/Translation.h"
@@ -316,7 +317,7 @@ void AI::event(const std::string & name, const Json::Value & payload)
 
 std::string AI::status()
 {
-    if (events.has_exclusive<EmbarkExclusive>())
+    if (events.has_exclusive<EmbarkExclusive>() || events.has_exclusive<PlanSetup>())
     {
         return "(embarking)";
     }
@@ -350,7 +351,7 @@ static void report_section(std::ostringstream & out, const std::string & name, M
 
 std::string AI::report(bool html)
 {
-    if (events.has_exclusive<EmbarkExclusive>())
+    if (events.has_exclusive<EmbarkExclusive>() || events.has_exclusive<PlanSetup>())
     {
         if (html)
         {
