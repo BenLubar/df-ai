@@ -87,15 +87,14 @@ AIPages getAIPage(const std::string & url)
     return AIPages::Status;
 }
 
-void add_styles_and_scripts(weblegends_handler_v1 & handler)
+static void add_styles_and_scripts(weblegends_handler_v1 & handler)
 {
     handler.cp437_out() << "<link rel=\"stylesheet\" href=\"style.css\"/>";
     handler.cp437_out() << "<link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/>";
-    //handler.cp437_out() << "<script type=\"text/javascript\" src=\"jquery.js\"></script>";
     return;
 }
 
-void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
+static void create_nav_menu(weblegends_handler_v1 & handler, const std::string & url)
 {
     std::string title;  // page title
     std::string baseURL;
@@ -139,50 +138,98 @@ void create_nav_menu(weblegends_handler_v1 & handler, const std::string url)
             }
             break;
     }
-    // Build Nav Menu =========
     handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head>";
-    // Title
     handler.cp437_out() << "<title>" << title << "</title>";
-    // Base
     handler.cp437_out() << "<base href=\"" << baseURL << "\"/>";
-    // CSS & scripts
     add_styles_and_scripts(handler);
     handler.cp437_out() << "</head><body><p>";
-    // Weblegends Home
     handler.cp437_out() << "<a class=\"navItem\" href=\"\">Home</a>";
-    
-    auto doPageLink = [&](AIPages page, const std::string & name)
-    {
-        handler.cp437_out() << "<a href=\"" << getAIPageURL(page) << "\" class=\"navItem";
-        if (currentPage == page)
-        {
-            handler.cp437_out() << " navSelected";
-        }
-        handler.cp437_out() << "\">" << name << "</a>";
-    };
-    // Status
-    doPageLink(AIPages::Status, "Status");
-    // Tasks
-    doPageLink(AIPages::Report_Plan, "Tasks");
-    // Population
-    doPageLink(AIPages::Report_Population, "Population");
-    // Stocks
-    doPageLink(AIPages::Report_Stocks, "Stocks");
-    // Events
-    doPageLink(AIPages::Report_Events, "Events");
-    // Blueprint
-    doPageLink(AIPages::Plan, "Blueprints");
-    // Version
-    doPageLink(AIPages::Version, "Version");
-    // close P from beginning of menu
+
+#define PAGE_LINK(page, name) \
+    do \
+    { \
+        handler.cp437_out() << "<a href=\"" << getAIPageURL(page) << "\" class=\"nav-item"; \
+        if (currentPage == page) \
+        { \
+            handler.cp437_out() << " nav-selected"; \
+        } \
+        handler.cp437_out() << "\">" << name << "</a>"; \
+    } while (false)
+    PAGE_LINK(AIPages::Status, "Status");
+    PAGE_LINK(AIPages::Report_Plan, "Tasks");
+    PAGE_LINK(AIPages::Report_Population, "Population");
+    PAGE_LINK(AIPages::Report_Stocks, "Stocks");
+    PAGE_LINK(AIPages::Report_Events, "Events");
+    PAGE_LINK(AIPages::Plan, "Blueprints");
+    PAGE_LINK(AIPages::Version, "Version");
+#undef PAGE_LINK
     handler.cp437_out() << "</p>";
     return;
 }
 
-
-bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & url)
+static void process_query_arg(weblegends_handler_v1 & handler, const std::string & key, const std::string & value)
 {
-    // Requesting Stylesheet
+    if (key == "refresh")
+    {
+        if (value.empty())
+            return;
+        if (value.at(0) <= '1' || value.at(0) >= '9')
+            return;
+        for (size_t i = 1; i < value.length(); i++)
+        {
+            if (value.at(i) <= '0' || value.at(i) >= '9')
+                return;
+        }
+
+        handler.headers()["Refresh"] = value;
+    }
+}
+
+static void process_query(weblegends_handler_v1 & handler, std::string & query)
+{
+    while (!query.empty())
+    {
+        auto and_pos = query.find('&');
+
+        // && or ?& in URL
+        if (and_pos == 0)
+        {
+            query.erase(0, 1);
+            continue;
+        }
+
+        std::string key = query.substr(0, and_pos);
+        std::string value;
+        if (and_pos == std::string::npos)
+        {
+            query.clear();
+        }
+        else
+        {
+            query.erase(0, and_pos + 1);
+        }
+
+        auto eq_pos = key.find('=');
+        if (eq_pos < and_pos)
+        {
+            value = key.substr(eq_pos + 1);
+            key.erase(eq_pos);
+        }
+
+        process_query_arg(handler, key, value);
+    }
+}
+
+bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & url_with_query)
+{
+    auto pos = url_with_query.find('?');
+    if (pos != std::string::npos)
+    {
+        auto query = url_with_query.substr(pos + 1);
+        process_query(handler, query);
+    }
+    auto url = url_with_query.substr(0, pos);
+
     if (url == "/aistyle.css")
     {
         handler.headers()["Content-Type"] = "text/css; charset=utf-8";
@@ -206,10 +253,10 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
             "tbody th {\n"
             "\ttext-align: left;\n"
             "}\n"
-            ".navItem {\n"
+            ".nav-item {\n"
             "\tpadding-right: 12px;\n"
             "}\n"
-            ".navSelected {\n"
+            ".nav-selected {\n"
             "\tcolor: inherit;\n"
             "\ttext-decoration: none;\n"
             "\tfont-weight: bold;\n"
@@ -220,9 +267,8 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         return true;
     }
 
-    //===================
     // Create nav menu
-    create_nav_menu(handler,url);
+    create_nav_menu(handler, url);
 
     // df-ai is not loaded or enabled
     if (!enabled || !dwarfAI)
@@ -248,7 +294,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.cp437_out() << "<body><p><a href=\"report/population\">Report has been split into sub-pages.</a></p></body></html>";
         return true;
     }
-    
+
     // Status
     if (url == "")
     {
