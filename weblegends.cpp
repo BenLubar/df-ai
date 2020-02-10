@@ -143,7 +143,7 @@ static void create_nav_menu(weblegends_handler_v1 & handler, const std::string &
     handler.cp437_out() << "<base href=\"" << baseURL << "\"/>";
     add_styles_and_scripts(handler);
     handler.cp437_out() << "</head><body><p>";
-    handler.cp437_out() << "<a class=\"navItem\" href=\"\">Home</a>";
+    handler.cp437_out() << "<a class=\"nav-item\" href=\"\">Home</a>";
 
 #define PAGE_LINK(page, name) \
     do \
