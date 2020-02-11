@@ -154,6 +154,30 @@ void Population::update_crimes(color_ostream & out)
         case df::crime::BloodDrinking:
             accusation = "vampirism";
             break;
+        case df::crime::Embezzlement:
+            accusation = "embezzlement";
+            break;
+        case df::crime::AttemptedMurder:
+            accusation = "attempted murder";
+            break;
+        case df::crime::Kidnapping:
+            accusation = "kidnapping";
+            break;
+        case df::crime::AttemptedKidnapping:
+            accusation = "attempted kidnapping";
+            break;
+        case df::crime::AttemptedTheft:
+            accusation = "attempted theft";
+            break;
+        case df::crime::Treason:
+            accusation = "treason";
+            break;
+        case df::crime::Espionage:
+            accusation = "espionage";
+            break;
+        case df::crime::Bribery:
+            accusation = "bribery";
+            break;
         }
         if (accusation.empty())
         {
