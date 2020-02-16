@@ -209,6 +209,9 @@ public:
         {
             ai.debug(out, "Could not find position for " + enum_item_key(responsibility));
         }
+
+        Key(interface_key::LEAVESCREEN);
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
     }
 };
 
