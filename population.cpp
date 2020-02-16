@@ -719,10 +719,20 @@ void Population::report(std::ostream & out, bool html)
             out << AI::describe_unit(criminal, html) << " is a vampire who drank the blood of " << AI::describe_unit(victim, html) << ".";
             break;
         case crime_type::Embezzlement:
+            out << AI::describe_unit(criminal, html) << " [FIXME:PLACEHOLDER:" << enum_item_key_str(crime->mode) << "] " << AI::describe_unit(victim, html);
+            break;
         case crime_type::AttemptedMurder:
+            out << AI::describe_unit(criminal, html) << " attempted to murder " << AI::describe_unit(victim, html) << ".";
+            break;
         case crime_type::Kidnapping:
+            out << AI::describe_unit(criminal, html) << " abducted " << AI::describe_unit(victim, html) << ".";
+            break;
         case crime_type::AttemptedKidnapping:
+            out << AI::describe_unit(criminal, html) << " attempted to abduct " << AI::describe_unit(victim, html) << ".";
+            break;
         case crime_type::AttemptedTheft:
+            out << AI::describe_unit(criminal, html) << " attempted to steal an item from " << AI::describe_unit(victim, html) << ".";
+            break;
         case crime_type::Treason:
         case crime_type::Espionage:
         case crime_type::Bribery:
