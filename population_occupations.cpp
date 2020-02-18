@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "population.h"
+#include "debug.h"
 
 #include "modules/Gui.h"
 #include "modules/Units.h"
@@ -7,10 +8,21 @@
 #include "df/abstract_building_inn_tavernst.h"
 #include "df/abstract_building_libraryst.h"
 #include "df/abstract_building_templest.h"
+#include "df/agreement.h"
+#include "df/agreement_details.h"
+#include "df/agreement_details_data_citizenship.h"
+#include "df/agreement_details_data_location.h"
+#include "df/agreement_details_data_parley.h"
+#include "df/agreement_details_data_residency.h"
+#include "df/agreement_party.h"
 #include "df/building.h"
+#include "df/historical_entity.h"
+#include "df/historical_figure.h"
 #include "df/occupation.h"
 #include "df/ui.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_locationsst.h"
+#include "df/viewscreen_petitionsst.h"
 #include "df/world.h"
 #include "df/world_site.h"
 
@@ -29,26 +41,288 @@ const static int32_t wanted_library_scribe_min = 0;
 const static int32_t wanted_temple_performer = 4;
 const static int32_t wanted_temple_performer_min = 0;
 
-void Population::update_locations(color_ostream & out)
+class AssignOccupationExclusive : public ExclusiveCallback
 {
-    // not urgent, wait for next cycle.
-    if (!AI::is_dwarfmode_viewscreen())
-        return;
+    AI & ai;
+    int32_t location_id;
+    df::occupation_type occupation;
 
-    // accept all petitions
-    // FIXME: maybe actually look at what the petitions are asking for
-    while (!ui->petitions.empty())
+    static df::abstract_building *get_location(int32_t location_id)
     {
-        size_t petitions_before = ui->petitions.size();
-        // FIXME: this should be an exclusivecallback.
-        Gui::getCurViewscreen(true)->feed_key(interface_key::D_PETITIONS);
-        Gui::getCurViewscreen(true)->feed_key(interface_key::OPTION1);
-        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-        if (petitions_before <= ui->petitions.size())
+        auto site = ui->main.fortress_site;
+        if (!site)
+            return nullptr;
+
+        return binsearch_in_vector(site->buildings, location_id);
+    }
+    static std::string get_location_name(int32_t location_id)
+    {
+        auto location = get_location(location_id);
+        if (!location)
+            return "(unknown location)";
+
+        auto name = location->getName();
+        if (!name)
+            return "(unnamed " + enum_item_key(location->getType()) + ")";
+
+        return AI::describe_name(*name, true);
+    }
+
+public:
+    AssignOccupationExclusive(AI & ai, int32_t location_id, df::occupation_type occupation) :
+        ExclusiveCallback("assign new " + enum_item_key(occupation) + " at " + get_location_name(location_id)),
+        ai(ai),
+        location_id(location_id),
+        occupation(occupation)
+    {
+    }
+
+    void Run(color_ostream & out)
+    {
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        Key(interface_key::D_LOCATIONS);
+
+        ExpectedScreen<df::viewscreen_locationsst> view(this);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Locations");
+
+        bool found = false;
+        for (auto loc : view->locations)
         {
-            // FIXME
-            break;
+            if (loc->id == location_id)
+            {
+                found = true;
+                break;
+            }
         }
+
+        if (!found)
+        {
+            ai.debug(out, "[ERROR] could not find location " + get_location_name(location_id) + " on the list");
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+            return;
+        }
+
+        while (view->locations.at(view->location_idx)->id != location_id)
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::STANDARDSCROLL_RIGHT);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Occupations");
+
+        found = false;
+        for (auto occ : view->occupations)
+        {
+            if (occ->unit_id == -1 && occ->type == occupation)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            ai.debug(out, "[ERROR] could not find occupation " + enum_item_key(occupation) + " on the list");
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+            return;
+        }
+
+        while (view->occupations.at(view->occupation_idx)->unit_id != -1 || view->occupations.at(view->occupation_idx)->type != occupation)
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::SELECT);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/AssignOccupation");
+
+        df::unit *chosen = nullptr;
+        int32_t best = std::numeric_limits<int32_t>::max();
+        for (auto u : view->units)
+        {
+            if (!u || u->military.squad_id != -1)
+            {
+                continue;
+            }
+
+            std::vector<Units::NoblePosition> positions;
+            Units::getNoblePositions(&positions, u);
+            if (!positions.empty())
+            {
+                continue;
+            }
+
+            bool has_occupation = false;
+            for (auto o : world->occupations.all)
+            {
+                if (o->unit_id == u->id)
+                {
+                    has_occupation = true;
+                    break;
+                }
+            }
+
+            if (has_occupation)
+            {
+                continue;
+            }
+
+            int32_t score = ai.pop.unit_totalxp(u);
+            if (!chosen || score < best)
+            {
+                chosen = u;
+                best = score;
+            }
+        }
+
+        if (!chosen)
+        {
+            ai.debug(out, "[ERROR] could not find unit for occupation " + enum_item_key(occupation) + " at " + get_location_name(location_id));
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_locationsst>("locations/Occupations");
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+            return;
+        }
+
+        ai.debug(out, "[Population] assigning occupation " + enum_item_key(occupation) + " at " + get_location_name(location_id) + " to " + AI::describe_unit(chosen));
+
+        while (view->units.at(view->unit_idx) != chosen)
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::SELECT);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Occupations");
+
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+    }
+};
+
+class CheckPetitionsExclusive : public ExclusiveCallback
+{
+    AI & ai;
+
+public:
+    CheckPetitionsExclusive(AI & ai) :
+        ExclusiveCallback("check petitions"),
+        ai(ai)
+    {
+    }
+
+    void Run(color_ostream & out)
+    {
+        if (ui->petitions.empty())
+            return;
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        Key(interface_key::D_PETITIONS);
+
+        ExpectedScreen<df::viewscreen_petitionsst> view(this);
+
+        ExpectScreen<df::viewscreen_petitionsst>("petitions");
+
+        if (!view->can_manage)
+        {
+            ai.debug(out, "[Population] nobody is available to manage petitions.");
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+            return;
+        }
+
+        while (!view->list.empty())
+        {
+            auto petition = view->list.at(view->cursor);
+            auto details = petition->details.at(0);
+
+            auto describe_party = [petition](int32_t party_id) -> std::string
+            {
+                if (petition->parties.size() <= size_t(party_id))
+                    return "(unknown)";
+
+                auto party = petition->parties.at(party_id);
+
+                if (!party->entity_ids.empty())
+                {
+                    auto ent = df::historical_entity::find(party->entity_ids.at(0));
+                    auto name = ent ? &ent->name : nullptr;
+                    return name ? AI::describe_name(*name, true) : "(unknown)";
+                }
+
+                if (!party->histfig_ids.empty())
+                {
+                    auto fig = df::historical_figure::find(party->histfig_ids.at(0));
+                    auto name = fig ? &fig->name : nullptr;
+                    return name ? AI::describe_name(*name, false) : "(unknown)";
+                }
+
+                return "(unknown)";
+            };
+
+            switch (details->type)
+            {
+                case df::agreement_details::Residency:
+                    ai.debug(out, "[Population] accepting residency petition from " + describe_party(details->data.Residency->applicant));
+                    Key(interface_key::OPTION1);
+                    break;
+                case df::agreement_details::Citizenship:
+                    ai.debug(out, "[Population] accepting citizenship petition from " + describe_party(details->data.Citizenship->applicant));
+                    Key(interface_key::OPTION1);
+                    break;
+                case df::agreement_details::Parley:
+                    // TODO: consider implementing this
+                    ai.debug(out, "[Population] rejecting petition for a parley from " + describe_party(details->data.Parley->party_id));
+                    Key(interface_key::OPTION2);
+                    break;
+                case df::agreement_details::Location:
+                    // TODO: consider implementing this
+                    ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(details->data.Location->type)) + " from " + describe_party(details->data.Location->party_id));
+                    Key(interface_key::OPTION2);
+                    break;
+                default:
+                    DFAI_ASSERT(false, "unexpected petition type: " + enum_item_key(details->type));
+
+                    Key(interface_key::LEAVESCREEN);
+
+                    ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+                    return;
+            }
+        }
+
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+    }
+};
+
+void Population::update_locations(color_ostream &)
+{
+    if (!ui->petitions.empty())
+    {
+        events.queue_exclusive(std::make_unique<CheckPetitionsExclusive>(ai));
     }
 
 #define INIT_NEED(name) int32_t need_##name = std::max(wanted_##name * int32_t(citizen.size()) / 200, wanted_##name##_min)
@@ -80,11 +354,11 @@ void Population::update_locations(color_ostream & out)
             }
             if (need_tavern_keeper > 0)
             {
-                assign_occupation(out, bld, loc, occupation_type::TAVERN_KEEPER);
+                events.queue_exclusive(std::make_unique<AssignOccupationExclusive>(ai, loc->id, occupation_type::TAVERN_KEEPER));
             }
             if (need_tavern_performer > 0)
             {
-                assign_occupation(out, bld, loc, occupation_type::PERFORMER);
+                events.queue_exclusive(std::make_unique<AssignOccupationExclusive>(ai, loc->id, occupation_type::PERFORMER));
             }
         }
     }
@@ -110,11 +384,11 @@ void Population::update_locations(color_ostream & out)
             }
             if (need_library_scholar > 0)
             {
-                assign_occupation(out, bld, loc, occupation_type::SCHOLAR);
+                events.queue_exclusive(std::make_unique<AssignOccupationExclusive>(ai, loc->id, occupation_type::SCHOLAR));
             }
             if (need_library_scribe > 0)
             {
-                assign_occupation(out, bld, loc, occupation_type::SCRIBE);
+                events.queue_exclusive(std::make_unique<AssignOccupationExclusive>(ai, loc->id, occupation_type::SCRIBE));
             }
         }
     }
@@ -136,106 +410,8 @@ void Population::update_locations(color_ostream & out)
             }
             if (need_temple_performer > 0)
             {
-                assign_occupation(out, bld, loc, occupation_type::PERFORMER);
+                events.queue_exclusive(std::make_unique<AssignOccupationExclusive>(ai, loc->id, occupation_type::PERFORMER));
             }
         }
     }
-}
-
-void Population::assign_occupation(color_ostream & out, df::building *, df::abstract_building *loc, df::occupation_type occ)
-{
-    // FIXME: this should be an ExclusiveCallback.
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::D_LOCATIONS);
-
-    auto view = strict_virtual_cast<df::viewscreen_locationsst>(Gui::getCurViewscreen(true));
-    if (!view)
-    {
-        ai.debug(out, "[ERROR] expected viewscreen_locationsst");
-        return;
-    }
-
-    while (view->locations[view->location_idx] != loc)
-    {
-        view->feed_key(interface_key::STANDARDSCROLL_DOWN);
-    }
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_RIGHT);
-
-    while (true)
-    {
-        if (view->occupations[view->occupation_idx]->unit_id == -1 &&
-            view->occupations[view->occupation_idx]->type == occ)
-        {
-            break;
-        }
-        Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
-    }
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-
-    df::unit *chosen = nullptr;
-    int32_t best = std::numeric_limits<int32_t>::max();
-    for (auto u : view->units)
-    {
-        if (!u || u->military.squad_id != -1)
-        {
-            continue;
-        }
-
-        std::vector<Units::NoblePosition> positions;
-        Units::getNoblePositions(&positions, u);
-        if (!positions.empty())
-        {
-            continue;
-        }
-
-        bool has_occupation = false;
-        for (auto o : world->occupations.all)
-        {
-            if (o->unit_id == u->id)
-            {
-                has_occupation = true;
-                break;
-            }
-        }
-
-        if (has_occupation)
-        {
-            continue;
-        }
-
-        int32_t score = unit_totalxp(u);
-        if (!chosen || score < best)
-        {
-            chosen = u;
-            best = score;
-        }
-    }
-
-    if (!chosen)
-    {
-        ai.debug(out, "pop: could not find unit for occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true));
-
-        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-
-        Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-
-        return;
-    }
-
-    ai.debug(out, "pop: assigning occupation " + ENUM_KEY_STR(occupation_type, occ) + " at " + AI::describe_name(*loc->getName(), true) + " to " + AI::describe_unit(chosen));
-
-    while (true)
-    {
-        if (view->units[view->unit_idx] == chosen)
-        {
-            break;
-        }
-        Gui::getCurViewscreen(true)->feed_key(interface_key::STANDARDSCROLL_DOWN);
-    }
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
 }
