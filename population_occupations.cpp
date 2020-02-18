@@ -284,20 +284,20 @@ public:
 
             switch (details->type)
             {
-                case df::agreement_details::Residency:
+                case agreement_details_type::Residency:
                     ai.debug(out, "[Population] accepting residency petition from " + describe_party(details->data.Residency->applicant));
                     Key(interface_key::OPTION1);
                     break;
-                case df::agreement_details::Citizenship:
+                case agreement_details_type::Citizenship:
                     ai.debug(out, "[Population] accepting citizenship petition from " + describe_party(details->data.Citizenship->applicant));
                     Key(interface_key::OPTION1);
                     break;
-                case df::agreement_details::Parley:
+                case agreement_details_type::Parley:
                     // TODO: consider implementing this
                     ai.debug(out, "[Population] rejecting petition for a parley from " + describe_party(details->data.Parley->party_id));
                     Key(interface_key::OPTION2);
                     break;
-                case df::agreement_details::Location:
+                case agreement_details_type::Location:
                     // TODO: consider implementing this
                     ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(details->data.Location->type)) + " from " + describe_party(details->data.Location->party_id));
                     Key(interface_key::OPTION2);
