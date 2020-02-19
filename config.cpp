@@ -34,7 +34,8 @@ Config::Config() :
     }
     embark_options[embark_finder_option::DimensionX] = 3;
     embark_options[embark_finder_option::DimensionY] = 2;
-    embark_options[embark_finder_option::Aquifer] = 0;
+    embark_options[embark_finder_option::AquiferLight] = 0;
+    embark_options[embark_finder_option::AquiferHeavy] = 0;
     embark_options[embark_finder_option::Savagery] = 2;
 }
 
