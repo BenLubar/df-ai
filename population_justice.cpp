@@ -309,9 +309,9 @@ void Population::update_crimes(color_ostream & out)
             continue;
         }
         std::string message("[Crime] Waiting for punishment: ");
-        message += AI::describe_unit(p->criminal);
+        message += AI::describe_unit(df::unit::find(p->criminal));
         message += "\n        Officer: ";
-        message += AI::describe_unit(p->officer);
+        message += AI::describe_unit(df::unit::find(p->officer));
         if (p->beating)
         {
             message += "\n        Awaiting beating";
