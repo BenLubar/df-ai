@@ -54,7 +54,6 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     {
     case announcement_type::MEGABEAST_ARRIVAL:
     {
-        debug(out, "pause: uh oh, megabeast...");
         if (!tag_enemies(out))
         {
             debug(out, "[ERROR] could not find megabeast");
@@ -62,22 +61,14 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
         break;
     }
     case announcement_type::BERSERK_CITIZEN:
-        debug(out, "pause: berserk");
-        break;
     case announcement_type::UNDEAD_ATTACK:
-        debug(out, "pause: i see dead people");
-        break;
     case announcement_type::CAVE_COLLAPSE:
-        debug(out, "pause: kevin?");
         break;
     case announcement_type::DIG_CANCEL_DAMP:
     case announcement_type::DIG_CANCEL_WARM:
         ignore_pause(last_good_x, last_good_y, last_good_z);
-        debug(out, "pause: lazy miners");
         break;
     case announcement_type::BIRTH_CITIZEN:
-        debug(out, "pause: newborn");
-        break;
     case announcement_type::BIRTH_ANIMAL:
         break;
     case announcement_type::D_MIGRANTS_ARRIVAL:
@@ -85,30 +76,20 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
     case announcement_type::MIGRANT_ARRIVAL:
     case announcement_type::NOBLE_ARRIVAL:
     case announcement_type::FORT_POSITION_SUCCESSION:
-        debug(out, "pause: more minions");
         plan.make_map_walkable(out); // just in case we missed a frozen river or something during setup
         break;
     case announcement_type::DIPLOMAT_ARRIVAL:
     case announcement_type::LIAISON_ARRIVAL:
     case announcement_type::CARAVAN_ARRIVAL:
     case announcement_type::TRADE_DIPLOMAT_ARRIVAL:
-        debug(out, "pause: visitors");
-        break;
     case announcement_type::STRANGE_MOOD:
     case announcement_type::MOOD_BUILDING_CLAIMED:
     case announcement_type::ARTIFACT_BEGUN:
     case announcement_type::MADE_ARTIFACT:
-        debug(out, "pause: mood");
-        break;
     case announcement_type::FEATURE_DISCOVERY:
     case announcement_type::STRUCK_DEEP_METAL:
-        debug(out, "pause: dig dig dig");
-        break;
     case announcement_type::TRAINING_FULL_REVERSION:
-        debug(out, "pause: born to be wild");
-        break;
     case announcement_type::NAMED_ARTIFACT:
-        debug(out, "pause: hallo");
         break;
     default:
     {
