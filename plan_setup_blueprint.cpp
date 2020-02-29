@@ -15,7 +15,7 @@
 
 REQUIRE_GLOBAL(world);
 
-bool PlanSetup::add(const room_blueprint & rb, std::string & error, df::coord exit_location)
+bool PlanSetup::add(const room_blueprint & rb, std::string & error, df::coord VARIABLE_IS_NOT_USED exit_location)
 {
     for (auto c : rb.corridor)
     {
