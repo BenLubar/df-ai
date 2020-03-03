@@ -125,13 +125,13 @@ void Camera::update(color_ostream &)
             continue;
         df::creature_raw *race = df::creature_raw::find(u->race);
         if (race &&
-            (race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST) ||
-                race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST) ||
-                race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST) ||
-                race->flags.is_set(creature_raw_flags::CASTE_TITAN) ||
-                race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON) ||
-                race->flags.is_set(creature_raw_flags::CASTE_DEMON) ||
-                race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY)))
+            (race->flags.is_set(creature_raw_flags::HAS_ANY_MEGABEAST) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_SEMIMEGABEAST) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_FEATURE_BEAST) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_TITAN) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_UNIQUE_DEMON) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_DEMON) ||
+                race->flags.is_set(creature_raw_flags::HAS_ANY_NIGHT_CREATURE)))
         {
             DFAI_DEBUG(camera, 4, "adding candidate: " << AI::describe_unit(u) << " (primary antagonist)");
             targets0.push_back(u);

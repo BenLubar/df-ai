@@ -23,31 +23,31 @@ bool AI::tag_enemies(color_ostream & out)
             !Units::isOwnCiv(u) && Units::getContainer(u) == nullptr &&
             !Maps::getTileDesignation(Units::getPosition(u))->bits.hidden)
         {
-            if (race && race->flags.is_set(creature_raw_flags::CASTE_MEGABEAST))
+            if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_MEGABEAST))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: megabeast") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_SEMIMEGABEAST))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_SEMIMEGABEAST))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: semi-megabeast") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_FEATURE_BEAST))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_FEATURE_BEAST))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: forgotten beast") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_TITAN))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_TITAN))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: titan") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_UNIQUE_DEMON))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_UNIQUE_DEMON))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "primary antagonist: demon") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_DEMON))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_DEMON))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "antagonist: demon") || found;
             }
-            else if (race && race->flags.is_set(creature_raw_flags::CASTE_NIGHT_CREATURE_ANY))
+            else if (race && race->flags.is_set(creature_raw_flags::HAS_ANY_NIGHT_CREATURE))
             {
                 found = pop.military_all_squads_attack_unit(out, u, "antagonist: night creature") || found;
             }
