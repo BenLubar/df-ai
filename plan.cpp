@@ -727,6 +727,7 @@ void Plan::save(std::ostream & out)
         r["temporary"] = (*it)->temporary;
         r["outdoor"] = (*it)->outdoor;
         r["channeled"] = (*it)->channeled;
+        r["required_value"] = (*it)->required_value;
         converted_rooms.append(r);
     }
 
@@ -1028,6 +1029,10 @@ void Plan::load(std::istream & in)
         (*it)->temporary = r["temporary"].asBool();
         (*it)->outdoor = r["outdoor"].asBool();
         (*it)->channeled = r["channeled"].asBool();
+        if (r.isMember("required_value"))
+        {
+            (*it)->required_value = r["required_value"].asInt();
+        }
 
         rooms_and_corridors.push_back(*it);
     }
@@ -1621,6 +1626,10 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
 #define DIG_ROOM_IF(type, req) \
             if (r->nobleroom_type == nobleroom_type::type && std::find_if(entpos.begin(), entpos.end(), [](Units::NoblePosition np) -> bool { return np.position->required_ ## req > 0; }) != entpos.end()) \
             { \
+                for (auto & np : entpos) \
+                { \
+                    r->required_value = r->required_value > np.position->required_ ## req ? r->required_value : np.position->required_ ## req; \
+                } \
                 wantdig(out, r, -2); \
             }
             DIG_ROOM_IF(tomb, tomb);

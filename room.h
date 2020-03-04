@@ -209,6 +209,7 @@ struct room
     bool temporary;
     bool outdoor;
     bool channeled;
+    int32_t required_value;
 
     room(room_type::type type, df::coord min, df::coord max, std::string comment = "");
     room(corridor_type::type subtype, df::coord min, df::coord max, std::string comment = "");
