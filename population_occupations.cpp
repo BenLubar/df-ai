@@ -326,7 +326,7 @@ public:
                             continue;
                     }
 
-                    auto found_room = ai.find_room(room_type::location, [type](room *r) -> bool { return r->status == room_status::plan && r->location_type == type; });
+                    auto found_room = ai.find_room(room_type::location, [type](room *r) -> bool { return r->status == room_status::plan && !r->queue_dig && r->location_type == type; });
                     if (!found_room)
                     {
                         ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(loc->type)) + " from " + describe_party(loc->applicant) + ": no remaining space for buildings of this type");
