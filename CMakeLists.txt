@@ -43,11 +43,18 @@ SET(PROJECT_SRCS
     population_occupations.cpp
     population_pets.cpp
     plan.cpp
+    plan_assign.cpp
+    plan_cistern.cpp
+    plan_construct.cpp
+    plan_find.cpp
     plan_legacy.cpp
+    plan_persist.cpp
     plan_priorities.cpp
     plan_setup.cpp
     plan_setup_blueprint.cpp
     plan_setup_screen.cpp
+    plan_smooth.cpp
+    plan_task.cpp
     blueprint.cpp
     blueprint_furniture.cpp
     blueprint_room.cpp
@@ -66,6 +73,7 @@ SET(PROJECT_SRCS
     camera.cpp
     embark.cpp
     room.cpp
+    room_describe.cpp
     trade_helpers.cpp
     trade_manager.cpp
     event_manager.cpp
