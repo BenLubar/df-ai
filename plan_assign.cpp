@@ -187,6 +187,7 @@ void Plan::attribute_noblerooms(color_ostream & out, const std::set<int32_t> & i
     // XXX tomb may be populated...
     while (room *old = ai.find_room(room_type::nobleroom, [id_list](room *r) -> bool { return r->owner != -1 && !id_list.count(r->owner); }))
     {
+        old->required_value = 0;
         set_owner(out, old, -1);
     }
 
