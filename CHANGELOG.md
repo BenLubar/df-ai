@@ -1,0 +1,389 @@
+# Future
+
+- Fixed some corridors in the generic01 plan missing a staircase.
+- Removed legacy blueprint.
+- Petitions for guildhalls and temples can now be accepted.
+- The AI will no longer attempt to floor over saplings in pastures.
+- Required room value is now tracked.
+
+# 0.47.03-beta1
+
+- Planning the fortress now happens on a custom viewscreen.
+- Petitions are handled more intelligently.
+- Cleaned up weblegends output.
+- Fixed some crashes and hangs.
+
+# 0.44.12-r3
+
+# 0.44.12-r2
+
+- The web UI has a new coat of paint. (GitHub issue #53, thanks @mattregul)
+
+## Military
+
+- The AI no longer requires that there are more picks and axes than soldiers. (GitHub issue #55, thanks @mattregul)
+  - Instead, if a mining or woodcutting job is waiting and no civilian has access to the tool needed, it will be taken from a military dwarf.
+  - Weapons will not be confiscated from military dwarves who are currently in combat.
+  - When a weapon is confiscated, the dwarf will be assigned a new melee weapon type, favoring weapon types that are in stock and craftable within the fortress.
+
+## Blueprint
+
+- The code to ensure rooms had walls is no longer completely broken. (GitHub issue #56, thanks @mattregul)
+- Fixed room entrances sometimes being embedded in rock at the back of the room. (GitHub issue #57, GitHub issue #59, thanks @mattregul)
+
+# 0.44.12-r1 update 1
+
+- This version fixes several crashes and hangs present in the initial df-ai 0.44.12-r1 release.
+
+# 0.44.12-r1
+
+- Exclusive callbacks now use a coroutine-based implementation. This should not have any visible change in behavior, but as always, if there are problems, report them on the [issues page](https://github.com/BenLubar/df-ai/issues).
+
+# 0.44.12-alpha1
+
+## Floor plan generator
+
+- Added an entirely new plan: `generic01`.
+  - Rooms no longer have fixed locations. However, a few rooms have specific constraints to limit how crazy the fortress layout can be:
+    - Corridor segments that have bedrooms may *only* have bedrooms.
+    - Each corridor segment has at least one exit that can only be another corridor.
+    - Staircases are only connected to corridors.
+    - Regular-sized (3x3) workshops are placed in groups of 3 with a small stockpile nearby, similar to the `legacy` plan.
+    - Underground farm plots are placed in clusters and use the same irrigation style as the `legacy` plan. However, the `generic01` underground farm plots connect to the rest of the fortress on the *upper* level so floods will not affect other areas.
+  - There are no cage traps at the fortress entrance. This may or may not be modified in the future.
+  - The central staircase is 3x3 instead of 1x3. There may also be more than one major staircase in the fortress.
+  - Kennels and siege workshops have been added to the plan, but the AI does not currently use them.
+  - There can now be multiple taverns, libraries, and temples in the fortress. Only one of each will be built before most of the fortress has been completed.
+  - Additional rooms and room variants will be added in the future. [Suggestions and bug reports](https://github.com/BenLubar/df-ai/issues/new) of all kinds are encouraged.
+- The [plan editor](https://benlubar.github.io/df-ai/plan-editor/) is partially functional and may be helpful when modifying or viewing rooms or plans.
+- Editors such as [Visual Studio Code](https://code.visualstudio.com/) that support JSON Schema now have auto-complete and partial validation for df-ai plan and room JSON files, which makes manually editing them much easier.
+- Disabled `legacy` plan by default. It can be re-enabled by renaming the file from `legacy.json.disabled` to `legacy.json`.
+- Fixed an issue where only non-corridor rooms would block their own exits.
+- Documented plan verbosity level 4, which logs messages about room exits being discarded.
+
+# 0.44.11-beta1
+
+- Added support for the messenger occupation to the web interface.
+- Fixed incompatibilities caused by DFHack changes. (GitHub issue #46)
+
+# 0.44.10-r2
+
+- The military will no longer kill-steal from hunters. (GitHub issue #45)
+
+# 0.44.10-r1
+
+# 0.44.10-beta1
+
+- Changed `windmill` from a furniture type to a room type.
+
+# 0.44.10-alpha1
+
+# 0.44.09-r1
+
+# 0.44.09-alpha1
+
+# 0.44.08-alpha1
+
+- Fixed a crash when the AI checked to see if it could use an item that wasn't in the fortress.
+
+# 0.44.07-alpha1
+
+## Quality of life
+*A few quality of life improvements have been made that make it easier to interact with the AI while it is running. Additionally, some repetitive error messages have been fixed, and the AI now waits longer before building large dining rooms.*
+
+- Added the `ai abandon` command to allow a new fort to be started without disabling lockstep or closing Dwarf Fortress.
+- The infirmary is now also an animal training zone, so the [dwarfvet](https://dfhack.readthedocs.io/en/stable/docs/Plugins.html#dwarfvet) plugin will work.
+- If a mercenary would be added to an empty squad, a citizen will be moved from an existing squad first. Previously, drafting the mercenary would fail.
+- Fixed an error message about not being able to recruit a captain of the guard. The captain of the guard would previously still be recruited through the squad management system.
+- Increased the number of dwarves allowed in the temporary (tiny, in-hallway) dining room from 6 to 9, which will prevent larger dining rooms from being dug before the first migrant wave.
+- Split the report into three pages in weblegends: tasks, population, and stocks.
+- Workshops and furnaces now show information about what items they are missing in the tasks report.
+
+### Population report
+*The population report has been expanded to show additional information, like medical and criminal history.*
+
+- Fixed diplomats like the outpost liaison being shown in the residents section of the population report.
+- The report now shows residents' occupations, such as monster slayer, mercenary, or performer.
+- Added information about crimes to the report.
+- Added health information to the report. The information is currently displayed in a pretty messy format.
+- Expanded squad kill orders in the report to show individual units instead of "kill keas" or "kill various".
+- Split the job list in the population report into active jobs and jobs that are waiting for a worker.
+
+### Stocks report
+*The stocks report has been expanded with a new layout that is easier to read in a browser.*
+
+- Improved formatting of the stocks section of the report. There are now meters and progress bars in browsers that support them, and the data is formatted in a table instead of a list.
+- The total number of an item type in the fortress is now displayed next to the amount available and the goal amount in the report.
+- Subtypes of items like ammo, clothing, and weapons are now tracked individually.
+- Added a description of what is being done to items in the stocks report, or why nothing is being done.
+
+## Production management
+*There are some fixes for bugs that would prevent item production or produce too many of an item, as well as some new safeguards against running out of wood and metal.*
+
+- The stocks module updates more frequently and assigns all manager orders for an update at once instead of waiting a few frames between each assignment.
+- Manager orders that are not started will be cancelled and combined with new manager orders, to reduce the length of the list.
+- Fixed items in hauled bins and barrels being considered "in use".
+- Gloves and boots are now counted individually instead of in pairs.
+- Fixed boots being made using the `MakeGloves` job, which would cause a large number of gauntlets to be stockpiled, and no boots ever.
+- Anvils are only purchased from trade caravans if each individual anvil is needed, instead of purchasing all anvils if any are needed.
+- Cutting trees will stop waiting after a while and cut additional trees if wood stocks continue to be low.
+- There is no limit on meals and drinks as long as both meals and drinks are stockpiled to at least the "need" level and there are extra food storage containers available.
+- The production of all non-bed wooden items made is suspended if more beds are needed. Previously, only barrels were suspended.
+
+### Metal equipment
+*Metal production is now much more efficient, and the AI will make better choices when selecting a metal to produce equipment from.*
+
+- Fixed alloys that are not going to be used being produced. This most commonly manifested in a fortress full of [billon](https://en.wikipedia.org/wiki/Billon_(alloy)) and no copper or silver.
+- [Goblinite](https://dwarffortresswiki.org/index.php/DF2014:Goblinite) is now collected and processed. (#20)
+- Metal crossbows and bolts will now be made.
+- Improved the priorities of various metal types when deciding what to use for weapon making.
+  - Ammunition uses the most abundant metal, either based on the ingots currently available, or the non-alloy ingots that could be made.
+  - Ranged weapons use the lightest metal available, excluding candy.
+  - Edged weapons like swords and axes use the metal with the highest shear fracture score. See [the material science page on the wiki](http://dwarffortresswiki.org/index.php/DF2014:Material_science#Material_and_item_properties).
+  - Blunt weapons like hammers and maces use the metal with the highest density.
+
+# 0.44.05-r2 update 1
+
+This release fixes manager order queueing on Linux and Mac OS X. Additionally, manager order queueing will handle failure to find the expected order more gracefully on all operating systems. There are no changes other than this bugfix.
+
+# 0.44.05-r2
+
+## DFHack compatibility
+*df-ai makes a lot of assumptions about Dwarf Fortress's behavior, but some of those assumptions can be incorrect when other DFHack plugins or scripts are enabled. This update fixes many of the most common incompatibilities.*
+
+- Unexpected DFHack viewscreens are now logged, just like unexpected Dwarf Fortress viewscreens.
+- `fix/merchants` - Fixed a soft lock when a guild representative arrives at the trade depot. (#39)
+- `warn-starving` - Fixed a soft lock when this script was run while a dwarf or a visitor was starving or dehydrated. (#37)
+- `gui/extended-status` - Fixed a soft lock when updating stocks (if JSON events are enabled), or when convicting a dwarf of a crime. (#37)
+- `gui/load-screen` - Fixed a soft lock when embarking. (#41)
+
+## Exclusive mode
+*Exclusive mode allows df-ai to show what it is doing by pressing at most one key per frame.*
+
+- Game over state is detected and handled during exclusive mode contexts.
+- Exclusive mode contexts can now be queued to run as soon as possible instead of only one exclusive context being allowed at a time.
+- Fixed an edge case where exclusive mode could exit early.
+- Embarking now detects and handles some DFHack viewscreens. See the *DFHack compatibility* section for details.
+- Manager orders are now entered in exclusive mode.
+  - The AI can enter some orders that aren't normally able to be entered through this interface. For example, engraving slabs is not usually possible through manager orders. However, cheating here is a lot easier than implementing a separate job management system just for slabs, and doesn't significantly change gameplay or make it less difficult.
+  - The list of manager orders is filtered by entering the first word of the order, or in the case of some common words, a later word, before selecting it. Care has been taken to handle cases like slabbing where non-ASCII characters may be in the first word.
+- See the *Military management* section for more changes related to exclusive mode.
+
+## Lockstep improvements
+*Lockstep mode has had some stability improvements and should crash or hang much less often. In addition, disabling lockstep mode is now possible without restarting the game.*
+
+- Lockstep mode no longer takes over if the intro video is playing.
+- Lockstep mode will stop recording a CMV when entered or exited.
+  - It will immediately start a new recording if `record_movie` is enabled in `dfhack-config/df-ai.json`.
+  - The first CMV recorded in a lockstep-enabled session includes the console output.
+  - A CMV that is recording when lockstep mode exits is no longer corrupted.
+- `unload df-ai` and `disable df-ai` no longer happen immediately if lockstep mode is enabled. Lockstep mode will shut down before the plugin is unloaded or disabled. `disable df-ai` while in lockstep mode will automatically try again after lockstep mode exits.
+- There should no longer be a crash when exiting the game during lockstep mode, such as when `no_quit` is set to false.
+- CMV files produced in lockstep mode do not contain a sound header, so they are about 12 kilobytes smaller per file. The limit per file remains at around 5 megabytes.
+
+## Military management
+*Military management has always been a weak point of df-ai. This update improves the handling of some situations where a fortress could die slowly if nothing was done to change the status quo.*
+
+- Citizens will be dismissed from the military if there are fewer than 1 civilian for every 3 soldiers.
+  - This mirrors the already-existing rule to draft new soldiers so that there is at least 1 soldier for every 3 civilians.
+  - Soldiers with more total skill experience will be dismissed before soldiers with less experience overall, which also mirrors the logic used to draft new soldiers.
+  - Squad leaders with subordinates and non-citizen residents are never dismissed from the military.
+- Mercenaries recruited through the tavern are now drafted into the military as soon as possible.
+- Soldier management now uses an exclusive context:
+  - If a squad has space for a soldier, they are added to the squad's first available slot.
+  - New squads will be created in this order: ranged, melee, melee.
+  - If an appropriate uniform does not exist, one will be created. The AI uses metal armor and a shield for both melee and ranged squads.
+- Squad kill orders now use an exclusive context and should no longer disappear when there is an incompatibility between df-ai's logic and Dwarf Fortress's logic.
+- Squad kill orders now report a reason for being added or removed in the log.
+
+## Blueprint/Plan
+*A small change was made to the blueprint system to improve the speed of the initial setup of fortresses.*
+
+- The `dig_immediate` mode now pauses all other build queues until digging is completed in addition to not waiting in the queue itself.
+- The default legacy plan now builds five rooms before any of the living space such as bedrooms and dining rooms:
+  1. Masons' workshop
+  2. Carpenters' workshop
+  3. Farm plot (food)
+  4. Farm plot (cloth)
+  5. Garbage dump
+
+# 0.44.05-r1
+
+*This update is mostly just to keep df-ai usable on a new version of Dwarf Fortress and DFHack. There are no significant new features.*
+
+- Updated code to work with the data structure changes for DFHack 0.44.xx.
+- Removed things that no longer make sense as of Dwarf Fortress 0.44.xx:
+  - Trees suspected to have dwarves stuck in them are no longer cut down as dwarves no longer get stuck in trees.
+  - Removed the news given by the outpost liaison from the log as the news is now just a message saying to view the civilization screen.
+- Reorganized plan verbosity levels so that lower levels always give less specific information.
+- Added comments to the `dfhack-config/df-ai.json` file describing what each option does and its possible values.
+
+# 0.43.05-r3
+
+## Blueprints
+*The AI can now build a fort using a system based on the [TileGen](https://developer.valvesoftware.com/wiki/Swarm_TileGen) map generator in [Alien Swarm: Reactive Drop](https://store.steampowered.com/app/563560/).*
+
+- If generating a fortress layout from a blueprint fails too many times in a row, the AI will use the old layout generation system. You can disable this in `dfhack-config/df-ai.json`.
+- The blueprint plan included in this version attempts to replicate the layout from previous versions.
+- Known issue: The legacy plan does not yet include a cistern.
+- Some new rooms have been added in conjunction with new features:
+  - There are now jails near the infirmary.
+  - The underground farms are now irrigated without cheating.
+- A [work-in progress visual editor](https://benlubar.github.io/df-ai/plan-editor/) is now available for editing plans and rooms.
+
+## Weblegends integration
+*Wondering what the AI is doing, but don't want to stop it to check? View the current status of the AI in a web browser!*
+
+- Simply install [weblegends 0.43.05-r3](https://github.com/BenLubar/weblegends/releases/tag/0.43.05-r3) in addition to df-ai to enable this functionality.
+- Available views include a summary of the AI's status, an extended version of the `ai report` command, a live floor plan of the fortress, and the version of the df-ai plugin.
+- Additionally, new information has been added to `ai report`, such as a list of jobs, the available metals, any curses a citizen or visitor might have, and the reason a task has not yet completed.
+
+## Other improvements
+
+- lockstep has received a few bugfixes, so it should be more stable now. If you still experience problems, try running df-ai with an empty `dfhack.init` file and adding the commands you want back one by one.
+- The AI now reports on criminal justice, assigns law enforcement administrators, and convicts criminals.
+- `manage_labors` can now be set to `"autolabor"` or `"labormanager"` for additional automated setup of those plugins.
+- Soldiers are not assigned to train until their barracks has been excavated.
+- Squads are now dismissed from attacking caged enemies that are not about to be thrown into a hole.
+- The first squad is now a squad of marksdwarves to avoid being incapable of fighting birds until the third squad is created.
+- The military is no longer sent to attack foreigners that fight citizens in self defense, such as when a citizen is a werebeast or has gone insane.
+- The military will more consistently attack wild animals that are threatening the lives of citizens.
+- The AI is now capable of building some additional furniture, like floor hatches, restraints, and cages.
+- Trees containing stuck dwarves will be cut down.
+- Metal items are now made in a more consistent way.
+
+# 0.43.05-r2
+
+## Lockstep Mode
+
+*Lockstep mode replaces the entire event loop of Dwarf Fortress, making Dwarf Fortress run inside df-ai instead of the other way around. This allows df-ai to make the game think it's running at the default frame rate regardless of how fast the game is actually running, and add information about what the AI is thinking to the recorded CMV files.*
+
+- Enable or disable lockstep mode at any time using `ai enable lockstep` or `ai disable lockstep`.
+- Lockstep mode is saved in `df-ai-config.json`, so it can also be toggled in that file if Dwarf Fortress is not running.
+- Dwarf Fortress will ignore all input while lockstep mode is active, but DFHack commands will work normally.
+- Lockstep mode does not work with `[PRINT_MODE:TEXT]`, so Linux and Mac users that want headless df-ai will need [Xvfb](https://en.wikipedia.org/wiki/Xvfb) or a similar program and `[PRINT_MODE:2D]`.
+- Lockstep mode modifies code in memory when it is enabled or disabled, so there is a risk of crashing Dwarf Fortress. However, there should not be any higher risk of crashing when not in the middle of toggling lockstep mode.
+- Lockstep mode pretends to run at 100 simulation frames per second.
+- Lockstep mode pretends to run at 50 graphical frames per second during gameplay and 100 graphical frames per second when menus are open.
+- I say "pretends" because lockstep mode will run as fast as the resources given to Dwarf Fortress will allow it to run.
+- If a CMV is already being recorded when lockstep mode is enabled, the console will not be displayed. To avoid this, restart Dwarf Fortress after enabling lockstep, or enable lockstep in `df-ai-config.json` before starting Dwarf Fortress.
+
+## Trading
+
+*df-ai now attempts to trade with merchants! Currently, the goods offered and requested are from a hard-coded list, but this may be extended in the future. This is also the first use of the "exclusive" mode in df-ai, where the AI can stop everything it's doing to focus on menus. [Watch it in action!](https://benlubar.github.io/cmvjs/#ai_trade.cmv)*
+
+- When a caravan arrives, dwarves are ordered to bring all prepared meals and food storage containers containing exclusively prepared meals to the depot.
+- The broker is tracked, and if they are taking too long to arrive, other dwarves will be requested instead.
+- If the trade goods take too long to arrive at the depot, trading will happen before all the goods have arrived.
+- The dwarves will trade for (in order, from "need" to "would be nice to have"):
+    1. Logs
+    2. Anvils (only if none are available and a forge is waiting to be built)
+    3. Books and other items containing writing
+    4. Musical instruments
+    5. The rest:
+        - Boulders
+        - Bars (metal, ash, soap, etc.)
+        - Cloth
+        - Leather
+        - Thread
+        - Cooking ingredients
+- The AI does not attempt to handle modded worlds where multiple civilizations can arrive during the same season to trade. In this case, some caravans may be ignored, depending on the timing of arrival and departure.
+- The AI will attempt to please civilizations opposed to plant murder, but wood products such as soap, certain types of glass, and decorations are not handled.
+- Civilizations opposed to animal murder are also handled, but this has no effect in unmodded worlds.
+- The AI will attempt to give the trader a good deal, starting with offering at least 110% of the requested value, and adding offerings or removing requests each time the trade is declined. Counter-offers are accepted immediately.
+
+## Fortress Layout
+
+*This update fixes several bugs that could ruin or halt the progress of a fortress. Steps have been taken to streamline the fortress building process and to make the AI more efficient.*
+
+- Fixed some cases where the AI would try to dig a room that was not connected to any room the dwarves could access and get stuck.
+- The AI will no longer attempt to patch the floors it removed from the well.
+- Room, furniture, and item types are now identified internally by numbers instead of text. This will make the AI faster as well as reduce the chance of bugs related to typos.
+- Farms can now be built in places with trees or shrubs. The plants will be removed before the farm is built.
+- Furniture-related tasks have been split into a separate queue, so having a large migrant wave no longer slows down workshop building by requesting a large amount of furniture.
+- Claimed bedrooms, noble rooms, rooms being built while idle, and cavern exploration no longer count towards the limits of other room types being built.
+- Rooms that are planned but not yet ready to be dug are highlighted in blue instead of yellow.
+- Room priority has been modified. For example, the trade depot will now be built much earlier and the library and temple will be built much later.
+- Certain rooms will be smoothed and then engraved when the AI is idle.
+- Walls will no longer be smoothed if they are to be removed later.
+- The dwarves will keep the pitting tower free of trees and other objects that could break the fall of its victims.
+- Added an additional level below the fortress for food storage.
+- The trade depot now has ramps on the eastern side if it is to the east of the fort entrance.
+- Fixed some cases where aqueduct tunnels would not line up, causing flooding and death.
+- Custom workshops and furnaces can now be built if you edit the floorplan manually.
+
+## Other Changes
+
+- The camera position will be saved in more situations, most noticeably when migrants arrive.
+- AI camera control can now be enabled and disabled while the game is running with `ai enable camera` and `ai disable camera`.
+- The AI no longer freezes when the outpost liaison greets a land-holding dwarf.
+- Unpausing now happens after a specific number of frames, not an amount of real time.
+- The AI is less interested in watching people sleep.
+- Dwarves will now remove clothing from goblins even if they are outside.
+- The embark information screens will now be displayed before confirming the embark location.
+- Immigrant mothers will still drop their babies on the floor, but now they'll go back to pick them up. (See [Dwarf Fortress bug 0005551](http://www.bay12games.com/dwarves/mantisbt/view.php?id=5551).)
+- Book bindings will be made, and library books will now be bound.
+- Toys will be made for the children to play with.
+- Above-ground farm plots will now consider biome when deciding what plants to grow.
+
+# 0.43.05-r1
+
+- Added `ai version` command that gives exact version numbers of df-ai components.
+
+# 0.43.05-beta1
+
+# 0.43.03-r1
+
+- Automatic labor and noble management can be disabled in the configuration file.
+
+# 0.43.03-alpha1
+
+- AI control of the camera and the FPS meter can be disabled in the config file. See #4.
+- Log messages that mention rooms now give more information about which room is being mentioned.
+- Fixed some crashes that happened when embarking on a glacier.
+- The message that appears when first contact is made with elves after no trees have been cut is now handled by the auto-unpause code.
+- The AI now reports deaths.
+- Mining mishaps such as missing staircases are now fixed immediately instead of waiting for the entire room to be dug.
+- Manager orders are now entered using the UI.
+- There is now an `ai report` command that gives much more detail than the `ai` command about what is going on in the game.
+- Ice boulders can be used to build constructions such as stairs.
+- Squads are no longer sent to attack caged prisoners before they are marked for pitting.
+- Training axes have been removed from the list of items the AI can request. See Dwarf Fortress bug [0000712](http://www.bay12games.com/dwarves/mantisbt/view.php?id=712).
+- `ai` and `ai report` are disabled during embark. They did not produce useful information until the embark completed and sometimes would crash.
+- Reduced stocks spam.
+- The depot entrance is no longer able to be placed under the wagon.
+- Important dwarves such as the manager, broker, and bookkeeper are no longer able to be drafted into the military.
+- The "new age" message is now dismissed even if it appears without a pause.
+
+# 0.42.06-r1 update 2
+
+- Added `dfhack-config/df-ai.json`. The file will be created if it does not exist when Dwarf Fortress is started.
+- The AI will generate a new world if it runs out of possible embarks or there is no world set. To use an existing world, set `"random_embark_world" : "region1",` (or some other region number) in the config file.
+- Movie recording is now disabled by default.
+- [Site finder](http://dwarffortresswiki.org/index.php/DF2014:Site_finder) options can be adjusted in the config file.
+- The `"wealth"` event has been added to df-ai-events.json.
+- Fixed some cases of messages being delayed (such as the `ai` command without the AI enabled).
+
+# 0.42.06-r1 update 1
+
+- Bedrooms and pastures are now unassigned even if the game was saved between the owner dying and the next population update.
+- Fixed trees not being designated for cutting.
+- @lethosor has provided a Mac OS X build.
+
+# 0.42.06-r1
+
+- Added visitors and residents to the status command and population event.
+- Fixed a case where residents would be counted as pets.
+- Saving always happens right before an autosave and whenever the ESC menu is opened.
+- Fixed a crash after game over caused by the floor plan being saved during the game over screen.
+- Trees that are inaccessible from the fort or submerged in an underground lake are ignored by the tree cutting algorithm.
+- Fixed enemy finding code. Enemy finding code now runs once a week in addition to immediately after a megabeast announcement.
+
+# 0.42.06-beta1
+
+- Improved megabeast finding algorithm
+- Added `ai enable events` command to log various events for use by third party code
+- Saving and loading now works in most cases
+
+# 0.42.06-alpha1
+
