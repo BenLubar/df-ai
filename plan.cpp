@@ -52,6 +52,8 @@
 #include "df/furniture_type.h"
 #include "df/general_ref_building_holderst.h"
 #include "df/general_ref_building_triggertargetst.h"
+#include "df/historical_entity.h"
+#include "df/historical_figure.h"
 #include "df/item_boulderst.h"
 #include "df/item_toolst.h"
 #include "df/itemdef_toolst.h"
@@ -5386,7 +5388,63 @@ std::string AI::describe_room(room *r, bool html)
         }
         break;
     case room_type::location:
-        s << " (" << r->location_type << ")";
+        switch (r->location_type)
+        {
+        case location_type::guildhall:
+            s << " (" << toLower(enum_item_key(df::profession(r->data1))) << " guildhall)";
+            break;
+        case location_type::temple:
+            switch (df::temple_deity_type(r->data1))
+            {
+            case temple_deity_type::None:
+                s << " (temple)";
+                break;
+            case temple_deity_type::Deity:
+                s << " (temple to ";
+                if (html)
+                {
+                    s << "<a href=\"fig-" << r->data2 << "\">";
+                }
+                if (auto hf = df::historical_figure::find(r->data2))
+                {
+                    s << maybe_escape(AI::describe_name(hf->name, false), html) << " \"" << maybe_escape(AI::describe_name(hf->name, true), html) << "\"";
+                }
+                else
+                {
+                    s << "[unknown deity]";
+                }
+                if (html)
+                {
+                    s << "</a>";
+                }
+                s << ")";
+                break;
+            case temple_deity_type::Religion:
+                s << " (temple of ";
+                if (html)
+                {
+                    s << "<a href=\"ent-" << r->data2 << "\">";
+                }
+                if (auto ent = df::historical_entity::find(r->data2))
+                {
+                    s << maybe_escape(AI::describe_name(ent->name, false), html) << " \"" << maybe_escape(AI::describe_name(ent->name, true), html) << "\"";
+                }
+                else
+                {
+                    s << "[unknown religion]";
+                }
+                if (html)
+                {
+                    s << "</a>";
+                }
+                s << ")";
+                break;
+            }
+            break;
+        default:
+            s << " (" << r->location_type << ")";
+            break;
+        }
         if (auto civzone = virtual_cast<df::building_civzonest>(r->dfbuilding()))
         {
             if (auto site = df::world_site::find(civzone->site_id))
