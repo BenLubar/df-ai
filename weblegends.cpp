@@ -402,7 +402,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                         {
                             continue;
                         }
-                        if ((r->outdoor ? (f->pos.z != 0 && f->dig == tile_dig_designation::Channel) : (f->dig == tile_dig_designation::No || f->construction == construction_type::Wall)) && holes.insert(f->pos).second)
+                        if ((r->outdoor ? f->dig == tile_dig_designation::Channel : (f->dig == tile_dig_designation::No || f->construction == construction_type::Wall)) && holes.insert(f->pos).second)
                         {
                             out << "M" << (r->min.x + f->pos.x) << " " << (r->min.y + f->pos.y) << "h1v1h-1v-1";
                         }
@@ -452,7 +452,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     {
                         continue;
                     }
-                    if (r->outdoor && f->pos.z != 0 && f->dig == tile_dig_designation::Channel)
+                    if (r->outdoor && f->dig == tile_dig_designation::Channel)
                     {
                         continue;
                     }
