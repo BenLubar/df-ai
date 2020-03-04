@@ -1,6 +1,6 @@
 {
 	"$schema": "http://json-schema.org/draft-04/schema",
-	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/enums.json",
+	"id": "https://ben.lubar.me/df-ai-schemas/enums.json",
 	"room_status": {
 		"id": "#room_status",
 		"enum": [
@@ -94,8 +94,9 @@
 	"location_type": {
 		"id": "#location_type",
 		"enum": [
-			"tavern",
+			"guildhall",
 			"library",
+			"tavern",
 			"temple"
 		]
 	},

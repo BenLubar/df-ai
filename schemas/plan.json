@@ -1,6 +1,6 @@
 {
 	"$schema": "http://json-schema.org/draft-04/schema",
-	"id": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan.json",
+	"id": "https://ben.lubar.me/df-ai-schemas/plan.json",
 	"type": "object",
 	"title": "Blueprint Plan",
 	"description": "A set of constraints used to generate a fortress.",

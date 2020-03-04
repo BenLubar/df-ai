@@ -1,5 +1,5 @@
 {
-	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/plan.json",
+	"$schema": "https://ben.lubar.me/df-ai-schemas/plan.json",
 	"start": "generic01_start",
 	"padding_x": [-16, 16],
 	"padding_y": [-16, 16],

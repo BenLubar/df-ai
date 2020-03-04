@@ -1,4 +1,4 @@
 {
-	"$schema": "https://raw.githubusercontent.com/BenLubar/df-ai/master/schemas/room-instance.json",
+	"$schema": "https://ben.lubar.me/df-ai-schemas/room-instance.json",
 	"p": []
 }
