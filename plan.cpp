@@ -5733,9 +5733,12 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
             // harvest
             AI::dig_tile(t, tile_dig_designation::Default);
         }
+        else if (ts == tiletype_shape::SAPLING && r->type == room_type::pasture)
+        {
+            // saplings can grow in pastures
+        }
         else if (ts != tiletype_shape::FLOOR)
         {
-            // TODO: what to do about SAPLING?
             fixup_open_helper(out, r, t, construction_type::Floor, f, *tt);
         }
         break;
