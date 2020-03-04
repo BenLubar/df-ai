@@ -444,7 +444,19 @@ void Plan::weblegends_write_svg(std::ostream & out)
                 }
                 for (auto f : r->layout)
                 {
-                    if (r->min.z + f->pos.z != level->first || (r->outdoor ? (f->pos.z != 0 && f->dig == tile_dig_designation::Channel) : (f->dig == tile_dig_designation::No || f->construction == construction_type::Wall)))
+                    if (r->min.z + f->pos.z != level->first)
+                    {
+                        continue;
+                    }
+                    if (f->pos.z == 0 && f->type == layout_type::none && f->construction == construction_type::Floor)
+                    {
+                        continue;
+                    }
+                    if (r->outdoor && f->pos.z != 0 && f->dig == tile_dig_designation::Channel)
+                    {
+                        continue;
+                    }
+                    if (!r->outdoor && (f->dig == tile_dig_designation::No || f->construction == construction_type::Wall))
                     {
                         continue;
                     }
