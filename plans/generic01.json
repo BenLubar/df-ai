@@ -8,6 +8,10 @@
 		"generic01_in_corridor": [
 			"generic01_workshop_1x1"
 		],
+		"generic01_corridor_any": [
+			"generic01_corridor",
+			"generic01_corridor_stair"
+		],
 		"generic01_generic": [
 			"generic01_barracks",
 			"generic01_bedrooms",
@@ -36,6 +40,7 @@
 		"generic01_bedrooms": [20, 50],
 		"generic01_cemetery": [3, 10],
 		"generic01_corridor": [5, 300],
+		"generic01_corridor_stair": [0, 50],
 		"generic01_dininghall": [4, 8],
 		"generic01_depot": [1, 1],
 		"generic01_infirmary": [1, 5],
@@ -43,7 +48,7 @@
 		"generic01_nobleroom": [4, 8],
 		"generic01_pasture": [0, 10],
 		"generic01_pitting_tower": [1, 1],
-		"generic01_stair": [0, 50],
+		"generic01_stair": [0, 100],
 		"generic01_start": [1, 1]
 	},
 	"instance_limits": {
