@@ -30,7 +30,8 @@
 				["generic01_generic", 5, -1, 0],
 				["generic01_in_corridor", 0, 1, 0],
 				["generic01_in_corridor", 6, 1, 0]
-			]
+			],
+			"remove_if_unused": true
 		}
 	]
 }

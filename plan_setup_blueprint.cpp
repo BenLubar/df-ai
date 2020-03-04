@@ -167,6 +167,9 @@ bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_temp
         return false;
     }
 
+    DFAI_DEBUG(blueprint, 1, "Removing unused rooms...");
+    remove_unused_rooms();
+
     return true;
 }
 
@@ -739,4 +742,46 @@ bool PlanSetup::have_minimum_requirements(std::map<std::string, size_t> & counts
     }
 
     return ok;
+}
+
+void PlanSetup::remove_unused_rooms()
+{
+    bool found_use = true;
+    while (found_use)
+    {
+        found_use = false;
+
+        for (auto r : rooms)
+        {
+            if (r->remove_if_unused)
+                continue;
+
+            for (auto i : r->accesspath)
+            {
+                auto ar = rooms.at(i);
+
+                if (ar->remove_if_unused)
+                {
+                    ar->remove_if_unused = false;
+                    found_use = true;
+                }
+            }
+        }
+    }
+
+    for (auto it = rooms.begin(); it != rooms.end(); it++)
+    {
+        auto r = *it;
+        if (!r->remove_if_unused)
+            continue;
+
+        for (auto i : r->layout)
+        {
+            delete layout.at(i);
+            layout.at(i) = nullptr;
+        }
+
+        delete r;
+        *it = nullptr;
+    }
 }

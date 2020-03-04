@@ -35,6 +35,7 @@ room_base::room_t::room_t() :
     require_floor(true),
     require_grass(0),
     in_corridor(false),
+    remove_if_unused(false),
     exits(),
     context(),
     blueprint()
@@ -292,6 +293,10 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
     if (data.isMember("in_corridor") && !apply_bool(in_corridor, data, "in_corridor", error))
+    {
+        return false;
+    }
+    if (data.isMember("remove_if_unused") && !apply_bool(remove_if_unused, data, "remove_if_unused", error))
     {
         return false;
     }

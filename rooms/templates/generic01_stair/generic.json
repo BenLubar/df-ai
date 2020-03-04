@@ -80,7 +80,8 @@
 				["generic01_corridor", 1, -1, 0],
 				["generic01_corridor", 1, 3, 0]
 			],
-			"comment": "staircase"
+			"comment": "staircase",
+			"remove_if_unused": true
 		}
 	]
 }

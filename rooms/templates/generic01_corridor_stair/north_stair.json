@@ -92,7 +92,8 @@
 				["generic01_stair", 1, 1, -1],
 				["generic01_stair", 1, 1, 1]
 			],
-			"comment": "staircase"
+			"comment": "staircase",
+			"remove_if_unused": true
 		}
 	]
 }

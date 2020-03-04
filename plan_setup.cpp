@@ -152,19 +152,22 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
 {
     std::vector<furniture *> real_layout;
 
-    for (size_t i = 0; i < layout.size(); i++)
+    for (auto f : layout)
     {
-        real_layout.push_back(new furniture());
+        real_layout.push_back(f ? new furniture() : nullptr);
     }
-    for (size_t i = 0; i < rooms.size(); i++)
+    for (auto r : rooms)
     {
-        real_rooms_and_corridors.push_back(new room(room_type::type(), df::coord(), df::coord()));
+        real_rooms_and_corridors.push_back(r ? new room(room_type::type(), df::coord(), df::coord()) : nullptr);
     }
 
     for (size_t i = 0; i < layout.size(); i++)
     {
         auto in = layout.at(i);
         auto out = real_layout.at(i);
+
+        if (!in)
+            continue;
 
         out->type = in->type;
         out->construction = in->construction;
@@ -191,6 +194,9 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
     {
         auto in = rooms.at(i);
         auto out = real_rooms_and_corridors.at(i);
+
+        if (!in)
+            continue;
 
         out->type = in->type;
 
@@ -278,6 +284,9 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
             }
         }
     }
+
+    auto real_rooms_end = std::remove(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), nullptr);
+    real_rooms_and_corridors.erase(real_rooms_end, real_rooms_and_corridors.end());
 
     fort_entrance = real_rooms_and_corridors.at(0);
     std::sort(real_rooms_and_corridors.begin(), real_rooms_and_corridors.end(), [fort_entrance](const room *a, const room *b) -> bool

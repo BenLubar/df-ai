@@ -115,6 +115,10 @@
 					"type": "boolean",
 					"default": false
 				},
+				"remove_if_unused": {
+					"type": "boolean",
+					"default": false
+				},
 				"placeholder": {
 					"type": "integer",
 					"minimum": 0
