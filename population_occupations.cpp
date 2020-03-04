@@ -111,7 +111,7 @@ public:
             return;
         }
 
-        while (view->locations.at(view->location_idx)->id != location_id)
+        while (!view->locations.at(view->location_idx) || view->locations.at(view->location_idx)->id != location_id)
         {
             Key(interface_key::STANDARDSCROLL_DOWN);
         }
