@@ -93,7 +93,7 @@ public:
         bool found = false;
         for (auto loc : view->locations)
         {
-            if (loc->id == location_id)
+            if (loc && loc->id == location_id)
             {
                 found = true;
                 break;
