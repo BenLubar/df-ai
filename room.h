@@ -101,8 +101,9 @@ BEGIN_ENUM(outpost, type) \
 END_ENUM(outpost, type) \
 \
 BEGIN_ENUM(location, type) \
-    ENUM_ITEM(tavern) \
+    ENUM_ITEM(guildhall) \
     ENUM_ITEM(library) \
+    ENUM_ITEM(tavern) \
     ENUM_ITEM(temple) \
 END_ENUM(location, type) \
 \
@@ -210,6 +211,8 @@ struct room
     bool outdoor;
     bool channeled;
     int32_t required_value;
+    int32_t data1;
+    int32_t data2;
 
     room(room_type::type type, df::coord min, df::coord max, std::string comment = "");
     room(corridor_type::type subtype, df::coord min, df::coord max, std::string comment = "");

@@ -52,7 +52,9 @@ room::room(room_type::type type, df::coord mins, df::coord maxs, std::string com
     temporary(false),
     outdoor(false),
     channeled(false),
-    required_value(0)
+    required_value(0),
+    data1(-1),
+    data2(-1)
 {
     channel_enable.clear();
     if (min.x > max.x)

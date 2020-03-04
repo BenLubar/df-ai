@@ -67,6 +67,7 @@
 #include "df/stop_depart_condition.h"
 #include "df/trap_type.h"
 #include "df/ui.h"
+#include "df/ui_sidebar_menus.h"
 #include "df/unit.h"
 #include "df/vehicle.h"
 #include "df/viewscreen_layer_stockpilest.h"
@@ -78,6 +79,7 @@ REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 REQUIRE_GLOBAL(cursor);
 REQUIRE_GLOBAL(ui);
+REQUIRE_GLOBAL(ui_sidebar_menus);
 REQUIRE_GLOBAL(world);
 
 const static size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
@@ -728,6 +730,14 @@ void Plan::save(std::ostream & out)
         r["outdoor"] = (*it)->outdoor;
         r["channeled"] = (*it)->channeled;
         r["required_value"] = (*it)->required_value;
+        if ((*it)->data1 != -1 || (*it)->data2 != -1)
+        {
+            r["data1"] = Json::Int((*it)->data1);
+        }
+        if ((*it)->data2 != -1)
+        {
+            r["data2"] = Json::Int((*it)->data2);
+        }
         converted_rooms.append(r);
     }
 
@@ -1032,6 +1042,14 @@ void Plan::load(std::istream & in)
         if (r.isMember("required_value"))
         {
             (*it)->required_value = r["required_value"].asInt();
+        }
+        if (r.isMember("data1"))
+        {
+            (*it)->data1 = r["data1"].asInt();
+        }
+        if (r.isMember("data2"))
+        {
+            (*it)->data2 = r["data2"].asInt();
         }
 
         rooms_and_corridors.push_back(*it);
@@ -3103,6 +3121,19 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
         bool known = false;
         switch (r->location_type)
         {
+            case location_type::guildhall:
+                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_GUILDHALL);
+                DFAI_ASSERT(r->data1 != -1, "guild hall must have profession");
+                do
+                {
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::SECONDSCROLL_DOWN);
+                }
+                while (ui_sidebar_menus->location.cursor_profession &&
+                        ui_sidebar_menus->location.profession.at(ui_sidebar_menus->location.cursor_profession) != df::profession(r->data1));
+                DFAI_ASSERT(ui_sidebar_menus->location.cursor_profession, "could not find profession for this guildhall");
+                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
+                known = true;
+                break;
             case location_type::tavern:
                 Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_INN_TAVERN);
                 known = true;
@@ -3113,7 +3144,22 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
                 break;
             case location_type::temple:
                 Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_TEMPLE);
-                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT); // no specific deity
+                if (r->data1 != -1)
+                {
+                    do
+                    {
+                        Gui::getCurViewscreen(true)->feed_key(interface_key::SECONDSCROLL_DOWN);
+                    }
+                    while (ui_sidebar_menus->location.cursor_deity &&
+                            (ui_sidebar_menus->location.deity_type.at(ui_sidebar_menus->location.cursor_deity) != df::temple_deity_type(r->data1) ||
+                             ui_sidebar_menus->location.deity_data.at(ui_sidebar_menus->location.cursor_deity).Deity != r->data2));
+                    DFAI_ASSERT(ui_sidebar_menus->location.cursor_deity, "could not find religion for this temple");
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
+                }
+                else
+                {
+                    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT); // no specific deity
+                }
                 known = true;
                 break;
 

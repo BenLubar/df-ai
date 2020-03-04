@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "population.h"
+#include "room.h"
 #include "debug.h"
 
 #include "modules/Gui.h"
@@ -16,6 +17,7 @@
 #include "df/agreement_details_data_residency.h"
 #include "df/agreement_party.h"
 #include "df/building.h"
+#include "df/d_init.h"
 #include "df/historical_entity.h"
 #include "df/historical_figure.h"
 #include "df/occupation.h"
@@ -26,6 +28,7 @@
 #include "df/world.h"
 #include "df/world_site.h"
 
+REQUIRE_GLOBAL(d_init);
 REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
@@ -298,10 +301,48 @@ public:
                     Key(interface_key::OPTION2);
                     break;
                 case agreement_details_type::Location:
-                    // TODO: consider implementing this
-                    ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(details->data.Location->type)) + " from " + describe_party(details->data.Location->party_id));
-                    Key(interface_key::OPTION2);
+                {
+                    auto loc = details->data.Location;
+                    int32_t data1 = -1;
+                    int32_t data2 = -1;
+                    int32_t required_value;
+                    location_type::type type;
+                    switch (loc->type)
+                    {
+                        case abstract_building_type::TEMPLE:
+                            required_value = d_init->temple_value_levels[loc->tier - 1];
+                            type = location_type::temple;
+                            data1 = int32_t(loc->deity_type);
+                            data2 = loc->deity_data.Deity;
+                            break;
+                        case abstract_building_type::GUILDHALL:
+                            required_value = d_init->guildhall_value_levels[loc->tier - 1];
+                            type = location_type::guildhall;
+                            data1 = loc->profession;
+                            break;
+                        default:
+                            ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(loc->type)) + " from " + describe_party(loc->applicant) + ": don't know how to construct this location for a petition");
+                            Key(interface_key::OPTION2);
+                            continue;
+                    }
+
+                    auto found_room = ai.find_room(room_type::location, [type](room *r) -> bool { return r->status == room_status::plan && r->location_type == type; });
+                    if (!found_room)
+                    {
+                        ai.debug(out, "[Population] rejecting petition to construct a " + toLower(enum_item_key(loc->type)) + " from " + describe_party(loc->applicant) + ": no remaining space for buildings of this type");
+                        Key(interface_key::OPTION2);
+                        break;
+                    }
+
+                    found_room->data1 = data1;
+                    found_room->data2 = data2;
+                    found_room->required_value = required_value;
+                    ai.plan.wantdig(out, found_room, -2);
+
+                    ai.debug(out, "[Population] accepting petition to construct a " + toLower(enum_item_key(loc->type)) + " from " + describe_party(loc->applicant));
+                    Key(interface_key::OPTION1);
                     break;
+                }
                 default:
                     DFAI_ASSERT(false, "unexpected petition type: " + enum_item_key(details->type));
 

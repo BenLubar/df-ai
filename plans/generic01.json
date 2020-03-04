@@ -48,9 +48,10 @@
 	},
 	"instance_limits": {
 		"generic01_location": {
+			"guildhall": [0, 5],
 			"library": [1, 2],
 			"tavern": [1, 2],
-			"temple": [1, 2]
+			"temple": [1, 7]
 		},
 		"generic01_outdoor_farm": {
 			"food": [0, 30],
@@ -407,10 +408,36 @@
 			}
 		},
 		{
+			"continue": true,
 			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "library"
+				},
+				"is": 0
+			},
 			"match": {
 				"status": "plan",
-				"type": "location"
+				"type": "location",
+				"location_type": "library"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "temple"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "temple"
 			}
 		},
 		{
@@ -418,6 +445,56 @@
 			"match": {
 				"status": "plan",
 				"type": "infirmary"
+			}
+		},
+		{
+			"continue": true,
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "tavern"
+				},
+				"is": 1
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "tavern"
+			}
+		},
+		{
+			"continue": true,
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "library"
+				},
+				"is": 1
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "library"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "temple"
+				},
+				"is": 1
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "temple"
 			}
 		},
 		{
