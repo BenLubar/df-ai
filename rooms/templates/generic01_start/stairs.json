@@ -47,19 +47,19 @@
 			"dig": "DownStair",
 			"construction": "DownStair",
 			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "DownStair",
-			"construction": "DownStair",
-			"x": 0,
 			"y": 2,
 			"z": 0
 		},
 		{
 			"dig": "DownStair",
 			"construction": "DownStair",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
 			"x": 2,
 			"y": 2,
 			"z": 0
@@ -110,70 +110,7 @@
 			"dig": "UpDownStair",
 			"construction": "UpDownStair",
 			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 0,
 			"y": 2,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 2,
-			"y": 2,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 0,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 2,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 2,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "UpDownStair",
-			"construction": "UpDownStair",
-			"x": 1,
-			"y": 0,
 			"z": 0
 		},
 		{
@@ -236,7 +173,7 @@
 			"dig": "UpDownStair",
 			"construction": "UpDownStair",
 			"x": 1,
-			"y": 0,
+			"y": 2,
 			"z": 0
 		},
 		{
@@ -299,7 +236,70 @@
 			"dig": "UpDownStair",
 			"construction": "UpDownStair",
 			"x": 1,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
 			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"dig": "UpDownStair",
+			"construction": "UpDownStair",
+			"x": 1,
+			"y": 2,
 			"z": 0
 		},
 		{
