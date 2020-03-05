@@ -43,7 +43,6 @@ struct Config
     bool manage_nobles;
     uint8_t cancel_announce;
     volatile bool lockstep;
-    bool plan_allow_legacy;
 };
 
 extern Config config;

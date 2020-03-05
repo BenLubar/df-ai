@@ -269,8 +269,7 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
         return false;
     }
 
-    checkidle_legacy(out, reason);
-
+    reason << "no priority list!";
     return false;
 }
 

@@ -47,7 +47,6 @@ SET(PROJECT_SRCS
     plan_cistern.cpp
     plan_construct.cpp
     plan_find.cpp
-    plan_legacy.cpp
     plan_persist.cpp
     plan_priorities.cpp
     plan_setup.cpp

@@ -48,19 +48,14 @@ void PlanSetup::Run(color_ostream & out)
 
         if (ai.plan.priorities.empty())
         {
-            Log("No priorities defined. Building default starting rooms.");
-            ai.plan.setup_ready(out);
+            Log("WARNING: No priorities defined!");
         }
     }
     else
     {
-        Log("Failed to build blueprint. Using legacy plan generator.");
-        auto res = ai.plan.setup_blueprint_legacy(out);
-        if (res != CR_OK)
-        {
-            AI::abandon(out);
-            return;
-        }
+        Log("Failed to build blueprint.");
+        AI::abandon(out);
+        return;
     }
 
     Log("Searching for mineral veins...");
