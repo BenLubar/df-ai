@@ -11,6 +11,13 @@
 #include "df/interface_key.h"
 #include "df/viewscreen.h"
 
+#if WIN32
+// TODO: actual filename/line number of caller
+#define FL const char *filename = __FILE__, int lineno = __LINE__
+#else
+#define FL const char *filename = __builtin_FILE(), int lineno = __builtin_LINE()
+#endif
+
 class ExclusiveCallback
 {
 public:
@@ -26,9 +33,9 @@ protected:
     public:
         ExpectedScreen(ExclusiveCallback *cb) : cb(*cb) {}
 
-        inline T *get() const
+        inline T *get(FL) const
         {
-            return cb.getScreen<T>();
+            return cb.getScreen<T>(filename, lineno);
         }
         inline T *operator->() const
         {
@@ -37,16 +44,16 @@ protected:
     };
 
     template<typename T>
-    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value>::type ExpectScreen(const std::string & focus, const std::string & parentFocus = std::string(), FL)
     {
         expectedScreen = &T::_identity;
         expectedFocus = focus;
         expectedParentFocus = parentFocus;
 
-        checkScreen();
+        checkScreen(filename, lineno);
     }
     template<typename T>
-    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string())
+    typename std::enable_if<std::is_base_of<df::viewscreen, T>::value, bool>::type MaybeExpectScreen(const std::string & focus, const std::string & parentFocus = std::string(), FL)
     {
         T *screen = strict_virtual_cast<T>(Gui::getCurViewscreen(true));
         if (!screen)
@@ -64,49 +71,49 @@ protected:
             return false;
         }
 
-        ExpectScreen<T>(focus, parentFocus);
+        ExpectScreen<T>(focus, parentFocus, filename, lineno);
 
         return true;
     }
     void KeyNoDelay(df::interface_key key);
-    void Key(df::interface_key key);
-    void Char(char c);
+    void Key(df::interface_key key, const char *filename, int lineno);
+    void Char(char c, const char *filename, int lineno);
     void Delay(size_t frames = 1);
     void AssertDelayed();
 
-    inline void MoveToItem(const int32_t *current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP)
+    inline void MoveToItem(const int32_t *current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP, FL)
     {
         while (*current != target)
         {
-            Key(*current < target ? inc : dec);
+            Key(*current < target ? inc : dec, filename, lineno);
         }
     }
     template<size_t N>
-    inline void EnterString(const char (*current)[N], const std::string & target)
+    inline void EnterString(const char (*current)[N], const std::string & target, FL)
     {
         size_t len = strnlen(*current, N);
         while (len > target.size() || *current != target.substr(0, len))
         {
-            Key(interface_key::STRING_A000); // backspace
+            Key(interface_key::STRING_A000, filename, lineno); // backspace
             len--;
         }
 
         while (len < target.size())
         {
-            Char(target.at(len));
+            Char(target.at(len), filename, lineno);
             len++;
         }
     }
-    inline void EnterString(std::string *current, const std::string & target)
+    inline void EnterString(std::string *current, const std::string & target, const char *filename, int lineno)
     {
         while (current->size() > target.size() || *current != target.substr(0, current->size()))
         {
-            Key(interface_key::STRING_A000); // backspace
+            Key(interface_key::STRING_A000, filename, lineno); // backspace
         }
 
         while (current->size() < target.size())
         {
-            Char(target.at(current->size()));
+            Char(target.at(current->size()), filename, lineno);
         }
     }
 
@@ -130,11 +137,11 @@ private:
     template<typename T>
     friend class ExpectedScreen;
     template<typename T>
-    T *getScreen()
+    T *getScreen(const char *filename, int lineno)
     {
         CHECK_INVALID_ARGUMENT(&T::_identity == expectedScreen);
 
-        checkScreen();
+        checkScreen(filename, lineno);
 
         return strict_virtual_cast<T>(Gui::getCurViewscreen(true));
     }
@@ -150,7 +157,7 @@ private:
     std::string expectedFocus;
     std::string expectedParentFocus;
 
-    void checkScreen();
+    void checkScreen(const char *filename, int lineno);
     bool run(color_ostream & out);
     void init(coroutine_t::pull_type & input);
 
@@ -159,3 +166,8 @@ private:
 public:
     const std::string description;
 };
+#undef FL
+
+#define Key(key) Key((key), __FILE__, __LINE__)
+#define Char(c) Char((c), __FILE__, __LINE__)
+#define EnterString(cur, tar) EnterString((cur), (tar), __FILE__, __LINE__)

@@ -7,6 +7,9 @@
 
 #include "df/viewscreen.h"
 
+#undef Key
+#undef Char
+
 ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wait_multiplier) :
     out_proxy(),
     pull(nullptr),
@@ -35,9 +38,9 @@ void ExclusiveCallback::KeyNoDelay(df::interface_key key)
     feed_keys.push_back(key);
 }
 
-void ExclusiveCallback::Key(df::interface_key key)
+void ExclusiveCallback::Key(df::interface_key key, const char *filename, int lineno)
 {
-    checkScreen();
+    checkScreen(filename, lineno);
     KeyNoDelay(key);
     Delay();
 }
@@ -54,13 +57,13 @@ const static char safe_char[128] =
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 
-void ExclusiveCallback::Char(char c)
+void ExclusiveCallback::Char(char c, const char *filename, int lineno)
 {
     if (c < 0)
     {
         c = safe_char[(uint8_t)c - 128];
     }
-    Key(Screen::charToKey(c));
+    Key(Screen::charToKey(c), filename, lineno);
 }
 
 void ExclusiveCallback::Delay(size_t frames)
@@ -90,20 +93,39 @@ void ExclusiveCallback::AssertDelayed()
     did_delay = false;
 }
 
-void ExclusiveCallback::checkScreen()
+void ExclusiveCallback::checkScreen(const char *filename, int lineno)
 {
     if (!expectedScreen)
     {
         return;
     }
 
-    df::viewscreen *curview = Gui::getCurViewscreen(true);
+    bool first = true;
+    for (;;)
+    {
+        df::viewscreen *curview = Gui::getCurViewscreen(true);
 
-    DFAI_ASSERT(expectedScreen->is_instance(curview) &&
-        (expectedFocus.empty() || Gui::getFocusString(curview) == expectedFocus) &&
-        (expectedParentFocus.empty() || Gui::getFocusString(curview->parent) == expectedFocus),
-        "expected screen to be " << expectedScreen->getName() << ":" << expectedFocus << ":" << expectedParentFocus <<
-        ", but it is " << virtual_identity::get(curview)->getName() << ":" << Gui::getFocusString(curview) << ":" << Gui::getFocusString(curview->parent));
+        bool isExpectedScreen = expectedScreen->is_instance(curview) &&
+            (expectedFocus.empty() || Gui::getFocusString(curview) == expectedFocus) &&
+            (expectedParentFocus.empty() || Gui::getFocusString(curview->parent) == expectedFocus);
+
+        if (first)
+        {
+            DFAI_ASSERT_LOC(isExpectedScreen,
+                "expected screen to be " << expectedScreen->getName() << ":" << expectedFocus << ":" << expectedParentFocus <<
+                ", but it is " << virtual_identity::get(curview)->getName() << ":" << Gui::getFocusString(curview) << ":" << Gui::getFocusString(curview->parent),
+                filename, lineno);
+        }
+
+        if (isExpectedScreen)
+        {
+            return;
+        }
+
+        first = false;
+
+        Delay();
+    }
 }
 
 bool ExclusiveCallback::run(color_ostream & out)

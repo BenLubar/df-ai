@@ -48,17 +48,20 @@ static inline constexpr const char *dfai_debug_basename(const char *lastSlash, c
             dfai_debug_basename(lastSlash, lastChar + 1));
 }
 
-#define DFAI_ASSERT(ok, message) \
+#define DFAI_ASSERT_LOC(ok, message, filename, lineno) \
     do \
     { \
         if (BOOST_UNLIKELY(!(ok))) \
         { \
-            dfai_debug_log() << "Assertion failed on " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << BOOST_STRINGIZE(ok) << std::endl; \
+            dfai_debug_log() << "Assertion failed on " << dfai_debug_basename(filename, filename) << " line " << lineno << ": " << BOOST_STRINGIZE(ok) << std::endl; \
             dfai_debug_log() << message << std::endl; \
             dfai_debug_log() << std::endl; \
             DFAI_BREAKPOINT(); \
         } \
     } while (false)
+
+#define DFAI_ASSERT(ok, message) \
+    DFAI_ASSERT_LOC(ok, message, __FILE__, __LINE__)
 
 #ifdef DFAI_RELEASE
 // only debug levels 0-3 are available in release builds
