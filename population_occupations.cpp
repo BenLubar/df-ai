@@ -123,7 +123,7 @@ public:
         found = false;
         for (auto occ : view->occupations)
         {
-            if (occ->unit_id == -1 && occ->type == occupation)
+            if (occ && occ->unit_id == -1 && occ->type == occupation)
             {
                 found = true;
                 break;
@@ -141,7 +141,7 @@ public:
             return;
         }
 
-        while (view->occupations.at(view->occupation_idx)->unit_id != -1 || view->occupations.at(view->occupation_idx)->type != occupation)
+        while (!view->occupations.at(view->occupation_idx) || view->occupations.at(view->occupation_idx)->unit_id != -1 || view->occupations.at(view->occupation_idx)->type != occupation)
         {
             Key(interface_key::STANDARDSCROLL_DOWN);
         }

@@ -30,6 +30,7 @@
 #include "df/plant.h"
 #include "df/ui.h"
 #include "df/ui_sidebar_menus.h"
+#include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_layer_stockpilest.h"
 #include "df/world.h"
 
@@ -1147,15 +1148,178 @@ bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & 
     return true;
 }
 
+class ConstructActivityZone : public ExclusiveCallback
+{
+    AI & ai;
+    room *r;
+
+public:
+    ConstructActivityZone(AI & ai, room *r) :
+        ExclusiveCallback("construct activity zone for " + AI::describe_room(r), 2),
+        ai(ai),
+        r(r)
+    {
+    }
+    
+
+protected:
+    void Run(color_ostream &)
+    {
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        int32_t start_x, start_y, start_z;
+        Gui::getViewCoords(start_x, start_y, start_z);
+
+        Key(interface_key::D_CIVZONE);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Zones");
+
+        Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
+        Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
+
+        Key(interface_key::CURSOR_LEFT);
+        Key(interface_key::SELECT);
+
+        for (int16_t x = r->min.x; x < r->max.x; x++)
+        {
+            Key(interface_key::CURSOR_RIGHT);
+        }
+        for (int16_t y = r->min.y; y < r->max.y; y++)
+        {
+            Key(interface_key::CURSOR_DOWN);
+        }
+        for (int16_t z = r->min.z; z < r->max.z; z++)
+        {
+            Key(interface_key::CURSOR_UP_Z);
+        }
+
+        Key(interface_key::SELECT);
+        auto bld = virtual_cast<df::building_civzonest>(world->buildings.all.back());
+        DFAI_ASSERT(bld, "newly created civzone is missing!");
+        r->bld_id = bld->id;
+
+        if (bld->zone_flags.bits.active != 1)
+        {
+            Key(interface_key::CIVZONE_ACTIVE);
+        }
+
+        if (r->type == room_type::infirmary)
+        {
+            Key(interface_key::CIVZONE_HOSPITAL);
+
+            // for the DFHack animal hospital plugin:
+            Key(interface_key::CIVZONE_ANIMAL_TRAINING);
+        }
+        else if (r->type == room_type::garbagedump)
+        {
+            Key(interface_key::CIVZONE_DUMP);
+        }
+        else if (r->type == room_type::pasture)
+        {
+            Key(interface_key::CIVZONE_PEN);
+        }
+        else if (r->type == room_type::pitcage)
+        {
+            Key(interface_key::CIVZONE_POND);
+            if (bld->pit_flags.bits.is_pond != 0)
+            {
+                Key(interface_key::CIVZONE_POND_OPTIONS);
+                ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/ZonesPitInfo");
+                Key(interface_key::CIVZONE_POND_WATER);
+                Key(interface_key::LEAVESCREEN);
+                ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Zones");
+            }
+        }
+        else if (r->type == room_type::pond)
+        {
+            Key(interface_key::CIVZONE_POND);
+            if (bld->pit_flags.bits.is_pond != 1)
+            {
+                Key(interface_key::CIVZONE_POND_OPTIONS);
+                ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/ZonesPitInfo");
+                Key(interface_key::CIVZONE_POND_WATER);
+                Key(interface_key::LEAVESCREEN);
+                ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Zones");
+            }
+            if (r->temporary && r->workshop && r->workshop->type == room_type::farmplot)
+            {
+                ai.plan.add_task(task_type::monitor_farm_irrigation, r);
+            }
+        }
+        else if (r->type == room_type::location)
+        {
+            Key(interface_key::CIVZONE_MEETING);
+            Key(interface_key::ASSIGN_LOCATION);
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/ZonesLocationInfo");
+            Key(interface_key::LOCATION_NEW);
+            bool known = false;
+            switch (r->location_type)
+            {
+            case location_type::guildhall:
+            {
+                Key(interface_key::LOCATION_GUILDHALL);
+                auto gh_type = df::profession(r->data1);
+                DFAI_ASSERT(gh_type != profession::NONE, "guild hall must have profession");
+                do
+                {
+                    Key(interface_key::SECONDSCROLL_DOWN);
+                }
+                while (ui_sidebar_menus->location.cursor_profession &&
+                        ui_sidebar_menus->location.profession.at(ui_sidebar_menus->location.cursor_profession) != gh_type);
+                DFAI_ASSERT(ui_sidebar_menus->location.cursor_profession, "could not find profession for this guildhall");
+                Key(interface_key::SELECT);
+                known = true;
+                break;
+            }
+            case location_type::tavern:
+                Key(interface_key::LOCATION_INN_TAVERN);
+                known = true;
+                break;
+            case location_type::library:
+                Key(interface_key::LOCATION_LIBRARY);
+                known = true;
+                break;
+            case location_type::temple:
+            {
+                Key(interface_key::LOCATION_TEMPLE);
+                if (r->data1 != -1)
+                {
+                    do
+                    {
+                        Key(interface_key::SECONDSCROLL_DOWN);
+                    }
+                    while (ui_sidebar_menus->location.cursor_deity &&
+                            (ui_sidebar_menus->location.deity_type.at(ui_sidebar_menus->location.cursor_deity) != df::temple_deity_type(r->data1) ||
+                             ui_sidebar_menus->location.deity_data.at(ui_sidebar_menus->location.cursor_deity).Deity != r->data2));
+                    DFAI_ASSERT(ui_sidebar_menus->location.cursor_deity, "could not find religion for this temple");
+                }
+                Key(interface_key::SELECT);
+                known = true;
+                break;
+            }
+            case location_type::_location_type_count:
+                break;
+            }
+            if (!known)
+            {
+                Key(interface_key::LEAVESCREEN);
+                Key(interface_key::LEAVESCREEN);
+            }
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Zones");
+        }
+
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        ai.ignore_pause(start_x, start_y, start_z);
+    }
+};
+
 bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & reason)
 {
-    // FIXME: this should be an ExclusiveCallback
     if (!r->constructions_done(reason))
-        return false;
-
-    if (!AI::is_dwarfmode_viewscreen())
     {
-        reason << "not on main viewscreen";
         return false;
     }
 
@@ -1165,138 +1329,7 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
         return false;
     }
 
-    int32_t start_x, start_y, start_z;
-    Gui::getViewCoords(start_x, start_y, start_z);
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::D_CIVZONE);
-
-    Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
-    Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-
-    for (int16_t x = r->min.x; x < r->max.x; x++)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_RIGHT);
-    }
-    for (int16_t y = r->min.y; y < r->max.y; y++)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_DOWN);
-    }
-    for (int16_t z = r->min.z; z < r->max.z; z++)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_UP_Z);
-    }
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-    auto bld = virtual_cast<df::building_civzonest>(world->buildings.all.back());
-    r->bld_id = bld->id;
-
-    if (bld->zone_flags.bits.active != 1)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_ACTIVE);
-    }
-
-    if (r->type == room_type::infirmary)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_HOSPITAL);
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_ANIMAL_TRAINING); // for the DFHack animal hospital plugin
-    }
-    else if (r->type == room_type::garbagedump)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_DUMP);
-    }
-    else if (r->type == room_type::pasture)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_PEN);
-    }
-    else if (r->type == room_type::pitcage)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND);
-        if (bld->pit_flags.bits.is_pond != 0)
-        {
-            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_OPTIONS);
-            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_WATER);
-            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-        }
-    }
-    else if (r->type == room_type::pond)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND);
-        if (bld->pit_flags.bits.is_pond != 1)
-        {
-            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_OPTIONS);
-            Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_POND_WATER);
-            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-        }
-        if (r->temporary && r->workshop && r->workshop->type == room_type::farmplot)
-        {
-            add_task(task_type::monitor_farm_irrigation, r);
-        }
-    }
-    else if (r->type == room_type::location)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CIVZONE_MEETING);
-        Gui::getCurViewscreen(true)->feed_key(interface_key::ASSIGN_LOCATION);
-        Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_NEW);
-        bool known = false;
-        switch (r->location_type)
-        {
-            case location_type::guildhall:
-                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_GUILDHALL);
-                DFAI_ASSERT(r->data1 != -1, "guild hall must have profession");
-                do
-                {
-                    Gui::getCurViewscreen(true)->feed_key(interface_key::SECONDSCROLL_DOWN);
-                }
-                while (ui_sidebar_menus->location.cursor_profession &&
-                        ui_sidebar_menus->location.profession.at(ui_sidebar_menus->location.cursor_profession) != df::profession(r->data1));
-                DFAI_ASSERT(ui_sidebar_menus->location.cursor_profession, "could not find profession for this guildhall");
-                Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-                known = true;
-                break;
-            case location_type::tavern:
-                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_INN_TAVERN);
-                known = true;
-                break;
-            case location_type::library:
-                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_LIBRARY);
-                known = true;
-                break;
-            case location_type::temple:
-                Gui::getCurViewscreen(true)->feed_key(interface_key::LOCATION_TEMPLE);
-                if (r->data1 != -1)
-                {
-                    do
-                    {
-                        Gui::getCurViewscreen(true)->feed_key(interface_key::SECONDSCROLL_DOWN);
-                    }
-                    while (ui_sidebar_menus->location.cursor_deity &&
-                            (ui_sidebar_menus->location.deity_type.at(ui_sidebar_menus->location.cursor_deity) != df::temple_deity_type(r->data1) ||
-                             ui_sidebar_menus->location.deity_data.at(ui_sidebar_menus->location.cursor_deity).Deity != r->data2));
-                    DFAI_ASSERT(ui_sidebar_menus->location.cursor_deity, "could not find religion for this temple");
-                    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-                }
-                else
-                {
-                    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT); // no specific deity
-                }
-                known = true;
-                break;
-
-            case location_type::_location_type_count:
-                break;
-        }
-        if (!known)
-        {
-            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-            Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-        }
-    }
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-    ai.ignore_pause(start_x, start_y, start_z);
+    events.queue_exclusive(std::make_unique<ConstructActivityZone>(ai, r));
 
     return true;
 }

@@ -235,6 +235,7 @@ private:
     friend struct room;
     friend struct plan_priority_t;
     friend class PlanSetup;
+    friend class ConstructActivityZone;
 };
 
 struct farm_allowed_materials_t
