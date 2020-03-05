@@ -350,6 +350,13 @@ bool room::constructions_done(std::ostream & reason) const
 
             if (ts == tiletype_shape::SAPLING && type == room_type::pasture)
                 continue;
+
+            // shrubs are allowed here but not in fixup_opena. this means that
+            // shrubs don't prevent pastures from being built, but they also
+            // don't stick around in pastures forever, potentially using up
+            // all the space for grass.
+            if (ts == tiletype_shape::SHRUB && type == room_type::pasture)
+                continue;
         }
 
         if (ts != want)
