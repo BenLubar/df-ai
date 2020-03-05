@@ -241,6 +241,12 @@
 	},
 	"properties": {
 		"$schema": { "type": "string" },
+        "blacklist": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
 		"p": {
 			"type": "array",
 			"title": "Instance Placeholders",

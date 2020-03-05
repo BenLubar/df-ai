@@ -125,12 +125,13 @@ struct room_template : public room_base
 
 struct room_instance : public room_base
 {
-    room_instance(const std::string & type, const std::string & name) : type(type), name(name), placeholders() {}
+    room_instance(const std::string & type, const std::string & name) : type(type), name(name), blacklist(), placeholders() {}
     ~room_instance();
 
     bool apply(Json::Value data, std::string & error);
 
     const std::string type, name;
+    std::set<std::string> blacklist;
     std::vector<Json::Value *> placeholders;
 };
 

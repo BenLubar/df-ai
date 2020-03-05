@@ -117,6 +117,11 @@ blueprints_t::blueprints_t(color_ostream & out) : is_valid(true)
         {
             for (auto inst : type.second.second)
             {
+                if (inst.second->blacklist.count(tmpl.first))
+                {
+                    continue;
+                }
+
                 room_blueprint *rb = new room_blueprint(tmpl.second, inst.second);
                 if (!rb->apply(error))
                 {

@@ -1,5 +1,6 @@
 {
 	"$schema": "https://ben.lubar.me/df-ai-schemas/room-instance.json",
+	"blacklist": ["east_long", "west_long"],
 	"p": [
 		{
 			"type": "workshop",

@@ -121,6 +121,28 @@ bool room_template::apply(Json::Value data, std::string & error)
 
 bool room_instance::apply(Json::Value data, std::string & error)
 {
+    if (data.isMember("blacklist"))
+    {
+        if (!data["blacklist"].isArray())
+        {
+            error = "blacklist must be an array";
+            return false;
+        }
+
+        for (auto & b : data["blacklist"])
+        {
+            if (!b.isString())
+            {
+                error = "blacklist entries must be strings";
+                return false;
+            }
+
+            blacklist.insert(b.asString());
+        }
+
+        data.removeMember("blacklist");
+    }
+
     if (data.isMember("p"))
     {
         if (!data["p"].isArray())
