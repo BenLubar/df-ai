@@ -343,6 +343,15 @@ bool room::constructions_done(std::ostream & reason) const
             return false;
         }
 
+        if (want == tiletype_shape::FLOOR)
+        {
+            if (ts == tiletype_shape::PEBBLES || ts == tiletype_shape::BOULDER)
+                continue;
+
+            if (ts == tiletype_shape::SAPLING && type == room_type::pasture)
+                continue;
+        }
+
         if (ts != want)
         {
             reason << "want construction type " << enum_item_key(f->construction) << " at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") but have " << enum_item_key(ts) << " instead of " << enum_item_key(want);
