@@ -465,7 +465,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
                     {
                         out << "#963";
                     }
-                    else if (f->construction != construction_type::NONE || f->dig != tile_dig_designation::Default)
+                    else if (s != room_status::plan && (f->construction != construction_type::NONE || f->dig != tile_dig_designation::Default))
                     {
                         out << "#444";
                     }
