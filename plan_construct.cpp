@@ -971,179 +971,217 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
     }
 }
 
-bool Plan::try_construct_stockpile(color_ostream & out, room *r, std::ostream & reason)
+const static struct stockpile_keys
 {
-    // FIXME: this should be an ExclusiveCallback
-    if (!r->constructions_done(reason))
-        return false;
+    std::map<stockpile_type::type, df::stockpile_list> map;
 
-    if (!AI::is_dwarfmode_viewscreen())
+    stockpile_keys()
     {
-        reason << "not on main viewscreen";
-        return false;
+        map[stockpile_type::animals] = stockpile_list::Animals;
+        map[stockpile_type::food] = stockpile_list::Food;
+        map[stockpile_type::weapons] = stockpile_list::Weapons;
+        map[stockpile_type::armor] = stockpile_list::Armor;
+        map[stockpile_type::furniture] = stockpile_list::Furniture;
+        map[stockpile_type::corpses] = stockpile_list::Corpses;
+        map[stockpile_type::refuse] = stockpile_list::Refuse;
+        map[stockpile_type::wood] = stockpile_list::Wood;
+        map[stockpile_type::stone] = stockpile_list::Stone;
+        map[stockpile_type::gems] = stockpile_list::Gems;
+        map[stockpile_type::bars_blocks] = stockpile_list::BarsBlocks;
+        map[stockpile_type::cloth] = stockpile_list::Cloth;
+        map[stockpile_type::leather] = stockpile_list::Leather;
+        map[stockpile_type::ammo] = stockpile_list::Ammo;
+        map[stockpile_type::coins] = stockpile_list::Coins;
+        map[stockpile_type::finished_goods] = stockpile_list::Goods;
+        map[stockpile_type::sheets] = stockpile_list::Sheet;
+        map[stockpile_type::fresh_raw_hide] = stockpile_list::Refuse;
+    }
+} stockpile_keys;
+
+class ConstructStockpile : public ExclusiveCallback
+{
+    AI & ai;
+    room *r;
+
+public:
+    ConstructStockpile(AI & ai, room *r) :
+        ExclusiveCallback("construct stockpile for " + AI::describe_room(r), 2),
+        ai(ai),
+        r(r)
+    {
     }
 
-    int32_t start_x, start_y, start_z;
-    Gui::getViewCoords(start_x, start_y, start_z);
-
-    Gui::getCurViewscreen(true)->feed_key(interface_key::D_STOCKPILES);
-    cursor->x = r->min.x + 1;
-    cursor->y = r->min.y;
-    cursor->z = r->min.z;
-    Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_LEFT);
-    Gui::getCurViewscreen(true)->feed_key(interface_key::STOCKPILE_CUSTOM);
-    Gui::getCurViewscreen(true)->feed_key(interface_key::STOCKPILE_CUSTOM_SETTINGS);
-    const static struct stockpile_keys
+protected:
+    void Run(color_ostream & out)
     {
-        std::map<stockpile_type::type, df::stockpile_list> map;
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
 
-        stockpile_keys()
+        int32_t start_x, start_y, start_z;
+        Gui::getViewCoords(start_x, start_y, start_z);
+
+        Key(interface_key::D_STOCKPILES);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Stockpiles");
+
+        Gui::revealInDwarfmodeMap(r->min + df::coord(1, 0, 0), true);
+        Gui::setCursorCoords(r->min.x + 1, r->min.y, r->min.z);
+
+        Key(interface_key::CURSOR_LEFT);
+        Key(interface_key::STOCKPILE_CUSTOM);
+        Key(interface_key::STOCKPILE_CUSTOM_SETTINGS);
+
+        // don't constrain the focus string
+        ExpectScreen<df::viewscreen_layer_stockpilest>("");
+
+        ExpectedScreen<df::viewscreen_layer_stockpilest> view(this);
+
+        auto wanted_group = stockpile_keys.map.at(r->stockpile_type);
+        while (view->cur_group != stockpile_list::AdditionalOptions)
         {
-            map[stockpile_type::animals] = stockpile_list::Animals;
-            map[stockpile_type::food] = stockpile_list::Food;
-            map[stockpile_type::weapons] = stockpile_list::Weapons;
-            map[stockpile_type::armor] = stockpile_list::Armor;
-            map[stockpile_type::furniture] = stockpile_list::Furniture;
-            map[stockpile_type::corpses] = stockpile_list::Corpses;
-            map[stockpile_type::refuse] = stockpile_list::Refuse;
-            map[stockpile_type::wood] = stockpile_list::Wood;
-            map[stockpile_type::stone] = stockpile_list::Stone;
-            map[stockpile_type::gems] = stockpile_list::Gems;
-            map[stockpile_type::bars_blocks] = stockpile_list::BarsBlocks;
-            map[stockpile_type::cloth] = stockpile_list::Cloth;
-            map[stockpile_type::leather] = stockpile_list::Leather;
-            map[stockpile_type::ammo] = stockpile_list::Ammo;
-            map[stockpile_type::coins] = stockpile_list::Coins;
-            map[stockpile_type::finished_goods] = stockpile_list::Goods;
-            map[stockpile_type::sheets] = stockpile_list::Sheet;
-            map[stockpile_type::fresh_raw_hide] = stockpile_list::Refuse;
+            if (view->cur_group == wanted_group)
+            {
+                Key(interface_key::STOCKPILE_SETTINGS_ENABLE);
+                Key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
+            }
+            else
+            {
+                Key(interface_key::STOCKPILE_SETTINGS_DISABLE);
+            }
+            Key(interface_key::STANDARDSCROLL_DOWN);
         }
-    } stockpile_keys;
-    df::viewscreen_layer_stockpilest *view = strict_virtual_cast<df::viewscreen_layer_stockpilest>(Gui::getCurViewscreen(true));
-    df::stockpile_list wanted_group = stockpile_keys.map.at(r->stockpile_type);
-    while (view->cur_group != stockpile_list::AdditionalOptions)
-    {
-        if (view->cur_group == wanted_group)
+        while (view->cur_group != wanted_group)
         {
-            view->feed_key(interface_key::STOCKPILE_SETTINGS_ENABLE);
-            view->feed_key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
+            Key(interface_key::STANDARDSCROLL_UP);
+        }
+        Key(interface_key::STANDARDSCROLL_RIGHT);
+        if (r->stockpile_type == stockpile_type::fresh_raw_hide)
+        {
+            Key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
+            Key(interface_key::STANDARDSCROLL_RIGHT);
+            Key(interface_key::STANDARDSCROLL_DOWN);
+            DFAI_ASSERT(view->item_status.at(1) == &view->settings->refuse.fresh_raw_hide, "fresh raw hide not in expected location");
+            Key(interface_key::SELECT);
         }
         else
         {
-           view->feed_key(interface_key::STOCKPILE_SETTINGS_DISABLE);
-        }
-        view->feed_key(interface_key::STANDARDSCROLL_DOWN);
-    }
-    while (view->cur_group != wanted_group)
-    {
-        view->feed_key(interface_key::STANDARDSCROLL_UP);
-    }
-    view->feed_key(interface_key::STANDARDSCROLL_RIGHT);
-    if (r->stockpile_type == stockpile_type::fresh_raw_hide)
-    {
-        view->feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
-        view->settings->refuse.fresh_raw_hide = true;
-    }
-    else
-    {
-        for (auto it = r->stock_disable.begin(); it != r->stock_disable.end(); it++)
-        {
-            while (view->cur_list != *it)
+            for (auto disable : r->stock_disable)
             {
-                view->feed_key(interface_key::STANDARDSCROLL_DOWN);
+                while (view->cur_list != disable)
+                {
+                    Key(interface_key::STANDARDSCROLL_DOWN);
+                }
+                Key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
             }
-            view->feed_key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
-        }
-        if (r->stock_specific1)
-        {
-            view->feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
-        }
-        if (r->stock_specific2)
-        {
-            view->feed_key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
-        }
-    }
-    view->feed_key(interface_key::LEAVESCREEN);
-    size_t buildings_before = world->buildings.all.size();
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-    for (int16_t x = r->min.x; x < r->max.x; x++)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_RIGHT);
-    }
-    for (int16_t y = r->min.y; y < r->max.y; y++)
-    {
-        Gui::getCurViewscreen(true)->feed_key(interface_key::CURSOR_DOWN);
-    }
-    Gui::getCurViewscreen(true)->feed_key(interface_key::SELECT);
-    Gui::getCurViewscreen(true)->feed_key(interface_key::LEAVESCREEN);
-    ai.ignore_pause(start_x, start_y, start_z);
-    df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
-    if (!bld || buildings_before == world->buildings.all.size())
-    {
-        ai.debug(out, "Failed to create stockpile: " + AI::describe_room(r));
-        return true;
-    }
-    r->bld_id = bld->id;
-    furnish_room(out, r);
-
-    if (r->workshop && r->stockpile_type == stockpile_type::stone)
-    {
-        room_items(out, r, [](df::item *i) { i->flags.bits.dump = 1; });
-    }
-
-    if (r->level == 0 &&
-        r->stockpile_type != stockpile_type::stone && r->stockpile_type != stockpile_type::wood)
-    {
-        if (room *rr = ai.find_room(room_type::stockpile, [r](room *o) -> bool { return o->stockpile_type == r->stockpile_type && o->level == 1; }))
-        {
-            wantdig(out, rr);
-        }
-    }
-
-    // setup stockpile links with adjacent level
-    ai.find_room(room_type::stockpile, [r, bld](room *o) -> bool
-    {
-        int32_t diff = o->level - r->level;
-        if (o->workshop && r->workshop)
-        {
-            return false;
-        }
-        if (o->workshop)
-        {
-            diff = -1;
-        }
-        else if (r->workshop)
-        {
-            diff = 1;
-        }
-        if (o->stockpile_type == r->stockpile_type && diff != 0)
-        {
-            if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
+            if (r->stock_specific1)
             {
-                df::building_stockpilest *b_from, *b_to;
-                if (diff > 0)
+                Key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
+            }
+            if (r->stock_specific2)
+            {
+                Key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+            }
+        }
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Stockpiles");
+
+        size_t buildings_before = world->buildings.all.size();
+        Key(interface_key::SELECT);
+        for (int16_t x = r->min.x; x < r->max.x; x++)
+        {
+            Key(interface_key::CURSOR_RIGHT);
+        }
+        for (int16_t y = r->min.y; y < r->max.y; y++)
+        {
+            Key(interface_key::CURSOR_DOWN);
+        }
+        Key(interface_key::SELECT);
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        df::building_stockpilest *bld = virtual_cast<df::building_stockpilest>(world->buildings.all.back());
+        if (!bld || buildings_before == world->buildings.all.size())
+        {
+            ai.debug(out, "Failed to create stockpile: " + AI::describe_room(r));
+            return;
+        }
+
+        r->bld_id = bld->id;
+        ai.plan.furnish_room(out, r);
+
+        if (r->workshop && r->stockpile_type == stockpile_type::stone)
+        {
+            ai.plan.room_items(out, r, [](df::item *i) { i->flags.bits.dump = 1; });
+        }
+
+        if (r->level == 0 &&
+            r->stockpile_type != stockpile_type::stone && r->stockpile_type != stockpile_type::wood)
+        {
+            if (room *rr = ai.find_room(room_type::stockpile, [&](room *o) -> bool { return o->stockpile_type == r->stockpile_type && o->level == 1; }))
+            {
+                ai.plan.wantdig(out, rr);
+            }
+        }
+
+        // TODO: do this through the UI
+        // setup stockpile links with adjacent level
+        ai.find_room(room_type::stockpile, [&](room *o) -> bool
+        {
+            int32_t diff = o->level - r->level;
+            if (o->workshop && r->workshop)
+            {
+                return false;
+            }
+            if (o->workshop)
+            {
+                diff = -1;
+            }
+            else if (r->workshop)
+            {
+                diff = 1;
+            }
+            if (o->stockpile_type == r->stockpile_type && diff != 0)
+            {
+                if (df::building_stockpilest *obld = virtual_cast<df::building_stockpilest>(o->dfbuilding()))
                 {
-                    b_from = obld;
-                    b_to = bld;
-                }
-                else
-                {
-                    b_from = bld;
-                    b_to = obld;
-                }
-                for (auto btf : b_to->links.take_from_pile)
-                {
-                    if (btf->id == b_from->id)
+                    df::building_stockpilest *b_from, *b_to;
+                    if (diff > 0)
                     {
-                        return false;
+                        b_from = obld;
+                        b_to = bld;
                     }
+                    else
+                    {
+                        b_from = bld;
+                        b_to = obld;
+                    }
+                    for (auto btf : b_to->links.take_from_pile)
+                    {
+                        if (btf->id == b_from->id)
+                        {
+                            return false;
+                        }
+                    }
+                    b_to->links.take_from_pile.push_back(b_from);
+                    b_from->links.give_to_pile.push_back(b_to);
                 }
-                b_to->links.take_from_pile.push_back(b_from);
-                b_from->links.give_to_pile.push_back(b_to);
             }
-        }
-        return false; // loop on all stockpiles
-    });
+            return false; // loop on all stockpiles
+        });
+
+        ai.ignore_pause(start_x, start_y, start_z);
+    }
+};
+
+bool Plan::try_construct_stockpile(color_ostream &, room *r, std::ostream & reason)
+{
+    if (!r->constructions_done(reason))
+    {
+        return false;
+    }
+
+    events.queue_exclusive(std::make_unique<ConstructStockpile>(ai, r));
 
     return true;
 }
@@ -1160,7 +1198,6 @@ public:
         r(r)
     {
     }
-    
 
 protected:
     void Run(color_ostream &)
