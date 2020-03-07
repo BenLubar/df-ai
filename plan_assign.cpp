@@ -469,6 +469,23 @@ void Plan::freepasture(color_ostream &, int32_t pet_id)
     }
 }
 
+bool Plan::pastures_ready(color_ostream & out)
+{
+    return !ai.find_room(room_type::pasture, [](room *r) -> bool
+    {
+        return r->status != room_status::plan && !r->dfbuilding();
+    }) && !ai.find_room(room_type::pasture, [&](room *r) -> bool
+    {
+        if (r->status == room_status::plan)
+        {
+            wantdig(out, r);
+            return true;
+        }
+
+        return false;
+    });
+}
+
 void Plan::set_owner(color_ostream &, room *r, int32_t uid)
 {
     r->owner = uid;

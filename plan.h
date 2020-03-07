@@ -125,6 +125,7 @@ public:
 
     df::building *getpasture(color_ostream & out, int32_t pet_id);
     void freepasture(color_ostream & out, int32_t pet_id);
+    bool pastures_ready(color_ostream & out);
 
     void set_owner(color_ostream & out, room *r, int32_t uid);
 

@@ -27,6 +27,12 @@ REQUIRE_GLOBAL(world);
 
 void Population::update_pets(color_ostream & out)
 {
+    if (!ai.plan.pastures_ready(out))
+    {
+        // will check next time
+        return;
+    }
+
     int32_t needmilk = 0;
     int32_t needshear = 0;
     for (auto mo : world->manager_orders)
