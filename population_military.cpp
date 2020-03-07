@@ -293,6 +293,12 @@ public:
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
+        if (MaybeExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Positions/Squads"))
+        {
+            ai.debug(out, "[ERROR] We have no military commander and nobody is able to appoint one.");
+            return;
+        }
+
         ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Positions/Candidates");
 
         auto selected_unit = std::find_if(screen->positions.candidates.begin(), screen->positions.candidates.end(), [&](df::unit *u) -> bool

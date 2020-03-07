@@ -1,10 +1,23 @@
 # Future
 
+## Exclusive Mode
+
+- Error messages are now more likely to contain the correct line number.
+- If an expected screen is not present, the AI will pause until it is, to avoid crashing. User input may be required in the case of such bugs.
+
+## Military
+
+- Fixed a stall while attempting to draft dwarves into the military when the entire government is dead.
+
 ## Floor Plan
 
 - Required room value is now tracked.
 - Petitions for guildhalls and temples can now be accepted.
-- The AI will no longer attempt to floor over saplings in pastures.
+- Stockpiles and activity zones are now built using the UI.
+- Improvements to pastures:
+  - The AI will no longer attempt to floor over saplings.
+  - Pastures can now be constructed before shrubs are removed.
+  - Added some safeguards against animals being butchered if a pasture is not quite ready.
 - Improved readability in the weblegends blueprint.
 
 ## Blueprint
