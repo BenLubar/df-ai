@@ -6,12 +6,11 @@ end
 
 print('Running tests')
 
-print('Running file: main')
 local status = dfhack.run_command('ai', 'validate')
 if status == CR_OK then
-    print('test passed: ai validate')
+    print('test passed: df-ai:validate')
 else
-    dfhack.printerr('test errored: ai validate: status=' .. tostring(status))
+    dfhack.printerr('test errored: df-ai:validate: status=' .. tostring(status))
 end
 
 set_test_stage('done')

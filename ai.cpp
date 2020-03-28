@@ -15,6 +15,7 @@
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_optionst.h"
 #include "df/viewscreen_textviewerst.h"
+#include "df/viewscreen_titlest.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(enabler);
@@ -126,6 +127,12 @@ public:
         MoveToItem(&view->sel_idx, int32_t(option - view->options.begin()));
 
         Key(interface_key::SELECT);
+        if (MaybeExpectScreen<df::viewscreen_titlest>("title"))
+        {
+            // no confirmation before embark
+            return;
+        }
+
         Key(interface_key::MENU_CONFIRM);
         while (MaybeExpectScreen<df::viewscreen_optionst>("option"))
         {
