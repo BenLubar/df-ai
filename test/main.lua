@@ -1,3 +1,6 @@
+local args = {...}
+local done_command = args[1]
+
 function set_test_stage(stage)
     local f = io.open('test_stage.txt', 'w')
     f:write(stage)
@@ -14,4 +17,6 @@ else
 end
 
 set_test_stage('done')
-dfhack.run_command('die')
+if done_command then
+    dfhack.run_command(done_command)
+end
