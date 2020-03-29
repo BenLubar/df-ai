@@ -14,8 +14,8 @@ $pv boost_1_67_0.tar.bz2 | tar xj
 dir="$(pwd)"
 
 pushd boost_1_67_0
-./bootstrap.sh --prefix="$dir" --with-toolset="$TOOLSET" --with-libraries="context"
-./b2 --layout=versioned cxxflags=-fPIC variant=release link=static threading=multi address-model=32,64 install
+./bootstrap.sh --prefix="$dir" --with-toolset="${TOOLSET//-*}" --with-libraries="context"
+./b2 --toolset="$TOOLSET" --layout=versioned cxxflags=-fPIC variant=release link=static threading=multi address-model=32,64 install
 popd
 
 rm -rf boost_1_67_0 include/boost-1_67
