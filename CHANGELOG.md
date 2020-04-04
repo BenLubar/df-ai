@@ -1,8 +1,11 @@
 # Future
 
+# 0.47.04-beta1
+
 ## Exclusive Mode
 
 - Error messages are now more likely to contain the correct line number.
+- Fixed an error that would occur when abandoning before embark.
 - If an expected screen is not present, the AI will pause until it is, to avoid crashing. User input may be required in the case of such bugs.
 
 ## Military
