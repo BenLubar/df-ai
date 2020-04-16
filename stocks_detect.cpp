@@ -41,7 +41,7 @@ bool Stocks::is_item_free(df::item *i, bool allow_nonempty)
         {
             if (ref->type == specific_ref_type::JOB)
             {
-                if (ENUM_ATTR(job_type, type, ref->data.JOB->job_type) != job_type_class::Hauling)
+                if (ENUM_ATTR(job_type, type, ref->data.job->job_type) != job_type_class::Hauling)
                 {
                     return false;
                 }
