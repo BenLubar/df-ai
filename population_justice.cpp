@@ -185,8 +185,8 @@ void Population::update_crimes(color_ostream & out)
         }
 
         df::unit *criminal = df::unit::find(crime->criminal);
-        df::unit *convicted = df::unit::find(crime->convicted);
-        df::unit *victim = df::unit::find(crime->victim);
+        df::unit *convicted = df::unit::find(crime->convict_data.convicted);
+        df::unit *victim = df::unit::find(crime->victim_data.victim);
 
         std::string with_victim;
         if (victim)

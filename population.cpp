@@ -660,9 +660,9 @@ void Population::report(std::ostream & out, bool html)
 
         any_crimes = true;
 
-        auto convicted = df::unit::find(crime->convicted);
+        auto convicted = df::unit::find(crime->convict_data.convicted);
         auto criminal = df::unit::find(crime->criminal);
-        auto victim = df::unit::find(crime->victim);
+        auto victim = df::unit::find(crime->victim_data.victim);
 
         out << (html ? "<li>" : "- ");
         out << "[" << AI::timestamp(crime->event_year, crime->event_time) << "] ";
