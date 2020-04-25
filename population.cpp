@@ -811,33 +811,7 @@ void Population::report(std::ostream & out, bool html)
             out << (html ? "<br/>" : "\n  ");
             out << (html ? "<i>Awaiting trial</i>" : "Awaiting trial");
         }
-
-        if (html)
-        {
-            out << "<ul>";
-        }
-        for (auto report : crime->reports)
-        {
-            out << (html ? "<li>" : "\n  - ");
-            out << "[" << AI::timestamp(report->report_year, report->report_time) << "] ";
-            out << AI::describe_unit(df::unit::find(report->witness), html);
-            if (report->unk1 == 1)
-            {
-                out << " found the body.";
-            }
-            else
-            {
-                out << " accused ";
-                out << AI::describe_unit(df::unit::find(report->accuses), html);
-                out << ".";
-            }
-            if (html)
-            {
-                out << "</li>";
-            }
-        }
-
-        out << (html ? "</ul></li>" : "\n");
+        out << (html ? "</li>" : "\n");
     }
 
     if (html && !any_crimes)

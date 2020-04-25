@@ -199,34 +199,6 @@ void Population::update_crimes(color_ostream & out)
             ai.debug(out, "[Crime] New crime discovered: " + AI::describe_unit(criminal) + " is accused of " + accusation + with_victim + ".");
         }
 
-        for (auto report : crime->reports)
-        {
-            if (report->report_year > not_before_year || (report->report_year == not_before_year && report->report_time >= not_before_tick))
-            {
-                // TODO: report->unk1
-
-                if (report->unk1)
-                {
-                    df::unit *witness = df::unit::find(report->witness);
-                    ai.debug(out, "[Crime] " + AI::describe_unit(witness) + " found evidence of " + accusation + with_victim + ".");
-                }
-                else
-                {
-                    df::unit *witness = df::unit::find(report->witness);
-                    df::unit *accuses = df::unit::find(report->accuses);
-                    ai.debug(out, "[Crime] " + AI::describe_unit(witness) + " accuses " + AI::describe_unit(accuses) + " of " + accusation + with_victim + ".");
-                    if (accuses == convicted)
-                    {
-                        ai.debug(out, "[Crime] The accused has already been convicted.");
-                    }
-                    else if (accuses != criminal)
-                    {
-                        ai.debug(out, "[Crime] However, they are lying. " + AI::describe_unit(criminal) + " committed the crime.");
-                    }
-                }
-            }
-        }
-
         if (crime->flags.bits.needs_trial && criminal && !convicted && AI::is_dwarfmode_viewscreen())
         {
             // FIXME: this should be an ExclusiveCallback
