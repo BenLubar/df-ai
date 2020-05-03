@@ -131,6 +131,13 @@ protected:
             Key(*current < target ? inc : dec, filename, lineno);
         }
     }
+    inline void MoveToItem(const std::function<int32_t()> & current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP, FL)
+    {
+        while (current() != target)
+        {
+            Key(current() < target ? inc : dec, filename, lineno);
+        }
+    }
     template<size_t N>
     inline void EnterString(const char (*cur)[N], const std::string & target, FL)
     {

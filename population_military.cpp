@@ -98,14 +98,19 @@ protected:
         while (list->getFirstVisible() > index)
         {
             Key(interface_key::STANDARDSCROLL_PAGEUP);
+            list = getActiveObject<df::layer_object_listst>();
         }
 
         while (list->getLastVisible() < index)
         {
             Key(interface_key::STANDARDSCROLL_PAGEUP);
+            list = getActiveObject<df::layer_object_listst>();
         }
 
-        MoveToItem(&list->cursor, index);
+        MoveToItem([this]() -> int32_t
+        {
+            return getActiveObject<df::layer_object_listst>()->cursor;
+        }, index);
     }
 
 public:
