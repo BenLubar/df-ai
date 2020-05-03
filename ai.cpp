@@ -79,6 +79,8 @@ bool AI::is_dwarfmode_viewscreen()
 
 command_result AI::startup(color_ostream & out)
 {
+    events.create_dfplex_client();
+
     command_result res = Core::getInstance().runCommand(out, "disable confirm");;
     if (res == CR_OK && !config.manage_labors.empty())
         res = Core::getInstance().runCommand(out, "enable " + config.manage_labors);
@@ -148,6 +150,7 @@ public:
 
 void AI::abandon(color_ostream &)
 {
+    events.remove_dfplex_client();
     events.register_exclusive(std::make_unique<AbandonExclusive>(), true);
 }
 

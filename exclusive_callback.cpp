@@ -21,7 +21,8 @@ ExclusiveCallback::ExclusiveCallback(const std::string & description, size_t wai
     expectedScreen(),
     expectedFocus(),
     expectedParentFocus(),
-    description(description)
+    description(description),
+    dfplex_blacklist(false)
 {
     if (wait_multiplier < 1)
     {

@@ -1009,6 +1009,7 @@ public:
         ai(ai),
         r(r)
     {
+        dfplex_blacklist = true;
     }
 
 protected:
@@ -1197,6 +1198,7 @@ public:
         ai(ai),
         r(r)
     {
+        dfplex_blacklist = true;
     }
 
 protected:

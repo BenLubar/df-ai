@@ -219,6 +219,7 @@ private:
 
 public:
     const std::string description;
+    bool dfplex_blacklist;
 };
 #undef FL
 

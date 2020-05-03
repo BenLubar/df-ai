@@ -210,6 +210,12 @@ void EventManager::create_dfplex_client()
         return;
     }
 
+    if (exclusive || !exclusive_queue.empty())
+    {
+        // currently active exclusive - wait
+        return;
+    }
+
     auto mutex_ptr = static_cast<tthread::fast_mutex *>(Core::getInstance().GetData("dfplex_mutex"));
     auto func_ptr = static_cast<std::function<Client *(client_update_cb &&)> *>(Core::getInstance().GetData("dfplex_add_client_cb"));
     if (!mutex_ptr || !func_ptr)
@@ -217,6 +223,15 @@ void EventManager::create_dfplex_client()
         // dfplex not available
         return;
     }
+
+    static const void * last_global_viewscreen;
+    static bool was_paused;
+    static bool logged_no_exclusive;
+    static bool last_multiplex;
+    last_global_viewscreen = nullptr;
+    was_paused = false;
+    logged_no_exclusive = false;
+    last_multiplex = false;
 
     tthread::lock_guard<tthread::fast_mutex> guard(*mutex_ptr);
     dfplex_client = (*func_ptr)([this](Client *client, const ClientUpdateInfo & info)
@@ -229,7 +244,36 @@ void EventManager::create_dfplex_client()
 
         client->id->nick_colour = (*cur_year_tick >> 5) & 7;
 
+        auto & out = Core::getInstance().getConsole();
         extern std::unique_ptr<AI> dwarfAI;
+        if (!info.is_multiplex)
+        {
+            auto curview = Gui::getCurViewscreen(true);
+            if (last_global_viewscreen != curview)
+            {
+                last_global_viewscreen = curview;
+                dwarfAI->statechanged(out, SC_VIEWSCREEN_CHANGED);
+            }
+        }
+        else
+        {
+            if (!last_multiplex)
+            {
+                dwarfAI->unpause();
+            }
+            last_global_viewscreen = nullptr;
+        }
+        last_multiplex = info.is_multiplex;    
+
+        if (*pause_state != was_paused)
+        {
+            if (*pause_state)
+            {
+                dwarfAI->statechanged(out, SC_PAUSED);
+            }
+            was_paused = *pause_state;
+        }
+
         ui->follow_unit = dwarfAI->camera.following;
         if (AI::is_dwarfmode_viewscreen())
         {
@@ -239,10 +283,23 @@ void EventManager::create_dfplex_client()
             }
         }
 
+        if (exclusive)
+        {
+            DFAI_DEBUG(dfplex, 1, "cur exclusive: " << exclusive->description);
+            logged_no_exclusive = false;
+        }
+        else if (!logged_no_exclusive)
+        {
+            DFAI_DEBUG(dfplex, 1, "cur exclusive: (none)");
+            logged_no_exclusive = true;
+        }
+
         onupdate(Core::getInstance().getConsole(), [client](std::vector<df::interface_key> & keys)
         {
             for (auto key : keys)
             {
+                DFAI_DEBUG(dfplex, 2, "key sent: " << enum_item_key_str(key));
+
                 client->keyqueue.emplace(key);
             }
             keys.clear();
@@ -267,6 +324,11 @@ void EventManager::remove_dfplex_client()
         }
     }
     dfplex_client = nullptr;
+}
+
+bool EventManager::wants_to_stop_being_client()
+{
+    return exclusive && exclusive->dfplex_blacklist;
 }
 
 bool EventManager::register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force)
@@ -451,6 +513,12 @@ void EventManager::onupdate(color_ostream & out, const std::function<void(std::v
         DFAI_DEBUG(tick, 1, "onupdate: next exclusive from queue");
         exclusive = std::move(exclusive_queue.front());
         exclusive_queue.pop_front();
+    }
+
+    if (exclusive && exclusive->dfplex_blacklist && dfplex_client)
+    {
+        // wait to be destroyed
+        return;
     }
 
     if (exclusive)

@@ -15,6 +15,7 @@
     DFAI_DEBUG_CATEGORY(camera) \
     DFAI_DEBUG_CATEGORY(lockstep) \
     DFAI_DEBUG_CATEGORY(tick) \
+    DFAI_DEBUG_CATEGORY(dfplex) \
     /* end of list (so last line can have a backslash) */
 
 struct DebugCategoryConfig
