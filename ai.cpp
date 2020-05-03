@@ -60,6 +60,7 @@ AI::AI() :
 
 AI::~AI()
 {
+    events.remove_dfplex_client();
 }
 
 bool AI::is_dwarfmode_viewscreen()

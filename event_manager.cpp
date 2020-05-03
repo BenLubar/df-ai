@@ -4,7 +4,6 @@
 #include "embark.h"
 #include "exclusive_callback.h"
 #include "debug.h"
-#include "thirdparty/dfplex/Client.hpp"
 
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_textviewerst.h"
@@ -12,6 +11,10 @@
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 #include "modules/Units.h"
+
+#include "tinythread.h"
+#include "fast_mutex.h"
+#include "thirdparty/dfplex/Client.hpp"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -85,7 +88,6 @@ EventManager::EventManager() :
 
 EventManager::~EventManager()
 {
-    remove_dfplex_client();
 }
 
 void EventManager::clear()
@@ -208,18 +210,20 @@ void EventManager::create_dfplex_client()
         return;
     }
 
+    auto mutex_ptr = static_cast<tthread::fast_mutex *>(Core::getInstance().GetData("dfplex_mutex"));
     auto func_ptr = static_cast<std::function<Client *(client_update_cb &&)> *>(Core::getInstance().GetData("dfplex_add_client_cb"));
-    if (!func_ptr)
+    if (!mutex_ptr || !func_ptr)
     {
         // dfplex not available
         return;
     }
 
+    tthread::lock_guard<tthread::fast_mutex> guard(*mutex_ptr);
     dfplex_client = (*func_ptr)([this](Client *client, const ClientUpdateInfo & info)
     {
         if (info.on_destroy)
         {
-            remove_dfplex_client();
+            dfplex_client = nullptr;
             return;
         }
 
@@ -254,9 +258,13 @@ void EventManager::remove_dfplex_client()
         return;
     }
 
-    if (auto func = static_cast<std::function<void(Client *)> *>(Core::getInstance().GetData("dfplex_remove_client")))
+    if (auto mutex_ptr = static_cast<tthread::fast_mutex *>(Core::getInstance().GetData("dfplex_mutex")))
     {
-        (*func)(dfplex_client);
+        if (auto func = static_cast<std::function<void(Client *)> *>(Core::getInstance().GetData("dfplex_remove_client")))
+        {
+            tthread::lock_guard<tthread::fast_mutex> guard(*mutex_ptr);
+            (*func)(dfplex_client);
+        }
     }
     dfplex_client = nullptr;
 }
