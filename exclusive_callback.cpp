@@ -128,7 +128,7 @@ void ExclusiveCallback::checkScreen(const char *filename, int lineno)
     }
 }
 
-bool ExclusiveCallback::run(color_ostream & out)
+bool ExclusiveCallback::run(color_ostream & out, const std::function<void(std::vector<df::interface_key> &)> & send_keys)
 {
     if (wait_frames)
     {
@@ -139,11 +139,7 @@ bool ExclusiveCallback::run(color_ostream & out)
     bool done = !push(&out);
     if (!feed_keys.empty())
     {
-        for (auto key : feed_keys)
-        {
-            Gui::getCurViewscreen(true)->feed_key(key);
-        }
-        feed_keys.clear();
+        send_keys(feed_keys);
     }
 
     if (!done)

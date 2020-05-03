@@ -381,7 +381,15 @@ void EventManager::onupdate(color_ostream & out)
 
     if (exclusive)
     {
-        if (exclusive->run(out))
+        auto send_keys = [](std::vector<df::interface_key> & keys)
+        {
+            for (auto key : keys)
+            {
+                Gui::getCurViewscreen(true)->feed_key(key);
+            }
+            keys.clear();
+        };
+        if (exclusive->run(out, send_keys))
         {
             DFAI_DEBUG(tick, 1, "onupdate: exclusive completed: " << exclusive->description);
             exclusive = nullptr;

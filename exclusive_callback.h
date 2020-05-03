@@ -158,7 +158,7 @@ private:
     std::string expectedParentFocus;
 
     void checkScreen(const char *filename, int lineno);
-    bool run(color_ostream & out);
+    bool run(color_ostream & out, const std::function<void(std::vector<df::interface_key> &)> & send_keys);
     void init(coroutine_t::pull_type & input);
 
     friend struct EventManager;
