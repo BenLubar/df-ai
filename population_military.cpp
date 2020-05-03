@@ -882,7 +882,6 @@ class MilitarySquadAttackExclusive : public ExclusiveCallback
 public:
     MilitarySquadAttackExclusive(AI & ai) : ExclusiveCallback("squad attack updater", 2), ai(ai)
     {
-        dfplex_blacklist = true;
     }
 
     virtual bool SuppressStateChange(color_ostream &, state_change_event event)
