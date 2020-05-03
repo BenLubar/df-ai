@@ -11,6 +11,7 @@
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 
+REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 
@@ -369,6 +370,12 @@ void EventManager::onupdate(color_ostream & out)
     {
         DFAI_DEBUG(tick, 1, "onupdate: [delayed] deleting exclusive: " << delay_delete_exclusive->description);
         delay_delete_exclusive = nullptr;
+    }
+
+    if (config.allow_pause && *pause_state)
+    {
+        DFAI_DEBUG(tick, 1, "onupdate: bailing as we are paused");
+        return;
     }
 
     if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())

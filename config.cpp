@@ -25,7 +25,8 @@ Config::Config() :
     manage_labors("autolabor"),
     manage_nobles(true),
     cancel_announce(0),
-    lockstep(false)
+    lockstep(false),
+    allow_pause(true)
 {
     for (int32_t & opt : embark_options)
     {
@@ -130,6 +131,10 @@ void Config::load(color_ostream & out)
             {
                 lockstep = v["lockstep"].asBool();
             }
+            if (v.isMember("allow_pause"))
+            {
+                allow_pause = v["allow_pause"].asBool();
+            }
             if (v.isMember("plan_verbosity"))
             {
                 debug_category_config.blueprint = v["plan_verbosity"].asInt();
@@ -199,6 +204,7 @@ void Config::save(color_ostream & out)
     setComment(v["manage_nobles"], manage_nobles, "// true or false: should the AI assign administrators in the fortress?");
     setComment(v["cancel_announce"], Json::Int(cancel_announce), "// how many job cancellation notices to show. 0: none, 1: some, 2: most, 3: all");
     setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
+    setComment(v["allow_pause"], allow_pause, "// true or false: should df-ai allow the game to be paused?");
 
 #define DFAI_DEBUG_CATEGORY(x) \
     if (!DFAI_IS_RELEASE || debug_category_config.x) \

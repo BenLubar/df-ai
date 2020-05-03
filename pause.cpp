@@ -133,7 +133,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         {
             handle_pause_event(out, *la);
         }
-        else
+        else if (!config.allow_pause)
         {
             unpause();
             debug(out, "pause without an event");
@@ -206,7 +206,7 @@ void AI::statechanged(color_ostream & out, state_change_event st)
                     unpause();
                 });
             }
-            else
+            else if (!config.allow_pause) // don't spew a bunch of logs if the player is likely to open things like unit descriptions
             {
                 debug(out, "[ERROR] paused in unknown textviewerst:" + stripped);
             }

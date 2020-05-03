@@ -1,5 +1,7 @@
 # Future
 
+- Added `allow_pause` config setting (defaults to true, set to false for old behavior).
+
 # 0.47.04-beta1
 
 ## Exclusive Mode
