@@ -372,12 +372,6 @@ void EventManager::onupdate(color_ostream & out)
         delay_delete_exclusive = nullptr;
     }
 
-    if (config.allow_pause && *pause_state)
-    {
-        DFAI_DEBUG(tick, 1, "onupdate: bailing as we are paused");
-        return;
-    }
-
     if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())
     {
         DFAI_DEBUG(tick, 1, "onupdate: next exclusive from queue");
@@ -396,6 +390,12 @@ void EventManager::onupdate(color_ostream & out)
         {
             DFAI_DEBUG(tick, 1, "onupdate: waiting on exclusive: " << exclusive->description);
         }
+        return;
+    }
+
+    if (config.allow_pause && *pause_state)
+    {
+        DFAI_DEBUG(tick, 1, "onupdate: bailing as we are paused");
         return;
     }
 
