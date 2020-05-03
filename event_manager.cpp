@@ -393,12 +393,6 @@ void EventManager::onupdate(color_ostream & out)
         return;
     }
 
-    if (config.allow_pause && *pause_state)
-    {
-        DFAI_DEBUG(tick, 1, "onupdate: bailing as we are paused");
-        return;
-    }
-
     // make a copy
     std::vector<OnupdateCallback *> list{ onupdate_list.cbegin(), onupdate_list.cend() };
 
