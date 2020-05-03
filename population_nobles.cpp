@@ -100,8 +100,10 @@ public:
 
         bool found = false;
 
-        for (auto assignment : view->assignments)
+        for (size_t i = 0; i < view->assignments.size(); i++)
         {
+            auto assignment = view->assignments.at(i);
+
             if (!assignment)
             {
                 Key(interface_key::STANDARDSCROLL_DOWN);

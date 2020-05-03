@@ -18,6 +18,47 @@
 #define FL const char *filename = __builtin_FILE(), int lineno = __builtin_LINE()
 #endif
 
+template<typename T>
+class viewscreen_relative_ptr
+{
+    T *current;
+    bool in_viewscreen;
+
+public:
+    viewscreen_relative_ptr(T *ptr)
+    {
+        in_viewscreen = false;
+        current = ptr;
+
+        auto cur_viewscreen = Gui::getCurViewscreen(true);
+        if (uintptr_t(ptr) - uintptr_t(cur_viewscreen) < virtual_identity::get(cur_viewscreen)->byte_size())
+        {
+            in_viewscreen = true;
+            current = reinterpret_cast<T *>(uintptr_t(ptr) - uintptr_t(cur_viewscreen));
+        }
+    }
+
+    T *get() const
+    {
+        if (in_viewscreen)
+        {
+            return reinterpret_cast<T *>(uintptr_t(current) + uintptr_t(Gui::getCurViewscreen(true)));
+        }
+
+        return current;
+    }
+
+    T & operator*() const
+    {
+        return *get();
+    }
+
+    T *operator->() const
+    {
+        return get();
+    }
+};
+
 class ExclusiveCallback
 {
 public:
@@ -81,18 +122,22 @@ protected:
     void Delay(size_t frames = 1);
     void AssertDelayed();
 
-    inline void MoveToItem(const int32_t *current, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP, FL)
+    inline void MoveToItem(const int32_t *cur, int32_t target, df::interface_key inc = interface_key::STANDARDSCROLL_DOWN, df::interface_key dec = interface_key::STANDARDSCROLL_UP, FL)
     {
+        viewscreen_relative_ptr<const int32_t> current(cur);
+
         while (*current != target)
         {
             Key(*current < target ? inc : dec, filename, lineno);
         }
     }
     template<size_t N>
-    inline void EnterString(const char (*current)[N], const std::string & target, FL)
+    inline void EnterString(const char (*cur)[N], const std::string & target, FL)
     {
-        size_t len = strnlen(*current, N);
-        while (len > target.size() || *current != target.substr(0, len))
+        viewscreen_relative_ptr<const char[N]> current(cur);
+
+        size_t len = strnlen(*cur, N);
+        while (len > target.size() || *cur != target.substr(0, len))
         {
             Key(interface_key::STRING_A000, filename, lineno); // backspace
             len--;
@@ -104,8 +149,10 @@ protected:
             len++;
         }
     }
-    inline void EnterString(std::string *current, const std::string & target, const char *filename, int lineno)
+    inline void EnterString(std::string *cur, const std::string & target, const char *filename, int lineno)
     {
+        viewscreen_relative_ptr<std::string> current(cur);
+
         while (current->size() > target.size() || *current != target.substr(0, current->size()))
         {
             Key(interface_key::STRING_A000, filename, lineno); // backspace

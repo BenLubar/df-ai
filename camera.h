@@ -9,9 +9,6 @@ class Camera
     AI & ai;
     OnupdateCallback *onupdate_handle;
     OnstatechangeCallback *onstatechange_handle;
-
-    int32_t following;
-    std::vector<int32_t> following_prev;
     friend class AI;
 
 public:
@@ -26,5 +23,7 @@ public:
     void update(color_ostream & out);
     std::string status();
 
+    int32_t following;
+    std::vector<int32_t> following_prev;
     bool movie_started_in_lockstep;
 };

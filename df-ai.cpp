@@ -343,6 +343,17 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
             return res;
     }
 
-    events.onupdate(out);
+    // update will be called by dfplex if a client exists
+    if (!events.is_client())
+    {
+        events.onupdate(out, [](std::vector<df::interface_key> & keys)
+        {
+            for (auto key : keys)
+            {
+                Gui::getCurViewscreen(true)->feed_key(key);
+            }
+            keys.clear();
+        });
+    }
     return CR_OK;
 }

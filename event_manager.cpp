@@ -4,16 +4,19 @@
 #include "embark.h"
 #include "exclusive_callback.h"
 #include "debug.h"
+#include "thirdparty/dfplex/Client.hpp"
 
 #include "df/viewscreen_movieplayerst.h"
 #include "df/viewscreen_textviewerst.h"
 
 #include "modules/Gui.h"
 #include "modules/Screen.h"
+#include "modules/Units.h"
 
-REQUIRE_GLOBAL(pause_state);
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
+REQUIRE_GLOBAL(pause_state);
+REQUIRE_GLOBAL(ui);
 
 EventManager events;
 
@@ -71,16 +74,18 @@ OnstatechangeCallback::OnstatechangeCallback(const std::string & descr, std::fun
 }
 
 EventManager::EventManager() :
-    exclusive(),
-    delay_delete_exclusive(),
-    exclusive_queue(),
-    onupdate_list(),
-    onstatechange_list()
+    exclusive{},
+    delay_delete_exclusive{},
+    exclusive_queue{},
+    onupdate_list{},
+    onstatechange_list{},
+    dfplex_client{}
 {
 }
 
 EventManager::~EventManager()
 {
+    remove_dfplex_client();
 }
 
 void EventManager::clear()
@@ -193,6 +198,67 @@ void EventManager::onstatechange_unregister(OnstatechangeCallback *&b)
     onstatechange_list.erase(std::remove(onstatechange_list.begin(), onstatechange_list.end(), b), onstatechange_list.end());
     delete b;
     b = nullptr;
+}
+
+void EventManager::create_dfplex_client()
+{
+    if (dfplex_client)
+    {
+        // already created
+        return;
+    }
+
+    auto func_ptr = static_cast<std::function<Client *(client_update_cb &&)> *>(Core::getInstance().GetData("dfplex_add_client_cb"));
+    if (!func_ptr)
+    {
+        // dfplex not available
+        return;
+    }
+
+    dfplex_client = (*func_ptr)([this](Client *client, const ClientUpdateInfo & info)
+    {
+        if (info.on_destroy)
+        {
+            remove_dfplex_client();
+            return;
+        }
+
+        client->id->nick_colour = (*cur_year_tick >> 5) & 7;
+
+        extern std::unique_ptr<AI> dwarfAI;
+        ui->follow_unit = dwarfAI->camera.following;
+        if (AI::is_dwarfmode_viewscreen())
+        {
+            if (auto follow = df::unit::find(ui->follow_unit))
+            {
+                Gui::revealInDwarfmodeMap(Units::getPosition(follow), true);
+            }
+        }
+
+        onupdate(Core::getInstance().getConsole(), [client](std::vector<df::interface_key> & keys)
+        {
+            for (auto key : keys)
+            {
+                client->keyqueue.emplace(key);
+            }
+            keys.clear();
+        });
+    });
+    dfplex_client->id->nick = "df-ai";
+}
+
+void EventManager::remove_dfplex_client()
+{
+    if (!dfplex_client)
+    {
+        return;
+    }
+
+    if (auto func = static_cast<std::function<void(Client *)> *>(Core::getInstance().GetData("dfplex_remove_client")))
+    {
+        (*func)(dfplex_client);
+    }
+    dfplex_client = nullptr;
 }
 
 bool EventManager::register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force)
@@ -364,7 +430,7 @@ void EventManager::report(std::ostream & out, bool html)
     }
 }
 
-void EventManager::onupdate(color_ostream & out)
+void EventManager::onupdate(color_ostream & out, const std::function<void(std::vector<df::interface_key> &)> & send_keys)
 {
     if (delay_delete_exclusive)
     {
@@ -381,14 +447,6 @@ void EventManager::onupdate(color_ostream & out)
 
     if (exclusive)
     {
-        auto send_keys = [](std::vector<df::interface_key> & keys)
-        {
-            for (auto key : keys)
-            {
-                Gui::getCurViewscreen(true)->feed_key(key);
-            }
-            keys.clear();
-        };
         if (exclusive->run(out, send_keys))
         {
             DFAI_DEBUG(tick, 1, "onupdate: exclusive completed: " << exclusive->description);
@@ -457,6 +515,10 @@ void EventManager::onstatechange(color_ostream & out, state_change_event event)
             }
         }
     }
+
+    // check if we should be a client rather than uniplexing
+    create_dfplex_client();
+
     if (exclusive)
     {
         if (auto view = strict_virtual_cast<df::viewscreen_movieplayerst>(Gui::getCurViewscreen(true)))

@@ -1,6 +1,7 @@
 # Future
 
 - Added `allow_pause` config setting (defaults to true, set to false for old behavior).
+- df-ai will now act as a client of dfplex if dfplex is enabled.
 
 # 0.47.04-beta1
 

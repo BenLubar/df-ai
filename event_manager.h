@@ -4,6 +4,12 @@
 
 #include <functional>
 
+#include "df/interface_key.h"
+
+// from dfplex
+struct Client;
+struct ClientUpdateInfo;
+
 struct OnupdateCallback
 {
     std::function<bool(color_ostream &)> callback;
@@ -44,6 +50,8 @@ public:
     OnstatechangeCallback *onstatechange_register(const std::string & descr, std::function<void(color_ostream &, state_change_event)> b);
     OnstatechangeCallback *onstatechange_register_once(const std::string & descr, std::function<bool(color_ostream &, state_change_event)> b);
     void onstatechange_unregister(OnstatechangeCallback *&b);
+    void create_dfplex_client();
+    void remove_dfplex_client();
 
     bool register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force = false);
     void queue_exclusive(std::unique_ptr<ExclusiveCallback> && cb);
@@ -86,7 +94,8 @@ public:
     void report(std::ostream & out, bool html);
 
     void onstatechange(color_ostream & out, state_change_event event);
-    void onupdate(color_ostream & out);
+    void onupdate(color_ostream & out, const std::function<void(std::vector<df::interface_key> &)> & send_keys);
+    inline bool is_client() { return dfplex_client != nullptr; }
 private:
     friend class AI;
     void clear();
@@ -96,6 +105,7 @@ private:
     std::list<std::unique_ptr<ExclusiveCallback>> exclusive_queue;
     std::vector<OnupdateCallback *> onupdate_list;
     std::vector<OnstatechangeCallback *> onstatechange_list;
+    Client *dfplex_client;
 };
 
 extern EventManager events;
