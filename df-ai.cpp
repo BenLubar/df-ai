@@ -316,6 +316,10 @@ DFhackCExport command_result plugin_onstatechange(color_ostream & out, state_cha
     if (event == SC_BEGIN_UNLOAD)
     {
         unloading_plugin = true;
+
+        command_result res = dwarfAI->persist(out);
+        if (res != CR_OK)
+            return res;
     }
 
     if (event == SC_VIEWSCREEN_CHANGED && strict_virtual_cast<df::viewscreen_optionst>(Gui::getCurViewscreen(true)))
@@ -354,6 +358,8 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
             }
             keys.clear();
         });
+
+        events.create_dfplex_client();
     }
     else if (events.wants_to_stop_being_client())
     {

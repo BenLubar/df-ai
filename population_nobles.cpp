@@ -54,7 +54,10 @@ public:
     AssignNoblesExclusive(AI & ai, df::entity_position_responsibility responsibility) :
         ExclusiveCallback("assign noble position with responsibility " + enum_item_key(responsibility)),
         ai(ai),
-        responsibility(responsibility) {}
+        responsibility(responsibility)
+    {
+        dfplex_blacklist = true;
+    }
     ~AssignNoblesExclusive() {}
 
     void Run(color_ostream & out)

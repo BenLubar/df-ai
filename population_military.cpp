@@ -44,6 +44,8 @@ protected:
     typedef typename std::vector<df::unit *>::const_iterator unit_iterator;
     MilitarySetupExclusive(AI & ai, const std::string & description, unit_iterator begin, unit_iterator end) : ExclusiveCallback(description, 2), ai(ai), units(), screen(this)
     {
+        dfplex_blacklist = true;
+
         for (auto it = begin; it != end; it++)
         {
             units.push_back((*it)->id);
@@ -880,6 +882,7 @@ class MilitarySquadAttackExclusive : public ExclusiveCallback
 public:
     MilitarySquadAttackExclusive(AI & ai) : ExclusiveCallback("squad attack updater", 2), ai(ai)
     {
+        dfplex_blacklist = true;
     }
 
     virtual bool SuppressStateChange(color_ostream &, state_change_event event)

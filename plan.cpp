@@ -108,6 +108,16 @@ Plan::~Plan()
 
 command_result Plan::startup(color_ostream & out)
 {
+    if (Core::getInstance().isMapLoaded())
+    {
+        std::ifstream active_persist("data/save/current/df-ai-plan.dat");
+        if (active_persist.good())
+        {
+            load(active_persist);
+            return CR_OK;
+        }
+    }
+
     std::ifstream persist(("data/save/" + World::ReadWorldFolder() + "/df-ai-plan.dat").c_str());
     if (persist.good())
     {

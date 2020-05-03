@@ -1,3 +1,7 @@
+#include "thirdparty/dfplex/Client.hpp" // gets confused when included after dfhack_shared.h
+#include "fast_mutex.h"
+#include "tinythread.h"
+
 #include "event_manager.h"
 #include "ai.h"
 #include "camera.h"
@@ -11,10 +15,6 @@
 #include "modules/Gui.h"
 #include "modules/Screen.h"
 #include "modules/Units.h"
-
-#include "tinythread.h"
-#include "fast_mutex.h"
-#include "thirdparty/dfplex/Client.hpp"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);

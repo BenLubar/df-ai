@@ -61,6 +61,9 @@ struct RestoreKey
     // don't do the default sidebar-refresh after this command is applied?
     bool m_suppress_sidebar_refresh = false;
     
+    // restore custom stockpile settings after applying?
+    bool m_restore_stockpile_state = false;
+    
     // restore squad state after applying?
     bool m_restore_squad_state = false;
     
@@ -329,8 +332,8 @@ struct Client {
     
     // client's screen
     screenbuf_t sc;
-    int32_t dimx=0, dimy=0;
-    int32_t desired_dimx=80, desired_dimy=25;
+    uint8_t dimx=0, dimy=0;
+    uint8_t desired_dimx=80, desired_dimy=25;
     
     // pending keypresses from client.
     std::queue<KeyEvent> keyqueue;
