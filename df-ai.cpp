@@ -361,9 +361,5 @@ DFhackCExport command_result plugin_onupdate(color_ostream & out)
 
         events.create_dfplex_client();
     }
-    else if (events.wants_to_stop_being_client())
-    {
-        events.remove_dfplex_client();
-    }
     return CR_OK;
 }

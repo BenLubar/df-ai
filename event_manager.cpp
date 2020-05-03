@@ -244,6 +244,12 @@ void EventManager::create_dfplex_client()
 
         client->id->nick_colour = (*cur_year_tick >> 5) & 7;
 
+        if (!is_client())
+        {
+            // in single user mode temporarily
+            return;
+        }
+
         auto & out = Core::getInstance().getConsole();
         extern std::unique_ptr<AI> dwarfAI;
         if (!info.is_multiplex)
@@ -326,9 +332,9 @@ void EventManager::remove_dfplex_client()
     dfplex_client = nullptr;
 }
 
-bool EventManager::wants_to_stop_being_client()
+bool EventManager::is_client()
 {
-    return exclusive && exclusive->dfplex_blacklist;
+    return dfplex_client != nullptr && (!exclusive || !exclusive->dfplex_blacklist);
 }
 
 bool EventManager::register_exclusive(std::unique_ptr<ExclusiveCallback> && cb, bool force)
@@ -510,15 +516,16 @@ void EventManager::onupdate(color_ostream & out, const std::function<void(std::v
 
     if (!exclusive && !exclusive_queue.empty() && AI::is_dwarfmode_viewscreen())
     {
+        bool was_client = is_client();
+
         DFAI_DEBUG(tick, 1, "onupdate: next exclusive from queue");
         exclusive = std::move(exclusive_queue.front());
         exclusive_queue.pop_front();
-    }
 
-    if (exclusive && exclusive->dfplex_blacklist && dfplex_client)
-    {
-        // wait to be destroyed
-        return;
+        if (is_client() != was_client)
+        {
+            return;
+        }
     }
 
     if (exclusive)

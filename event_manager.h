@@ -95,10 +95,10 @@ public:
 
     void onstatechange(color_ostream & out, state_change_event event);
     void onupdate(color_ostream & out, const std::function<void(std::vector<df::interface_key> &)> & send_keys);
-    inline bool is_client() { return dfplex_client != nullptr; }
-    bool wants_to_stop_being_client();
+    bool is_client();
 private:
     friend class AI;
+    friend class Camera;
     void clear();
 
     std::unique_ptr<ExclusiveCallback> exclusive;

@@ -108,7 +108,7 @@ void Camera::update(color_ostream &)
         return;
     }
 
-    if (following != ui->follow_unit && !events.is_client())
+    if (following != ui->follow_unit && !events.dfplex_client)
     {
         DFAI_DEBUG(camera, 1, "followed unit changed externally! was " << following << ", now " << ui->follow_unit);
         following = ui->follow_unit;
@@ -333,7 +333,7 @@ std::string Camera::status()
     {
         fp = " (previously: " + fp + ")";
     }
-    if (following != -1 && (ui->follow_unit == following || events.is_client()))
+    if (following != -1 && (ui->follow_unit == following || events.dfplex_client))
     {
         return "following " + AI::describe_unit(df::unit::find(following)) + fp;
     }
