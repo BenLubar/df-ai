@@ -173,23 +173,24 @@ public:
                 Key(interface_key::NOBLELIST_SETTINGS);
                 ExpectScreen<df::viewscreen_layer_noblelistst>("layer_noblelist/Settings");
 
-                df::layer_object_listst *list = nullptr;
-                for (auto obj : view->layer_objects)
+                auto get_list = [&]() -> df::layer_object_listst *
                 {
-                    auto l = virtual_cast<df::layer_object_listst>(obj);
-                    if (l && l->active)
+                    df::layer_object_listst *list = nullptr;
+                    for (auto obj : view->layer_objects)
                     {
-                        list = l;
-                        break;
+                        auto l = virtual_cast<df::layer_object_listst>(obj);
+                        if (l && l->active)
+                        {
+                            list = l;
+                            break;
+                        }
                     }
-                }
-                DFAI_ASSERT(list, "could not find bookkeeper options list");
-                if (list)
+                    DFAI_ASSERT(list, "could not find bookkeeper options list");
+                    return list;
+                };
+                while (get_list() && get_list()->cursor != 4)
                 {
-                    while (list->cursor != 4)
-                    {
-                        Key(interface_key::STANDARDSCROLL_DOWN);
-                    }
+                    Key(interface_key::STANDARDSCROLL_DOWN);
                 }
 
                 Key(interface_key::SELECT);
