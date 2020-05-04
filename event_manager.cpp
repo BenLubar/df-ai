@@ -312,6 +312,8 @@ void EventManager::create_dfplex_client()
         });
     });
     dfplex_client->id->nick = "df-ai";
+    dfplex_client->ui.m_menu_width = 3;
+    dfplex_client->ui.m_area_map_width = 3;
 }
 
 void EventManager::remove_dfplex_client()

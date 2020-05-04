@@ -56,7 +56,7 @@ public:
         ai(ai),
         responsibility(responsibility)
     {
-        dfplex_blacklist = true;
+        //dfplex_blacklist = true;
     }
     ~AssignNoblesExclusive() {}
 

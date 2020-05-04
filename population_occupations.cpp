@@ -78,7 +78,7 @@ public:
         location_id(location_id),
         occupation(occupation)
     {
-        dfplex_blacklist = true;
+        //dfplex_blacklist = true;
     }
 
     void Run(color_ostream & out)
@@ -231,7 +231,7 @@ public:
         ExclusiveCallback("check petitions"),
         ai(ai)
     {
-        dfplex_blacklist = true;
+        //dfplex_blacklist = true;
     }
 
     void Run(color_ostream & out)

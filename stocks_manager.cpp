@@ -100,7 +100,7 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI & ai, const df::manager_order_te
     amount(amount),
     search_word()
 {
-    dfplex_blacklist = true;
+    //dfplex_blacklist = true;
 
     search_word = AI::describe_job(&tmpl);
     size_t pos = search_word.find(' ');
