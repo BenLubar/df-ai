@@ -1,5 +1,4 @@
 #include "thirdparty/dfplex/Client.hpp" // gets confused when included after dfhack_shared.h
-#include "fast_mutex.h"
 #include "tinythread.h"
 
 #include "event_manager.h"
@@ -216,7 +215,7 @@ void EventManager::create_dfplex_client()
         return;
     }
 
-    auto mutex_ptr = static_cast<tthread::fast_mutex *>(Core::getInstance().GetData("dfplex_mutex"));
+    auto mutex_ptr = static_cast<tthread::mutex *>(Core::getInstance().GetData("dfplex_mutex"));
     auto func_ptr = static_cast<std::function<Client *(client_update_cb &&)> *>(Core::getInstance().GetData("dfplex_add_client_cb"));
     if (!mutex_ptr || !func_ptr)
     {
@@ -233,7 +232,7 @@ void EventManager::create_dfplex_client()
     logged_no_exclusive = false;
     last_multiplex = false;
 
-    tthread::lock_guard<tthread::fast_mutex> guard(*mutex_ptr);
+    tthread::lock_guard<tthread::mutex> guard(*mutex_ptr);
     dfplex_client = (*func_ptr)([this](Client *client, const ClientUpdateInfo & info)
     {
         if (info.on_destroy)
@@ -323,11 +322,11 @@ void EventManager::remove_dfplex_client()
         return;
     }
 
-    if (auto mutex_ptr = static_cast<tthread::fast_mutex *>(Core::getInstance().GetData("dfplex_mutex")))
+    if (auto mutex_ptr = static_cast<tthread::mutex *>(Core::getInstance().GetData("dfplex_mutex")))
     {
         if (auto func = static_cast<std::function<void(Client *)> *>(Core::getInstance().GetData("dfplex_remove_client")))
         {
-            tthread::lock_guard<tthread::fast_mutex> guard(*mutex_ptr);
+            tthread::lock_guard<tthread::mutex> guard(*mutex_ptr);
             (*func)(dfplex_client);
         }
     }

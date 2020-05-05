@@ -147,6 +147,8 @@ struct UIState
     
     // stockpile state
     df::interface_key m_stockpile_mode = df::interface_key::STOCKPILE_ANIMAL;
+    bool m_custom_stockpile_set;
+    df::stockpile_settings m_custom_stockpile;
     
     // unit view mode
     df::ui_unit_view_mode::T_value m_unit_view_mode = df::ui_unit_view_mode::General;
@@ -230,6 +232,7 @@ struct UIState
         m_dfplex_chat_config = false;
         m_dfplex_chat_name_entering = false;
         m_map_dimx = m_map_dimy = -1;
+        m_custom_stockpile_set = false;
     }
     
     // makes the UI ready to handle a new plex re-entry.
