@@ -578,6 +578,9 @@ static void lockstep_loop()
         enabler->renderer->render();
     }
 
+    // make sure we don't end up with a negative number of queued frames
+    enabler->outstanding_gframes = 1;
+
     extern std::unique_ptr<AI> dwarfAI;
     if (dwarfAI && dwarfAI->camera.movie_started_in_lockstep)
     {
@@ -796,9 +799,18 @@ void Hook_Shutdown()
     {
         enabler->renderer = lockstep_renderer->real_renderer;
     }
+
     DFAI_DEBUG(lockstep, 1, "deleting df_ai_renderer");
     delete lockstep_renderer;
     lockstep_renderer = nullptr;
+
+    DFAI_DEBUG(lockstep, 1, "resetting calculated fps");
+    enabler->calculated_fps = int(enabler->fps);
+    enabler->calculated_gfps = int(enabler->gfps);
+    enabler->frame_timings.clear();
+    enabler->gframe_timings.clear();
+    enabler->frame_sum = enabler->gframe_sum = 0;
+    enabler->frame_last = enabler->gframe_last = SDL_GetTicks();
 
     lockstep_hooked = false;
 
