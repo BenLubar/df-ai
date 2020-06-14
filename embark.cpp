@@ -128,6 +128,8 @@ void EmbarkExclusive::Run(color_ostream & out)
         ai.statechanged(out, SC_VIEWSCREEN_CHANGED);
         Delay();
     }
+
+    ai.unpause();
 }
 
 void EmbarkExclusive::SelectVerticalMenuItem(int32_t *current, int32_t target)
