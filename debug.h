@@ -34,7 +34,7 @@ extern DebugCategoryConfig debug_category_config;
 #if WIN32
 #define DFAI_BREAKPOINT() __debugbreak()
 #else
-#define DFAI_BREAKPOINT() __asm__ volatile("int $0x03")
+#define DFAI_BREAKPOINT() __asm__ volatile("int $0x03; nop")
 #endif
 #endif
 
