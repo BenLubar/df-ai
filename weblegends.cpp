@@ -15,17 +15,21 @@ extern bool & enabled;
 
 REQUIRE_GLOBAL(world);
 
-enum class AIPages
+struct ai_web_page
 {
-    Status,             // Status
-    Report_Plan,        // Tasks
-    Report_Population,  // Population
-    Report_Stocks,      // Stocks
-    Report_Events,      // Events
-    Plan,               // Blueprints
-    Version,            // Version
-    NotActive,          // DF-AI not active or enabled
+    std::string path;
+    std::string title;
+    bool unavailable_during_embark;
+    bool is_error_page;
+    std::function<void(weblegends_layout_v1 &)> render;
 };
+
+namespace
+{
+    extern const ai_web_page not_active_page;
+    extern const ai_web_page embarking_page;
+    extern const std::vector<ai_web_page> web_pages;
+}
 
 // https://stackoverflow.com/a/24315631/2664560
 static void replace_all(std::string & str, const std::string & from, const std::string & to)
@@ -45,126 +49,7 @@ std::string html_escape(const std::string & str)
     replace_all(escaped, "<", "&lt;");
     replace_all(escaped, ">", "&gt;");
     replace_all(escaped, "\n", "<br/>");
-    return escaped;
-}
-
-std::string getAIPageURL(const AIPages currentPage)
-{
-    switch (currentPage)
-    {
-        case AIPages::Report_Plan: // Tasks
-            return "df-ai/report/plan";
-        case AIPages::Report_Population:
-            return "df-ai/report/population";
-        case AIPages::Report_Stocks:
-            return "df-ai/report/stocks";
-        case AIPages::Report_Events:
-            return "df-ai/report/events";
-        case AIPages::Plan: // Blueprints
-            return "df-ai/plan";
-        case AIPages::Version:
-            return "df-ai/version";
-        default: // default to status page, even if DF-AI isn't active
-            return "df-ai";
-    }
-}
-
-AIPages getAIPage(const std::string & url)
-{
-    if (url == "/report/plan")
-        return AIPages::Report_Plan; // Tasks
-    if (url == "/report/population")
-        return AIPages::Report_Population;
-    if (url == "/report/stocks")
-        return AIPages::Report_Stocks;
-    if (url == "/report/events")
-        return AIPages::Report_Events;
-    if (url == "/plan")
-        return AIPages::Plan; // Blueprints
-    if (url == "/version")
-        return AIPages::Version;
-    // default to status page
-    return AIPages::Status;
-}
-
-static void add_styles_and_scripts(weblegends_handler_v1 & handler)
-{
-    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"style.css\"/>";
-    handler.cp437_out() << "<link rel=\"stylesheet\" href=\"df-ai/aistyle.css\"/>";
-    return;
-}
-
-static void create_nav_menu(weblegends_handler_v1 & handler, const std::string & url)
-{
-    std::string title;  // page title
-    std::string baseURL;
-    AIPages currentPage;
-    // Get current page
-    currentPage = getAIPage(url);
-    // Set the title based on current page
-    switch ((AIPages)currentPage)
-    {
-        case AIPages::Report_Plan:
-            title = "DF-AI - Tasks";
-            baseURL = "../../";
-            break;
-        case AIPages::Report_Population:
-            title = "DF-AI - Population";
-            baseURL = "../../";
-            break;
-        case AIPages::Report_Stocks:
-            title = "DF-AI - Stocks";
-            baseURL = "../../";
-            break;
-        case AIPages::Report_Events:
-            title = "DF-AI - Events";
-            baseURL = "../../";
-            break;
-        case AIPages::Plan:
-            title = "DF-AI - Blueprints";
-            baseURL = "../";
-            break;
-        case AIPages::Version:
-            title = "DF-AI - Version";
-            baseURL = "../";
-            break;
-        default: // default to status page, unless DF-AI isn't active
-            title = "DF-AI - Status";
-            baseURL = "./";
-            if (!enabled || !dwarfAI)
-            {
-                title = "DF-AI - Not Active";
-                currentPage = AIPages::NotActive;
-            }
-            break;
-    }
-    handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head>";
-    handler.cp437_out() << "<title>" << title << "</title>";
-    handler.cp437_out() << "<base href=\"" << baseURL << "\"/>";
-    add_styles_and_scripts(handler);
-    handler.cp437_out() << "</head><body><p>";
-    handler.cp437_out() << "<a class=\"nav-item\" href=\"\">Home</a>";
-
-#define PAGE_LINK(page, name) \
-    do \
-    { \
-        handler.cp437_out() << "<a href=\"" << getAIPageURL(page) << "\" class=\"nav-item"; \
-        if (currentPage == page) \
-        { \
-            handler.cp437_out() << " nav-selected"; \
-        } \
-        handler.cp437_out() << "\">" << name << "</a>"; \
-    } while (false)
-    PAGE_LINK(AIPages::Status, "Status");
-    PAGE_LINK(AIPages::Report_Plan, "Tasks");
-    PAGE_LINK(AIPages::Report_Population, "Population");
-    PAGE_LINK(AIPages::Report_Stocks, "Stocks");
-    PAGE_LINK(AIPages::Report_Events, "Events");
-    PAGE_LINK(AIPages::Plan, "Blueprints");
-    PAGE_LINK(AIPages::Version, "Version");
-#undef PAGE_LINK
-    handler.cp437_out() << "</p>";
-    return;
+    return DF2UTF(escaped);
 }
 
 static void process_query_arg(weblegends_handler_v1 & handler, const std::string & key, const std::string & value)
@@ -220,6 +105,48 @@ static void process_query(weblegends_handler_v1 & handler, std::string & query)
     }
 }
 
+static const ai_web_page *select_current_page(weblegends_layout_v1 & layout, const std::string & url)
+{
+    size_t num_slashes = std::count(url.begin(), url.end(), '/');
+    std::ostringstream base_path;
+    if (num_slashes)
+    {
+        base_path << "..";
+        num_slashes--;
+    }
+    for (size_t i = 0; i < num_slashes; i++)
+    {
+        base_path << "/..";
+    }
+
+    layout.set_base_path(base_path.str());
+    const ai_web_page *cur_page = nullptr;
+    for (auto & page : web_pages)
+    {
+        if (url == page.path)
+            cur_page = &page;
+
+        layout.add_sidebar_link("df-ai" + page.path, page.title);
+    }
+
+    if (!cur_page)
+    {
+        return nullptr;
+    }
+
+    if (!enabled || !dwarfAI)
+    {
+        return &not_active_page;
+    }
+
+    if (cur_page->unavailable_during_embark && dwarfAI->is_embarking())
+    {
+        return &embarking_page;
+    }
+
+    return cur_page;
+}
+
 bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & url_with_query)
 {
     auto pos = url_with_query.find('?');
@@ -230,143 +157,27 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     }
     auto url = url_with_query.substr(0, pos);
 
-    if (url == "/aistyle.css")
+    auto layout{ weblegends_allocate_layout() };
+    auto page = select_current_page(*layout, url);
+    if (!page)
     {
-        handler.headers()["Content-Type"] = "text/css; charset=utf-8";
-        handler.raw_out() << "table {\n"
-            "\tbackground-color: #eee;\n"
-            "\tcolor: #000;\n"
-            "}\n"
-            "\n"
-            "td, th {\n"
-            "\tpadding: 0.1em 0.5em;\n"
-            "}\n"
-            "\n"
-            "td {\n"
-            "\tbackground-color: #fff;\n"
-            "}\n"
-            "\n"
-            "td.num {\n"
-            "\ttext-align: right;\n"
-            "}\n"
-            "\n"
-            "tbody th {\n"
-            "\ttext-align: left;\n"
-            "}\n"
-            ".nav-item {\n"
-            "\tpadding-right: 12px;\n"
-            "}\n"
-            ".nav-selected {\n"
-            "\tcolor: inherit;\n"
-            "\ttext-decoration: none;\n"
-            "\tfont-weight: bold;\n"
-            "}\n"
-            "tt {\n"
-            "\tbackground-color: #eff0f1;\n"
-            "}\n";
-        return true;
+        return false;
     }
 
-    // Create nav menu
-    create_nav_menu(handler, url);
-
-    // df-ai is not loaded or enabled
-    if (!enabled || !dwarfAI)
+    if (page->is_error_page)
     {
         handler.status_code() = 503;
         handler.status_description() = "Service Unavailable";
-        handler.cp437_out() << "<body><p><i>AI is not active.</i></p>";
-        handler.cp437_out() << "<p>Enter <tt>enable df-ai</tt> in the DFHack console to start DF-AI</p>";
-        handler.cp437_out() << "<p>Enter <tt>help ai</tt> for a list of console commands.</p>";
-        //  future - change link to df-ai - weblegends help?
-        handler.cp437_out() << "<p><a target=\"_blank\" href=\"https://github.com/BenLubar/df-ai/wiki\">See DF-AI  Wiki for more details</a></p>";
-        handler.cp437_out() << "</body></html>";
-        return true;
+        handler.headers()["Retry-After"] = "5";
+        handler.headers()["Refresh"] = "5";
     }
 
-    // Report - old, split into sub-pages
-    if (url == "/report")
-    {
-        handler.status_code() = 301;
-        handler.status_description() = "Moved Permanently";
-        handler.headers()["Location"] = "report/population";
-        handler.cp437_out() << "<!DOCTYPE html><html lang=\"en\"><head><title>df-ai report</title><meta http-equiv=\"Refresh\" content=\"0; url=report/population\"/></head>";
-        handler.cp437_out() << "<body><p><a href=\"report/population\">Report has been split into sub-pages.</a></p></body></html>";
-        return true;
-    }
+    layout->set_title("DF-AI - " + page->title);
+    layout->add_header_link("df-ai" + url, page->title, true);
+    page->render(*layout);
+    layout->write_to(handler);
 
-    // Status
-    if (url == "")
-    {
-        // Run log.cpp - AI::status()
-        handler.cp437_out() << "<p>" << html_escape(dwarfAI->status()) << "</p></body></html>";
-        return true;
-    }
-#define REPORT_GLOBAL(module) \
-    if (events.has_exclusive<EmbarkExclusive>() || events.has_exclusive<PlanSetup>()) \
-    { \
-        handler.status_code() = 503; \
-        handler.status_description() = "Service Unavailable"; \
-        handler.headers()["Retry-After"] = "5"; \
-        handler.headers()["Refresh"] = "5"; \
-        handler.cp437_out() << "<p><i>Report is not available during embark.</i></p>"; \
-    } \
-    else \
-    { \
-        module.report(handler.cp437_out(), true); \
-    }
-#define REPORT(module) REPORT_GLOBAL(dwarfAI->module)
-
-    // Tasks Report
-    if (url == "/report/plan")
-    {
-        handler.cp437_out() << "<h1 id=\"Plan_Tasks\">Tasks</h1>";
-        REPORT(plan);
-        handler.cp437_out() << "</body></html>";
-        return true;
-    }
-    // Population Report
-    if (url == "/report/population")
-    {
-        handler.cp437_out() << "<h1 id=\"Population\">Population</h1>";
-        REPORT(pop);
-        handler.cp437_out() << "</body></html>";
-        return true;
-    }
-    // Stocks Report
-    if (url == "/report/stocks")
-    {
-        handler.cp437_out() << "<h1 id=\"Stocks\">Stocks</h1>";
-        REPORT(stocks);
-        handler.cp437_out() << "</body></html>";
-        return true;
-    }
-    // Events Report
-    if (url == "/report/events")
-    {
-        handler.cp437_out() << "<h1 id=\"Events\">Events</h1>";
-        REPORT_GLOBAL(events);
-        handler.cp437_out() << "</body></html>";
-        return true;
-    }
-#undef REPORT
-#undef REPORT_GLOBAL
-    // Blueprints
-    if (url == "/plan")
-    {
-        dwarfAI->plan.weblegends_write_svg(handler.cp437_out());
-        handler.cp437_out() << "</body></html>";
-        return true;
-    }
-    // Version
-    if (url == "/version")
-    {
-        std::ostringstream version;
-        ai_version(version, true);
-        handler.cp437_out() << "<pre style=\"white-space:pre-wrap\">" << version.str() << "</pre></body></html>";
-        return true;
-    }
-    return false;
+    return true;
 }
 
 void Plan::weblegends_write_svg(std::ostream & out)
@@ -479,4 +290,82 @@ void Plan::weblegends_write_svg(std::ostream & out)
         }
         out << "</svg>";
     }
+}
+
+static void render_not_active_page(weblegends_layout_v1 & layout)
+{
+    layout.content << "<p>Enter <code>enable df-ai</code> in the DFHack console to start DF-AI</p>";
+    layout.content << "<p>Enter <code>help ai</code> for a list of console commands.</p>";
+}
+
+static void render_embarking_page(weblegends_layout_v1 & layout)
+{
+    layout.content << "<p><i>Report is not available during embark.</i></p>";
+}
+
+static void render_status_page(weblegends_layout_v1 & layout)
+{
+    layout.content << "<p>" << html_escape(dwarfAI->status()) << "</p>";
+}
+
+static void render_plan_report(weblegends_layout_v1 & layout)
+{
+    dwarfAI->plan.report(layout.content, true);
+}
+
+static void render_population_report(weblegends_layout_v1 & layout)
+{
+#define ANCHOR_LINK(name, anchor) layout.add_header_link("df-ai/report/population#" anchor, name)
+    ANCHOR_LINK("Citizens", "Population_Citizens");
+    ANCHOR_LINK("Military", "Population_Military");
+    ANCHOR_LINK("Pets", "Population_Pets");
+    ANCHOR_LINK("Visitors", "Population_Visitors");
+    ANCHOR_LINK("Residents", "Population_Residents");
+    ANCHOR_LINK("Crimes", "Population_Crimes");
+    ANCHOR_LINK("Health", "Population_Health");
+    ANCHOR_LINK("Deaths", "Population_Deaths");
+    ANCHOR_LINK("Active Jobs", "Population_Jobs_Active");
+    ANCHOR_LINK("Waiting Jobs", "Population_Jobs_Waiting");
+#undef ANCHOR_LINK
+
+    dwarfAI->pop.report(layout.content, true);
+}
+
+static void render_stocks_report(weblegends_layout_v1 & layout)
+{
+    dwarfAI->stocks.report(layout.content, true);
+}
+
+static void render_event_report(weblegends_layout_v1 & layout)
+{
+    events.report(layout.content, true);
+}
+
+static void render_blueprint_page(weblegends_layout_v1 & layout)
+{
+    dwarfAI->plan.weblegends_write_svg(layout.content);
+}
+
+static void render_version_page(weblegends_layout_v1 & layout)
+{
+    layout.content << "<pre style=\"white-space:pre-wrap\">";
+    ai_version(layout.content, true);
+    layout.content << "</pre>";
+}
+
+namespace
+{
+    const ai_web_page not_active_page = { "", "Not Active", false, true, &render_not_active_page };
+    const ai_web_page embarking_page = { "", "Unavailable During Embark", false, true, &render_embarking_page };
+
+    const std::vector<ai_web_page> web_pages =
+    {
+        { "", "Status", false, false, &render_status_page },
+        { "/report/plan", "Tasks", true, false, &render_plan_report },
+        { "/report/population", "Population", true, false, &render_population_report },
+        { "/report/stocks", "Stocks", true, false, &render_stocks_report },
+        { "/report/events", "Events", true, false, &render_event_report },
+        { "/plan", "Blueprints", true, false, &render_blueprint_page },
+        { "/version", "Version", false, false, &render_version_page },
+    };
 }

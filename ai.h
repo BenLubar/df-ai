@@ -153,4 +153,6 @@ public:
 
     command_result persist(color_ostream & out);
     command_result unpersist(color_ostream & out);
+
+    bool is_embarking();
 };

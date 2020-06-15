@@ -2,6 +2,7 @@
 #include "debug.h"
 #include "population.h"
 #include "plan.h"
+#include "plan_setup.h"
 #include "stocks.h"
 #include "camera.h"
 #include "embark.h"
@@ -290,6 +291,11 @@ command_result AI::unpersist(color_ostream & out)
     if (res == CR_OK)
         res = plan.unpersist(out);
     return res;
+}
+
+bool AI::is_embarking()
+{
+    return events.has_exclusive<EmbarkExclusive>() || events.has_exclusive<PlanSetup>();
 }
 
 BOOST_NOINLINE std::ostream & dfai_debug_log()

@@ -381,25 +381,6 @@ void Population::report(std::ostream & out, bool html)
         }
     };
 
-    if (html)
-    {
-        out << "<p>";
-#define ANCHOR_LINK(name, anchor) \
-        out << "<a href=\"df-ai/report/population#" << anchor << "\" class=\"nav-item\">" << name << "</a>"
-        ANCHOR_LINK("Citizens", "Population_Citizens");
-        ANCHOR_LINK("Military", "Population_Military");
-        ANCHOR_LINK("Pets", "Population_Pets");
-        ANCHOR_LINK("Visitors", "Population_Visitors");
-        ANCHOR_LINK("Residents", "Population_Residents");
-        ANCHOR_LINK("Crimes", "Population_Crimes");
-        ANCHOR_LINK("Health", "Population_Health");
-        ANCHOR_LINK("Deaths", "Population_Deaths");
-        ANCHOR_LINK("Active Jobs", "Population_Jobs_Active");
-        ANCHOR_LINK("Waiting Jobs", "Population_Jobs_Waiting");
-#undef ANCHOR_LINK
-        out << "</p>";
-    }
-
     // Citizens
     if (html)
     {
