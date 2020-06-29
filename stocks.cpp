@@ -532,8 +532,8 @@ void Stocks::update_plants(color_ostream &)
                 break;
             }
         }
-        assert(int32_t(i) == p->material_defs.idx_basic_mat);
-        MaterialInfo basic(p->material_defs.type_basic_mat, p->material_defs.idx_basic_mat);
+        assert(int32_t(i) == p->material_defs.idx[plant_material_def::basic_mat]);
+        MaterialInfo basic(p->material_defs.type[plant_material_def::basic_mat], p->material_defs.idx[plant_material_def::basic_mat]);
         if (p->flags.is_set(plant_raw_flags::THREAD))
         {
             thread_plants[i] = basic.type;
@@ -541,8 +541,8 @@ void Stocks::update_plants(color_ostream &)
         if (p->flags.is_set(plant_raw_flags::MILL))
         {
             mill_plants[i] = basic.type;
-            assert(int32_t(i) == p->material_defs.idx_mill);
-            MaterialInfo mill(p->material_defs.type_mill, p->material_defs.idx_mill);
+            assert(int32_t(i) == p->material_defs.idx[plant_material_def::mill]);
+            MaterialInfo mill(p->material_defs.type[plant_material_def::mill], p->material_defs.idx[plant_material_def::mill]);
             if (mill.material->flags.is_set(material_flags::IS_DYE))
             {
                 dye_plants[i] = mill.type;

@@ -84,7 +84,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                     continue;
                 }
 
-                MaterialInfo pm(p->material_defs.type_basic_mat, p->material_defs.idx_basic_mat);
+                MaterialInfo pm(p->material_defs.type[plant_material_def::basic_mat], p->material_defs.idx[plant_material_def::basic_mat]);
                 if (isfirst)
                 {
                     if (pm.material->flags.is_set(material_flags::EDIBLE_RAW) && p->flags.is_set(plant_raw_flags::DRINK))
@@ -100,7 +100,7 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
                 }
                 if (p->flags.is_set(plant_raw_flags::MILL))
                 {
-                    MaterialInfo mm(p->material_defs.type_mill, p->material_defs.idx_mill);
+                    MaterialInfo mm(p->material_defs.type[plant_material_def::mill], p->material_defs.idx[plant_material_def::mill]);
                     if (mm.material->flags.is_set(material_flags::EDIBLE_RAW) || mm.material->flags.is_set(material_flags::EDIBLE_COOKED))
                     {
                         pids.push_back(*i);

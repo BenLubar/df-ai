@@ -41,6 +41,8 @@ AI::AI() :
     last_good_x{ -1 },
     last_good_y{ -1 },
     last_good_z{ -1 },
+    last_pause_id{ -1 },
+    last_pause_repeats{ 0 },
     skip_persist{ false }
 {
     Gui::getViewCoords(last_good_x, last_good_y, last_good_z);

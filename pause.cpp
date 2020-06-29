@@ -48,6 +48,10 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
         announce = *idx;
         fulltext = announce->text + " " + fulltext;
     }
+    if (announce->repeat_count)
+    {
+        fulltext += stl_sprintf(" x%d", announce->repeat_count + 1);
+    }
     debug(out, "pause: " + fulltext);
 
     switch (announce->type)
@@ -127,17 +131,29 @@ void AI::statechanged(color_ostream & out, state_change_event st)
         {
             return d_init->announcements.flags[a->type].bits.PAUSE;
         });
-        if (la != world->status.announcements.rend() &&
-            (*la)->year == *cur_year &&
-            (*la)->time == *cur_year_tick)
+
+        if (la != world->status.announcements.rend())
         {
-            handle_pause_event(out, *la);
+            if ((*la)->year == *cur_year && (*la)->time == *cur_year_tick)
+            {
+                last_pause_id = (*la)->id;
+                last_pause_repeats = (*la)->repeat_count;
+                handle_pause_event(out, *la);
+                return;
+            }
+            if ((*la)->id == last_pause_id && (*la)->repeat_count != last_pause_repeats)
+            {
+                last_pause_repeats = (*la)->repeat_count;
+                handle_pause_event(out, *la);
+                return;
+            }
         }
-        else if (!config.allow_pause)
+
+        if (!config.allow_pause)
         {
             unpause();
-            debug(out, "pause without an event");
         }
+        debug(out, "pause without an event");
     }
     else if (st == SC_VIEWSCREEN_CHANGED)
     {

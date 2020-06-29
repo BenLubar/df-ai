@@ -71,6 +71,7 @@ public:
     std::set<std::string> seen_focus;
     std::set<std::string> seen_cvname;
     int32_t last_good_x, last_good_y, last_good_z;
+    int32_t last_pause_id, last_pause_repeats;
     bool skip_persist;
     char lockstep_log_buffer[25][80];
 
