@@ -83,7 +83,7 @@ void Population::update_pets(color_ostream & out)
                 u->profession != profession::TRAINED_WAR && // not trained
                 u->relationship_ids[unit_relationship_type::Pet] == -1) // not owned
             {
-                if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || cst->gender == -1)
+                if (std::find_if(u->body.wounds.begin(), u->body.wounds.end(), [](df::unit_wound *w) -> bool { return std::find_if(w->parts.begin(), w->parts.end(), [](df::unit_wound::T_parts *p) -> bool { return p->flags2.bits.gelded; }) != w->parts.end(); }) != u->body.wounds.end() || cst->sex == pronoun_type::it)
                 {
                     // animal can't reproduce, can't work, and will provide maximum butchering reward. kill it.
                     u->flags2.bits.slaughter = true;
