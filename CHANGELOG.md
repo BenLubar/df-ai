@@ -1,5 +1,7 @@
 # Future
 
+# 0.47.04-r2
+
 - Added `allow_pause` config setting (defaults to true, set to false for old behavior).
 - df-ai will now act as a client of dfplex if dfplex is enabled.
 - Fixed a long-standing bug that could cause the game to completely freeze if lockstep was disabled under certain conditions.
