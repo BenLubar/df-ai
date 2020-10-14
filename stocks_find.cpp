@@ -694,7 +694,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
             df::item_corpsepiecest *i = virtual_cast<df::item_corpsepiecest>(item);
             auto race = df::creature_raw::find(i->race);
             auto caste = race ? race->caste.at(i->caste) : nullptr;
-            return i->corpse_flags.bits.skull && !i->corpse_flags.bits.unbutchered && (!caste || !caste->flags.is_set(caste_raw_flags::CAN_LEARN));
+            return i->corpse_flags.bits.skull1 && !i->corpse_flags.bits.unbutchered && (!caste || !caste->flags.is_set(caste_raw_flags::CAN_LEARN));
         });
     }
     case stock_item::slab:
