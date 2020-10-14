@@ -157,7 +157,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
     }
     auto url = url_with_query.substr(0, pos);
 
-    auto layout{ weblegends_allocate_layout() };
+    auto layout = weblegends_allocate_layout();
     auto page = select_current_page(*layout, url);
     if (!page)
     {
