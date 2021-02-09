@@ -1226,7 +1226,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
                     h = world->map.y_count % 31;
                 Buildings::setSize(bld, df::coord(w, h, 1));
                 delete[] bld->room.extents;
-                bld->room.extents = new uint8_t[w * h]();
+                bld->room.extents = new df::building_extents_type[w * h]();
                 bld->room.x = x;
                 bld->room.y = y;
                 bld->room.width = w;
@@ -1235,7 +1235,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
                 {
                     for (int16_t dy = 0; dy < h; dy++)
                     {
-                        bld->room.extents[dx + w * dy] = g->second.count(df::coord2d(dx, dy)) ? 1 : 0;
+                        bld->room.extents[dx + w * dy] = g->second.count(df::coord2d(dx, dy)) ? building_extents_type::Stockpile : building_extents_type::None;
                     }
                 }
                 Buildings::constructAbstract(bld);

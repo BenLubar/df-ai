@@ -1579,8 +1579,8 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         if (!f->makeroom)
         {
             delete[] bld->room.extents;
-            bld->room.extents = new uint8_t[1];
-            bld->room.extents[0] = 4;
+            bld->room.extents = new df::building_extents_type[1];
+            bld->room.extents[0] = building_extents_type::DistanceBoundary;
             bld->room.x = r->min.x + f->pos.x;
             bld->room.y = r->min.y + f->pos.y;
             bld->room.width = 1;
@@ -1628,12 +1628,12 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
     df::coord size = r->size() + df::coord(2, 2, 0);
 
     delete[] bld->room.extents;
-    bld->room.extents = new uint8_t[size.x * size.y]();
+    bld->room.extents = new df::building_extents_type[size.x * size.y]();
     bld->room.x = r->min.x - 1;
     bld->room.y = r->min.y - 1;
     bld->room.width = size.x;
     bld->room.height = size.y;
-    auto set_ext = [&bld](int16_t x, int16_t y, uint8_t v)
+    auto set_ext = [&bld](int16_t x, int16_t y, df::building_extents_type v)
     {
         bld->room.extents[bld->room.width * (y - bld->room.y) + (x - bld->room.x)] = v;
     };
@@ -1643,11 +1643,11 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         {
             if (ENUM_ATTR(tiletype, shape, *Maps::getTileType(rx, ry, r->min.z)) == tiletype_shape::WALL)
             {
-                set_ext(rx, ry, 2);
+                set_ext(rx, ry, building_extents_type::Wall);
             }
             else
             {
-                set_ext(rx, ry, r->include(df::coord(rx, ry, r->min.z)) ? 3 : 4);
+                set_ext(rx, ry, r->include(df::coord(rx, ry, r->min.z)) ? building_extents_type::Interior : building_extents_type::DistanceBoundary);
             }
         }
     }
@@ -1656,16 +1656,16 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
         if (f_->type != layout_type::door)
             continue;
         df::coord t = r->min + f_->pos;
-        set_ext(t.x, t.y, 0);
+        set_ext(t.x, t.y, building_extents_type::None);
         // tile in front of the door tile is 4 (TODO door in corner...)
         if (t.x < r->min.x)
-            set_ext(t.x + 1, t.y, 4);
+            set_ext(t.x + 1, t.y, building_extents_type::DistanceBoundary);
         if (t.x > r->max.x)
-            set_ext(t.x - 1, t.y, 4);
+            set_ext(t.x - 1, t.y, building_extents_type::DistanceBoundary);
         if (t.y < r->min.y)
-            set_ext(t.x, t.y + 1, 4);
+            set_ext(t.x, t.y + 1, building_extents_type::DistanceBoundary);
         if (t.y > r->max.y)
-            set_ext(t.x, t.y - 1, 4);
+            set_ext(t.x, t.y - 1, building_extents_type::DistanceBoundary);
     }
     bld->is_room = true;
 
