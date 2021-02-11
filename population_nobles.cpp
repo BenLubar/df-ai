@@ -171,7 +171,7 @@ public:
             Key(interface_key::SELECT);
             ExpectScreen<df::viewscreen_layer_noblelistst>("layer_noblelist/List");
 
-            if (bookkeeper && ui->bookkeeper_settings != 4)
+            if (bookkeeper && ui->nobles.bookkeeper_settings != 4)
             {
                 Key(interface_key::NOBLELIST_SETTINGS);
                 ExpectScreen<df::viewscreen_layer_noblelistst>("layer_noblelist/Settings");
