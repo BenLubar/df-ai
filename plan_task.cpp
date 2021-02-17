@@ -484,7 +484,7 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
     return true;
 }
 
-bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reason)
+bool Plan::monitor_room_value(color_ostream &, room *r, std::ostream & reason)
 {
     if (r->required_value <= 0)
     {
@@ -495,6 +495,16 @@ bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reaso
     if (value < 0)
     {
         reason << "cannot compute room value";
+
+        for (auto f : r->layout)
+        {
+            if (f->makeroom)
+            {
+                reason << " (waiting for " << ai.describe_furniture(f) << " to be built)";
+                break;
+            }
+        }
+
         return false;
     }
 
