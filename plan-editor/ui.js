@@ -66,7 +66,7 @@
 		lastModified = {};
 		plans = {};
 		rooms = {};
-		doReadZip(new zip.HttpReader('https://crossorigin.me/' + downloadLink.href), function(err) {
+		doReadZip(new zip.HttpReader('https://ben.lubar.me/df-ai/cached-develop.zip'), function(err) {
 			if (err) {
 				downloadLink.removeEventListener('click', readZipDirectly);
 			}
