@@ -7,7 +7,6 @@
 	fileUpload.accept = 'application/json,.dat';
 	fileUpload.addEventListener('change', function(e) {
 		document.getElementById('loading').style.display = 'block';
-		gtag('event', 'dfai_load_fort', {});
 		var file = e.target.files[0];
 		var reader = new FileReader();
 		reader.addEventListener('loadend', function() {
@@ -38,7 +37,6 @@
 	layerUpload.accept = '.bmp,image/*';
 	layerUpload.addEventListener('change', function(e) {
 		document.getElementById('loading').style.display = 'block';
-		gtag('event', 'dfai_load_layers', {});
 
 		layers.forEach(function(img) {
 			if (img) {
@@ -184,10 +182,6 @@
 	};
 
 	window.doSave = function doSave() {
-		gtag('event', 'dfai_save_fort', {});
-
-		debugger; // TODO
-
 		var url = window.URL.createObjectURL(blob);
 		var a = document.createElement('a');
 		a.style.display = 'none';

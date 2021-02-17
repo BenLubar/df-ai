@@ -130,12 +130,6 @@
 			lastModified['df-ai-blueprints/rooms/templates/' + name + '/' + tmpl + '.json'] = new Date();
 		}
 
-		gtag('event', 'dfai_edit_room', {
-			room_name: name,
-			room_inst: inst,
-			room_tmpl: tmpl
-		});
-
 		var header = document.createElement('h1');
 		header.textContent = 'Editing room: ' + name + ' (i:\u00a0' + inst + ', t:\u00a0' + tmpl + ')';
 		mainPanel.appendChild(header);
@@ -145,12 +139,6 @@
 		var template = room.templates[tmpl];
 
 		if (Object.prototype.hasOwnProperty.call(instance, 'p') && Array.isArray(instance.p) && instance.p.length) {
-			gtag('event', 'dfai_debug_room_has_placeholders', {
-				room_name: name,
-				room_inst: inst,
-				room_tmpl: tmpl
-			});
-
 			alert('Warning: The room editor does not currently support placeholders. Editing this room may corrupt it.');
 		}
 
@@ -246,13 +234,6 @@
 			}
 			a.addEventListener('click', function(e) {
 				e.preventDefault();
-
-				gtag('event', 'dfai_select_room', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					method: 'link'
-				});
 
 				click();
 			}, false);
@@ -368,13 +349,6 @@
 				pathA.addEventListener('click', function(e) {
 					e.preventDefault();
 
-					gtag('event', 'dfai_select_room', {
-						room_name: name,
-						room_inst: inst,
-						room_tmpl: tmpl,
-						method: 'path'
-					});
-
 					click();
 				}, false);
 				g.appendChild(pathA);
@@ -441,13 +415,6 @@
 			a.addEventListener('click', function(e) {
 				e.preventDefault();
 
-				gtag('event', 'dfai_select_layout', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					method: 'link'
-				});
-
 				click();
 			}, false);
 			li.appendChild(a);
@@ -456,13 +423,6 @@
 			pathA.setAttributeNS('http://www.w3.org/1999/xlink', 'href', '#');
 			pathA.addEventListener('click', function(e) {
 				e.preventDefault();
-
-				gtag('event', 'dfai_select_layout', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					method: 'path'
-				});
 
 				a.click();
 			}, false);
@@ -502,12 +462,6 @@
 		add.textContent = '+';
 		add.id = 'room-add-inst';
 		add.addEventListener('click', function() {
-			gtag('event', 'dfai_add_room_to_instance', {
-				room_name: name,
-				room_inst: inst,
-				room_tmpl: tmpl
-			});
-
 			var r = {};
 			instance.r = instance.r || [];
 			instance.r.push(r);
@@ -534,12 +488,6 @@
 		add.textContent = '+';
 		add.id = 'room-add-tmpl';
 		add.addEventListener('click', function() {
-			gtag('event', 'dfai_add_room_to_template', {
-				room_name: name,
-				room_inst: inst,
-				room_tmpl: tmpl
-			});
-
 			var r = {};
 			template.r = template.r || [];
 			template.r.push(r);
@@ -562,13 +510,6 @@
 		add.textContent = '+';
 		add.id = 'room-add-layout';
 		add.addEventListener('click', function() {
-			gtag('event', 'dfai_add_layout_to_room', {
-				room_name: name,
-				room_inst: inst,
-				room_tmpl: tmpl,
-				room_desc: svg.querySelector('.room > .active > title').textContent
-			});
-
 			var f = {};
 			selectedFile.f = selectedFile.f || [];
 			selectedRoom.layout = selectedRoom.layout || [];
@@ -624,14 +565,6 @@
 			field.appendChild(label);
 
 			if (Object.prototype.hasOwnProperty.call(obj, fieldName)) {
-				gtag('event', 'dfai_debug_room_todo', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: fieldName,
-					event_label: fieldName
-				});
-
 				var input = document.createElement('input');
 				input.type = 'text';
 				input.value = JSON.stringify(obj[fieldName]);
@@ -707,15 +640,6 @@
 				if (typeSelect.value === enums.layout_type[0].e) {
 					delete selectedLayout.type;
 				} else {
-					gtag('event', 'dfai_edit_layout_field', {
-						room_name: name,
-						room_inst: inst,
-						room_tmpl: tmpl,
-						field: 'type',
-						event_label: 'type',
-						mode: 'edit'
-					});
-
 					selectedLayout.type = typeSelect.value;
 				}
 
@@ -736,15 +660,6 @@
 			internalInput.checked = Boolean(selectedLayout.internal);
 			internalInput.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'internal',
-					event_label: 'internal',
-					mode: 'edit'
-				});
 
 				if (internalInput.checked) {
 					selectedLayout.internal = true;
@@ -792,15 +707,6 @@
 			constructionSelect.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'construction',
-					event_label: 'construction',
-					mode: 'edit'
-				});
-
 				selectedLayout.construction = constructionSelect.value;
 				doUpdate();
 			}, false);
@@ -842,15 +748,6 @@
 			digSelect.value = prevDig;
 			digSelect.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'dig',
-					event_label: 'dig',
-					mode: 'edit'
-				});
 
 				selectedLayout.dig = digSelect.value;
 				doUpdate();
@@ -897,44 +794,17 @@
 			posX.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
-
 				selectedLayout.x = Number(posX.value);
 				doUpdate();
 			}, false);
 			posY.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
-
 				selectedLayout.y = Number(posY.value);
 				doUpdate();
 			}, false);
 			posZ.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
 
 				selectedLayout.z = Number(posZ.value);
 				doUpdate();
@@ -963,15 +833,6 @@
 			commentInput.value = concatVariableString(selectedLayout.comment || '');
 			commentInput.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_layout_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'comment',
-					event_label: 'comment',
-					mode: 'edit'
-				});
 
 				if (commentInput.value === '') {
 					delete selectedLayout.comment;
@@ -1029,15 +890,6 @@
 			});
 			typeSelect.value = prevType;
 			typeSelect.addEventListener('change', function() {
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					field: 'type',
-					event_label: 'type',
-					mode: 'edit'
-				});
-
 				onTypeChanged();
 			}, false);
 			typeField.appendChild(typeSelect);
@@ -1071,16 +923,6 @@
 			subtypeSelect.id = 'edit-room-subtype';
 			initSubtypeSelect();
 			subtypeSelect.addEventListener('change', function() {
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'subtype',
-					event_label: 'subtype',
-					mode: 'edit'
-				});
-
 				onTypeChanged();
 			}, false);
 			subtypeField.appendChild(subtypeSelect);
@@ -1096,16 +938,6 @@
 			rawtypeInput.value = concatVariableString(selectedRoom.raw_type || '');
 			rawtypeInput.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'raw_type',
-					event_label: 'raw_type',
-					mode: 'edit'
-				});
 
 				selectedRoom.raw_type = maybeSplitVariableString(rawtypeInput.value);
 				doUpdate();
@@ -1144,16 +976,6 @@
 			posX.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
-
 				selectedRoom.min[0] = Number(posX.value);
 				selectedRoom.max[0] = selectedRoom.min[0] - 1 + Number(sizeX.value);
 				doUpdate();
@@ -1161,32 +983,12 @@
 			posY.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
-
 				selectedRoom.min[1] = Number(posY.value);
 				selectedRoom.max[1] = selectedRoom.min[1] - 1 + Number(sizeY.value);
 				doUpdate();
 			}, false);
 			posZ.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'pos',
-					event_label: 'pos',
-					mode: 'edit'
-				});
 
 				selectedRoom.min[2] = Number(posZ.value);
 				selectedRoom.max[2] = selectedRoom.min[2] - 1 + Number(sizeZ.value);
@@ -1241,47 +1043,17 @@
 			sizeX.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'size',
-					event_label: 'size',
-					mode: 'edit'
-				});
-
 				selectedRoom.max[0] = selectedRoom.min[0] - 1 + Number(sizeX.value);
 				doUpdate();
 			}, false);
 			sizeY.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'size',
-					event_label: 'size',
-					mode: 'edit'
-				});
-
 				selectedRoom.max[1] = selectedRoom.min[1] - 1 + Number(sizeY.value);
 				doUpdate();
 			}, false);
 			sizeZ.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'size',
-					event_label: 'size',
-					mode: 'edit'
-				});
 
 				selectedRoom.max[2] = selectedRoom.min[2] - 1 + Number(sizeZ.value);
 				doUpdate();
@@ -1304,16 +1076,6 @@
 			commentInput.value = concatVariableString(selectedRoom.comment || '');
 			commentInput.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'comment',
-					event_label: 'comment',
-					mode: 'edit'
-				});
 
 				if (commentInput.value === '') {
 					delete selectedRoom.comment;
@@ -1400,16 +1162,6 @@
 			outdoorSelect.addEventListener('change', function() {
 				markDirty();
 
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'outdoor',
-					event_label: 'outdoor',
-					mode: 'edit'
-				});
-
 				delete selectedRoom.outdoor;
 				delete selectedRoom.require_floor;
 				delete selectedRoom.require_walls;
@@ -1469,16 +1221,6 @@
 			requireGrassInput.value = selectedRoom.require_grass || 0;
 			requireGrassInput.addEventListener('change', function() {
 				markDirty();
-
-				gtag('event', 'dfai_edit_room_field', {
-					room_name: name,
-					room_inst: inst,
-					room_tmpl: tmpl,
-					room_type: selectedRoom.type,
-					field: 'require_grass',
-					event_label: 'require_grass',
-					mode: 'edit'
-				});
 
 				var require_grass = parseInt(requireGrassInput.value, 10);
 				if (require_grass > 0) {
@@ -1576,16 +1318,6 @@
 								checkbox.id = 'edit-room-stock_disable-' + spl.e;
 								checkbox.checked = Array.isArray(selectedRoom.stock_disable) && selectedRoom.stock_disable.indexOf(spl.e) !== -1;
 								checkbox.addEventListener('change', function() {
-									gtag('event', 'dfai_edit_room_field', {
-										room_name: name,
-										room_inst: inst,
-										room_tmpl: tmpl,
-										stock_type: selectedRoom.stockpile_type,
-										field: 'stock_disable',
-										event_label: 'stock_disable',
-										mode: 'edit'
-									});
-
 									var i = Array.isArray(selectedRoom.stock_disable) ? selectedRoom.stock_disable.indexOf(spl.e) : -1;
 									if (checkbox.checked) {
 										if (i === -1) {
@@ -1630,16 +1362,6 @@
 								checkbox.id = 'edit-room-stock_specific' + ss;
 								checkbox.checked = Boolean(selectedRoom['stock_specific' + ss]);
 								checkbox.addEventListener('change', function() {
-									gtag('event', 'dfai_edit_room_field', {
-										room_name: name,
-										room_inst: inst,
-										room_tmpl: tmpl,
-										stock_type: selectedRoom.stockpile_type,
-										field: 'stock_specific' + ss,
-										event_label: 'stock_specific' + ss,
-										mode: 'edit'
-									});
-
 									markDirty();
 									if (checkbox.checked) {
 										selectedRoom['stock_specific' + ss] = true;
