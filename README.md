@@ -13,5 +13,3 @@ Does not handle already started forts, but can resume from df-ai saves and handl
 [![xkcd 1223](https://imgs.xkcd.com/comics/dwarf_fortress.png "I may be the kind of person who wastes a year implementing a Turing-complete computer in Dwarf Fortress, but that makes you the kind of person who wastes ten more getting that computer to run Minecraft.")](https://xkcd.com/1223/)
 
 See the [df-ai wiki](https://github.com/BenLubar/df-ai/wiki) for more information.
-
-[![CodeFactor](https://www.codefactor.io/repository/github/benlubar/df-ai/badge)](https://www.codefactor.io/repository/github/benlubar/df-ai)
