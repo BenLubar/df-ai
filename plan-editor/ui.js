@@ -66,7 +66,7 @@
 		lastModified = {};
 		plans = {};
 		rooms = {};
-		doReadZip(new zip.HttpReader('https://cors-anywhere.herokuapp.com/' + downloadLink.href), function(err) {
+		doReadZip(new zip.HttpReader('https://crossorigin.me/' + downloadLink.href), function(err) {
 			if (err) {
 				downloadLink.removeEventListener('click', readZipDirectly);
 			}
