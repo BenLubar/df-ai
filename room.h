@@ -162,6 +162,7 @@ BEGIN_ENUM(task, type) \
     ENUM_ITEM(furnish) \
     ENUM_ITEM(monitor_cistern) \
     ENUM_ITEM(monitor_farm_irrigation) \
+    ENUM_ITEM(monitor_room_value) \
     ENUM_ITEM(setup_farmplot) \
     ENUM_ITEM(want_dig) \
 END_ENUM(task, type)
@@ -251,6 +252,7 @@ struct room
     }
     bool constructions_done(std::ostream & reason) const;
     df::building *dfbuilding() const;
+    int32_t compute_value() const;
 };
 
 struct furniture

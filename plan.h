@@ -151,6 +151,7 @@ public:
     bool try_construct_farmplot(color_ostream & out, room *r, std::ostream & reason);
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
+    bool monitor_room_value(color_ostream & out, room *r, std::ostream & reason);
 
     bool smooth_room(color_ostream & out, room *r, bool engrave = false);
     void smooth_room_access(color_ostream & out, room *r);

@@ -7,6 +7,10 @@
 
 #include "df/building.h"
 #include "df/tile_occupancy.h"
+#include "df/unit.h"
+#include "df/world.h"
+
+REQUIRE_GLOBAL(world);
 
 #define BEGIN_ENUM BEGIN_IMPLEMENT_ENUM
 #define ENUM_ITEM IMPLEMENT_ENUM_ITEM
@@ -371,4 +375,21 @@ bool room::constructions_done(std::ostream & reason) const
 df::building *room::dfbuilding() const
 {
     return df::building::find(bld_id);
+}
+
+int32_t room::compute_value() const
+{
+    auto bld = dfbuilding();
+    if (!bld)
+    {
+        return -1;
+    }
+
+    auto u = df::unit::find(owner);
+    if (!u)
+    {
+        u = world->units.active[0];
+    }
+
+    return bld->getRoomValue(u);
 }

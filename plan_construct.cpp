@@ -150,6 +150,11 @@ bool Plan::construct_room(color_ostream & out, room *r)
 {
     ai.debug(out, "construct " + AI::describe_room(r));
 
+    if (r->required_value > 0)
+    {
+        add_task(task_type::monitor_room_value, r);
+    }
+
     if (r->type == room_type::corridor)
     {
         return furnish_room(out, r);

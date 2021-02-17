@@ -144,6 +144,20 @@ std::string AI::describe_room(room *r, bool html)
         break;
     }
 
+    if (r->required_value > 0)
+    {
+        int32_t value = r->compute_value();
+
+        if (value >= 0)
+        {
+            s << " (value " << value << " / " << r->required_value << ")";
+        }
+        else
+        {
+            s << " (required value " << r->required_value << ")";
+        }
+    }
+
     if (!r->comment.empty())
     {
         s << " (" << maybe_escape(r->comment, html) << ")";

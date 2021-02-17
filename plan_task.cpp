@@ -144,6 +144,9 @@ void Plan::update(color_ostream &)
             case task_type::monitor_cistern:
                 monitor_cistern(out, reason);
                 break;
+            case task_type::monitor_room_value:
+                del = monitor_room_value(out, t.r, reason);
+                break;
             case task_type::_task_type_count:
                 break;
             }
@@ -371,6 +374,11 @@ void Plan::checkroom(color_ostream & out, room *r)
     // designation cancelled: damp stone, cave-in, or tree
     r->dig();
 
+    if (r->required_value > 0 && r->compute_value() < r->required_value)
+    {
+        add_task(task_type::monitor_room_value, r);
+    }
+
     if (r->status == room_status::dug || r->status == room_status::finished)
     {
         // tantrumed furniture
@@ -475,6 +483,31 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
 
     return true;
 }
+
+bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reason)
+{
+    if (r->required_value <= 0)
+    {
+        return true;
+    }
+
+    int32_t value = r->compute_value();
+    if (value < 0)
+    {
+        reason << "cannot compute room value";
+        return false;
+    }
+
+    if (value >= r->required_value)
+    {
+        return true;
+    }
+
+    // TODO: smooth/engrave, build statues, etc.
+    reason << "room value is " << (r->required_value - value) << " too low (TODO)";
+    return false;
+}
+
 
 void Plan::add_task(task_type::type type, room *r, furniture *f)
 {
