@@ -18,21 +18,24 @@
 			"dig": "UpDownStair",
 			"x": 0,
 			"y": 0,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 1,
 			"y": 0,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 2,
 			"y": 0,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
@@ -46,35 +49,40 @@
 			"dig": "UpDownStair",
 			"x": 1,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 2,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 0,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 1,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",
 			"dig": "UpDownStair",
 			"x": 2,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		}
 	],
 	"r": [

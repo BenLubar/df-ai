@@ -170,6 +170,9 @@ bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_temp
     DFAI_DEBUG(blueprint, 1, "Removing unused rooms...");
     remove_unused_rooms();
 
+    DFAI_DEBUG(blueprint, 1, "Simplifying staircases...");
+    handle_stairs_special();
+
     return true;
 }
 
@@ -783,5 +786,74 @@ void PlanSetup::remove_unused_rooms()
 
         delete r;
         *it = nullptr;
+    }
+}
+
+void PlanSetup::handle_stairs_special()
+{
+    std::set<df::coord> up_stairs, down_stairs;
+    std::vector<std::pair<room_base::layoutindex_t, df::coord>> special_stairs;
+
+    for (auto r : rooms)
+    {
+        if (!r)
+        {
+            continue;
+        }
+
+        for (auto i : r->layout)
+        {
+            auto f = layout.at(i);
+
+            if (f->stairs_special)
+            {
+                special_stairs.push_back(std::make_pair(i, r->min + f->pos));
+            }
+
+            switch (f->construction)
+            {
+            case construction_type::UpStair:
+                down_stairs.insert(r->min + f->pos + df::coord(0, 0, 1));
+                break;
+            case construction_type::DownStair:
+                up_stairs.insert(r->min + f->pos + df::coord(0, 0, -1));
+                break;
+            case construction_type::UpDownStair:
+                down_stairs.insert(r->min + f->pos + df::coord(0, 0, 1));
+                up_stairs.insert(r->min + f->pos + df::coord(0, 0, -1));
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    for (auto special : special_stairs)
+    {
+        bool up = up_stairs.count(special.second) != 0;
+        bool down = down_stairs.count(special.second) != 0;
+
+        auto f = layout.at(special.first);
+
+        if (up && down)
+        {
+            f->dig = tile_dig_designation::UpDownStair;
+            f->construction = construction_type::UpDownStair;
+        }
+        else if (up)
+        {
+            f->dig = tile_dig_designation::UpStair;
+            f->construction = construction_type::UpStair;
+        }
+        else if (down)
+        {
+            f->dig = tile_dig_designation::DownStair;
+            f->construction = construction_type::DownStair;
+        }
+        else
+        {
+            f->dig = tile_dig_designation::Default;
+            f->construction = construction_type::Floor;
+        }
     }
 }

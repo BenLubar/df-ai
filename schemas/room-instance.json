@@ -173,6 +173,10 @@
 					"type": "boolean",
 					"default": false
 				},
+				"stairs_special": {
+					"type": "boolean",
+					"default": false
+				},
 				"comment": {
 					"$ref": "shared.json#variable-string"
 				},

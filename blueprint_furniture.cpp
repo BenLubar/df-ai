@@ -13,6 +13,7 @@ room_base::furniture_t::furniture_t() :
     ignore(false),
     makeroom(false),
     internal(false),
+    stairs_special(false),
     comment()
 {
 }
@@ -75,6 +76,11 @@ bool room_base::furniture_t::apply(Json::Value data, std::string & error, bool a
     }
 
     if (data.isMember("internal") && !apply_bool(internal, data, "internal", error))
+    {
+        return false;
+    }
+
+    if (data.isMember("stairs_special") && !apply_bool(stairs_special, data, "stairs_special", error))
     {
         return false;
     }
