@@ -223,6 +223,13 @@ void EventManager::create_dfplex_client()
         return;
     }
 
+    auto dfplex_plugin = Core::getInstance().getPluginManager()->getPluginByName("dfplex");
+    if (!dfplex_plugin || !dfplex_plugin->is_enabled())
+    {
+        // dfplex was disabled
+        return;
+    }
+
     static const void * last_global_viewscreen;
     static bool was_paused;
     static bool logged_no_exclusive;
