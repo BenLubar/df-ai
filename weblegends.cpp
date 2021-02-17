@@ -57,12 +57,19 @@ static void process_query_arg(weblegends_handler_v1 & handler, const std::string
     if (key == "refresh")
     {
         if (value.empty())
+        {
+            handler.headers()["Refresh"] = "5";
             return;
-        if (value.at(0) <= '1' || value.at(0) >= '9')
+        }
+
+        if (value.at(0) < '1' || value.at(0) > '9')
+        {
             return;
+        }
+
         for (size_t i = 1; i < value.length(); i++)
         {
-            if (value.at(i) <= '0' || value.at(i) >= '9')
+            if (value.at(i) < '0' || value.at(i) > '9')
                 return;
         }
 
