@@ -275,6 +275,20 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
+					"type": "infirmary"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "infirmary"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
 					"type": "workshop",
 					"workshop_type": "Craftsdwarfs",
 					"level": 1
@@ -300,20 +314,6 @@
 		{
 			"continue": true,
 			"action": "deconstruct_wagons"
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "infirmary"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "infirmary"
-			}
 		},
 		{
 			"action": "dig",
