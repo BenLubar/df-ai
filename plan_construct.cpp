@@ -1309,7 +1309,7 @@ protected:
                 }
                 while (ui_sidebar_menus->location.cursor_profession &&
                         ui_sidebar_menus->location.profession.at(ui_sidebar_menus->location.cursor_profession) != gh_type);
-                DFAI_ASSERT(ui_sidebar_menus->location.cursor_profession, "could not find profession for this guildhall");
+                DFAI_ASSERT(ui_sidebar_menus->location.profession.at(ui_sidebar_menus->location.cursor_profession) == gh_type, "could not find profession for this guildhall");
                 Key(interface_key::SELECT);
                 known = true;
                 break;
