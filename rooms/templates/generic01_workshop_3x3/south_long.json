@@ -5,7 +5,8 @@
 			"type": "door",
 			"x": 1,
 			"y": -1,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		}
 	],
 	"r": [

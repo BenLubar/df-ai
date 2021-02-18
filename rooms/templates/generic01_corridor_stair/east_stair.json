@@ -5,13 +5,15 @@
 			"type": "door",
 			"x": -1,
 			"y": 0,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"type": "door",
 			"x": -1,
 			"y": 2,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"construction": "UpDownStair",
@@ -42,7 +44,8 @@
 			"dig": "UpDownStair",
 			"x": 0,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"stairs_special": true
 		},
 		{
 			"construction": "UpDownStair",

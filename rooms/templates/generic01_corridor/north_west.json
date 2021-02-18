@@ -5,13 +5,15 @@
 			"type": "door",
 			"x": 4,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"type": "door",
 			"x": 6,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		}
 	],
 	"r": [

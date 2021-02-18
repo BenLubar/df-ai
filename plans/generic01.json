@@ -521,7 +521,7 @@
 			"action": "unignore_furniture",
 			"match": {
 				"status_not": ["plan", "dig"],
-				"type": ["bedroom", "nobleroom"]
+				"type": ["bedroom", "nobleroom", "corridor", "workshop", "farmplot"]
 			}
 		},
 		{

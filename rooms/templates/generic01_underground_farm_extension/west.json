@@ -12,7 +12,8 @@
 			"type": "door",
 			"x": 3,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"type": "hatch",
@@ -26,7 +27,8 @@
 			"type": "door",
 			"x": 3,
 			"y": 1,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		}
 	],
 	"r": [
