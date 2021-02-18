@@ -34,6 +34,7 @@ room_base::room_t::room_t() :
     require_walls(true),
     require_floor(true),
     require_grass(0),
+    require_stone(false),
     in_corridor(false),
     remove_if_unused(false),
     exits(),
@@ -289,6 +290,10 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
     if (data.isMember("require_grass") && !apply_int(require_grass, data, "require_grass", error))
+    {
+        return false;
+    }
+    if (data.isMember("require_stone") && !apply_bool(require_stone, data, "require_stone", error))
     {
         return false;
     }

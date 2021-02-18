@@ -523,6 +523,16 @@ bool PlanSetup::can_add_room(const room_blueprint & rb, df::coord pos)
                             DFAI_DEBUG(blueprint, 4, "Error placing " << DBG_ROOM(rb) << " at " << DBG_COORD(pos) << ": " << DBG_COORD(t) << " contains building (" << enum_item_key_str(building) << ")");
                             return false;
                         }
+
+                        if (r->require_stone)
+                        {
+                            auto mat = ENUM_ATTR(tiletype, material, tt);
+                            if (mat != tiletype_material::STONE && mat != tiletype_material::MINERAL && mat != tiletype_material::FEATURE)
+                            {
+                                DFAI_DEBUG(blueprint, 4, "Error placing " << DBG_ROOM(rb) << " at " << DBG_COORD(pos) << ": " << DBG_COORD(t) << " is not stone (" << enum_item_key_str(mat) << ")");
+                                return false;
+                            }
+                        }
                     }
                 }
             }

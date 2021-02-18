@@ -111,6 +111,10 @@
 					"minimum": 0,
 					"default": 0
 				},
+				"require_stone": {
+					"type": "boolean",
+					"default": true
+				},
 				"in_corridor": {
 					"type": "boolean",
 					"default": false

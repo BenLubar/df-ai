@@ -98,6 +98,7 @@ struct room_base
         bool require_walls;
         bool require_floor;
         int32_t require_grass;
+        bool require_stone;
         bool in_corridor;
         bool remove_if_unused;
         std::map<df::coord, std::map<std::string, std::map<std::string, variable_string>>> exits;

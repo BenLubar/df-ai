@@ -160,7 +160,8 @@
 			"type": "nobleroom",
 			"nobleroom_type": "office",
 			"noblesuite": 0,
-			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+			"require_stone": true
 		},
 		{
 			"min": [4, 1, 0],
@@ -169,7 +170,8 @@
 			"nobleroom_type": "bedroom",
 			"noblesuite": 0,
 			"layout": [9, 10, 11, 12],
-			"accesspath": [0]
+			"accesspath": [0],
+			"require_stone": true
 		},
 		{
 			"min": [-2, 6, 0],
@@ -178,7 +180,8 @@
 			"nobleroom_type": "dining",
 			"noblesuite": 0,
 			"layout": [13, 18, 19, 20],
-			"accesspath": [0, 4]
+			"accesspath": [0, 4],
+			"require_stone": true
 		},
 		{
 			"min": [-6, 1, 0],
@@ -187,7 +190,8 @@
 			"nobleroom_type": "tomb",
 			"noblesuite": 0,
 			"layout": [14, 15, 21],
-			"accesspath": [0]
+			"accesspath": [0],
+			"require_stone": true
 		},
 		{
 			"min": [5, 7, 0],

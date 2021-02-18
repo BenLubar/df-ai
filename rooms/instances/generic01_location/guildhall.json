@@ -2,7 +2,8 @@
 	"$schema": "https://ben.lubar.me/df-ai-schemas/room-instance.json",
 	"p": [
 		{
-			"location_type": "guildhall"
+			"location_type": "guildhall",
+			"require_stone": true
 		},
 		{
 			"skip": true
