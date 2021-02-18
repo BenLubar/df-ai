@@ -349,7 +349,7 @@ bool room::constructions_done(std::ostream & reason) const
 
         if (want == tiletype_shape::FLOOR)
         {
-            if (ts == tiletype_shape::PEBBLES || ts == tiletype_shape::BOULDER)
+            if (ts == tiletype_shape::PEBBLES || ts == tiletype_shape::BOULDER || ts == tiletype_shape::BROOK_TOP)
                 continue;
 
             if (ts == tiletype_shape::SAPLING && type == room_type::pasture)
