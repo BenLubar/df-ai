@@ -56,7 +56,6 @@ public:
         ai(ai),
         responsibility(responsibility)
     {
-        //dfplex_blacklist = true;
     }
     ~AssignNoblesExclusive() {}
 
@@ -253,10 +252,15 @@ void Population::update_nobles(color_ostream & out)
     WANT_POS(MANAGE_PRODUCTION);
     WANT_POS(ACCOUNTING);
     if (ai.find_room(room_type::infirmary, [](room *r) -> bool { return r->status != room_status::plan; }))
+    {
         WANT_POS(HEALTH_MANAGEMENT);
+    }
     WANT_POS(TRADE);
-    WANT_POS(LAW_ENFORCEMENT);
-    WANT_POS(EXECUTIONS);
+    if (ai.find_room(room_type::jail, [](room *r) -> bool { return r->status == room_status::finished; }))
+    {
+        WANT_POS(LAW_ENFORCEMENT);
+        WANT_POS(EXECUTIONS);
+    }
 }
 
 void Population::check_noble_apartments(color_ostream & out)
