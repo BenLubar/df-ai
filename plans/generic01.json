@@ -275,6 +275,24 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Craftsdwarfs",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Craftsdwarfs",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
 					"type": "infirmary"
 				},
 				"is": 0
@@ -290,7 +308,25 @@
 				"match": {
 					"status_not": "plan",
 					"type": "workshop",
-					"workshop_type": "Craftsdwarfs",
+					"workshop_type": "Masons",
+					"level": 2
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Masons",
+				"level": 2
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Mechanics",
 					"level": 1
 				},
 				"is": 0
@@ -298,7 +334,43 @@
 			"match": {
 				"status": "plan",
 				"type": "workshop",
-				"workshop_type": "Craftsdwarfs",
+				"workshop_type": "Mechanics",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "tavern"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "tavern"
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "furnace",
+				"level": 1
+			}
+		},
+		{
+			"continue": true,
+			"action": "start_ore_search"
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "workshop",
 				"level": 1
 			}
 		},
@@ -320,58 +392,6 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
-					"type": "barracks"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "barracks"
-			}
-		},
-		{
-			"action": "dig",
-			"match": {
-				"type": "pitcage"
-			}
-		},
-		{
-			"action": "dig",
-			"match": {
-				"status": "plan",
-				"type": ["workshop", "furnace"],
-				"level": 1
-			}
-		},
-		{
-			"continue": true,
-			"action": "start_ore_search"
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "location",
-					"location_type": "tavern"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "location",
-				"location_type": "tavern"
-			}
-		},
-		{
-			"continue": true,
-			"action": "past_initial_phase"
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
 					"type": "cemetery",
 					"layout": {
 						"match": {
@@ -386,30 +406,6 @@
 			"match": {
 				"status": "plan",
 				"type": "cemetery"
-			}
-		},
-		{
-			"action": "dig",
-			"match": {
-				"status": "plan",
-				"type": "stockpile",
-				"level": 2,
-				"workshop_not": {}
-			}
-		},
-		{
-			"action": "dig",
-			"match": {
-				"status": "plan",
-				"type": ["workshop", "furnace"],
-				"level": 2
-			}
-		},
-		{
-			"action": "dig",
-			"match": {
-				"status": "plan",
-				"type": "jail"
 			}
 		},
 		{
@@ -443,6 +439,68 @@
 				"status": "plan",
 				"type": "location",
 				"location_type": "temple"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "barracks"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "barracks"
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"type": "pitcage"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "jail"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "jail"
+			}
+		},
+		{
+			"continue": true,
+			"action": "past_initial_phase"
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "stockpile",
+				"level": 2,
+				"workshop_not": {}
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": ["workshop", "furnace"],
+				"level": 2
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "jail"
 			}
 		},
 		{
@@ -521,7 +579,7 @@
 			"action": "unignore_furniture",
 			"match": {
 				"status_not": ["plan", "dig"],
-				"type": ["bedroom", "nobleroom", "corridor", "workshop", "farmplot"]
+				"type": ["bedroom", "nobleroom", "corridor", "workshop", "furnace", "farmplot"]
 			}
 		},
 		{
@@ -540,6 +598,13 @@
 			"match": {
 				"status": "plan",
 				"type": ["workshop", "furnace"]
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "location"
 			}
 		},
 		{

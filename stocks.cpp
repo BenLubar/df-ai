@@ -47,7 +47,7 @@ Watch::Watch()
     Needed[stock_item::bed] = 4;
     Needed[stock_item::bin] = 4;
     Needed[stock_item::block] = 6;
-    Needed[stock_item::book_binding] = 5;
+    Needed[stock_item::book_binding] = 1;
     Needed[stock_item::bookcase] = 1;
     Needed[stock_item::bucket] = 2;
     Needed[stock_item::cabinet] = 4;
