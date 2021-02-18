@@ -4,56 +4,28 @@
 		{
 			"dig": "DownStair",
 			"construction": "DownStair",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"dig": "DownStair",
-			"construction": "DownStair",
-			"x": 0,
-			"y": 1,
+			"x": 3,
+			"y": 3,
 			"z": 0
 		},
 		{
 			"dig": "DownStair",
 			"construction": "DownStair",
 			"x": 2,
-			"y": 1,
+			"y": 3,
 			"z": 0
 		},
 		{
 			"dig": "DownStair",
 			"construction": "DownStair",
-			"x": 1,
-			"y": 0,
+			"x": 4,
+			"y": 3,
 			"z": 0
 		},
 		{
 			"dig": "DownStair",
 			"construction": "DownStair",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "DownStair",
-			"construction": "DownStair",
-			"x": 2,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"dig": "DownStair",
-			"construction": "DownStair",
-			"x": 1,
-			"y": 2,
-			"z": 0
-		},
-		{
-			"dig": "DownStair",
-			"construction": "DownStair",
-			"x": 0,
+			"x": 3,
 			"y": 2,
 			"z": 0
 		},
@@ -65,6 +37,34 @@
 			"z": 0
 		},
 		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 4,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 3,
+			"y": 4,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 2,
+			"y": 4,
+			"z": 0
+		},
+		{
+			"dig": "DownStair",
+			"construction": "DownStair",
+			"x": 4,
+			"y": 4,
+			"z": 0
+		},
+		{
 			"dig": "UpDownStair",
 			"construction": "UpDownStair",
 			"x": 1,
@@ -324,16 +324,296 @@
 			"y": 2,
 			"z": 0,
 			"stairs_special": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 3,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 3,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 4,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 2,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 4,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 3,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 3,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 4,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 2,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 4,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 3,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 3,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 4,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 2,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 4,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 3,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 3,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 4,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 2,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 5,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 6,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 5,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 4,
+			"y": 6,
+			"z": 0,
+			"ignore": true
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 0,
+			"z": 0,
+			"ignore": true
 		}
 	],
 	"r": [
 		{
 			"type": "corridor",
 			"corridor_type": "corridor",
-			"min": [-1, -1, 0],
-			"max": [1, 1, 0],
+			"min": [-3, -3, 0],
+			"max": [3, 3, 0],
 			"outdoor": true,
-			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84],
 			"comment": "fort entrance"
 		},
 		{

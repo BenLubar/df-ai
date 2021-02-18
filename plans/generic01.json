@@ -456,6 +456,13 @@
 			}
 		},
 		{
+			"action": "unignore_furniture",
+			"match": {
+				"type": "corridor",
+				"comment": "fort entrance"
+			}
+		},
+		{
 			"action": "dig",
 			"match": {
 				"type": "pitcage"
