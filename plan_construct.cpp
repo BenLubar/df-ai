@@ -1069,13 +1069,41 @@ protected:
         }
         else
         {
-            for (auto disable : r->stock_disable)
+            if (r->stock_disable.size() > view->list_ids.size() / 2)
             {
-                while (view->cur_list != disable)
+                std::vector<df::stockpile_list> stock_enable = view->list_ids;
+                for (auto disable : r->stock_disable)
                 {
-                    Key(interface_key::STANDARDSCROLL_DOWN);
+                    auto it = std::find(stock_enable.begin(), stock_enable.end(), disable);
+                    if (it != stock_enable.end())
+                    {
+                        stock_enable.erase(it);
+                    }
                 }
-                Key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
+
+                Key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
+                KeyNoDelay(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
+                KeyNoDelay(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
+
+                for (auto enable : stock_enable)
+                {
+                    while (view->cur_list != enable)
+                    {
+                        Key(interface_key::STANDARDSCROLL_DOWN);
+                    }
+                    Key(interface_key::STOCKPILE_SETTINGS_PERMIT_SUB);
+                }
+            }
+            else
+            {
+                for (auto disable : r->stock_disable)
+                {
+                    while (view->cur_list != disable)
+                    {
+                        Key(interface_key::STANDARDSCROLL_DOWN);
+                    }
+                    Key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
+                }
             }
             if (r->stock_specific1)
             {
