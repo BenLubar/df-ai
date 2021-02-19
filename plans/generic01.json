@@ -163,7 +163,6 @@
 			}
 		},
 		{
-			"continue": true,
 			"action": "dig_immediate",
 			"count": {
 				"match": {
