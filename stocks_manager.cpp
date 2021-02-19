@@ -100,8 +100,6 @@ ManagerOrderExclusive::ManagerOrderExclusive(AI & ai, const df::manager_order_te
     amount(amount),
     search_word()
 {
-    //dfplex_blacklist = true;
-
     search_word = AI::describe_job(&tmpl);
     size_t pos = search_word.find(' ');
     if (pos != std::string::npos)
@@ -245,6 +243,12 @@ void Stocks::add_manager_order(color_ostream & out, const df::manager_order_temp
 
     int32_t already_queued = count_manager_orders(out, tmpl);
     amount -= already_queued;
+
+    if (already_queued && amount < 5)
+    {
+        amount = 0;
+    }
+
     if (amount <= 0)
     {
         reason << "already have manager order: " << AI::describe_job(&tmpl) << " (" << already_queued << " remaining)";
