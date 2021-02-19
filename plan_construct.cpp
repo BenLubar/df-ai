@@ -878,7 +878,10 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
         std::vector<df::job_item *> filters;
         for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
         {
-            filters.push_back(make_job_item(*it));
+            for (int32_t i = 0; i < (*it)->quantity; i++)
+            {
+                filters.push_back(make_job_item(*it));
+            }
         }
         std::vector<df::item *> items;
         if (!find_items(filters, items, reason))
@@ -937,7 +940,10 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
         std::vector<df::job_item *> filters;
         for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
         {
-            filters.push_back(make_job_item(*it));
+            for (int32_t i = 0; i < (*it)->quantity; i++)
+            {
+                filters.push_back(make_job_item(*it));
+            }
         }
         std::vector<df::item *> items;
         if (!find_items(filters, items, reason))
