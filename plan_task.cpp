@@ -243,7 +243,7 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
 {
     for (auto t : tasks_generic)
     {
-        if (t->type == task_type::want_dig && t->r->type != room_type::corridor && t->r->queue == 0)
+        if ((t->type == task_type::want_dig || t->type == task_type::dig_room_immediate) && t->r->type != room_type::corridor && t->r->queue == 0)
         {
             reason << "already have queued room: " << AI::describe_room(t->r);
             return false;
