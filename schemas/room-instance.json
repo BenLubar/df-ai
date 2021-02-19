@@ -123,6 +123,10 @@
 					"type": "boolean",
 					"default": false
 				},
+				"build_when_accessible": {
+					"type": "boolean",
+					"default": false
+				},
 				"placeholder": {
 					"type": "integer",
 					"minimum": 0

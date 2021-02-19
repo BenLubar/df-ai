@@ -422,6 +422,14 @@
 		},
 		{
 			"continue": true,
+			"action": "unignore_furniture",
+			"match": {
+				"type": "corridor",
+				"comment": "fort entrance"
+			}
+		},
+		{
+			"continue": true,
 			"action": "deconstruct_wagons"
 		},
 		{
@@ -469,13 +477,6 @@
 			"match": {
 				"status": "plan",
 				"type": "barracks"
-			}
-		},
-		{
-			"action": "unignore_furniture",
-			"match": {
-				"type": "corridor",
-				"comment": "fort entrance"
 			}
 		},
 		{
@@ -614,6 +615,14 @@
 				"status": "plan",
 				"type": "stockpile",
 				"workshop_not": {}
+			}
+		},
+		{
+			"action": "dig",
+			"match": {
+				"status": "plan",
+				"type": "corridor",
+				"comment": "nest box"
 			}
 		},
 		{

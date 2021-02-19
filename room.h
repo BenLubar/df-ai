@@ -211,6 +211,7 @@ struct room
     bool temporary;
     bool outdoor;
     bool channeled;
+    bool build_when_accessible;
     int32_t required_value;
     int32_t data1;
     int32_t data2;

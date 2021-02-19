@@ -348,10 +348,31 @@ void Plan::checkrooms(color_ostream & out)
     size_t ncheck = 8;
     for (size_t i = ncheck * 4; i > 0; i--)
     {
-        if (checkroom_idx < rooms_and_corridors.size() && rooms_and_corridors.at(checkroom_idx)->status != room_status::plan)
+        if (checkroom_idx < rooms_and_corridors.size())
         {
-            checkroom(out, rooms_and_corridors.at(checkroom_idx));
-            ncheck--;
+            room* r = rooms_and_corridors.at(checkroom_idx);
+            if (r->status == room_status::plan && r->build_when_accessible)
+            {
+                bool all_ready = true;
+                for (auto ap : r->accesspath)
+                {
+                    if (ap->status < room_status::dug)
+                    {
+                        all_ready = false;
+                    }
+                }
+
+                if (all_ready)
+                {
+                    wantdig(out, r, 1);
+                }
+            }
+
+            if (r->status != room_status::plan)
+            {
+                checkroom(out, r);
+                ncheck--;
+            }
         }
         checkroom_idx++;
         if (ncheck <= 0)

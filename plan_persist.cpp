@@ -232,6 +232,10 @@ void Plan::save(std::ostream & out)
         r["temporary"] = (*it)->temporary;
         r["outdoor"] = (*it)->outdoor;
         r["channeled"] = (*it)->channeled;
+        if ((*it)->build_when_accessible)
+        {
+            r["build_when_accessible"] = true;
+        }
         r["required_value"] = (*it)->required_value;
         if ((*it)->data1 != -1 || (*it)->data2 != -1)
         {
@@ -542,6 +546,10 @@ void Plan::load(std::istream & in)
         (*it)->temporary = r["temporary"].asBool();
         (*it)->outdoor = r["outdoor"].asBool();
         (*it)->channeled = r["channeled"].asBool();
+        if (r.isMember("build_when_accessible"))
+        {
+            (*it)->build_when_accessible = r["build_when_accessible"].asBool();
+        }
         if (r.isMember("required_value"))
         {
             (*it)->required_value = r["required_value"].asInt();

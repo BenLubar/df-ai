@@ -5,6 +5,7 @@
 			"min": [0, 0, 0],
 			"max": [0, 0, 0],
 			"in_corridor": true,
+			"build_when_accessible": true,
 			"placeholder": 0
 		}
 	]

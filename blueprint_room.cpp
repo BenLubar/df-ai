@@ -37,6 +37,7 @@ room_base::room_t::room_t() :
     require_stone(false),
     in_corridor(false),
     remove_if_unused(false),
+    build_when_accessible(false),
     exits(),
     context(),
     blueprint()
@@ -302,6 +303,10 @@ bool room_base::room_t::apply(Json::Value data, std::string & error, bool allow_
         return false;
     }
     if (data.isMember("remove_if_unused") && !apply_bool(remove_if_unused, data, "remove_if_unused", error))
+    {
+        return false;
+    }
+    if (data.isMember("build_when_accessible") && !apply_bool(build_when_accessible, data, "build_when_accessible", error))
     {
         return false;
     }
