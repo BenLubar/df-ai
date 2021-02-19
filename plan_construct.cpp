@@ -1010,7 +1010,7 @@ class ConstructStockpile : public ExclusiveCallback
 
 public:
     ConstructStockpile(AI & ai, room *r) :
-        ExclusiveCallback("construct stockpile for " + AI::describe_room(r), 2),
+        ExclusiveCallback("construct stockpile for " + AI::describe_room(r)),
         ai(ai),
         r(r)
     {

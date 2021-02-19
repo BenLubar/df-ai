@@ -25,7 +25,7 @@ class MasonChairJobExclusive : public ExclusiveCallback
 
 public:
     MasonChairJobExclusive(AI& ai, int32_t amount) :
-        ExclusiveCallback("assign chair construction at mason's workshop"),
+        ExclusiveCallback("assign chair construction at mason's workshop", 2),
         ai(ai),
         wanted_amount(amount)
     {
@@ -53,9 +53,9 @@ protected:
 
             if (wanted > 0)
             {
-                Gui::setViewCoords(workshop->min.x, workshop->min.y, workshop->min.z);
                 Key(interface_key::D_BUILDJOB);
-                Key(interface_key::CURSOR_UPRIGHT);
+                Gui::setCursorCoords(workshop->min.x, workshop->min.y, workshop->min.z);
+                Key(interface_key::CURSOR_DOWNRIGHT);
 
                 ai.debug(out, stl_sprintf("queueing %d chairs directly at ", wanted) + ai.describe_room(workshop));
                 while (wanted > 0)
