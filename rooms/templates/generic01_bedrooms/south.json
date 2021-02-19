@@ -29,7 +29,8 @@
 				["generic01_bedroom", 3, 6, 0],
 				["generic01_bedrooms", 1, 7, 0],
 				["generic01_corridor", 1, 7, 0]
-			]
+			],
+			"remove_if_unused": true
 		}
 	]
 }
