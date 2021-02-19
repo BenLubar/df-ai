@@ -1041,24 +1041,41 @@ protected:
         ExpectedScreen<df::viewscreen_layer_stockpilest> view(this);
 
         auto wanted_group = stockpile_keys.map.at(r->stockpile_type);
-        while (view->cur_group != stockpile_list::AdditionalOptions)
+        bool seen = false, passed = false;
+        for (size_t i = 0; i < view->group_ids.size(); i++)
         {
-            if (view->cur_group == wanted_group)
+            auto group = view->group_ids.at(i);
+            if (group == wanted_group)
             {
-                Key(interface_key::STOCKPILE_SETTINGS_ENABLE);
-                Key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
+                seen = true;
+                continue;
             }
-            else
+
+            if (group == stockpile_list::AdditionalOptions)
             {
+                continue;
+            }
+
+            if (view->settings->flags.whole & view->group_bits.at(i).whole)
+            {
+                passed = seen;
+                while (view->cur_group != group)
+                {
+                    Key(interface_key::STANDARDSCROLL_DOWN);
+                }
+
                 Key(interface_key::STOCKPILE_SETTINGS_DISABLE);
             }
-            Key(interface_key::STANDARDSCROLL_DOWN);
         }
+
         while (view->cur_group != wanted_group)
         {
-            Key(interface_key::STANDARDSCROLL_UP);
+            Key(passed ? interface_key::STANDARDSCROLL_UP : interface_key::STANDARDSCROLL_DOWN);
         }
+
+        Key(interface_key::STOCKPILE_SETTINGS_ENABLE);
         Key(interface_key::STANDARDSCROLL_RIGHT);
+
         if (r->stockpile_type == stockpile_type::fresh_raw_hide)
         {
             Key(interface_key::STOCKPILE_SETTINGS_FORBID_ALL);
@@ -1069,6 +1086,7 @@ protected:
         }
         else
         {
+            Key(interface_key::STOCKPILE_SETTINGS_PERMIT_ALL);
             if (r->stock_disable.size() > view->list_ids.size() / 2)
             {
                 std::vector<df::stockpile_list> stock_enable = view->list_ids;
@@ -1105,10 +1123,12 @@ protected:
                     Key(interface_key::STOCKPILE_SETTINGS_FORBID_SUB);
                 }
             }
+
             if (r->stock_specific1)
             {
                 Key(interface_key::STOCKPILE_SETTINGS_SPECIFIC1);
             }
+
             if (r->stock_specific2)
             {
                 Key(interface_key::STOCKPILE_SETTINGS_SPECIFIC2);
