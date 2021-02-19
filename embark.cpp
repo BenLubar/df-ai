@@ -636,6 +636,8 @@ void EmbarkExclusive::ViewChooseStartSite(color_ostream & out)
         Key(interface_key::CURSOR_UP);
     }
 
+    Key(interface_key::SETUP_FIND);
+
     DisplayEmbarkSite(out);
 }
 

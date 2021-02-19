@@ -263,6 +263,11 @@ bool room::is_dug(std::ostream & reason, df::tiletype_shape_basic want) const
         switch (sb)
         {
         case tiletype_shape_basic::Wall:
+            if (f->dig == tile_dig_designation::Default)
+            {
+                reason << "interior tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is Wall";
+                return false;
+            }
             reason << enum_item_key(f->dig) << "-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is Wall";
             return false;
         case tiletype_shape_basic::Open:
