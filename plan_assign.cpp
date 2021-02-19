@@ -478,7 +478,7 @@ bool Plan::pastures_ready(color_ostream & out)
     {
         if (r->status == room_status::plan)
         {
-            wantdig(out, r);
+            wantdig(out, r, -4);
             return true;
         }
 
