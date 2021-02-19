@@ -129,7 +129,18 @@ public:
     room *find_room_at(df::coord t);
     inline bool map_tile_intersects_room(df::coord t)
     {
-        return find_room_at(t) != nullptr;
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (find_room_at(t + df::coord(dx, dy, 0)) != nullptr)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     static df::coord spiral_search(df::coord t, int16_t max, int16_t min, int16_t step, std::function<bool(df::coord)> b);
