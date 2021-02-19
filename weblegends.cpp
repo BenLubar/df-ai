@@ -179,7 +179,7 @@ bool ai_weblegends_handler(weblegends_handler_v1 & handler, const std::string & 
         handler.headers()["Refresh"] = "5";
     }
 
-    layout->set_title("DF-AI - " + page->title);
+    layout->set_title("df-ai - " + page->title);
     layout->add_header_link("df-ai" + url, page->title, true);
     page->render(*layout);
     layout->write_to(handler);
@@ -301,7 +301,7 @@ void Plan::weblegends_write_svg(std::ostream & out)
 
 static void render_not_active_page(weblegends_layout_v1 & layout)
 {
-    layout.content << "<p>Enter <code>enable df-ai</code> in the DFHack console to start DF-AI</p>";
+    layout.content << "<p>Enter <code>enable df-ai</code> in the DFHack console to start df-ai</p>";
     layout.content << "<p>Enter <code>help ai</code> for a list of console commands.</p>";
 }
 
