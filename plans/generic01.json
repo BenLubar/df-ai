@@ -325,6 +325,27 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
+					"type": "cemetery",
+					"layout": {
+						"match": {
+							"type": "coffin",
+							"users": 0
+						},
+						"is": 0
+					}
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "cemetery"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
 					"type": "workshop",
 					"workshop_type": "Mechanics",
 					"level": 1
@@ -368,6 +389,24 @@
 		},
 		{
 			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "MetalsmithsForge",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "MetalsmithsForge",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
 			"match": {
 				"status": "plan",
 				"type": "workshop",
@@ -386,27 +425,6 @@
 		{
 			"continue": true,
 			"action": "deconstruct_wagons"
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "cemetery",
-					"layout": {
-						"match": {
-							"type": "coffin",
-							"users": 0
-						},
-						"is": 0
-					}
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "cemetery"
-			}
 		},
 		{
 			"continue": true,
