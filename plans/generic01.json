@@ -351,6 +351,14 @@
 			}
 		},
 		{
+			"continue": true,
+			"action": "unignore_furniture",
+			"match": {
+				"type": "corridor",
+				"comment": "fort entrance"
+			}
+		},
+		{
 			"action": "dig",
 			"count": {
 				"match": {
@@ -593,14 +601,6 @@
 				"type": "stockpile",
 				"level": 1,
 				"workshop_not": {}
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
-				"type": "corridor",
-				"comment": "fort entrance"
 			}
 		},
 		{
