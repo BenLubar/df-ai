@@ -7,6 +7,36 @@
 			"y": 1,
 			"z": 0,
 			"ignore": true
+		},
+		{
+			"x": 3,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"x": 3,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"x": 3,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"x": 3,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"x": 3,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"x": 3,
+			"y": 2,
+			"z": 0
 		}
 	],
 	"r": [
@@ -15,7 +45,23 @@
 			"max": [-1, 1, 0],
 			"level": 1,
 			"layout": [0],
-			"accesspath": [1],
+			"accesspath": [3],
+			"placeholder": 0
+		},
+		{
+			"min": [-7, -1, 0],
+			"max": [-5, 1, 0],
+			"level": 2,
+			"layout": [1, 2, 3],
+			"accesspath": [4],
+			"placeholder": 0
+		},
+		{
+			"min": [-11, -1, 0],
+			"max": [-9, 1, 0],
+			"level": 3,
+			"layout": [4, 5, 6],
+			"accesspath": [5],
 			"placeholder": 0
 		},
 		{
@@ -27,18 +73,20 @@
 			"placeholder": 1
 		},
 		{
-			"min": [-6, -1, 0],
+			"type": "stockpile",
+			"min": [-4, -1, 0],
 			"max": [-4, 1, 0],
-			"level": 2,
+			"workshop": 1,
 			"accesspath": [0],
-			"placeholder": 0
+			"placeholder": 1
 		},
 		{
-			"min": [-9, -1, 0],
-			"max": [-7, 1, 0],
-			"level": 3,
-			"accesspath": [0],
-			"placeholder": 0
+			"type": "stockpile",
+			"min": [-8, -1, 0],
+			"max": [-8, 1, 0],
+			"workshop": 2,
+			"accesspath": [1],
+			"placeholder": 1
 		}
 	]
 }
