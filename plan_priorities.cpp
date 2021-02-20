@@ -885,19 +885,35 @@ bool plan_priority_t::do_dig_next_cavern_outpost(AI & ai, color_ostream & out)
    return false;
 }
 
+static bool is_room_task(task *t)
+{
+    return t->type == task_type::check_construct ||
+        t->type == task_type::construct_activityzone ||
+        t->type == task_type::construct_farmplot ||
+        t->type == task_type::construct_furnace ||
+        t->type == task_type::construct_stockpile ||
+        t->type == task_type::construct_tradedepot ||
+        t->type == task_type::construct_windmill ||
+        t->type == task_type::construct_workshop ||
+        t->type == task_type::dig_garbage ||
+        t->type == task_type::monitor_farm_irrigation ||
+        t->type == task_type::monitor_room_value ||
+        t->type == task_type::setup_farmplot;
+}
+
 bool plan_priority_t::match_task(task *t) const
 {
     switch (action)
     {
         case plan_priority_action::dig:
-            if (t->type != task_type::want_dig && t->type != task_type::dig_room)
+            if (t->type != task_type::want_dig && t->type != task_type::dig_room && !is_room_task(t))
             {
                 return false;
             }
 
             break;
         case plan_priority_action::dig_immediate:
-            if (t->type != task_type::dig_room_immediate)
+            if (t->type != task_type::dig_room_immediate && !is_room_task(t))
             {
                 return false;
             }
