@@ -360,15 +360,43 @@
 		},
 		{
 			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "furnace",
+					"furnace_type": "WoodFurnace",
+					"level": 1
+				},
+				"is": 0
+			},
 			"match": {
 				"status": "plan",
 				"type": "furnace",
+				"furnace_type": "WoodFurnace",
 				"level": 1
 			}
 		},
 		{
 			"continue": true,
 			"action": "start_ore_search"
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "furnace",
+					"furnace_type": "Smelter",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "furnace",
+				"furnace_type": "Smelter",
+				"level": 1
+			}
 		},
 		{
 			"action": "dig",
@@ -588,7 +616,7 @@
 			"action": "dig",
 			"match": {
 				"status": "plan",
-				"type": "workshop",
+				"type": ["furnace", "workshop"],
 				"level": 1
 			}
 		},
