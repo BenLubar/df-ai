@@ -90,6 +90,11 @@ static bool find_items(const std::vector<df::job_item *> & filters, std::vector<
                 continue;
             }
 
+            if (!Stocks::is_item_free(i))
+            {
+                continue;
+            }
+
             ItemTypeInfo iinfo(i);
             MaterialInfo minfo(i);
             if (!iinfo.matches(*filter, &minfo, true))
