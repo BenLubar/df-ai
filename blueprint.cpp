@@ -37,7 +37,7 @@ static T *load_json(const std::string & filename, const std::string & type, cons
 }
 
 template<typename T>
-void load_objects(color_ostream & out, const std::string & subtype, std::function<void(const std::string & type, const std::string & path, T *t)> store)
+void load_objects(color_ostream & out, const std::string & subtype, std::function<void(const std::string & type, const std::string & name, T *t)> store)
 {
     std::string error;
     std::vector<std::string> types;
@@ -62,10 +62,11 @@ void load_objects(color_ostream & out, const std::string & subtype, std::functio
                     }
 
                     std::string path = "df-ai-blueprints/rooms/" + subtype + "/" + type + "/" + name;
+                    std::string base_name = name.substr(0, ext);
 
-                    if (auto t = load_json<T>(path, type, name.substr(0, ext), error))
+                    if (auto t = load_json<T>(path, type, base_name, error))
                     {
-                        store(type, path, t);
+                        store(type, base_name, t);
                     }
                     else
                     {
@@ -89,13 +90,13 @@ blueprints_t::blueprints_t(color_ostream & out) : is_valid(true)
 
     std::map<std::string, std::pair<std::vector<std::pair<std::string, room_template *>>, std::vector<std::pair<std::string, room_instance *>>>> rooms;
 
-    load_objects<room_template>(out, "templates", [&rooms](const std::string & type, const std::string & path, room_template *tmpl)
+    load_objects<room_template>(out, "templates", [&rooms](const std::string & type, const std::string & name, room_template *tmpl)
     {
-        rooms[type].first.push_back(std::make_pair(path, tmpl));
+        rooms[type].first.push_back(std::make_pair(name, tmpl));
     });
-    load_objects<room_instance>(out, "instances", [&rooms](const std::string & type, const std::string & path, room_instance *inst)
+    load_objects<room_instance>(out, "instances", [&rooms](const std::string & type, const std::string & name, room_instance *inst)
     {
-        rooms[type].second.push_back(std::make_pair(path, inst));
+        rooms[type].second.push_back(std::make_pair(name, inst));
     });
 
     std::string error;
