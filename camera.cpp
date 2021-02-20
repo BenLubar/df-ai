@@ -57,7 +57,7 @@ command_result Camera::onupdate_register(color_ostream &)
     {
         gps->display_frames = 1;
     }
-    onupdate_handle = events.onupdate_register("df-ai camera", 1000, 100, [this](color_ostream & out) { update(out); });
+    onupdate_handle = events.onupdate_register("df-ai camera", 2000, 100, [this](color_ostream & out) { update(out); });
     onstatechange_handle = events.onstatechange_register("fps meter watcher", [this](color_ostream &, state_change_event mode)
     {
         if (config.fps_meter && mode == SC_VIEWSCREEN_CHANGED)
@@ -200,9 +200,9 @@ void Camera::update(color_ostream &)
         case job_type_class::Digging:
             return -50;
         case job_type_class::Building:
-            return -20;
+            return -35;
         case job_type_class::Hauling:
-            return -30;
+            return -40;
         case job_type_class::LifeSupport:
             return -10;
         case job_type_class::TidyUp:
@@ -226,7 +226,7 @@ void Camera::update(color_ostream &)
         case job_type_class::SiegeWeapon:
             return -50;
         case job_type_class::Medicine:
-            return -50;
+            return -70;
         }
         return 0;
     };
