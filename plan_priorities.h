@@ -5,6 +5,7 @@
 #include "room.h"
 
 class AI;
+struct task;
 
 #define PLAN_PRIORITY_ENUMS \
 BEGIN_ENUM(plan_priority, action) \
@@ -350,6 +351,7 @@ struct plan_priority_t
     COUNT_PROPERTY(room_filter_t, count)
 
     bool act(AI & ai, color_ostream & out, std::ostream & reason);
+    bool match_task(task *t) const;
 
     bool apply(Json::Value & val, std::string & error);
     Json::Value to_json() const;

@@ -915,7 +915,62 @@ std::string Plan::status()
     return s.str();
 }
 
-void Plan::report_helper(std::ostream & out, bool html, const std::string & title, const std::list<task *> & tasks, const std::list<task *>::iterator & bg_idx)
+static void report_task(std::ostream & out, bool html, task *t)
+{
+    if (html)
+    {
+        out << "<b>" << t->type << "</b>";
+    }
+    else
+    {
+        out << "- " << t->type;
+    }
+
+    if (t->r != nullptr)
+    {
+        if (t->type == task_type::want_dig || t->type == task_type::dig_room || t->type == task_type::dig_room_immediate)
+        {
+            out << " (queue " << t->r->queue << ")";
+        }
+
+        if (html)
+        {
+            out << "<br/>";
+        }
+        else
+        {
+            out << "\n  ";
+        }
+        out << AI::describe_room(t->r, html);
+    }
+
+    if (t->f != nullptr)
+    {
+        if (html)
+        {
+            out << "<br/>";
+        }
+        else
+        {
+            out << "\n  ";
+        }
+        out << AI::describe_furniture(t->f, html);
+    }
+
+    if (!t->last_status.empty())
+    {
+        if (html)
+        {
+            out << "<br/><i>" << html_escape(t->last_status) << "</i>";
+        }
+        else
+        {
+            out << "\n  " << t->last_status;
+        }
+    }
+}
+
+void Plan::report_helper(std::ostream & out, bool html, const std::string & title, const std::list<task *> & tasks, const std::list<task *>::iterator & bg_idx, const std::set<task *> & seen_tasks)
 {
     if (html)
     {
@@ -927,6 +982,11 @@ void Plan::report_helper(std::ostream & out, bool html, const std::string & titl
     }
     for (auto it = tasks.begin(); it != tasks.end(); it++)
     {
+        if (seen_tasks.count(*it) && bg_idx != it)
+        {
+            continue;
+        }
+
         if (html)
         {
             out << "<li>";
@@ -943,58 +1003,12 @@ void Plan::report_helper(std::ostream & out, bool html, const std::string & titl
             }
         }
 
-        task *t = *it;
-        if (html)
+        if (!seen_tasks.count(*it))
         {
-            out << "<b>" << t->type << "</b>";
+            report_task(out, html, *it);
         }
-        else
-        {
-            out << "- " << t->type;
-        }
-        if (t->r != nullptr)
-        {
-            if (html)
-            {
-                out << "<br/>";
-            }
-            else
-            {
-                out << "\n  ";
-            }
-            out << AI::describe_room(t->r, html);
-        }
-        if (t->f != nullptr)
-        {
-            if (html)
-            {
-                out << "<br/>";
-            }
-            else
-            {
-                out << "\n  ";
-            }
-            out << AI::describe_furniture(t->f, html);
-        }
-        if (!t->last_status.empty())
-        {
-            if (html)
-            {
-                out << "<br/><i>" << html_escape(t->last_status) << "</i>";
-            }
-            else
-            {
-                out << "\n  " << t->last_status;
-            }
-        }
-        if (html)
-        {
-            out << "</li>";
-        }
-        else
-        {
-            out << "\n";
-        }
+
+        out << (html ? "</li>" : "\n");
     }
     if (html)
     {
@@ -1021,15 +1035,17 @@ void Plan::report_helper(std::ostream & out, bool html, const std::string & titl
 
 void Plan::report(std::ostream & out, bool html)
 {
+    std::set<task *> seen_tasks;
+
     if (html)
     {
-        out << "<style>.priority-Future::before{content:'\\1F6D1 '}.priority-Working::before{content:'\\231B '}.priority-Done::before{content:'\\2705 '}</style>";
+        out << "<style>.plan-priority::before{display:inline-block;width:1.5em;text-align:center;padding-right:0.5em}.priority-Future::before{content:'\\1F6D1 '}.priority-Working::before{content:'\\231B '}.priority-Done::before{content:'\\2705 '}</style>";
     }
 
     out << (html ? "<h2 id=\"Plan_Tasks_Priorities\">Priorities</h2><ul>" : "## Priorities\n");
     for (auto & priority : priorities)
     {
-        out << (html ? "<li class=\"priority-" : "\n- **");
+        out << (html ? "<li class=\"plan-priority priority-" : "\n- **");
         if (!priority.checked)
         {
             out << "Future";
@@ -1043,19 +1059,71 @@ void Plan::report(std::ostream & out, bool html)
             out << "Done";
         }
 
+        bool any = false;
+        auto check_task = [&](task* t)
+        {
+            if (!priority.match_task(t))
+            {
+                return;
+            }
+
+            seen_tasks.insert(t);
+
+            if (!any)
+            {
+                any = true;
+
+                if (html)
+                {
+                    out << "<ul>";
+                }
+            }
+
+            out << (html ? "<li>" : "\n   -");
+
+            report_task(out, html, t);
+
+            if (html)
+            {
+                out << "</li>";
+            }
+        };
+
         if (html)
         {
-            out << "\">" << html_escape(priority.name) << "</li>";
+            out << "\">" << html_escape(priority.name);
         }
         else
         {
             out << "**: " << priority.name;
         }
+
+        if (priority.checked)
+        {
+            for (auto t : tasks_generic)
+            {
+                check_task(t);
+            }
+            for (auto t : tasks_furniture)
+            {
+                check_task(t);
+            }
+        }
+
+        if (html)
+        {
+            if (any)
+            {
+                out << "</ul>";
+            }
+
+            out << "</li>";
+        }
     }
     out << (html ? "</ul>" : "\n");
 
-    report_helper(out, html, "Generic", tasks_generic, bg_idx_generic);
-    report_helper(out, html, "Furniture", tasks_furniture, bg_idx_furniture);
+    report_helper(out, html, "Generic", tasks_generic, bg_idx_generic, seen_tasks);
+    report_helper(out, html, "Furniture", tasks_furniture, bg_idx_furniture, seen_tasks);
 }
 
 void Plan::categorize_all()

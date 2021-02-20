@@ -587,7 +587,6 @@ Json::Value plan_priority_t::furniture_filter_t::to_json() const
 bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
 {
     checked = true;
-    working = false;
 
     auto check_count = [this, &ai]() -> bool
     {
@@ -688,7 +687,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
                             reason << "want dig: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
-                                return true;
+                                return !keep_going;
                             }
                             reason << "; ";
                         }
@@ -699,7 +698,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
                             reason << "dig room: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
-                                return true;
+                                return !keep_going;
                             }
                             reason << "; ";
                         }
@@ -710,7 +709,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
                             reason << "furnishing: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
-                                return true;
+                                return !keep_going;
                             }
                             reason << "; ";
                         }
@@ -721,7 +720,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
                             reason << "finishing: " << AI::describe_room(r);
                             if (!keep_going || !check_count())
                             {
-                                return true;
+                                return !keep_going;
                             }
                             reason << "; ";
                         }
@@ -884,6 +883,56 @@ bool plan_priority_t::do_dig_next_cavern_outpost(AI & ai, color_ostream & out)
        return true;
    }
    return false;
+}
+
+bool plan_priority_t::match_task(task *t) const
+{
+    switch (action)
+    {
+        case plan_priority_action::dig:
+            if (t->type != task_type::want_dig && t->type != task_type::dig_room)
+            {
+                return false;
+            }
+
+            break;
+        case plan_priority_action::dig_immediate:
+            if (t->type != task_type::dig_room_immediate)
+            {
+                return false;
+            }
+
+            break;
+        case plan_priority_action::unignore_furniture:
+            if (t->type != task_type::furnish && t->type != task_type::check_furnish)
+            {
+                return false;
+            }
+
+            break;
+        case plan_priority_action::finish:
+            return false; // TODO
+        default:
+            return false;
+    }
+
+    for (auto & f : match_not)
+    {
+        if (f.is_match(t->r))
+        {
+            return false;
+        }
+    }
+
+    for (auto & f : match)
+    {
+        if (f.is_match(t->r))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 Json::Value priorities_to_json(const std::vector<plan_priority_t> & vec)

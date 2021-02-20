@@ -264,6 +264,34 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
     {
         for (auto & priority : priorities)
         {
+            if (priority.working)
+            {
+                bool any_active_task = false;
+                for (auto t : tasks_generic)
+                {
+                    if (priority.match_task(t))
+                    {
+                        any_active_task = true;
+                        break;
+                    }
+                }
+                if (!any_active_task)
+                {
+                    for (auto t : tasks_furniture)
+                    {
+                        if (priority.match_task(t))
+                        {
+                            any_active_task = true;
+                            break;
+                        }
+                    }
+                }
+                if (!any_active_task)
+                {
+                    priority.working = false;
+                }
+            }
+
             if (priority.act(ai, out, reason))
             {
                 break;

@@ -125,43 +125,6 @@
 	"priorities": [
 		{
 			"continue": true,
-			"name": "Carpenter's Workshop",
-			"action": "dig_immediate",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "workshop",
-					"workshop_type": "Carpenters"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "workshop",
-				"workshop_type": "Carpenters",
-				"level": 1
-			}
-		},
-		{
-			"continue": true,
-			"name": "Mason's Workshop",
-			"action": "dig_immediate",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "workshop",
-					"workshop_type": "Masons"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "workshop",
-				"workshop_type": "Masons",
-				"level": 1
-			}
-		},
-		{
 			"action": "dig_immediate",
 			"name": "Food Stockpile",
 			"count": {
@@ -175,11 +138,45 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "stockpile",
 				"stockpile_type": "food",
 				"level": 1,
 				"workshop_not": {}
+			}
+		},
+		{
+			"continue": true,
+			"name": "Carpenter's Workshop",
+			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Carpenters"
+				},
+				"is": 0
+			},
+			"match": {
+				"type": "workshop",
+				"workshop_type": "Carpenters",
+				"level": 1
+			}
+		},
+		{
+			"name": "Mason's Workshop",
+			"action": "dig_immediate",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Masons"
+				},
+				"is": 0
+			},
+			"match": {
+				"type": "workshop",
+				"workshop_type": "Masons",
+				"level": 1
 			}
 		},
 		{
@@ -196,7 +193,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "farmplot",
 				"farm_type": "food",
 				"outdoor": false
@@ -216,7 +212,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "farmplot",
 				"farm_type": "cloth",
 				"outdoor": false
@@ -248,7 +243,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "infirmary"
 			}
 		},
@@ -265,7 +259,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Mechanics",
 				"level": 1
@@ -284,7 +277,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Still",
 				"level": 1
@@ -303,15 +295,14 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Kitchen",
 				"level": 1
 			}
 		},
 		{
-			"name": "Entrance Static Defenses",
 			"continue": true,
+			"name": "Entrance Static Defenses",
 			"action": "unignore_furniture",
 			"match": {
 				"type": "corridor",
@@ -330,7 +321,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "tavern"
 			}
@@ -348,7 +338,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Craftsdwarfs",
 				"level": 1
@@ -367,7 +356,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Masons",
 				"level": 2
@@ -386,7 +374,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "furnace",
 				"furnace_type": "WoodFurnace",
 				"level": 1
@@ -410,7 +397,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "furnace",
 				"furnace_type": "Smelter",
 				"level": 1
@@ -429,7 +415,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "MetalsmithsForge",
 				"level": 1
@@ -446,7 +431,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "cemetery"
 			}
 		},
@@ -463,7 +447,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Farmers",
 				"level": 1
@@ -482,7 +465,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Fishery",
 				"level": 1
@@ -501,7 +483,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Loom",
 				"level": 1
@@ -520,7 +501,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Clothiers",
 				"level": 1
@@ -540,7 +520,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Custom",
 				"raw_type": "SOAP_MAKER",
@@ -560,7 +539,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Butchers",
 				"level": 1
@@ -579,7 +557,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Ashery",
 				"level": 1
@@ -598,7 +575,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Tanners",
 				"level": 1
@@ -617,7 +593,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Leatherworks",
 				"level": 1
@@ -636,7 +611,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "Dyers",
 				"level": 1
@@ -646,7 +620,6 @@
 			"name": "Remaining Level 1 Workshops",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": ["furnace", "workshop"],
 				"level": 1
 			}
@@ -655,7 +628,6 @@
 			"name": "Level 1 Stockpiles",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "stockpile",
 				"level": 1,
 				"workshop_not": {}
@@ -679,7 +651,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "library"
 			}
@@ -696,7 +667,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "temple"
 			}
@@ -712,7 +682,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "barracks"
 			}
 		},
@@ -734,7 +703,6 @@
 				"is": 0
 			},
 			"match": {
-				"status": "plan",
 				"type": "jail"
 			}
 		},
@@ -747,7 +715,6 @@
 			"name": "Level 2 Stockpiles",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "stockpile",
 				"level": 2,
 				"workshop_not": {}
@@ -757,7 +724,6 @@
 			"name": "Level 2 Workshops",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": ["workshop", "furnace"],
 				"level": 2
 			}
@@ -766,7 +732,6 @@
 			"name": "Additional Jails",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "jail"
 			}
 		},
@@ -774,7 +739,6 @@
 			"name": "Additional Infirmaries",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "infirmary"
 			}
 		},
@@ -791,7 +755,6 @@
 				"is": 1
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "tavern"
 			}
@@ -809,7 +772,6 @@
 				"is": 1
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "library"
 			}
@@ -826,7 +788,6 @@
 				"is": 1
 			},
 			"match": {
-				"status": "plan",
 				"type": "location",
 				"location_type": "temple"
 			}
@@ -844,7 +805,6 @@
 			"name": "Additional Barracks",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "barracks"
 			}
 		},
@@ -852,7 +812,6 @@
 			"name": "Remaining Farm Plots",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "farmplot"
 			}
 		},
@@ -873,7 +832,6 @@
 			"name": "Remaining Stockpiles",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "stockpile",
 				"workshop_not": {}
 			}
@@ -882,7 +840,6 @@
 			"name": "Remaining Nest Boxes",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "corridor",
 				"comment": "nest box"
 			}
@@ -891,7 +848,6 @@
 			"name": "Remaining Workshops",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": ["workshop", "furnace"]
 			}
 		},
@@ -899,7 +855,6 @@
 			"name": "Remaining Locations",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": "location"
 			}
 		},
@@ -916,7 +871,6 @@
 			"name": "Remaining Commons Rooms",
 			"action": "dig",
 			"match": {
-				"status": "plan",
 				"type": ["bedroom", "cemetery", "nobleroom"]
 			}
 		},
