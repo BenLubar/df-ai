@@ -1021,6 +1021,39 @@ void Plan::report_helper(std::ostream & out, bool html, const std::string & titl
 
 void Plan::report(std::ostream & out, bool html)
 {
+    if (html)
+    {
+        out << "<style>.priority-Future::before{content:'\\1F6D1 '}.priority-Working::before{content:'\\231B '}.priority-Done::before{content:'\\2705 '}</style>";
+    }
+
+    out << (html ? "<h2 id=\"Plan_Tasks_Priorities\">Priorities</h2><ul>" : "## Priorities\n");
+    for (auto & priority : priorities)
+    {
+        out << (html ? "<li class=\"priority-" : "\n- **");
+        if (!priority.checked)
+        {
+            out << "Future";
+        }
+        else if (priority.working)
+        {
+            out << "Working";
+        }
+        else
+        {
+            out << "Done";
+        }
+
+        if (html)
+        {
+            out << "\">" << html_escape(priority.name) << "</li>";
+        }
+        else
+        {
+            out << "**: " << priority.name;
+        }
+    }
+    out << (html ? "</ul>" : "\n");
+
     report_helper(out, html, "Generic", tasks_generic, bg_idx_generic);
     report_helper(out, html, "Furniture", tasks_furniture, bg_idx_furniture);
 }

@@ -125,6 +125,7 @@
 	"priorities": [
 		{
 			"continue": true,
+			"name": "Carpenter's Workshop",
 			"action": "dig_immediate",
 			"count": {
 				"match": {
@@ -143,6 +144,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Mason's Workshop",
 			"action": "dig_immediate",
 			"count": {
 				"match": {
@@ -161,6 +163,7 @@
 		},
 		{
 			"action": "dig_immediate",
+			"name": "Food Stockpile",
 			"count": {
 				"match": {
 					"status_not": "plan",
@@ -181,6 +184,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Starter Farm (Food)",
 			"action": "dig_immediate",
 			"count": {
 				"match": {
@@ -200,6 +204,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Starter Farm (Cloth)",
 			"action": "dig_immediate",
 			"count": {
 				"match": {
@@ -219,18 +224,21 @@
 		},
 		{
 			"continue": true,
+			"name": "Garbage Dump",
 			"action": "dig_immediate",
 			"match": {
 				"type": "garbagedump"
 			}
 		},
 		{
+			"name": "Trade Depot",
 			"action": "dig",
 			"match": {
 				"type": "tradedepot"
 			}
 		},
 		{
+			"name": "Infirmary",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -245,6 +253,7 @@
 			}
 		},
 		{
+			"name": "Mechanic's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -263,6 +272,7 @@
 			}
 		},
 		{
+			"name": "Still",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -281,6 +291,7 @@
 			}
 		},
 		{
+			"name": "Kitchen",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -299,6 +310,7 @@
 			}
 		},
 		{
+			"name": "Entrance Static Defenses",
 			"continue": true,
 			"action": "unignore_furniture",
 			"match": {
@@ -307,6 +319,7 @@
 			}
 		},
 		{
+			"name": "Tavern",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -323,6 +336,7 @@
 			}
 		},
 		{
+			"name": "Craftsdwarf's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -341,6 +355,7 @@
 			}
 		},
 		{
+			"name": "Additional Mason's Workshops",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -359,6 +374,7 @@
 			}
 		},
 		{
+			"name": "Wood Furnace",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -378,9 +394,11 @@
 		},
 		{
 			"continue": true,
+			"name": "Start Mining Ores",
 			"action": "start_ore_search"
 		},
 		{
+			"name": "Smelter",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -399,6 +417,7 @@
 			}
 		},
 		{
+			"name": "Metalsmith's Forge",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -417,6 +436,7 @@
 			}
 		},
 		{
+			"name": "Cemetery",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -431,6 +451,7 @@
 			}
 		},
 		{
+			"name": "Farmer's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -449,6 +470,7 @@
 			}
 		},
 		{
+			"name": "Fishery",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -467,6 +489,7 @@
 			}
 		},
 		{
+			"name": "Loom",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -485,6 +508,7 @@
 			}
 		},
 		{
+			"name": "Clothier's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -503,6 +527,7 @@
 			}
 		},
 		{
+			"name": "Soap Maker",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -523,6 +548,7 @@
 			}
 		},
 		{
+			"name": "Butcher",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -541,6 +567,7 @@
 			}
 		},
 		{
+			"name": "Ashery",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -559,6 +586,7 @@
 			}
 		},
 		{
+			"name": "Tannery",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -577,6 +605,7 @@
 			}
 		},
 		{
+			"name": "Leatherworker's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -595,6 +624,7 @@
 			}
 		},
 		{
+			"name": "Dyer's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -613,6 +643,7 @@
 			}
 		},
 		{
+			"name": "Remaining Level 1 Workshops",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -621,6 +652,7 @@
 			}
 		},
 		{
+			"name": "Level 1 Stockpiles",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -631,10 +663,12 @@
 		},
 		{
 			"continue": true,
+			"name": "Deconstruct Wagon",
 			"action": "deconstruct_wagons"
 		},
 		{
 			"continue": true,
+			"name": "Library",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -651,6 +685,7 @@
 			}
 		},
 		{
+			"name": "Temple",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -667,6 +702,7 @@
 			}
 		},
 		{
+			"name": "Barracks",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -681,12 +717,14 @@
 			}
 		},
 		{
+			"name": "Pitting Tower",
 			"action": "dig",
 			"match": {
 				"type": "pitcage"
 			}
 		},
 		{
+			"name": "Jail",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -702,9 +740,11 @@
 		},
 		{
 			"continue": true,
+			"name": "Allow Unused Common Rooms",
 			"action": "past_initial_phase"
 		},
 		{
+			"name": "Level 2 Stockpiles",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -714,6 +754,7 @@
 			}
 		},
 		{
+			"name": "Level 2 Workshops",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -722,6 +763,7 @@
 			}
 		},
 		{
+			"name": "Additional Jails",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -729,6 +771,7 @@
 			}
 		},
 		{
+			"name": "Additional Infirmaries",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -737,6 +780,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Second Tavern",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -754,6 +798,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Second Library",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -770,6 +815,7 @@
 			}
 		},
 		{
+			"name": "Second Temple",
 			"action": "dig",
 			"count": {
 				"match": {
@@ -786,6 +832,16 @@
 			}
 		},
 		{
+			"continue": true,
+			"name": "Decorate Locations",
+			"action": "finish",
+			"match": {
+				"status_not": ["plan", "dig"],
+				"type": "location"
+			}
+		},
+		{
+			"name": "Additional Barracks",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -793,6 +849,7 @@
 			}
 		},
 		{
+			"name": "Remaining Farm Plots",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -801,6 +858,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Enable Optional Furniture in Commons Rooms",
 			"action": "unignore_furniture",
 			"match": {
 				"status_not": ["plan", "dig"],
@@ -808,9 +866,11 @@
 			}
 		},
 		{
+			"name": "Find Next Cavern",
 			"action": "dig_next_cavern_outpost"
 		},
 		{
+			"name": "Remaining Stockpiles",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -819,6 +879,7 @@
 			}
 		},
 		{
+			"name": "Remaining Nest Boxes",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -827,6 +888,7 @@
 			}
 		},
 		{
+			"name": "Remaining Workshops",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -834,6 +896,7 @@
 			}
 		},
 		{
+			"name": "Remaining Locations",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -842,6 +905,7 @@
 		},
 		{
 			"continue": true,
+			"name": "Enable Optional Furniture in Military Rooms",
 			"action": "unignore_furniture",
 			"match": {
 				"status_not": ["plan", "dig"],
@@ -849,6 +913,7 @@
 			}
 		},
 		{
+			"name": "Remaining Commons Rooms",
 			"action": "dig",
 			"match": {
 				"status": "plan",
@@ -856,6 +921,7 @@
 			}
 		},
 		{
+			"name": "Decorate Fortress",
 			"action": "finish",
 			"match": {
 				"status_not": "plan"

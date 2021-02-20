@@ -342,12 +342,14 @@ struct plan_priority_t
     };
 
     bool keep_going;
+    bool checked, working;
+    std::string name;
     plan_priority_action::action action;
 
     FILTER_PROPERTY(room_filter_t, match)
     COUNT_PROPERTY(room_filter_t, count)
 
-    bool act(AI & ai, color_ostream & out, std::ostream & reason) const;
+    bool act(AI & ai, color_ostream & out, std::ostream & reason);
 
     bool apply(Json::Value & val, std::string & error);
     Json::Value to_json() const;

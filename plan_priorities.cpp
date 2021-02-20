@@ -432,6 +432,16 @@ bool plan_priority_t::apply(Json::Value & obj, std::string & error)
         return false;
     }
 
+    checked = false;
+    working = false;
+
+    name.clear();
+    if (obj.isMember("name"))
+    {
+        name = obj["name"].asString();
+        obj.removeMember("name");
+    }
+
     if (!obj.isMember("action"))
     {
         error = "missing required property: \"action\"";
@@ -531,6 +541,11 @@ Json::Value plan_priority_t::to_json() const
         obj["continue"] = true;
     }
 
+    if (name.size())
+    {
+        obj["name"] = name;
+    }
+
     std::ostringstream str;
     str << action;
     obj["action"] = str.str();
@@ -569,8 +584,11 @@ Json::Value plan_priority_t::furniture_filter_t::to_json() const
 #undef COUNT_PROPERTY
 #undef FILTER_PROPERTY
 
-bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) const
+bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
 {
+    checked = true;
+    working = false;
+
     auto check_count = [this, &ai]() -> bool
     {
         for (auto & c : count)
@@ -621,6 +639,8 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
                 {
                     continue;
                 }
+
+                working = true;
 
                 switch (action)
                 {
@@ -680,6 +700,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
         case plan_priority_action::start_ore_search:
             if (do_start_ore_search(ai, out))
             {
+                working = true;
                 reason << "starting search for ore; ";
                 return !keep_going;
             }
@@ -687,6 +708,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
         case plan_priority_action::past_initial_phase:
             if (do_past_initial_phase(ai, out))
             {
+                working = true;
                 reason << "past initial phase; ";
                 return !keep_going;
             }
@@ -694,6 +716,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
         case plan_priority_action::deconstruct_wagons:
             if (do_deconstruct_wagons(ai, out))
             {
+                working = true;
                 reason << "deconstructing wagons; ";
                 return !keep_going;
             }
@@ -701,6 +724,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
         case plan_priority_action::dig_next_cavern_outpost:
             if (do_dig_next_cavern_outpost(ai, out))
             {
+                working = true;
                 reason << "digging next cavern outpost; ";
                 return !keep_going;
             }

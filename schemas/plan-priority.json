@@ -363,6 +363,9 @@
 			"type": "object",
 			"properties": {
 				"continue": { "$ref": "#/definitions/continue" },
+				"name": {
+					"type": "string"
+				},
 				"action": {
 					"enum": [
 						"dig",
@@ -384,6 +387,9 @@
 			"type": "object",
 			"properties": {
 				"continue": { "$ref": "#/definitions/continue" },
+				"name": {
+					"type": "string"
+				},
 				"action": {
 					"enum": [
 						"start_ore_search",
