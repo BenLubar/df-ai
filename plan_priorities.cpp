@@ -614,6 +614,44 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason)
         case plan_priority_action::finish:
             for (room *r : ai.plan.rooms_and_corridors)
             {
+                if ((action == plan_priority_action::dig || action == plan_priority_action::dig_immediate) && r->status >= room_status::dug)
+                {
+                    continue;
+                }
+                if (action == plan_priority_action::unignore_furniture)
+                {
+                    bool any_unbuilt_furniture = false;
+                    for (auto f : r->layout)
+                    {
+                        if (f->type == layout_type::none)
+                        {
+                            continue;
+                        }
+
+                        if (f->bld_id == -1)
+                        {
+                            any_unbuilt_furniture = true;
+                            break;
+                        }
+
+                        auto bld = df::building::find(f->bld_id);
+                        if (!bld || bld->getBuildStage() != bld->getMaxBuildStage())
+                        {
+                            any_unbuilt_furniture = true;
+                            break;
+                        }
+                    }
+
+                    if (!any_unbuilt_furniture)
+                    {
+                        continue;
+                    }
+                }
+                if (action == plan_priority_action::finish && r->furnished)
+                {
+                    continue;
+                }
+
                 bool any_match = false;
                 for (auto & f : match_not)
                 {
