@@ -713,7 +713,7 @@ bool plan_priority_t::act(AI & ai, color_ostream & out, std::ostream & reason) c
 
 bool plan_priority_t::do_dig(AI & ai, color_ostream & out, room *r)
 {
-    return ai.plan.wantdig(out, r);
+    return ai.plan.wantdig(out, r, r->outdoor ? 1 : 0);
 }
 
 bool plan_priority_t::do_dig_immediate(AI & ai, color_ostream & out, room *r)

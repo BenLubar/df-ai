@@ -364,7 +364,7 @@ void Plan::checkrooms(color_ostream & out)
 
                 if (all_ready)
                 {
-                    wantdig(out, r, 1);
+                    wantdig(out, r, 2);
                 }
             }
 
