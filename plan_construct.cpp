@@ -90,14 +90,14 @@ static bool find_items(const std::vector<df::job_item *> & filters, std::vector<
                 continue;
             }
 
-            if (!Stocks::is_item_free(i))
+            ItemTypeInfo iinfo(i);
+            MaterialInfo minfo(i);
+            if (!iinfo.matches(*filter, &minfo, true) || (filter->item_type != item_type::NONE && i->getType() != filter->item_type))
             {
                 continue;
             }
 
-            ItemTypeInfo iinfo(i);
-            MaterialInfo minfo(i);
-            if (!iinfo.matches(*filter, &minfo, true))
+            if (!Stocks::is_item_free(i))
             {
                 continue;
             }
@@ -883,10 +883,7 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
         std::vector<df::job_item *> filters;
         for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
         {
-            for (int32_t i = 0; i < (*it)->quantity; i++)
-            {
-                filters.push_back(make_job_item(*it));
-            }
+            filters.push_back(make_job_item(*it));
         }
         std::vector<df::item *> items;
         if (!find_items(filters, items, reason))
@@ -945,10 +942,7 @@ bool Plan::try_construct_furnace(color_ostream & out, room *r, std::ostream & re
         std::vector<df::job_item *> filters;
         for (auto it = def->build_items.begin(); it != def->build_items.end(); it++)
         {
-            for (int32_t i = 0; i < (*it)->quantity; i++)
-            {
-                filters.push_back(make_job_item(*it));
-            }
+            filters.push_back(make_job_item(*it));
         }
         std::vector<df::item *> items;
         if (!find_items(filters, items, reason))
