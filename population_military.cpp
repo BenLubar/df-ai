@@ -893,6 +893,9 @@ public:
     {
         using change_type = Population::squad_order_change;
 
+        int32_t start_x, start_y, start_z;
+        Gui::getViewCoords(start_x, start_y, start_z);
+
         kill_orders.clear();
 
         for (const auto & change : ai.pop.squad_order_changes)
@@ -1048,6 +1051,8 @@ public:
             Key(interface_key::D_PAUSE);
             DFAI_ASSERT(!*pause_state, "squad target update failed to unpause the game");
         }
+
+        ai.ignore_pause(start_x, start_y, start_z);
     }
 };
 
