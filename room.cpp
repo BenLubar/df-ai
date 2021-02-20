@@ -259,23 +259,24 @@ bool room::is_dug(std::ostream & reason, df::tiletype_shape_basic want) const
             continue;
         }
 
-        auto sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft)));
+        auto tt = *Maps::getTileType(ft);
+        auto sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
         switch (sb)
         {
         case tiletype_shape_basic::Wall:
             if (f->dig == tile_dig_designation::Default)
             {
-                reason << "interior tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is Wall";
+                reason << "interior tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is " << enum_item_key(tt);
                 return false;
             }
-            reason << enum_item_key(f->dig) << "-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is Wall";
+            reason << enum_item_key(f->dig) << "-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is " << enum_item_key(tt);
             return false;
         case tiletype_shape_basic::Open:
             break;
         default:
             if (f->dig == tile_dig_designation::Channel)
             {
-                reason << "Channel-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is " << enum_item_key(sb);
+                reason << "Channel-designated tile at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") is " << enum_item_key(tt);
                 return false;
             }
             break;
@@ -291,10 +292,12 @@ bool room::is_dug(std::ostream & reason, df::tiletype_shape_basic want) const
                 {
                     continue;
                 }
-                df::tiletype_shape s = ENUM_ATTR(tiletype, shape, *Maps::getTileType(x, y, z));
+
+                auto tt = *Maps::getTileType(x, y, z);
+                df::tiletype_shape s = ENUM_ATTR(tiletype, shape, tt);
                 if (s == tiletype_shape::WALL)
                 {
-                    reason << "interior tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is Wall";
+                    reason << "interior tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is " << enum_item_key(tt);
                     return false;
                 }
                 if (want != tiletype_shape_basic::None)
@@ -302,7 +305,7 @@ bool room::is_dug(std::ostream & reason, df::tiletype_shape_basic want) const
                     df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, s);
                     if (want != sb)
                     {
-                        reason << "tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is " << enum_item_key(sb) << " but want " << enum_item_key(want);
+                        reason << "tile at (" << (x - min.x) << ", " << (y - min.y) << ", " << (z - min.z) << ") is " << enum_item_key(tt) << " (" << enum_item_key(sb) << ") but want " << enum_item_key(want);
                         return false;
                     }
                 }
@@ -320,7 +323,8 @@ bool room::constructions_done(std::ostream & reason) const
 
         df::coord ft = min + f->pos;
 
-        auto ts = ENUM_ATTR(tiletype, shape, *Maps::getTileType(ft));
+        auto tt = *Maps::getTileType(ft);
+        auto ts = ENUM_ATTR(tiletype, shape, tt);
 
         df::tiletype_shape want;
         switch (f->construction)
@@ -371,7 +375,7 @@ bool room::constructions_done(std::ostream & reason) const
 
         if (ts != want)
         {
-            reason << "want construction type " << enum_item_key(f->construction) << " at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") but have " << enum_item_key(ts) << " instead of " << enum_item_key(want);
+            reason << "want construction type " << enum_item_key(f->construction) << " at (" << f->pos.x << ", " << f->pos.y << ", " << f->pos.z << ") but have " << enum_item_key(tt) << " (" << enum_item_key(ts) << ") instead of " << enum_item_key(want);
             return false;
         }
     }
