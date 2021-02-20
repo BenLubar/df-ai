@@ -105,13 +105,13 @@ static bool find_items(const std::vector<df::job_item *> & filters, std::vector<
             items.push_back(i);
             found++;
 
-            if (filter->quantity >= found)
+            if (filter->quantity <= found)
             {
                 break;
             }
         }
 
-        if (filter->quantity < found)
+        if (filter->quantity > found)
         {
             if (found_all)
             {
