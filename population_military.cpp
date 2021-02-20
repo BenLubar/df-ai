@@ -337,7 +337,7 @@ public:
 
     int32_t SelectOrCreateUniform(color_ostream & out, size_t existing_squad_count)
     {
-        bool ranged = existing_squad_count % 3 == 0;
+        bool ranged = existing_squad_count % 3 == 1;
 
         df::uniform_indiv_choice indiv_choice;
         if (ranged)
