@@ -17,7 +17,6 @@
 			"generic01_bedrooms",
 			"generic01_cemetery",
 			"generic01_corridor",
-			"generic01_dininghall",
 			"generic01_infirmary",
 			"generic01_jail",
 			"generic01_location",
@@ -40,7 +39,6 @@
 		"generic01_cemetery": [3, 10],
 		"generic01_corridor": [5, 300],
 		"generic01_corridor_stair": [0, 50],
-		"generic01_dininghall": [4, 8],
 		"generic01_depot": [1, 1],
 		"generic01_infirmary": [1, 5],
 		"generic01_jail": [1, 3],
@@ -301,6 +299,30 @@
 			}
 		},
 		{
+			"continue": true,
+			"action": "unignore_furniture",
+			"match": {
+				"type": "corridor",
+				"comment": "fort entrance"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "tavern"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "location",
+				"location_type": "tavern"
+			}
+		},
+		{
 			"action": "dig",
 			"count": {
 				"match": {
@@ -338,44 +360,6 @@
 		},
 		{
 			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "cemetery"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "cemetery"
-			}
-		},
-		{
-			"continue": true,
-			"action": "unignore_furniture",
-			"match": {
-				"type": "corridor",
-				"comment": "fort entrance"
-			}
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "location",
-					"location_type": "tavern"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "location",
-				"location_type": "tavern"
-			}
-		},
-		{
-			"action": "dig",
 			"match": {
 				"status": "plan",
 				"type": "furnace",
@@ -402,6 +386,20 @@
 				"type": "workshop",
 				"workshop_type": "MetalsmithsForge",
 				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "cemetery"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "cemetery"
 			}
 		},
 		{
@@ -826,7 +824,7 @@
 			"action": "dig",
 			"match": {
 				"status": "plan",
-				"type": ["bedroom", "cemetery", "dininghall", "nobleroom"]
+				"type": ["bedroom", "cemetery", "nobleroom"]
 			}
 		},
 		{
