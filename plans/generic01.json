@@ -341,14 +341,7 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
-					"type": "cemetery",
-					"layout": {
-						"match": {
-							"type": "coffin",
-							"users": 0
-						},
-						"is": 0
-					}
+					"type": "cemetery"
 				},
 				"is": 0
 			},
