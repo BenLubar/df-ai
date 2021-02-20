@@ -33,7 +33,7 @@
 		},
 		{
 			"type": "stockpile",
-			"min": [-3, -18, 0],
+			"min": [-3, -19, 0],
 			"max": [3, -10, 0],
 			"level": 3,
 			"accesspath": [1],
