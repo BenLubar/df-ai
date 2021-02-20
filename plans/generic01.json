@@ -237,6 +237,38 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
+					"type": "infirmary"
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "infirmary"
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Mechanics",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Mechanics",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
 					"type": "workshop",
 					"workshop_type": "Still",
 					"level": 1
@@ -291,20 +323,6 @@
 			"count": {
 				"match": {
 					"status_not": "plan",
-					"type": "infirmary"
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "infirmary"
-			}
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
 					"type": "workshop",
 					"workshop_type": "Masons",
 					"level": 2
@@ -337,24 +355,6 @@
 			"match": {
 				"status": "plan",
 				"type": "cemetery"
-			}
-		},
-		{
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "workshop",
-					"workshop_type": "Mechanics",
-					"level": 1
-				},
-				"is": 0
-			},
-			"match": {
-				"status": "plan",
-				"type": "workshop",
-				"workshop_type": "Mechanics",
-				"level": 1
 			}
 		},
 		{
@@ -400,6 +400,188 @@
 				"status": "plan",
 				"type": "workshop",
 				"workshop_type": "MetalsmithsForge",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Farmers",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Farmers",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Fishery",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Fishery",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Loom",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Loom",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Clothiers",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Clothiers",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Custom",
+					"raw_type": "SOAP_MAKER",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Custom",
+				"raw_type": "SOAP_MAKER",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Butchers",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Butchers",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Ashery",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Ashery",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Tanners",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Tanners",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Leatherworks",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Leatherworks",
+				"level": 1
+			}
+		},
+		{
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "workshop",
+					"workshop_type": "Dyers",
+					"level": 1
+				},
+				"is": 0
+			},
+			"match": {
+				"status": "plan",
+				"type": "workshop",
+				"workshop_type": "Dyers",
 				"level": 1
 			}
 		},
