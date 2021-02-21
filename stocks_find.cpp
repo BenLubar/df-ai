@@ -138,9 +138,13 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
 {
     switch (k)
     {
-    case stock_item::ammo:
+    case stock_item::ammo_combat:
     {
-        return find_item_helper_ammo();
+        return find_item_helper_ammo(job_skill::NONE, false, true);
+    }
+    case stock_item::ammo_training:
+    {
+        return find_item_helper_ammo(job_skill::NONE, false, false);
     }
     case stock_item::anvil:
     {
@@ -914,7 +918,7 @@ Stocks::find_item_info Stocks::find_item_helper_digger(df::job_skill skill, bool
     return find_item_helper_weapon_helper(ui->main.fortress_entity->entity_raw->equipment.digger_id, skill, training, false, skill == job_skill::NONE);
 }
 
-Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool training)
+Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool training, bool metal)
 {
     auto classes = find_ammo_classes(skill, training);
 
@@ -931,7 +935,11 @@ Stocks::find_item_info Stocks::find_item_helper_ammo(df::job_skill skill, bool t
         idefs.insert(id);
     }
 
-    return find_item_helper_equip_helper<df::item_ammost>(items_other_id::AMMO, idefs);
+    return find_item_helper_equip_helper<df::item_ammost>(items_other_id::AMMO, idefs, [&](df::item_ammost *i) -> bool
+        {
+            bool is_metal = i->mat_type == 0;
+            return metal == is_metal;
+        });
 }
 
 template<typename D>

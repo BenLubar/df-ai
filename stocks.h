@@ -24,7 +24,8 @@ struct room;
 
 #define STOCKS_ENUMS \
 BEGIN_ENUM(stock, item) \
-    ENUM_ITEM(ammo) \
+    ENUM_ITEM(ammo_combat) \
+    ENUM_ITEM(ammo_training) \
     ENUM_ITEM(anvil) \
     ENUM_ITEM(armor_feet) \
     ENUM_ITEM(armor_hands) \
@@ -312,7 +313,7 @@ public:
     find_item_info find_item_helper(stock_item::item k);
     find_item_info find_item_helper_weapon(df::job_skill skill = job_skill::NONE, bool training = false, bool ranged = false);
     find_item_info find_item_helper_digger(df::job_skill skill = job_skill::NONE, bool training = false);
-    find_item_info find_item_helper_ammo(df::job_skill skill = job_skill::NONE, bool training = false);
+    find_item_info find_item_helper_ammo(df::job_skill skill = job_skill::NONE, bool training = false, bool metal = true);
     find_item_info find_item_helper_armor(df::items_other_id oidx);
     find_item_info find_item_helper_clothes(df::items_other_id oidx);
     find_item_info find_item_helper_tool(df::tool_uses use, std::function<bool(df::itemdef_toolst *)> pred = [](df::itemdef_toolst *) -> bool { return true; });

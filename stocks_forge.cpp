@@ -51,7 +51,7 @@ static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & potent
 
 void Stocks::queue_need_ammo(color_ostream & out, std::ostream & reason)
 {
-    queue_need_forge(out, material_flags::ITEMS_AMMO, 1, stock_item::ammo, job_type::MakeAmmo, &select_most_abundant_metal, reason, item_type::NONE, min_subtype_for_item(stock_item::ammo), 25);
+    queue_need_forge(out, material_flags::ITEMS_AMMO, 1, stock_item::ammo_combat, job_type::MakeAmmo, &select_most_abundant_metal, reason, item_type::NONE, min_subtype_for_item(stock_item::ammo_combat), 25);
 }
 
 void Stocks::queue_need_anvil(color_ostream & out, std::ostream & reason)

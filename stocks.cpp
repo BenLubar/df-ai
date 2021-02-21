@@ -30,7 +30,8 @@ STOCKS_ENUMS
 
 Watch::Watch()
 {
-    Needed[stock_item::ammo] = 50;
+    Needed[stock_item::ammo_combat] = 50;
+    Needed[stock_item::ammo_training] = 50;
     Needed[stock_item::anvil] = 1;
     Needed[stock_item::armor_feet] = 4;
     Needed[stock_item::armor_hands] = 4;
@@ -105,7 +106,8 @@ Watch::Watch()
     Needed[stock_item::wheelbarrow] = 1;
     Needed[stock_item::wood] = 16;
 
-    NeededPerDwarf[stock_item::ammo] = 500;
+    NeededPerDwarf[stock_item::ammo_combat] = 250;
+    NeededPerDwarf[stock_item::ammo_training] = 250;
     NeededPerDwarf[stock_item::armor_feet] = 6;
     NeededPerDwarf[stock_item::armor_hands] = 6;
     NeededPerDwarf[stock_item::armor_head] = 3;

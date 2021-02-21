@@ -92,10 +92,17 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
 
     switch (what)
     {
-    case stock_item::ammo:
+    case stock_item::ammo_combat:
     {
         queue_need_ammo(out, reason);
         return;
+    }
+    case stock_item::ammo_training:
+    {
+        tmpl.job_type = job_type::MakeAmmo;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::ammo_training);
+        tmpl.material_category.bits.wood = true;
+        break;
     }
     case stock_item::anvil:
     {
@@ -103,26 +110,11 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         return;
     }
     case stock_item::armor_feet:
-    {
-        queue_need_armor(out, what, reason);
-        return;
-    }
     case stock_item::armor_hands:
-    {
-        queue_need_armor(out, what, reason);
-        return;
-    }
     case stock_item::armor_head:
-    {
-        queue_need_armor(out, what, reason);
-        return;
-    }
     case stock_item::armor_legs:
-    {
-        queue_need_armor(out, what, reason);
-        return;
-    }
     case stock_item::armor_shield:
+    case stock_item::armor_torso:
     {
         queue_need_armor(out, what, reason);
         return;
@@ -132,11 +124,6 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.job_type = job_type::ConstructArmorStand;
         tmpl.mat_type = 0;
         break;
-    }
-    case stock_item::armor_torso:
-    {
-        queue_need_armor(out, what, reason);
-        return;
     }
     case stock_item::ash:
     {
@@ -824,7 +811,7 @@ void Stocks::queue_use(color_ostream & out, stock_item::item what, int32_t amoun
         else
         {
             tmpl.job_type = job_type::MakeAmmo;
-            tmpl.item_subtype = min_subtype_for_item(stock_item::ammo);
+            tmpl.item_subtype = min_subtype_for_item(stock_item::ammo_training);
             tmpl.material_category.bits.bone = 1;
             may_rot();
         }
