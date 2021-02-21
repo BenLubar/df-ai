@@ -573,46 +573,50 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
         return false;
     }
 
-    df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
-    if (ctype == construction_type::Wall)
-    {
-        if (sb == tiletype_shape_basic::Wall)
-        {
-            return true;
-        }
-    }
+    auto ts = ENUM_ATTR(tiletype, shape, tt);
+    auto tsb = ENUM_ATTR(tiletype_shape, basic_shape, ts);
 
-    if (ctype == construction_type::Ramp)
+    switch (ctype)
     {
-        if (sb == tiletype_shape_basic::Ramp)
+    case construction_type::NONE:
+        break;
+    case construction_type::Fortification:
+        if (ts == tiletype_shape::FORTIFICATION)
         {
             return true;
         }
-    }
-
-    if (ctype == construction_type::UpStair || ctype == construction_type::DownStair || ctype == construction_type::UpDownStair)
-    {
-        if (sb == tiletype_shape_basic::Stair)
+        break;
+    case construction_type::Wall:
+        if (tsb == tiletype_shape_basic::Wall)
         {
             return true;
         }
-    }
-
-    if (ctype == construction_type::Floor)
-    {
-        if (sb == tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::SAPLING)
+        break;
+    case construction_type::Ramp:
+        if (tsb == tiletype_shape_basic::Ramp)
         {
             return true;
         }
-        if (sb == tiletype_shape_basic::Ramp || sb == tiletype_shape_basic::Wall)
+        break;
+    case construction_type::UpStair:
+    case construction_type::DownStair:
+    case construction_type::UpDownStair:
+        if (tsb == tiletype_shape_basic::Stair)
+        {
+            return true;
+        }
+        break;
+    case construction_type::Floor:
+        if (tsb == tiletype_shape_basic::Floor && ts != tiletype_shape::SAPLING)
+        {
+            return true;
+        }
+        if (tsb == tiletype_shape_basic::Ramp || tsb == tiletype_shape_basic::Wall)
         {
             AI::dig_tile(t);
             return true;
         }
-    }
-
-    switch (ctype)
-    {
+        break;
     case construction_type::TrackN:
         if (tt == tiletype::ConstructedFloorTrackN)
             return true;
