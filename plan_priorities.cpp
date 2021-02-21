@@ -888,6 +888,7 @@ bool plan_priority_t::do_dig_next_cavern_outpost(AI & ai, color_ostream & out)
 static bool is_room_task(task *t)
 {
     return t->type == task_type::check_construct ||
+        t->type == task_type::check_furnish ||
         t->type == task_type::construct_activityzone ||
         t->type == task_type::construct_farmplot ||
         t->type == task_type::construct_furnace ||
@@ -895,7 +896,7 @@ static bool is_room_task(task *t)
         t->type == task_type::construct_tradedepot ||
         t->type == task_type::construct_windmill ||
         t->type == task_type::construct_workshop ||
-        t->type == task_type::dig_garbage ||
+        t->type == task_type::furnish ||
         t->type == task_type::monitor_farm_irrigation ||
         t->type == task_type::monitor_room_value ||
         t->type == task_type::setup_farmplot;

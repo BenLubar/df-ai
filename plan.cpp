@@ -1052,7 +1052,36 @@ void Plan::report(std::ostream & out, bool html)
         }
         else if (priority.working)
         {
-            out << "Working";
+            // if the task is done but the priority checker hasn't run yet, let's mark it as done
+            bool any_tasks = false;
+            for (auto t : tasks_generic)
+            {
+                if (priority.match_task(t))
+                {
+                    any_tasks = true;
+                    break;
+                }
+            }
+            if (!any_tasks)
+            {
+                for (auto t : tasks_furniture)
+                {
+                    if (priority.match_task(t))
+                    {
+                        any_tasks = true;
+                        break;
+                    }
+                }
+            }
+            if (any_tasks)
+            {
+                out << "Working";
+            }
+            else
+            {
+                priority.working = false;
+                out << "Done";
+            }
         }
         else
         {
@@ -1098,7 +1127,7 @@ void Plan::report(std::ostream & out, bool html)
             out << "**: " << priority.name;
         }
 
-        if (priority.checked)
+        if (priority.checked && priority.working)
         {
             for (auto t : tasks_generic)
             {
