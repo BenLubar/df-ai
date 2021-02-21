@@ -24,7 +24,10 @@ std::string AI::describe_room(room *r, bool html)
         s << " (" << r->cistern_type << ")";
         break;
     case room_type::corridor:
-        s << " (" << r->corridor_type << ")";
+        if (r->corridor_type != corridor_type::corridor)
+        {
+            s << " (" << r->corridor_type << ")";
+        }
         break;
     case room_type::farmplot:
         s << " (" << r->farm_type << ")";
