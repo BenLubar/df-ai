@@ -210,6 +210,7 @@ public:
 
 private:
     std::set<std::tuple<farm_type::type, df::biome_type, int8_t>> complained_about_no_plants;
+    bool cant_pickaxe;
 
 public:
     Stocks(AI & ai);
@@ -246,7 +247,7 @@ public:
     void queue_need_ammo(color_ostream & out, std::ostream & reason);
     void queue_need_anvil(color_ostream & out, std::ostream & reason);
     void queue_need_cage(color_ostream & out, std::ostream & reason);
-    void queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & actual_bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1, int32_t items_created_per_job = 1);
+    bool queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & actual_bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type = item_type::NONE, int16_t item_subtype = -1, int32_t items_created_per_job = 1);
     void queue_need_clothes(color_ostream & out, stock_item::item what, std::ostream & reason);
     void queue_use(color_ostream & out, stock_item::item what, int32_t amount, std::ostream & reason);
     void queue_use_gems(color_ostream & out, int32_t amount, std::ostream & reason);

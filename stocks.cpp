@@ -210,7 +210,8 @@ Stocks::Stocks(AI & ai) :
     raw_coke_inv(),
     metal_pref(),
     simple_metal_ores(),
-    complained_about_no_plants()
+    complained_about_no_plants(),
+    cant_pickaxe(false)
 {
     last_cutpos.clear();
 }

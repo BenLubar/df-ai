@@ -64,7 +64,7 @@ void Stocks::queue_need_cage(color_ostream & out, std::ostream & reason)
     queue_need_forge(out, material_flags::ITEMS_METAL, 3, stock_item::cage_metal, job_type::MakeCage, &select_most_abundant_metal, reason);
 }
 
-void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & current_bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
+bool Stocks::queue_need_forge(color_ostream & out, df::material_flags preference, int32_t bars_per_item, stock_item::item item, df::job_type job, std::function<bool(const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> & current_bars, int32_t & chosen_type)> decide, std::ostream & reason, df::item_type item_type, int16_t item_subtype, int32_t items_created_per_job)
 {
     int32_t coal_bars = count_free.at(stock_item::coal);
     if (!world->buildings.other[buildings_other_id::WORKSHOP_MAGMA_FORGE].empty())
@@ -172,7 +172,7 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         if (potential_bars.empty())
         {
             reason << (ai.plan.should_search_for_metal ? "no viable ores available\n" : "not ready to mine ores\n");
-            break;
+            return false;
         }
 
         int32_t mat_index;
@@ -211,6 +211,8 @@ void Stocks::queue_need_forge(color_ostream & out, df::material_flags preference
         reason << "\n";
         add_manager_order(out, tmpl, q.second, reason);
     }
+
+    return true;
 }
 
 // determine if we may be able to generate metal bars for this metal

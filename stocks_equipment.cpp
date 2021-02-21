@@ -33,7 +33,7 @@ REQUIRE_GLOBAL(world);
 // forge weapons
 void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, std::ostream & reason, df::job_skill skill, bool training, bool ranged, bool digger)
 {
-    if (skill == job_skill::NONE && !training && (count_free.at(stock_item::pick) == 0 || count_free.at(stock_item::axe) == 0))
+    if (skill == job_skill::NONE && !training && ((count_free.at(stock_item::pick) == 0 && !cant_pickaxe) || count_free.at(stock_item::axe) == 0))
     {
         reason << "need more ";
         if (count_free.at(stock_item::pick) == 0)
@@ -51,7 +51,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
         return;
     }
 
-    auto search = [this, &out, stock_item, needed, &reason, skill, training, ranged](const std::vector<int16_t> & idefs, df::material_flags pref)
+    auto search = [&](const std::vector<int16_t> & idefs, df::material_flags pref)
     {
         for (auto id : idefs)
         {
@@ -100,7 +100,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                 continue;
             }
 
-            if (training)
+            if (training || ranged)
             {
                 df::manager_order_template tmpl;
                 tmpl.job_type = job_type::MakeWeapon;
@@ -109,14 +109,18 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                 tmpl.mat_index = -1;
                 tmpl.material_category.bits.wood = true;
                 add_manager_order(out, tmpl, cnt, reason);
-                continue;
+
+                if (training)
+                {
+                    continue;
+                }
             }
 
             int32_t need_bars = idef->material_size / 3; // need this many bars to forge one idef item
             if (need_bars < 1)
                 need_bars = 1;
 
-            queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [this, &out, &reason, pref, idef, ranged, need_bars](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
+            bool able = queue_need_forge(out, pref, need_bars, stock_item, job_type::MakeWeapon, [&](const std::map<int32_t, int32_t> & potential_bars, const std::map<int32_t, int32_t> &, int32_t & chosen_type) -> bool
             {
                 std::vector<int32_t> best;
                 best.insert(best.end(), metal_pref.at(pref).begin(), metal_pref.at(pref).end());
@@ -174,12 +178,18 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                 }
                 return false;
             }, reason, item_type::NONE, idef->subtype);
+
+            if (digger && !able && ai.plan.should_search_for_metal)
+            {
+                cant_pickaxe = true;
+            }
         }
     };
 
     auto & ue = ui->main.fortress_entity->entity_raw->equipment;
     if (digger)
     {
+        cant_pickaxe = false;
         search(ue.digger_id, material_flags::ITEMS_DIGGER);
     }
     else
