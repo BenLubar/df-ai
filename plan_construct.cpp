@@ -1425,6 +1425,12 @@ bool Plan::try_construct_activityzone(color_ostream &, room *r, std::ostream & r
         return false;
     }
 
+    if (r->type == room_type::location && r->location_type == location_type::guildhall && r->data1 == profession::NONE)
+    {
+        reason << "no profession assigned";
+        return false;
+    }
+
     events.queue_exclusive(std::make_unique<ConstructActivityZone>(ai, r));
 
     return true;

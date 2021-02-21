@@ -852,13 +852,6 @@
 			}
 		},
 		{
-			"name": "Remaining Locations",
-			"action": "dig",
-			"match": {
-				"type": "location"
-			}
-		},
-		{
 			"continue": true,
 			"name": "Enable Optional Furniture in Military Rooms",
 			"action": "unignore_furniture",
