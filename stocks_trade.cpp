@@ -36,6 +36,17 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
 
 bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector<df::item *> & already_want)
 {
+    if (item->getType() == item_type::CAGE)
+    {
+        for (auto ref : item->general_refs)
+        {
+            if (ref->getType() == general_ref_type::CONTAINS_UNIT)
+            {
+                return true;
+            }
+        }
+    }
+
     if (item->hasSpecificImprovements(improvement_type::WRITING) || item->getType() == item_type::BOOK)
     {
         return true;
@@ -82,6 +93,15 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector
 
 bool Stocks::want_trader_item_more(df::item *a, df::item *b)
 {
+    if (a->getType() == item_type::CAGE && b->getType() != item_type::CAGE)
+    {
+        return true;
+    }
+    else if (b->getType() == item_type::CAGE && a->getType() != item_type::CAGE)
+    {
+        return false;
+    }
+
     if (a->getType() == item_type::WOOD && b->getType() != item_type::WOOD)
     {
         return true;
