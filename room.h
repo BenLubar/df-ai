@@ -254,6 +254,7 @@ struct room
     bool constructions_done(std::ostream & reason) const;
     df::building *dfbuilding() const;
     int32_t compute_value() const;
+    int32_t distance_to(const room *other) const;
 };
 
 struct furniture

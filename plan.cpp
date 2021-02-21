@@ -1157,6 +1157,49 @@ void Plan::report(std::ostream & out, bool html)
 
 void Plan::categorize_all()
 {
+    std::sort(rooms_and_corridors.begin(), rooms_and_corridors.end(), [&](room *a, room *b) -> bool
+        {
+            if (a->outdoor != b->outdoor)
+            {
+                return a->outdoor;
+            }
+
+            if (a->outdoor)
+            {
+                auto base_pos = fort_entrance->pos();
+                auto a_diff = a->pos() - base_pos;
+                auto b_diff = b->pos() - base_pos;
+
+                if (a_diff.x * a_diff.x + a_diff.y * a_diff.y < b_diff.x * b_diff.x + b_diff.y * b_diff.y)
+                {
+                    return true;
+                }
+                if (a_diff.x * a_diff.x + a_diff.y * a_diff.y > b_diff.x * b_diff.x + b_diff.y * b_diff.y)
+                {
+                    return false;
+                }
+                if (a_diff.z < b_diff.z)
+                {
+                    return true;
+                }
+                if (a_diff.z > b_diff.z)
+                {
+                    return false;
+                }
+                if (a_diff.x < b_diff.x)
+                {
+                    return true;
+                }
+                if (a_diff.x > b_diff.x)
+                {
+                    return false;
+                }
+                return a_diff.y < b_diff.y;
+            }
+
+            return a->distance_to(fort_entrance) < b->distance_to(fort_entrance);
+        });
+
     room_category.clear();
     room_by_z.clear();
     for (auto r : rooms_and_corridors)

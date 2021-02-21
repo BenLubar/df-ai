@@ -403,3 +403,71 @@ int32_t room::compute_value() const
 
     return bld->getRoomValue(u);
 }
+
+int32_t room::distance_to(const room *other) const
+{
+    if (this == other)
+    {
+        return 0;
+    }
+
+    std::map<const room *, int32_t> path_distance;
+    int32_t distance = 0;
+    std::vector<room *> current_level = accesspath;
+    std::vector<room *> next_level;
+
+    path_distance[this] = 0;
+
+    while (!current_level.empty())
+    {
+        distance++;
+
+        for (room *r : current_level)
+        {
+            if (!path_distance.count(r))
+            {
+                if (r == other)
+                {
+                    return distance;
+                }
+
+                path_distance[r] = distance;
+                next_level.insert(next_level.end(), r->accesspath.begin(), r->accesspath.end());
+            }
+        }
+
+        current_level = std::move(next_level);
+        next_level.clear();
+    }
+
+    std::set<const room *> seen;
+    seen.insert(other);
+
+    distance = 0;
+    current_level = other->accesspath;
+
+    while (!current_level.empty())
+    {
+        distance++;
+
+        for (room *r : current_level)
+        {
+            if (!seen.count(r))
+            {
+                if (path_distance.count(r))
+                {
+                    return path_distance.at(r) + distance;
+                }
+
+                seen.insert(r);
+                next_level.insert(next_level.end(), r->accesspath.begin(), r->accesspath.end());
+            }
+        }
+
+        current_level = std::move(next_level);
+        next_level.clear();
+    }
+
+    // not connected (somehow)
+    return 0x10000;
+}
