@@ -49,6 +49,7 @@ BEGIN_ENUM(room, type) \
     ENUM_ITEM(pasture) \
     ENUM_ITEM(pitcage) \
     ENUM_ITEM(pond) \
+    ENUM_ITEM(releasecage) \
     ENUM_ITEM(stockpile) \
     ENUM_ITEM(tradedepot) \
     ENUM_ITEM(windmill) \
@@ -163,6 +164,7 @@ BEGIN_ENUM(task, type) \
     ENUM_ITEM(monitor_cistern) \
     ENUM_ITEM(monitor_farm_irrigation) \
     ENUM_ITEM(monitor_room_value) \
+    ENUM_ITEM(rescue_caged) \
     ENUM_ITEM(setup_farmplot) \
     ENUM_ITEM(want_dig) \
 END_ENUM(task, type)

@@ -165,6 +165,12 @@
 			"x": 1,
 			"y": 0,
 			"z": 0
+		},
+		{
+			"type": "lever",
+			"x": 0,
+			"y": 0,
+			"z": 0
 		}
 	],
 	"r": [
@@ -172,7 +178,7 @@
 			"type": "garbagedump",
 			"min": [-1, 0, 0],
 			"max": [-1, 0, 0],
-			"accesspath": [1, 2],
+			"accesspath": [1, 2, 6],
 			"outdoor": true
 		},
 		{
@@ -225,6 +231,13 @@
 			"require_floor": false,
 			"accesspath": [4],
 			"layout": [25]
+		},
+		{
+			"type": "releasecage",
+			"min": [0, 2, 0],
+			"max": [3, 4, 0],
+			"outdoor": true,
+			"layout": [27]
 		}
 	]
 }

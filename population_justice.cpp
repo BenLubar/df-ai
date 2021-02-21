@@ -49,7 +49,18 @@ void Population::update_caged(color_ostream & out)
                 df::unit *u = (*ref)->getUnit();
                 if (Units::isOwnCiv(u))
                 {
-                    // TODO rescue caged dwarves
+                    room *r = ai.find_room(room_type::releasecage, [](room *r) -> bool { return r->status >= room_status::finished; });
+                    if (r)
+                    {
+                        for (auto f : r->layout)
+                        {
+                            if (f->type == layout_type::lever && f->bld_id != -1)
+                            {
+                                ai.plan.add_task(task_type::rescue_caged, r, f, cage->id);
+                                break;
+                            }
+                        }
+                    }
                 }
                 else
                 {

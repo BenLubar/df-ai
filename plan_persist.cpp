@@ -79,6 +79,10 @@ void Plan::save(std::ostream & out)
         {
             t["l"] = (*it)->last_status;
         }
+        if ((*it)->item_id != -1)
+        {
+            t["i"] = (*it)->item_id;
+        }
         converted_tasks.append(t);
     }
     for (auto it = tasks_furniture.begin(); it != tasks_furniture.end(); it++)
@@ -357,6 +361,10 @@ void Plan::load(std::istream & in)
         if (it->isMember("l"))
         {
             t->last_status = (*it)["l"].asString();
+        }
+        if (it->isMember("i"))
+        {
+            t->item_id = (*it)["i"].asInt();
         }
         if (t->type == task_type::furnish || t->type == task_type::check_furnish)
         {

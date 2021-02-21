@@ -1614,7 +1614,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
             {
                 if (ff->type == layout_type::lever && ff->target == f)
                 {
-                    link_lever(out, ff, f);
+                    link_lever(out, ff, f, reason);
                 }
             }
         }
@@ -1768,46 +1768,66 @@ bool Plan::try_endconstruct(color_ostream & out, room *r, std::ostream & reason)
     return true;
 }
 
-bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst)
+bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst, std::ostream & reason)
 {
-    if (src->bld_id == -1 || dst->bld_id == -1)
-        return false;
-    df::building *bld = df::building::find(src->bld_id);
-    if (!bld || bld->getBuildStage() < bld->getMaxBuildStage())
-        return false;
-    df::building *tbld = df::building::find(dst->bld_id);
-    if (!tbld || tbld->getBuildStage() < tbld->getMaxBuildStage())
-        return false;
-
-    for (auto ref = bld->general_refs.begin(); ref != bld->general_refs.end(); ref++)
+    auto bld = df::building::find(src->bld_id);
+    if (!bld || bld->getBuildStage() != bld->getMaxBuildStage())
     {
-        df::general_ref_building_triggertargetst *tt = virtual_cast<df::general_ref_building_triggertargetst>(*ref);
-        if (tt && tt->building_id == tbld->id)
-            return false;
+        reason << "lever not constructed";
+        return false;
     }
-    for (auto j = bld->jobs.begin(); j != bld->jobs.end(); j++)
+
+    auto tbld = df::building::find(dst->bld_id);
+    if (!tbld || tbld->getBuildStage() != tbld->getMaxBuildStage())
     {
-        if ((*j)->job_type == job_type::LinkBuildingToTrigger)
+        reason << "lever target not constructed";
+        return false;
+    }
+
+    for (auto ref : bld->general_refs)
+    {
+        if (ref->getType() == general_ref_type::BUILDING_TRIGGERTARGET && ref->getBuilding() == tbld)
         {
-            for (auto ref = (*j)->general_refs.begin(); ref != (*j)->general_refs.end(); ref++)
+            return true;
+        }
+    }
+
+    for (auto job : bld->jobs)
+    {
+        if (job->job_type != job_type::LinkBuildingToTrigger)
+        {
+            continue;
+        }
+
+        for (auto ref : job->general_refs)
+        {
+            if (ref->getType() == general_ref_type::BUILDING_TRIGGERTARGET && ref->getBuilding() == tbld)
             {
-                df::general_ref_building_triggertargetst *tt = virtual_cast<df::general_ref_building_triggertargetst>(*ref);
-                if (tt && tt->building_id == tbld->id)
-                    return false;
+                reason << "waiting for lever to be linked to target";
+                return false;
             }
         }
     }
 
+    if (bld->jobs.size() >= 10)
+    {
+        reason << "lever job list is full";
+        return false;
+    }
+
     std::vector<df::item *> mechas;
     if (!find_items(items_other_id::TRAPPARTS, mechas, 2))
+    {
+        reason << "need 2 mechanisms, but have " << mechas.size();
         return false;
+    }
 
-    df::general_ref_building_triggertargetst *reflink = df::allocate<df::general_ref_building_triggertargetst>();
+    auto reflink = df::allocate<df::general_ref_building_triggertargetst>();
     reflink->building_id = tbld->id;
-    df::general_ref_building_holderst *refhold = df::allocate<df::general_ref_building_holderst>();
+    auto refhold = df::allocate<df::general_ref_building_holderst>();
     refhold->building_id = bld->id;
 
-    df::job *job = df::allocate<df::job>();
+    auto job = df::allocate<df::job>();
     job->job_type = job_type::LinkBuildingToTrigger;
     job->general_refs.push_back(reflink);
     job->general_refs.push_back(refhold);
@@ -1817,5 +1837,6 @@ bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst)
     Job::attachJobItem(job, mechas[0], df::job_item_ref::LinkToTarget);
     Job::attachJobItem(job, mechas[1], df::job_item_ref::LinkToTrigger);
 
-    return true;
+    reason << "waiting for lever to be linked to target";
+    return false;
 }

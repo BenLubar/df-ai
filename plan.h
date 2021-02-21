@@ -31,9 +31,10 @@ struct task
     room *r;
     furniture *f;
     std::string last_status;
+    int32_t item_id;
 
-    task(task_type::type type, room *r = nullptr, furniture *f = nullptr) :
-        type(type), r(r), f(f), last_status()
+    task(task_type::type type, room *r = nullptr, furniture *f = nullptr, int32_t item_id = -1) :
+        type(type), r(r), f(f), last_status(), item_id(item_id)
     {
     }
 };
@@ -152,6 +153,7 @@ public:
 
     void move_dininghall_fromtemp(color_ostream & out, room *r, room *t);
     bool monitor_room_value(color_ostream & out, room *r, std::ostream & reason);
+    bool rescue_caged(color_ostream & out, room *r, furniture *f, int32_t item_id, std::ostream & reason);
 
     bool smooth_room(color_ostream & out, room *r, bool engrave = false);
     void smooth_room_access(color_ostream & out, room *r);
@@ -169,8 +171,8 @@ public:
     bool try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
 
     bool setup_lever(color_ostream & out, room *r, furniture *f);
-    bool link_lever(color_ostream & out, furniture *src, furniture *dst);
-    bool pull_lever(color_ostream & out, furniture *f);
+    bool link_lever(color_ostream & out, furniture *src, furniture *dst, std::ostream & reason);
+    bool pull_lever(color_ostream & out, furniture *f, std::ostream & reason);
 
     void monitor_cistern(color_ostream & out, std::ostream & reason);
 
@@ -208,6 +210,7 @@ public:
 
     void weblegends_write_svg(std::ostream & out);
     bool find_building(df::building *bld, room * & r, furniture * & f);
+    void add_task(task_type::type type, room* r = nullptr, furniture* f = nullptr, int32_t item_id = -1);
 
     static df::coord find_tree_base(df::coord t, df::plant **ptree = nullptr);
 
@@ -215,7 +218,6 @@ private:
     void fixup_open(color_ostream & out, room *r);
     void fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_dig_designation d, furniture *f = nullptr);
     void fixup_open_helper(color_ostream & out, room *r, df::coord t, df::construction_type c, furniture *f, df::tiletype tt);
-    void add_task(task_type::type type, room *r = nullptr, furniture *f = nullptr);
 
     bool corridor_include_hack(const room *r, df::coord t1, df::coord t2);
     friend struct room;

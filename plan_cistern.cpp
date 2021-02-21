@@ -224,8 +224,8 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
         {
             if (!f_in->gate_flags.bits.opening)
             {
-                pull_lever(out, m_c_lever_in);
-                reason << "pulling lever to open input floodgate";
+                reason << "pulling lever to open input floodgate: ";
+                pull_lever(out, m_c_lever_in, reason);
             }
             else
             {
@@ -362,21 +362,22 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                 if (!f_out_closed)
                 {
                     // avoid floods. wait for the output to be closed.
-                    pull_lever(out, m_c_lever_out);
+                    reason << "waiting for output floodgate to be closed: ";
+                    pull_lever(out, m_c_lever_out, reason);
                     m_c_testgate_delay = 4;
-                    reason << "waiting for output floodgate to be closed";
                 }
                 else
                 {
+                    reason << "waiting for channel";
                     if (f_in_closed)
                     {
-                        pull_lever(out, m_c_lever_in);
+                        reason << "; ";
+                        pull_lever(out, m_c_lever_in, reason);
                     }
                     ai.debug(out, "cistern: do channel");
                     cistern_channel_requested = true;
                     AI::dig_tile(gate + df::coord(0, 0, 1), tile_dig_designation::Channel);
                     m_c_testgate_delay = 16;
-                    reason << "waiting for channel";
                 }
             }
             else
@@ -394,9 +395,9 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                     {
                         // make sure we can actually access the cistern
                         if (f_in_closed)
-                            pull_lever(out, m_c_lever_in);
+                            pull_lever(out, m_c_lever_in, reason);
                         if (f_out_closed)
-                            pull_lever(out, m_c_lever_out);
+                            pull_lever(out, m_c_lever_out, reason);
                     }
                     m_c_testgate_delay = 16;
                     reason << "not ready to channel";
@@ -449,13 +450,13 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
         // reserve empty, fill it
         if (!f_out_closed)
         {
-            pull_lever(out, m_c_lever_out);
-            reason << "; closing output";
+            reason << "; closing output: ";
+            pull_lever(out, m_c_lever_out, reason);
         }
         else if (f_in_closed)
         {
-            pull_lever(out, m_c_lever_in);
-            reason << "; opening input";
+            reason << "; opening input: ";
+            pull_lever(out, m_c_lever_in, reason);
         }
     }
     else if (resvlvl == 7 || river_is_frozen_or_dry)
@@ -475,8 +476,8 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
         // reserve full, empty into cistern if needed
         if (!f_in_closed)
         {
-            pull_lever(out, m_c_lever_in);
-            reason << "; closing input";
+            reason << "; closing input: ";
+            pull_lever(out, m_c_lever_in, reason);
         }
         else
         {
@@ -485,8 +486,8 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                 reason << "; cistern filling (" << cistlvl << "/7)";
                 if (f_out_closed)
                 {
-                    pull_lever(out, m_c_lever_out);
-                    reason << "; opening output";
+                    reason << "; opening output: ";
+                    pull_lever(out, m_c_lever_out, reason);
                 }
             }
             else
@@ -494,8 +495,8 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                 reason << "; cistern full";
                 if (!f_out_closed)
                 {
-                    pull_lever(out, m_c_lever_out);
-                    reason << "; closing output";
+                    reason << "; closing output: ";
+                    pull_lever(out, m_c_lever_out, reason);
                 }
             }
         }
@@ -508,13 +509,13 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
         {
             if (resvlvl >= 6 && cistlvl < 7)
             {
-                pull_lever(out, m_c_lever_out);
-                reason << "; opening output";
+                reason << "; opening output: ";
+                pull_lever(out, m_c_lever_out, reason);
             }
             else
             {
-                pull_lever(out, m_c_lever_in);
-                reason << "; opening input";
+                reason << "; opening input: ";
+                pull_lever(out, m_c_lever_in, reason);
             }
         }
     }
@@ -537,9 +538,10 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
             }
         }
 
-        if (link_lever(out, f, f->target))
+        std::ofstream discard;
+        if (link_lever(out, f, f->target, discard))
         {
-            pull_lever(out, f);
+            pull_lever(out, f, discard);
             if (f->internal)
             {
                 add_task(task_type::monitor_cistern);
@@ -551,29 +553,41 @@ bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
     return false;
 }
 
-bool Plan::pull_lever(color_ostream & out, furniture *f)
+bool Plan::pull_lever(color_ostream &, furniture *f, std::ostream & reason)
 {
-    df::building *bld = df::building::find(f->bld_id);
+    auto bld = df::building::find(f->bld_id);
     if (!bld)
     {
-        ai.debug(out, "cistern: missing " + AI::describe_furniture(f));
+        reason << "missing " << AI::describe_furniture(f);
         return false;
     }
-    if (!bld->jobs.empty())
-    {
-        ai.debug(out, "cistern: lever has job: " + AI::describe_furniture(f));
-        return false;
-    }
-    ai.debug(out, "cistern: pull " + AI::describe_furniture(f));
 
-    df::general_ref_building_holderst *ref = df::allocate<df::general_ref_building_holderst>();
+    for (auto job : bld->jobs)
+    {
+        if (job->job_type == job_type::PullLever)
+        {
+            reason << "waiting for someone to pull " << AI::describe_furniture(f);
+            return true;
+        }
+    }
+
+    if (bld->jobs.size() >= 10)
+    {
+        reason << AI::describe_furniture(f) << " job list is full";
+        return false;
+    }
+
+    auto ref = df::allocate<df::general_ref_building_holderst>();
     ref->building_id = bld->id;
 
-    df::job *job = df::allocate<df::job>();
+    auto job = df::allocate<df::job>();
     job->job_type = job_type::PullLever;
     job->pos = df::coord(bld->x1, bld->y1, bld->z);
     job->general_refs.push_back(ref);
     bld->jobs.push_back(job);
     Job::linkIntoWorld(job);
+
+    reason << "waiting for someone to pull " << AI::describe_furniture(f);
+
     return true;
 }

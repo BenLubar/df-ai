@@ -1,7 +1,14 @@
 #include "ai.h"
+#include "debug.h"
 #include "plan.h"
 
-#include "df/building.h"
+#include "modules/Buildings.h"
+#include "modules/Maps.h"
+
+#include "df/building_cagest.h"
+#include "df/building_trapst.h"
+#include "df/item_cagest.h"
+#include "df/tile_occupancy.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -146,6 +153,9 @@ void Plan::update(color_ostream &)
                 break;
             case task_type::monitor_room_value:
                 del = monitor_room_value(out, t.r, reason);
+                break;
+            case task_type::rescue_caged:
+                del = rescue_caged(out, t.r, t.f, t.item_id, reason);
                 break;
             case task_type::_task_type_count:
                 break;
@@ -567,16 +577,141 @@ bool Plan::monitor_room_value(color_ostream &, room *r, std::ostream & reason)
     return false;
 }
 
+bool Plan::rescue_caged(color_ostream & out, room *r, furniture *f, int32_t item_id, std::ostream & reason)
+{
+    auto cage = virtual_cast<df::item_cagest>(df::item::find(item_id));
+    if (!cage)
+    {
+        // cage no longer exists.
+        return true;
+    }
 
-void Plan::add_task(task_type::type type, room *r, furniture *f)
+    df::unit *prisoner = nullptr;
+    for (auto ref : cage->general_refs)
+    {
+        if (ref->getType() == general_ref_type::CONTAINS_UNIT)
+        {
+            prisoner = ref->getUnit();
+            break;
+        }
+    }
+    df::building_cagest* cage_bld = nullptr;
+    for (auto ref : cage->general_refs)
+    {
+        if (ref->getType() == general_ref_type::BUILDING_HOLDER)
+        {
+            cage_bld = virtual_cast<df::building_cagest>(ref->getBuilding());
+            break;
+        }
+    }
+
+    if (prisoner == nullptr)
+    {
+        // there's no longer someone in the cage.
+        for (auto ref : cage->general_refs)
+        {
+            // if we secured the cage to the floor, free it up.
+            if (cage_bld)
+            {
+                Buildings::deconstruct(cage_bld);
+            }
+        }
+        return true;
+    }
+
+    auto lever = virtual_cast<df::building_trapst>(df::building::find(f->bld_id));
+    if (!lever || lever->getBuildStage() != lever->getMaxBuildStage())
+    {
+        reason << "cannot free " << AI::describe_unit(prisoner) << ": missing lever";
+        return false;
+    }
+    DFAI_ASSERT(lever->trap_type == trap_type::Lever, "lever is trap_type::" + enum_item_key(lever->trap_type));
+
+    reason << "freeing " << AI::describe_unit(prisoner) << ": ";
+
+    // step 1: someone's trapped in a cage. check for a free tile in the "release zone"
+    // and create a job to secure the cage to that spot.
+    if (!cage_bld)
+    {
+        for (auto ref : cage->specific_refs)
+        {
+            if (ref->type == specific_ref_type::JOB)
+            {
+                reason << "waiting for cage to be secured to floor";
+                return false;
+            }
+        }
+
+        df::coord free_tile;
+        for (int16_t x = r->min.x; x <= r->max.x; x++)
+        {
+            for (int16_t y = r->min.y; y <= r->max.y; y++)
+            {
+                df::coord c(x, y, r->min.z);
+
+                auto tt = *Maps::getTileType(c);
+                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) != tiletype_shape_basic::Floor)
+                {
+                    continue;
+                }
+
+                if (Maps::getTileOccupancy(c)->bits.building != tile_building_occ::None)
+                {
+                    continue;
+                }
+
+                free_tile = c;
+                break;
+            }
+        }
+
+        if (free_tile.isValid())
+        {
+            auto bld = Buildings::allocInstance(free_tile, building_type::Cage);
+            Buildings::setSize(bld, df::coord(1, 1, 1));
+
+            std::vector<df::item*> cage_item;
+            cage_item.push_back(cage);
+            Buildings::constructWithItems(bld, cage_item);
+
+            reason << "waiting for cage to be secured to floor";
+            return false;
+        }
+
+        reason << "waiting for space in release zone";
+
+        return false;
+    }
+
+    // step 2: the cage has been secured in the "release zone". make sure we have two
+    // mechanisms and tell the dwarves to link the lever to the cage.
+    furniture cage_f;
+    cage_f.bld_id = cage_bld->id;
+    if (!link_lever(out, f, &cage_f, reason))
+    {
+        return false;
+    }
+
+    // step 3: the cage is linked to the lever. give it a pull. if all goes well,
+    // we'll end up freeing the task on the next iteration as the cage will be empty
+    // and left on the floor as an item.
+    pull_lever(out, f, reason);
+
+    // we could deconstruct the lever periodically to reclaim mechanisms, but the
+    // potential humor of having a lever with hundreds of mechanisms outweighs the
+    // cost of a few extra boulders being needed in most forts.
+    return false;
+}
+
+void Plan::add_task(task_type::type type, room *r, furniture *f, int32_t item_id)
 {
     auto & tasks = (type == task_type::furnish || type == task_type::check_furnish) ? tasks_furniture : tasks_generic;
     for (auto t : tasks)
     {
-        if (t->type == type && t->r == r && t->f == f)
+        if (t->type == type && t->r == r && t->f == f && t->item_id == item_id)
         {
             return;
         }
     }
-    tasks.push_back(new task(type, r, f));
+    tasks.push_back(new task(type, r, f, item_id));
 }
