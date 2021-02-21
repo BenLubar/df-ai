@@ -302,3 +302,21 @@ df::coord Plan::scan_river(color_ostream &)
 
     return invalid;
 }
+
+room *Plan::find_typed_corridor(color_ostream & out, corridor_type::type type, df::coord origin)
+{
+    auto start_room = ai.find_room_at(origin);
+    if (start_room)
+    {
+        if (start_room->type == room_type::corridor && start_room->corridor_type == type)
+        {
+            return start_room;
+        }
+
+        return nullptr;
+    }
+
+    // TODO
+    out << "[TODO] Failed to find corridor of type '" << type << "' for coordinate (" << origin.x << ", " << origin.y << ", " << origin.z << ")" << std::endl;
+    return nullptr;
+}

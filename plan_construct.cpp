@@ -344,9 +344,21 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         stocks_furniture_type = stock_item::coffin;
         break;
     case layout_type::door:
+    {
+        auto check_wall = [&](int16_t dx, int16_t dy) -> bool
+        {
+            auto tt = *Maps::getTileType(tgtile.x + dx, tgtile.y + dy, tgtile.z);
+            return ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall;
+        };
+        if (!check_wall(-1, 0) && !check_wall(1, 0) && !check_wall(0, -1) && !check_wall(0, 1))
+        {
+            reason << "need adjacent wall";
+            return false;
+        }
         building_type = building_type::Door;
         stocks_furniture_type = stock_item::door;
         break;
+    }
     case layout_type::floodgate:
         // require the floor to be smooth before we build a floodgate on it
         // because we can't smooth a floor under an open floodgate.
@@ -588,7 +600,7 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
 
     if (ctype == construction_type::Floor)
     {
-        if (sb == tiletype_shape_basic::Floor)
+        if (sb == tiletype_shape_basic::Floor && ENUM_ATTR(tiletype, shape, tt) != tiletype_shape::SAPLING)
         {
             return true;
         }
@@ -599,13 +611,137 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
         }
     }
 
+    switch (ctype)
+    {
+    case construction_type::TrackN:
+        if (tt == tiletype::ConstructedFloorTrackN)
+            return true;
+        break;
+    case construction_type::TrackS:
+        if (tt == tiletype::ConstructedFloorTrackS)
+            return true;
+        break;
+    case construction_type::TrackE:
+        if (tt == tiletype::ConstructedFloorTrackE)
+            return true;
+        break;
+    case construction_type::TrackW:
+        if (tt == tiletype::ConstructedFloorTrackW)
+            return true;
+        break;
+    case construction_type::TrackNS:
+        if (tt == tiletype::ConstructedFloorTrackNS)
+            return true;
+        break;
+    case construction_type::TrackNE:
+        if (tt == tiletype::ConstructedFloorTrackNE)
+            return true;
+        break;
+    case construction_type::TrackNW:
+        if (tt == tiletype::ConstructedFloorTrackNW)
+            return true;
+        break;
+    case construction_type::TrackSE:
+        if (tt == tiletype::ConstructedFloorTrackSE)
+            return true;
+        break;
+    case construction_type::TrackSW:
+        if (tt == tiletype::ConstructedFloorTrackSW)
+            return true;
+        break;
+    case construction_type::TrackEW:
+        if (tt == tiletype::ConstructedFloorTrackEW)
+            return true;
+        break;
+    case construction_type::TrackNSE:
+        if (tt == tiletype::ConstructedFloorTrackNSE)
+            return true;
+        break;
+    case construction_type::TrackNSW:
+        if (tt == tiletype::ConstructedFloorTrackNSW)
+            return true;
+        break;
+    case construction_type::TrackNEW:
+        if (tt == tiletype::ConstructedFloorTrackNEW)
+            return true;
+        break;
+    case construction_type::TrackSEW:
+        if (tt == tiletype::ConstructedFloorTrackSEW)
+            return true;
+        break;
+    case construction_type::TrackNSEW:
+        if (tt == tiletype::ConstructedFloorTrackNSEW)
+            return true;
+        break;
+    case construction_type::TrackRampN:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampS:
+        if (tt == tiletype::ConstructedRampTrackS)
+            return true;
+        break;
+    case construction_type::TrackRampE:
+        if (tt == tiletype::ConstructedRampTrackE)
+            return true;
+        break;
+    case construction_type::TrackRampW:
+        if (tt == tiletype::ConstructedRampTrackW)
+            return true;
+        break;
+    case construction_type::TrackRampNS:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampNE:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampNW:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampSE:
+        if (tt == tiletype::ConstructedRampTrackS)
+            return true;
+        break;
+    case construction_type::TrackRampSW:
+        if (tt == tiletype::ConstructedRampTrackS)
+            return true;
+        break;
+    case construction_type::TrackRampEW:
+        if (tt == tiletype::ConstructedRampTrackE)
+            return true;
+        break;
+    case construction_type::TrackRampNSE:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampNSW:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampNEW:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    case construction_type::TrackRampSEW:
+        if (tt == tiletype::ConstructedRampTrackS)
+            return true;
+        break;
+    case construction_type::TrackRampNSEW:
+        if (tt == tiletype::ConstructedRampTrackN)
+            return true;
+        break;
+    }
+
     // fall through = must build actual construction
 
     if (ENUM_ATTR(tiletype, material, tt) == tiletype_material::CONSTRUCTION)
     {
         // remove existing invalid construction
         AI::dig_tile(t);
-        reason << "have " << enum_item_key(sb) << " construction but want " << enum_item_key(ctype) << " construction";
+        reason << "have " << enum_item_key(tt) << " but want " << enum_item_key(ctype) << " construction";
         return false;
     }
 

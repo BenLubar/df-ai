@@ -99,6 +99,7 @@ END_ENUM(nobleroom, type) \
 \
 BEGIN_ENUM(outpost, type) \
     ENUM_ITEM(cavern) \
+    ENUM_ITEM(mining) \
 END_ENUM(outpost, type) \
 \
 BEGIN_ENUM(location, type) \

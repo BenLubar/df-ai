@@ -89,7 +89,8 @@
 	"outpost_type": {
 		"id": "#outpost_type",
 		"enum": [
-			"cavern"
+			"cavern",
+			"mining"
 		]
 	},
 	"location_type": {

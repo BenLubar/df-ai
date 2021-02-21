@@ -443,6 +443,7 @@ int32_t room::distance_to(const room *other) const
     std::set<const room *> seen;
     seen.insert(other);
 
+    int32_t max_distance = distance;
     distance = 0;
     current_level = other->accesspath;
 
@@ -468,6 +469,6 @@ int32_t room::distance_to(const room *other) const
         next_level.clear();
     }
 
-    // not connected (somehow)
-    return 0x10000;
+    // not connected
+    return 0x10000 + distance + max_distance;
 }

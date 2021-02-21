@@ -632,12 +632,15 @@ void room_blueprint::build_cache()
             }
             if (f->dig == tile_dig_designation::Channel)
             {
-                interior.insert(r->min + f->pos + df::coord(0, 0, -1));
-                for (int16_t dx = -1; dx <= 1; dx++)
+                if (!r->exits.count(f->pos + df::coord(0, 0, -1)))
                 {
-                    for (int16_t dy = -1; dy <= 1; dy++)
+                    interior.insert(r->min + f->pos + df::coord(0, 0, -1));
+                    for (int16_t dx = -1; dx <= 1; dx++)
                     {
-                        no_room.insert(r->min + f->pos + df::coord(dx, dy, -1));
+                        for (int16_t dy = -1; dy <= 1; dy++)
+                        {
+                            no_room.insert(r->min + f->pos + df::coord(dx, dy, -1));
+                        }
                     }
                 }
             }

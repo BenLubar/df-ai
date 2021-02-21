@@ -508,13 +508,13 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
         digroom(out, *it, immediate);
     }
 
-    for (auto it = r->layout.begin(); it != r->layout.end(); it++)
+    for (auto f : r->layout)
     {
-        furniture *f = *it;
-        if (f->type == layout_type::none || f->type == layout_type::floodgate)
+        if (f->type == layout_type::floodgate)
+        {
             continue;
-        if (f->dig != tile_dig_designation::Default)
-            continue;
+        }
+
         add_task(task_type::furnish, r, f);
     }
 
