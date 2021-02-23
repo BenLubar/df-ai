@@ -110,6 +110,45 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
         }
     }
 
+    if (data.isMember("count_as"))
+    {
+        Json::Value value = data["count_as"];
+        data.removeMember("count_as");
+        if (!value.isObject())
+        {
+            error = "count_as has wrong type (should be object)";
+            return false;
+        }
+
+        auto count_as_names = value.getMemberNames();
+        for (auto & count_as_name : count_as_names)
+        {
+            if (std::count(count_as_name.begin(), count_as_name.end(), '/') != 2)
+            {
+                error = "count_as " + count_as_name + " has wrong format (should contain exactly two slashes)";
+                return false;
+            }
+
+            Json::Value & count_as_values = value[count_as_name];
+            if (!count_as_values.isObject())
+            {
+                error = "count_as " + count_as_name + " has wrong type (should be object)";
+                return false;
+            }
+
+            for (auto & count_as_key : count_as_values.getMemberNames())
+            {
+                if (!count_as_values[count_as_key].isIntegral() || count_as_values[count_as_key].asInt() <= 0)
+                {
+                    error = "count_as " + count_as_name + " " + count_as_key + " is invalid (must be positive integer)";
+                    return false;
+                }
+
+                count_as[count_as_name][count_as_key] = size_t(count_as_values[count_as_key].asInt());
+            }
+        }
+    }
+
     if (data.isMember("limits"))
     {
         Json::Value value = data["limits"];
@@ -196,7 +235,7 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
 
     if (data.isMember("variables"))
     {
-        Json::Value vars = data["vaiables"];
+        Json::Value vars = data["variables"];
         data.removeMember("variables");
         if (!vars.isObject())
         {

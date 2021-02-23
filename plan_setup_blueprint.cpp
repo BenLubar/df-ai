@@ -142,6 +142,29 @@ bool PlanSetup::add(const room_blueprint & rb, room_base::roomindex_t parent, st
     return add(rb_parent, error, exit_location);
 }
 
+void PlanSetup::add_count(const room_blueprint & rb, const blueprint_plan_template & plan, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts)
+{
+    auto count_as = plan.count_as.find(rb.type + "/" + rb.tmpl_name + "/" + rb.name);
+    if (count_as != plan.count_as.end())
+    {
+        for (auto& ca : count_as->second)
+        {
+            size_t slash = ca.first.find('/');
+            if (slash == std::string::npos)
+            {
+                counts[ca.first] += ca.second;
+            }
+            else
+            {
+                instance_counts[ca.first.substr(0, slash)][ca.first.substr(slash + 1)] += ca.second;
+            }
+        }
+    }
+
+    counts[rb.type]++;
+    instance_counts[rb.type][rb.name]++;
+}
+
 bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_template & plan)
 {
     std::map<std::string, size_t> counts;
@@ -606,8 +629,7 @@ bool PlanSetup::try_add_room_outdoor_shared(const room_blueprint & rb, std::map<
         std::string error;
         if (add(room_blueprint(rb, pos, plan.context), error))
         {
-            counts[rb.type]++;
-            instance_counts[rb.type][rb.name]++;
+            add_count(rb, plan, counts, instance_counts);
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(pos) << ".");
             LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
             return true;
@@ -652,8 +674,7 @@ bool PlanSetup::try_add_room_connect(const room_blueprint & rb, std::map<std::st
         std::string error;
         if (add(room_blueprint(rb, std::get<1>(chosen), std::get<2>(chosen)), std::get<0>(chosen), error, std::get<1>(chosen)))
         {
-            counts[rb.type]++;
-            instance_counts[rb.type][rb.name]++;
+            add_count(rb, plan, counts, instance_counts);
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(std::get<1>(chosen)) << ".");
             LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
             return true;

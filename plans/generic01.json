@@ -34,6 +34,12 @@
 		"generic01_pasture",
 		"generic01_pitting_tower"
 	],
+	"count_as": {
+		"generic01_dormatory/generic/generic": {
+			"generic01_bedroom": 30,
+			"generic01_bedrooms": 4
+		}
+	},
 	"limits": {
 		"generic01_barracks": [4, 8],
 		"generic01_bedroom": [120, 300],

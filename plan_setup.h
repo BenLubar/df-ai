@@ -56,6 +56,7 @@ private:
 
     bool add(const room_blueprint & rb, std::string & error, df::coord exit_location = df::coord());
     bool add(const room_blueprint & rb, room_base::roomindex_t parent, std::string & error, df::coord exit_location = df::coord());
+    void add_count(const room_blueprint & rb, const blueprint_plan_template & plan, std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts);
     bool build(const blueprints_t & blueprints, const blueprint_plan_template & plan);
     void place_rooms(std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprints_t & blueprints, const blueprint_plan_template & plan, find_fn find, try_add_fn try_add);
     void clear();

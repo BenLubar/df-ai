@@ -181,6 +181,7 @@ struct blueprint_plan_template
     std::string start;
     std::set<std::string> outdoor;
     std::map<std::string, std::set<std::string>> tags;
+    std::map<std::string, std::map<std::string, size_t>> count_as;
     std::map<std::string, std::pair<size_t, size_t>> limits;
     std::map<std::string, std::map<std::string, std::pair<size_t, size_t>>> instance_limits;
     variable_string::context_t context;
