@@ -1,0 +1,613 @@
+{
+	"$schema": "https://ben.lubar.me/df-ai-schemas/room-template.json",
+	"f": [
+		{
+			"type": "door",
+			"x": -1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": -1,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 4,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 6,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 8,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 10,
+			"y": 0,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 1,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 3,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 5,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 7,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 9,
+			"y": 1,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 4,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 6,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 8,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 10,
+			"y": 2,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 1,
+			"y": 3,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 3,
+			"y": 3,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 5,
+			"y": 3,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 7,
+			"y": 3,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 9,
+			"y": 3,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 4,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 6,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 8,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 10,
+			"y": 4,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 1,
+			"y": 5,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 3,
+			"y": 5,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 5,
+			"y": 5,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 7,
+			"y": 5,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 9,
+			"y": 5,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 0,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 2,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 4,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 6,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 8,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		},
+		{
+			"type": "bed",
+			"x": 10,
+			"y": 6,
+			"z": 0,
+			"makeroom": true
+		}
+	],
+	"r": [
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"layout": [0, 1, 2],
+			"exits": [
+				["generic01_corridor_any", -1, 5, 0],
+				["generic01_corridor_any", 1, -1, 0],
+				["generic01_corridor_any", 5, -1, 0],
+				["generic01_corridor_any", 9, -1, 0],
+				["generic01_corridor_any", 11, 1, 0],
+				["generic01_corridor_any", 11, 5, 0],
+				["generic01_corridor_any", 9, 7, 0],
+				["generic01_corridor_any", 5, 1, 0],
+				["generic01_corridor_any", 1, 1, 0]
+			]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [3]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [4]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [5]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [6]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [7]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [8]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [9]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [10]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [11]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [12]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [13]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [14]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [15]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [16]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [17]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [18]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [19]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [20]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [21]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [22]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [23]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [24]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [25]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [26]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [27]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [28]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [29]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [30]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [31]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [32]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [33]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [34]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [35]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [36]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [37]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [38]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [39]
+		},
+		{
+			"type": "bedroom",
+			"min": [1, -1, 0],
+			"max": [12, 5, 0],
+			"build_when_accessible": true,
+			"accesspath": [0],
+			"layout": [40]
+		}
+	]
+}
