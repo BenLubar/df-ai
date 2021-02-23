@@ -87,6 +87,7 @@ static inline constexpr const char *dfai_debug_basename(const char *lastSlash, c
         { \
             /* in debug builds, write to console */ \
             Core::getInstance().getConsole() << "[DEBUG:" #category ":" #level << "] " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << message << std::endl; \
+            dfai_debug_log() << "[DEBUG:" #category ":" #level << "] " << dfai_debug_basename(__FILE__, __FILE__) << " line " << __LINE__ << ": " << message << std::endl; \
         } \
         if (BOOST_UNLIKELY(debug_category_config.category == 666)) \
         { \
