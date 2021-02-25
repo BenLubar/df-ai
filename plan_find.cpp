@@ -303,20 +303,84 @@ df::coord Plan::scan_river(color_ostream &)
     return invalid;
 }
 
-room *Plan::find_typed_corridor(color_ostream & out, corridor_type::type type, df::coord origin)
+room *Plan::find_typed_corridor(color_ostream & out, corridor_type::type type, df::coord origin, const std::set<room *> & no_attach_corridors)
 {
-    auto start_room = ai.find_room_at(origin);
-    if (start_room)
+    std::map<df::coord, df::coord> source_tile;
+    std::vector<df::coord> check_0, check_1, check_2;
+
+    auto queue_direction = [&](df::coord c0, int16_t dx, int16_t dy, int16_t dz, df::coord prev)
     {
-        if (start_room->type == room_type::corridor && start_room->corridor_type == type)
+        df::coord c1 = c0;
+        c1.x += dx;
+        c1.y += dy;
+        c1.z += dz;
+
+        if (!map_tile_in_rock(c1) || source_tile.count(c1))
         {
-            return start_room;
+            return;
         }
 
-        return nullptr;
+        source_tile[c1] = prev;
+        (c0 == prev ? check_2 : check_1).push_back(c1);
+    };
+
+    check_0.push_back(origin);
+
+    while (!check_0.empty() || !check_1.empty() || !check_2.empty())
+    {
+        for (df::coord cur : check_0)
+        {
+            df::coord prev = source_tile.count(cur) ? source_tile.at(cur) : cur;
+
+            room *r = ai.find_room_at(cur);
+            if (!r || (no_attach_corridors.count(r) && (!r->include(cur) || cur == origin)))
+            {
+                queue_direction(cur, -1, 0, 0, prev.y == cur.y && prev.z == cur.z ? prev : cur);
+                queue_direction(cur, 1, 0, 0, prev.y == cur.y && prev.z == cur.z ? prev : cur);
+                queue_direction(cur, 0, -1, 0, prev.x == cur.x && prev.z == cur.z ? prev : cur);
+                queue_direction(cur, 0, 1, 0, prev.x == cur.x && prev.z == cur.z ? prev : cur);
+                queue_direction(cur, 0, 0, -1, prev.x == cur.x && prev.y == cur.y ? prev : cur);
+                queue_direction(cur, 0, 0, 1, prev.x == cur.x && prev.y == cur.y ? prev : cur);
+
+                continue;
+            }
+
+            if (r->type != room_type::corridor || r->corridor_type != type || no_attach_corridors.count(r))
+            {
+                continue;
+            }
+
+            if (r->include(origin))
+            {
+                return r;
+            }
+
+            do
+            {
+                room *r2 = new room(
+                    type,
+                    df::coord(std::min(cur.x, prev.x), std::min(cur.y, prev.y), std::min(cur.z, prev.z)),
+                    df::coord(std::max(cur.x, prev.x), std::max(cur.y, prev.y), std::max(cur.z, prev.z))
+                );
+                r2->accesspath.push_back(r);
+                rooms_and_corridors.push_back(r2);
+                r = r2;
+
+                cur = prev;
+                if (source_tile.count(cur))
+                {
+                    prev = source_tile.at(cur);
+                }
+            }
+            while (prev != cur);
+
+            return r;
+        }
+
+        check_0 = std::move(check_1);
+        check_1 = std::move(check_2);
     }
 
-    // TODO
     out << "[TODO] Failed to find corridor of type '" << type << "' for coordinate (" << origin.x << ", " << origin.y << ", " << origin.z << ")" << std::endl;
     return nullptr;
 }

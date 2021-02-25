@@ -683,72 +683,11 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
 
     if (need_shaft)
     {
-        // TODO minecarts?
-
-        // avoid giant vertical runs: slalom x+-1 every z%16
-
-        df::coord vert = fort_entrance->pos();
-        if (b.y > vert.y)
-        {
-            vert = df::coord(vert.x, vert.y + 30, b.z); // XXX 30...
-        }
-        else
-        {
-            vert = df::coord(vert.x, vert.y - 30, b.z);
-        }
-
-        if (!Maps::isValidTilePos(vert))
-        {
-            vert.y = fort_entrance->pos().y * 2 - vert.y;
-        }
-        DFAI_ASSERT_VALID_TILE(vert, "mineshaft vertical location");
-
-        if (vert.z % 32 > 16)
-            vert.x++; // XXX check this
-
         df::coord t0{ uint16_t(b.x + (minx + maxx) / 2), uint16_t(b.y + (miny + maxy) / 2), uint16_t(b.z) };
-        while (t0.y != vert.y)
+        room* r = find_typed_corridor(out, corridor_type::veinshaft, t0);
+        if (r)
         {
-            AI::dig_tile(t0, tile_dig_designation::Default);
-            q.push_back(std::make_pair(t0, tile_dig_designation::Default));
-            if (t0.y > vert.y)
-                t0.y--;
-            else
-                t0.y++;
-        }
-        while (t0.x != vert.x)
-        {
-            AI::dig_tile(t0, tile_dig_designation::Default);
-            q.push_back(std::make_pair(t0, tile_dig_designation::Default));
-            if (t0.x > vert.x)
-                t0.x--;
-            else
-                t0.x++;
-        }
-        while (Maps::getTileDesignation(t0)->bits.hidden)
-        {
-            if (t0.z % 16 == 0)
-            {
-                AI::dig_tile(t0, tile_dig_designation::DownStair);
-                q.push_back(std::make_pair(t0, tile_dig_designation::DownStair));
-                if (t0.z % 32 >= 16)
-                    t0.x++;
-                else
-                    t0.x--;
-                AI::dig_tile(t0, tile_dig_designation::UpStair);
-                q.push_back(std::make_pair(t0, tile_dig_designation::UpStair));
-            }
-            else
-            {
-                AI::dig_tile(t0, tile_dig_designation::UpDownStair);
-                q.push_back(std::make_pair(t0, tile_dig_designation::UpDownStair));
-            }
-            t0.z++;
-        }
-        if (!ENUM_ATTR(tiletype_shape, passable_low, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t0))) && Maps::getTileDesignation(t0)->bits.dig == tile_dig_designation::No)
-        {
-            AI::dig_tile(t0, tile_dig_designation::DownStair);
-            q.push_back(std::make_pair(t0, tile_dig_designation::DownStair));
+            categorize_all();
         }
     }
 
@@ -1494,10 +1433,13 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
 
     room *r = new room(outpost_type::cavern, target, target);
 
+    std::set<room *> corridors;
+
     if (wall.x != target.x)
     {
         room *cor = new room(corridor_type::outpost, df::coord(wall.x, wall.y, wall.z), df::coord(target.x, wall.y, wall.z));
         rooms_and_corridors.push_back(cor);
+        corridors.insert(cor);
         r->accesspath.push_back(cor);
     }
 
@@ -1505,17 +1447,25 @@ command_result Plan::setup_blueprint_caverns(color_ostream & out)
     {
         room *cor = new room(corridor_type::outpost, df::coord(target.x, wall.y, wall.z), df::coord(target.x, target.y, wall.z));
         rooms_and_corridors.push_back(cor);
+        corridors.insert(cor);
         r->accesspath.push_back(cor);
     }
 
-    std::vector<room *> up = find_corridor_tosurface(out, corridor_type::outpost, wall);
-    r->accesspath.push_back(up.at(0));
+    rooms_and_corridors.push_back(r);
+    categorize_all();
+
+    room *up = find_typed_corridor(out, corridor_type::outpost, wall, corridors);
+    if (!up)
+    {
+        return CR_FAILURE;
+    }
+
+    r->accesspath.push_back(up);
+    categorize_all();
 
     ai.debug(out, stl_sprintf("outpost: wall (%d, %d, %d)", wall.x, wall.y, wall.z));
     ai.debug(out, stl_sprintf("outpost: target (%d, %d, %d)", target.x, target.y, target.z));
-    ai.debug(out, stl_sprintf("outpost: up (%d, %d, %d)", up.back()->max.x, up.back()->max.y, up.back()->max.z));
-
-    rooms_and_corridors.push_back(r);
+    ai.debug(out, stl_sprintf("outpost: up (%d, %d, %d)", up->max.x, up->max.y, up->max.z));
 
     return CR_OK;
 }

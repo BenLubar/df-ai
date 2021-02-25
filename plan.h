@@ -192,7 +192,7 @@ public:
     command_result setup_outdoor_gathering_zones(color_ostream & out);
 
     std::vector<room *> find_corridor_tosurface(color_ostream & out, corridor_type::type type, df::coord origin);
-    room *find_typed_corridor(color_ostream & out, corridor_type::type type, df::coord origin);
+    room *find_typed_corridor(color_ostream & out, corridor_type::type type, df::coord origin, const std::set<room *> & no_attach_corridors = std::set<room *>());
 
     bool map_tile_in_rock(df::coord tile);
     bool map_tile_nocavern(df::coord tile);
