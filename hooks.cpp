@@ -32,10 +32,9 @@ REQUIRE_GLOBAL(gview);
 REQUIRE_GLOBAL(init);
 REQUIRE_GLOBAL(ui);
 
-DFhackCExport uint32_t SDL_GetTicks(void);
-DFhackCExport int SDL_SemTryWait(void *sem);
-DFhackCExport uint32_t SDL_ThreadID(void);
-DFhackCExport void SDL_Quit(void);
+extern "C" DFHACK_IMPORT uint32_t SDL_GetTicks(void);
+extern "C" DFHACK_IMPORT int SDL_SemTryWait(void *sem);
+extern "C" DFHACK_IMPORT uint32_t SDL_ThreadID(void);
 
 static volatile uint32_t lockstep_tick_count = 0;
 volatile bool lockstep_hooked = false;
