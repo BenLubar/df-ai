@@ -543,7 +543,7 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
     return true;
 }
 
-bool Plan::monitor_room_value(color_ostream &, room *r, std::ostream & reason)
+bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reason)
 {
     if (r->required_value <= 0)
     {
@@ -572,8 +572,22 @@ bool Plan::monitor_room_value(color_ostream &, room *r, std::ostream & reason)
         return true;
     }
 
-    // TODO: smooth/engrave, build statues, etc.
-    reason << "room value is " << (r->required_value - value) << " too low (TODO)";
+    reason << "room value is " << (r->required_value - value) << " too low";
+
+    if (!smooth_room(out, r, false))
+    {
+        reason << " (smoothing)";
+    }
+    else if (!smooth_room(out, r, true))
+    {
+        reason << " (engraving)";
+    }
+    else
+    {
+        // TODO: build statues, etc.
+        reason << " (TODO)";
+    }
+
     return false;
 }
 
