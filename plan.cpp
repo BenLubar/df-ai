@@ -1238,7 +1238,7 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
         }
         break;
     case tile_dig_designation::Default:
-        if (ts == tiletype_shape::BOULDER || ts == tiletype_shape::PEBBLES)
+        if (ts == tiletype_shape::BOULDER || ts == tiletype_shape::PEBBLES || ts == tiletype_shape::BROOK_TOP)
         {
             // do nothing
         }
