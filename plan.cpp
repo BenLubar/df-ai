@@ -1242,9 +1242,9 @@ void Plan::fixup_open_tile(color_ostream & out, room *r, df::coord t, df::tile_d
         {
             // do nothing
         }
-        else if (ts == tiletype_shape::SHRUB)
+        else if (ts == tiletype_shape::SHRUB || ts == tiletype_shape::RAMP)
         {
-            // harvest
+            // harvest/remove
             AI::dig_tile(t, tile_dig_designation::Default);
         }
         else if (ts == tiletype_shape::SAPLING && r->type == room_type::pasture)
