@@ -219,7 +219,6 @@ command_result AI::onupdate_register(color_ostream & out)
         res = camera.onupdate_register(out);
     if (res == CR_OK)
     {
-        status_onupdate = events.onupdate_register("df-ai status", 3 * 28 * 1200, 3 * 28 * 1200, [this](color_ostream & out) { debug(out, status()); });
         time_paused = 0;
         pause_onupdate = events.onupdate_register_once("df-ai unpause", [this](color_ostream &) -> bool
         {
