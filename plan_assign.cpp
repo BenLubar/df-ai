@@ -76,7 +76,7 @@ void Plan::getbedroom(color_ostream & out, int32_t id)
     {
         wantdig(out, r, -1);
         set_owner(out, r, id);
-        ai.debug(out, "assign " + AI::describe_room(r), r->pos());
+        ai.debug(out, "assign " + AI::describe_room(r));
         if (r->status == room_status::finished)
             furnish_room(out, r);
     }
@@ -340,7 +340,7 @@ void Plan::freebedroom(color_ostream & out, int32_t id)
 {
     if (room *r = ai.find_room(room_type::bedroom, [id](room *r_) -> bool { return r_->owner == id; }))
     {
-        ai.debug(out, "free " + AI::describe_room(r), r->pos());
+        ai.debug(out, "free " + AI::describe_room(r));
         set_owner(out, r, -1);
         for (auto it = r->layout.begin(); it != r->layout.end(); it++)
         {
@@ -414,7 +414,7 @@ void Plan::freecommonrooms(color_ostream & out, int32_t id, room_type::type subt
 
                         if (r->squad_id != -1)
                         {
-                            ai.debug(out, stl_sprintf("squad %d free %s", r->squad_id, AI::describe_room(r).c_str()), r->pos());
+                            ai.debug(out, stl_sprintf("squad %d free %s", r->squad_id, AI::describe_room(r).c_str()));
                             r->squad_id = -1;
                         }
                     }

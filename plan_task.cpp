@@ -451,7 +451,7 @@ void Plan::checkroom(color_ostream & out, room *r)
             {
                 std::ostringstream str;
                 str << "fix furniture " << f->type << " in " << AI::describe_room(r);
-                ai.debug(out, str.str(), t);
+                ai.debug(out, str.str());
                 f->bld_id = -1;
 
                 add_task(task_type::furnish, r, f);
@@ -465,7 +465,7 @@ void Plan::checkroom(color_ostream & out, room *r)
         // tantrumed building
         if (r->bld_id != -1 && !r->dfbuilding())
         {
-            ai.debug(out, "rebuild " + AI::describe_room(r), r->pos());
+            ai.debug(out, "rebuild " + AI::describe_room(r));
             r->bld_id = -1;
             construct_room(out, r);
         }

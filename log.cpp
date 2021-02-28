@@ -269,12 +269,6 @@ void AI::write_lockstep(std::string str)
     }
 }
 
-void AI::debug(color_ostream & out, const std::string & str, df::coord announce)
-{
-    Gui::showZoomAnnouncement(df::announcement_type(0), announce, "AI: " + str, 7, false);
-    debug(out, str);
-}
-
 void AI::debug(color_ostream & out, const std::string & str)
 {
     std::string ts = timestamp();
