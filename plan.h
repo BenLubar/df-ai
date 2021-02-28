@@ -105,7 +105,6 @@ public:
     void del_citizen(color_ostream & out, int32_t uid);
 
     bool checkidle(color_ostream & out, std::ostream & reason);
-    void idleidle(color_ostream & out);
 
     void checkrooms(color_ostream & out);
     void checkroom(color_ostream & out, room *r);

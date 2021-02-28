@@ -260,16 +260,6 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
         }
     }
 
-    if (last_idle_year != *cur_year)
-    {
-        if (last_idle_year != -1)
-        {
-            idleidle(out);
-            reason << "smoothing fortress; ";
-        }
-        last_idle_year = *cur_year;
-    }
-
     if (!priorities.empty())
     {
         for (auto & priority : priorities)
@@ -312,73 +302,6 @@ bool Plan::checkidle(color_ostream & out, std::ostream & reason)
 
     reason << "no priority list!";
     return false;
-}
-
-static bool last_idleidle_nothing = false;
-static std::vector<room *> idleidle_tab;
-
-void Plan::idleidle(color_ostream & out)
-{
-    if (!idleidle_tab.empty())
-    {
-        return;
-    }
-
-    idleidle_tab.clear();
-    for (auto r : rooms_and_corridors)
-    {
-        if (r->status != room_status::plan && r->status != room_status::dig && !r->temporary &&
-            (r->type == room_type::nobleroom ||
-                r->type == room_type::bedroom ||
-                r->type == room_type::dininghall ||
-                r->type == room_type::cemetery ||
-                r->type == room_type::infirmary ||
-                r->type == room_type::barracks ||
-                r->type == room_type::location ||
-                r->type == room_type::stockpile))
-            idleidle_tab.push_back(r);
-    }
-    for (auto r : room_category[room_type::corridor])
-    {
-        if (r->status != room_status::plan && r->status != room_status::dig && r->corridor_type == corridor_type::corridor && !r->outdoor)
-            idleidle_tab.push_back(r);
-    }
-    if (idleidle_tab.empty())
-    {
-        last_idleidle_nothing = false;
-        return;
-    }
-
-    bool engrave = last_idleidle_nothing;
-    last_idleidle_nothing = true;
-
-    if (engrave)
-    {
-        ai.debug(out, "engrave fort");
-    }
-    else
-    {
-        ai.debug(out, "smooth fort");
-    }
-
-    events.onupdate_register_once("df-ai plan idleidle", 4, [this, engrave](color_ostream & out) -> bool
-    {
-        if (!Core::getInstance().isMapLoaded())
-        {
-            idleidle_tab.clear();
-            last_idleidle_nothing = false;
-        }
-        if (idleidle_tab.empty())
-        {
-            return true;
-        }
-        if (smooth_room(out, idleidle_tab.back(), engrave))
-        {
-            last_idleidle_nothing = false;
-        }
-        idleidle_tab.pop_back();
-        return false;
-    });
 }
 
 void Plan::checkrooms(color_ostream & out)
