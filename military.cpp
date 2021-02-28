@@ -51,7 +51,7 @@ bool AI::tag_enemies(color_ostream & out)
             {
                 found = pop.military_all_squads_attack_unit(out, u, "antagonist: night creature") || found;
             }
-            else if (Units::isUndead(u))
+            else if (Units::isOpposedToLife(u))
             {
                 found = pop.military_random_squad_attack_unit(out, u, "undead") || found;
             }
