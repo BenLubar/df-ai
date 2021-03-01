@@ -65,7 +65,7 @@ Watch::Watch()
     Needed[stock_item::coffin] = 2;
     Needed[stock_item::crutch] = 1;
     Needed[stock_item::door] = 4;
-    Needed[stock_item::drink] = 20;
+    Needed[stock_item::drink] = 50;
     Needed[stock_item::dye] = 10;
     Needed[stock_item::dye_seeds] = 10;
     Needed[stock_item::flask] = 2;

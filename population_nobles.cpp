@@ -240,7 +240,6 @@ void Population::update_nobles(color_ostream & out)
         doctor->status.labors[unit_labor::BONE_SETTING] = true;
         doctor->status.labors[unit_labor::SUTURING] = true;
         doctor->status.labors[unit_labor::DRESSING_WOUNDS] = true;
-        doctor->status.labors[unit_labor::FEED_WATER_CIVILIANS] = true;
     }
 
 #define WANT_POS(pos) \
