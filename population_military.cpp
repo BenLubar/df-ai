@@ -678,11 +678,11 @@ void Population::update_military(color_ostream & out)
         }
     }
 
-    if (need_pick && ai.stocks.count_free.at(stock_item::pick) != 0)
+    if (need_pick && ai.stocks.count_free.count(stock_item::pick) && ai.stocks.count_free.at(stock_item::pick) != 0)
     {
         need_pick = false;
     }
-    if (need_axe && ai.stocks.count_free.at(stock_item::axe) != 0)
+    if (need_axe && ai.stocks.count_free.count(stock_item::axe) && ai.stocks.count_free.at(stock_item::axe) != 0)
     {
         need_axe = false;
     }

@@ -76,7 +76,7 @@ command_result Population::startup(color_ostream &)
 
 command_result Population::onupdate_register(color_ostream &)
 {
-    onupdate_handle = events.onupdate_register("df-ai pop", 360, 10, [this](color_ostream & out) { update(out); });
+    onupdate_handle = events.onupdate_register("df-ai pop", 25, 10, [this](color_ostream & out) { update(out); });
     deathwatch_handle = events.onupdate_register("df-ai pop deathwatch", 1, 1, [this](color_ostream & out) { deathwatch(out); });
     return CR_OK;
 }
