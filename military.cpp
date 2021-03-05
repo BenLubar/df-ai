@@ -4,17 +4,40 @@
 #include "df/activity_entry.h"
 #include "df/activity_event_conflictst.h"
 #include "df/creature_raw.h"
+#include "df/historical_entity.h"
 #include "df/job.h"
+#include "df/squad.h"
+#include "df/squad_order_kill_listst.h"
+#include "df/ui.h"
 #include "df/world.h"
 
 #include "modules/Maps.h"
 #include "modules/Units.h"
 
+REQUIRE_GLOBAL(ui);
 REQUIRE_GLOBAL(world);
 
 bool AI::tag_enemies(color_ostream & out)
 {
     bool found = false;
+    for (auto id : ui->main.fortress_entity->squads)
+    {
+        auto squad = df::squad::find(id);
+        for (auto order : squad->orders)
+        {
+            if (auto kill = virtual_cast<df::squad_order_kill_listst>(order))
+            {
+                for (auto unit_id : kill->units)
+                {
+                    auto unit = df::unit::find(unit_id);
+                    if (unit && std::find(world->units.active.begin(), world->units.active.end(), unit) == world->units.active.end())
+                    {
+                        found = pop.military_cancel_attack_order(out, unit, "unit no longer active on map") || found;
+                    }
+                }
+            }
+        }
+    }
     for (auto it = world->units.active.rbegin(); it != world->units.active.rend(); it++)
     {
         df::unit *u = *it;
