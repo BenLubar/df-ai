@@ -32,10 +32,14 @@ REQUIRE_GLOBAL(world);
 
 Camera::Camera(AI & ai) :
     ai(ai),
+    ontick_handle(nullptr),
     onupdate_handle(nullptr),
     onstatechange_handle(nullptr),
     following(-1),
     following_prev(),
+    follow_unit(-1),
+    follow_item(-1),
+    follow_stop(true),
     movie_started_in_lockstep(false)
 {
 }
@@ -57,6 +61,7 @@ command_result Camera::onupdate_register(color_ostream &)
     {
         gps->display_frames = 1;
     }
+    ontick_handle = events.onupdate_register("df-ai camera (every tick)", 1, 1, [this](color_ostream& out) { update_tick(out); });
     onupdate_handle = events.onupdate_register("df-ai camera", 2000, 100, [this](color_ostream & out) { update(out); });
     onstatechange_handle = events.onstatechange_register("fps meter watcher", [this](color_ostream &, state_change_event mode)
     {
@@ -96,9 +101,29 @@ command_result Camera::onupdate_unregister(color_ostream &)
     {
         Gui::getCurViewscreen(true)->breakdown_level = interface_breakdown_types::QUIT;
     }
+    events.onupdate_unregister(ontick_handle);
     events.onupdate_unregister(onupdate_handle);
     events.onstatechange_unregister(onstatechange_handle);
     return CR_OK;
+}
+
+void Camera::update_tick(color_ostream &)
+{
+    if (ui->follow_unit != -1 || ui->follow_item != -1)
+    {
+        follow_stop = false;
+        follow_unit = ui->follow_unit;
+        follow_item = ui->follow_item;
+    }
+    else if (follow_stop)
+    {
+        follow_unit = -1;
+        follow_item = -1;
+    }
+    else
+    {
+        follow_stop = true;
+    }
 }
 
 void Camera::update(color_ostream &)
@@ -303,6 +328,8 @@ void AI::ignore_pause(int32_t x, int32_t y, int32_t z)
     if (!config.camera)
     {
         Gui::setViewCoords(x, y, z);
+        ui->follow_unit = camera.follow_unit;
+        ui->follow_item = camera.follow_item;
         return;
     }
 
