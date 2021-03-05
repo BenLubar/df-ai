@@ -1409,6 +1409,12 @@ public:
 protected:
     void Run(color_ostream &)
     {
+        if (r->dfbuilding())
+        {
+            // we already have a zone. don't double up.
+            return;
+        }
+
         ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
 
         int32_t start_x, start_y, start_z;
