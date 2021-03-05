@@ -99,6 +99,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
     }
     case stock_item::ammo_training:
     {
+        amount = (amount + 24) / 25;
         tmpl.job_type = job_type::MakeAmmo;
         tmpl.item_subtype = min_subtype_for_item(stock_item::ammo_training);
         tmpl.material_category.bits.wood = true;
