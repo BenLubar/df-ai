@@ -138,8 +138,8 @@
 	"priorities": [
 		{
 			"continue": true,
-			"action": "dig_immediate",
 			"name": "Food Stockpile",
+			"action": "dig_immediate",
 			"count": {
 				"match": {
 					"status_not": "plan",
@@ -296,6 +296,26 @@
 			}
 		},
 		{
+			"name": "Second Food Stockpile",
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "stockpile",
+					"stockpile_type": "food",
+					"level": 1,
+					"workshop_not": {}
+				},
+				"is": 1
+			},
+			"match": {
+				"type": "stockpile",
+				"stockpile_type": "food",
+				"level": 1,
+				"workshop_not": {}
+			}
+		},
+		{
 			"name": "Kitchen",
 			"action": "dig",
 			"count": {
@@ -366,21 +386,21 @@
 			}
 		},
 		{
-			"name": "Additional Mason's Workshops",
+			"name": "Additional Mason's Workshop",
 			"action": "dig",
 			"count": {
 				"match": {
 					"status_not": "plan",
 					"type": "workshop",
 					"workshop_type": "Masons",
-					"level": 2
+					"level": 1
 				},
-				"is": 0
+				"is": 1
 			},
 			"match": {
 				"type": "workshop",
 				"workshop_type": "Masons",
-				"level": 2
+				"level": 1
 			}
 		},
 		{
@@ -639,20 +659,20 @@
 			}
 		},
 		{
-			"name": "Remaining Level 1 Workshops",
-			"action": "dig",
-			"match": {
-				"type": ["furnace", "workshop"],
-				"level": 1
-			}
-		},
-		{
 			"name": "Level 1 Stockpiles",
 			"action": "dig",
 			"match": {
 				"type": "stockpile",
 				"level": 1,
 				"workshop_not": {}
+			}
+		},
+		{
+			"name": "Remaining Level 1 Workshops",
+			"action": "dig",
+			"match": {
+				"type": ["furnace", "workshop"],
+				"level": 1
 			}
 		},
 		{
