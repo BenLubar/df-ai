@@ -309,7 +309,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [3]
 		},
@@ -317,7 +316,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [4]
 		},
@@ -325,7 +323,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [5]
 		},
@@ -333,7 +330,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [6]
 		},
@@ -341,7 +337,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [7]
 		},
@@ -349,7 +344,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [8]
 		},
@@ -357,7 +351,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [9]
 		},
@@ -365,7 +358,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [10]
 		},
@@ -373,7 +365,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [11]
 		},
@@ -381,7 +372,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [12]
 		},
@@ -389,7 +379,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [13]
 		},
@@ -397,7 +386,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [14]
 		},
@@ -405,7 +393,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [15]
 		},
@@ -413,7 +400,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [16]
 		},
@@ -421,7 +407,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [17]
 		},
@@ -429,7 +414,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [18]
 		},
@@ -437,7 +421,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [19]
 		},
@@ -445,7 +428,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [20]
 		},
@@ -453,7 +435,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [21]
 		},
@@ -461,7 +442,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [22]
 		},
@@ -469,7 +449,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [23]
 		},
@@ -477,7 +456,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [24]
 		},
@@ -485,7 +463,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [25]
 		},
@@ -493,7 +470,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [26]
 		},
@@ -501,7 +477,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [27]
 		},
@@ -509,7 +484,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [28]
 		},
@@ -517,7 +491,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [29]
 		},
@@ -525,7 +498,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [30]
 		},
@@ -533,7 +505,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [31]
 		},
@@ -541,7 +512,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [32]
 		},
@@ -549,7 +519,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [33]
 		},
@@ -557,7 +526,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [34]
 		},
@@ -565,7 +533,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [35]
 		},
@@ -573,7 +540,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [36]
 		},
@@ -581,7 +547,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [37]
 		},
@@ -589,7 +554,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [38]
 		},
@@ -597,7 +561,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [39]
 		},
@@ -605,7 +568,6 @@
 			"type": "bedroom",
 			"min": [1, -1, 0],
 			"max": [11, 5, 0],
-			"build_when_accessible": true,
 			"accesspath": [0],
 			"layout": [40]
 		}

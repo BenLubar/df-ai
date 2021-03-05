@@ -233,7 +233,7 @@
 		{
 			"continue": true,
 			"name": "Garbage Dump",
-			"action": "dig_immediate",
+			"action": "dig",
 			"match": {
 				"type": "garbagedump"
 			}
