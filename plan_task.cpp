@@ -386,7 +386,7 @@ void Plan::checkroom(color_ostream & out, room *r)
             }
         }
         // tantrumed building
-        if (r->bld_id != -1 && !r->dfbuilding())
+        if ((r->bld_id != -1 || (r->type != room_type::corridor && r->type != room_type::outpost)) && !r->dfbuilding())
         {
             ai.debug(out, "rebuild " + AI::describe_room(r));
             r->bld_id = -1;
