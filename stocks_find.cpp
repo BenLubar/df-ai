@@ -343,6 +343,10 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::CRUTCH);
     }
+    case stock_item::die:
+    {
+        return find_item_helper_tool(tool_uses::GAMES_OF_CHANCE);
+    }
     case stock_item::door:
     {
         return find_item_info(items_other_id::DOOR);
@@ -599,9 +603,17 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_helper_tool(tool_uses::NEST_BOX);
     }
+    case stock_item::offering_place:
+    {
+        return find_item_helper_tool(tool_uses::PLACE_OFFERING);
+    }
     case stock_item::paper:
     {
         return find_item_info(items_other_id::SHEET);
+    }
+    case stock_item::pedestal:
+    {
+        return find_item_helper_tool(tool_uses::DISPLAY_OBJECT);
     }
     case stock_item::pick:
     {

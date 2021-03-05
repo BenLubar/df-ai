@@ -394,6 +394,14 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         building_type = building_type::NestBox;
         stocks_furniture_type = stock_item::nest_box;
         break;
+    case layout_type::offering_place:
+        building_type = building_type::OfferingPlace;
+        stocks_furniture_type = stock_item::offering_place;
+        break;
+    case layout_type::pedestal:
+        building_type = building_type::DisplayFurniture;
+        stocks_furniture_type = stock_item::pedestal;
+        break;
     case layout_type::restraint:
         building_type = building_type::Chain;
         stocks_furniture_type = stock_item::rope;

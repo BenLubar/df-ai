@@ -134,6 +134,8 @@ BEGIN_ENUM(layout, type) \
     ENUM_ITEM(hive) \
     ENUM_ITEM(lever) \
     ENUM_ITEM(nest_box) \
+    ENUM_ITEM(offering_place) \
+    ENUM_ITEM(pedestal) \
     ENUM_ITEM(restraint) \
     ENUM_ITEM(roller) \
     ENUM_ITEM(statue) \

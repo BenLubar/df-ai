@@ -63,6 +63,7 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(coal) \
     ENUM_ITEM(coffin) \
     ENUM_ITEM(crutch) \
+    ENUM_ITEM(die) \
     ENUM_ITEM(door) \
     ENUM_ITEM(drink) \
     ENUM_ITEM(drink_fruit) \
@@ -92,7 +93,9 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(mill_plant) \
     ENUM_ITEM(minecart) \
     ENUM_ITEM(nest_box) \
+    ENUM_ITEM(offering_place) \
     ENUM_ITEM(paper) \
+    ENUM_ITEM(pedestal) \
     ENUM_ITEM(pick) \
     ENUM_ITEM(pipe_section) \
     ENUM_ITEM(plaster_powder) \

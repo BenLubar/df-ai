@@ -64,6 +64,7 @@ Watch::Watch()
     Needed[stock_item::coal] = 12;
     Needed[stock_item::coffin] = 2;
     Needed[stock_item::crutch] = 1;
+    Needed[stock_item::die] = 3;
     Needed[stock_item::door] = 4;
     Needed[stock_item::drink] = 50;
     Needed[stock_item::dye] = 10;
@@ -81,7 +82,9 @@ Watch::Watch()
     Needed[stock_item::mechanism] = 4;
     Needed[stock_item::minecart] = 1;
     Needed[stock_item::nest_box] = 1;
+    Needed[stock_item::offering_place] = 1;
     Needed[stock_item::paper] = 5;
+    Needed[stock_item::pedestal] = 1;
     Needed[stock_item::pick] = 2;
     Needed[stock_item::pipe_section] = 1;
     Needed[stock_item::plaster_powder] = 1;

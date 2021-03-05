@@ -335,6 +335,13 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.material_category.bits.wood = 1;
         break;
     }
+    case stock_item::die:
+    {
+        tmpl.job_type = job_type::MakeTool;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::die);
+        tmpl.mat_type = 0;
+        break;
+    }
     case stock_item::door:
     {
         tmpl.job_type = job_type::ConstructDoor;
@@ -495,11 +502,25 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.mat_type = 0;
         break;
     }
+    case stock_item::offering_place:
+    {
+        tmpl.job_type = job_type::MakeTool;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::offering_place);
+        tmpl.mat_type = 0;
+        break;
+    }
     case stock_item::paper:
     {
         tmpl.job_type = job_type::CustomReaction;
         tmpl.reaction_name = "PRESS_PLANT_PAPER";
         input.push_back(stock_item::slurry);
+        break;
+    }
+    case stock_item::pedestal:
+    {
+        tmpl.job_type = job_type::MakeTool;
+        tmpl.item_subtype = min_subtype_for_item(stock_item::pedestal);
+        tmpl.mat_type = 0;
         break;
     }
     case stock_item::pick:
