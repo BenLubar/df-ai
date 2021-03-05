@@ -173,6 +173,34 @@ void Stocks::update(color_ostream & out)
             farmplot(out, r, false);
             return false;
         }
+        for (auto job : world->jobs.list)
+        {
+            if (job->flags.bits.do_now)
+            {
+                continue;
+            }
+
+            if (need_more(stock_item::drink) && job->job_type == job_type::CustomReaction && (job->reaction_name == "BREW_DRINK_FROM_PLANT" || job->reaction_name == "BREW_DRINK_FROM_PLANT_GROWTH" || job->reaction_name == "MAKE_MEAD"))
+            {
+                // booze is vital
+                job->flags.bits.do_now = true;
+                continue;
+            }
+
+            if (need_more(stock_item::meal) && job->job_type == job_type::PrepareMeal)
+            {
+                // food is pretty important too
+                job->flags.bits.do_now = true;
+                continue;
+            }
+
+            if (job->job_type == job_type::LinkBuildingToTrigger || job->job_type == job_type::PullLever)
+            {
+                // freeing people is high priority
+                job->flags.bits.do_now = true;
+                continue;
+            }
+        }
         if (ai.eventsJson.is_open())
         {
             std::ostringstream stringify;
