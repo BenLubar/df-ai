@@ -532,7 +532,7 @@ bool Plan::rescue_caged(color_ostream & out, room *r, furniture *f, int32_t item
             break;
         }
     }
-    df::building_cagest* cage_bld = nullptr;
+    df::building_cagest *cage_bld = nullptr;
     for (auto ref : cage->general_refs)
     {
         if (ref->getType() == general_ref_type::BUILDING_HOLDER)
@@ -545,13 +545,10 @@ bool Plan::rescue_caged(color_ostream & out, room *r, furniture *f, int32_t item
     if (prisoner == nullptr)
     {
         // there's no longer someone in the cage.
-        for (auto ref : cage->general_refs)
+        // if we secured the cage to the floor, free it up.
+        if (cage_bld)
         {
-            // if we secured the cage to the floor, free it up.
-            if (cage_bld)
-            {
-                Buildings::deconstruct(cage_bld);
-            }
+            Buildings::deconstruct(cage_bld);
         }
         return true;
     }
