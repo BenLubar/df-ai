@@ -135,7 +135,7 @@ struct gathering_zone_hide_hook : df::building_civzonest {
 
     DEFINE_VMETHOD_INTERPOSE(bool, isVisibleInViewport, (df::map_viewport *viewport))
     {
-        if (this->zone_flags.whole == T_zone_flags::mask_gather)
+        if (this->zone_flags.whole == (T_zone_flags::mask_gather | T_zone_flags::mask_active))
         {
             return false;
         }
