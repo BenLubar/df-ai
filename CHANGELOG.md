@@ -1,5 +1,40 @@
 # Future
 
+# 0.47.05-r1
+
+- Disabling the camera now remembers what unit or item you were following.
+- Fixed a crash related to lockstep mode on Windows.
+- If the manager does not have an office, chairs will be queued directly at the workshop.
+- Manager orders are no longer queued for tiny changes in amount.
+- Outdoor gathering zones are now hidden from view.
+- Sheriff will not be assigned until there is a jail.
+- The AI buys animals from traders.
+- The AI can free caged citizens and pets using a lever.
+- The AI prioritizes important jobs, like preparing food or drinks when stocks are low.
+
+## Military
+
+- Added the ability to craft wooden ammo.
+- Squad orders to attack enemies who have left the map are now cancelled.
+- The AI no longer attacks non-hostile undead.
+- The AI will now make weapons if there are not enough picks but also no metal to make picks with.
+
+## Floor Plan
+
+- Added an area at the start of the fortress with some necessities to reduce startup time.
+- Added cage traps to the fortress entrance.
+- Fixed a case where irrigating a farm plot would never stop.
+- Fixed miners waiting for trees to be cut down in pastures.
+- Fixed nest boxes not being built. Fertile eggs in nest boxes are automatically forbidden.
+- Improved pathfinding for mining and cavern outposts. The AI now builds a small structure to start these projects.
+- Optimized stockpile configuration to take fewer button presses.
+- Removed dining halls from the blueprint. Dwarves now eat at the tavern.
+- Reorganized construction priorities in the generic01 plan.
+- Rooms are now ordered by distance from the fortress entrance.
+- Rooms can now count as multiple other rooms, such as the new dormatory room.
+- Rooms with a required value are now monitored and decorated.
+- Staircases are now simplified to only go in one direction if there is nothing on the other side.
+
 # 0.47.04-r2
 
 - Added `allow_pause` config setting (defaults to true, set to false for old behavior).
