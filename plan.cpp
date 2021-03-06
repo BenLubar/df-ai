@@ -3,6 +3,8 @@
 #include "debug.h"
 #include "plan_setup.h"
 
+#include "VTableInterpose.h"
+
 #include "modules/Buildings.h"
 #include "modules/Maps.h"
 #include "modules/World.h"
@@ -128,14 +130,31 @@ command_result Plan::startup(color_ostream & out)
     return setup_blueprint(out);
 }
 
+struct gathering_zone_hide_hook : df::building_civzonest {
+    typedef df::building_civzonest interpose_base;
+
+    DEFINE_VMETHOD_INTERPOSE(bool, isVisibleInViewport, (df::map_viewport *viewport))
+    {
+        if (this->zone_flags.whole == T_zone_flags::mask_gather)
+        {
+            return false;
+        }
+
+        return INTERPOSE_NEXT(isVisibleInViewport)(viewport);
+    }
+};
+IMPLEMENT_VMETHOD_INTERPOSE(gathering_zone_hide_hook, isVisibleInViewport);
+
 command_result Plan::onupdate_register(color_ostream &)
 {
     onupdate_handle = events.onupdate_register("df-ai plan", 240, 20, [this](color_ostream & out) { update(out); });
+    INTERPOSE_HOOK(gathering_zone_hide_hook, isVisibleInViewport).apply();
     return CR_OK;
 }
 
 command_result Plan::onupdate_unregister(color_ostream &)
 {
+    INTERPOSE_HOOK(gathering_zone_hide_hook, isVisibleInViewport).remove();
     events.onupdate_unregister(onupdate_handle);
     return CR_OK;
 }
