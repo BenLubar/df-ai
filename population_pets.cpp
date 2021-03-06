@@ -239,7 +239,7 @@ void Population::update_pets(color_ostream & out)
 
         for (auto item : box->contained_items)
         {
-            if (auto egg = virtual_cast<df::item_eggst>(item))
+            if (auto egg = virtual_cast<df::item_eggst>(item->item))
             {
                 if (egg->egg_flags.bits.fertile)
                 {
