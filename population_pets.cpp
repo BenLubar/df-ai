@@ -7,8 +7,10 @@
 #include "modules/Units.h"
 
 #include "df/building_civzonest.h"
+#include "df/building_nest_boxst.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
+#include "df/item_eggst.h"
 #include "df/manager_order.h"
 #include "df/manager_order_template.h"
 #include "df/ui.h"
@@ -220,6 +222,32 @@ void Population::update_pets(color_ostream & out)
         tmpl.mat_index = -1;
 
         ai.stocks.add_manager_order(out, tmpl, std::min(needshear, 30));
+    }
+
+    for (auto bld : world->buildings.other[buildings_other_id::NEST_BOX])
+    {
+        auto box = virtual_cast<df::building_nest_boxst>(bld);
+        if (!box || box->getBuildStage() != box->getMaxBuildStage())
+        {
+            continue;
+        }
+
+        if (box->claimed_by == -1)
+        {
+            continue;
+        }
+
+        for (auto item : box->contained_items)
+        {
+            if (auto egg = virtual_cast<df::item_eggst>(item))
+            {
+                if (egg->egg_flags.bits.fertile)
+                {
+                    // baby chicks are preferable over cooked eggs.
+                    egg->flags.bits.forbid = true;
+                }
+            }
+        }
     }
 }
 
