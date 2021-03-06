@@ -17,7 +17,7 @@
 			"generic01_bedrooms",
 			"generic01_cemetery",
 			"generic01_corridor",
-			"generic01_dormatory",
+			"generic01_dormitory",
 			"generic01_infirmary",
 			"generic01_jail",
 			"generic01_location",
@@ -36,7 +36,7 @@
 		"generic01_pitting_tower"
 	],
 	"count_as": {
-		"generic01_dormatory/generic/generic": {
+		"generic01_dormitory/generic/generic": {
 			"generic01_bedroom": 39,
 			"generic01_bedrooms": 4
 		}
@@ -49,7 +49,7 @@
 		"generic01_corridor": [5, 300],
 		"generic01_corridor_stair": [0, 50],
 		"generic01_depot": [1, 1],
-		"generic01_dormatory": [0, 5],
+		"generic01_dormitory": [0, 5],
 		"generic01_infirmary": [1, 5],
 		"generic01_jail": [1, 3],
 		"generic01_mineshaft": [1, 1],

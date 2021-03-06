@@ -31,7 +31,7 @@
 - Removed dining halls from the blueprint. Dwarves now eat at the tavern.
 - Reorganized construction priorities in the generic01 plan.
 - Rooms are now ordered by distance from the fortress entrance.
-- Rooms can now count as multiple other rooms, such as the new dormatory room.
+- Rooms can now count as multiple other rooms, such as the new dormitory room.
 - Rooms with a required value are now monitored and decorated.
 - Staircases are now simplified to only go in one direction if there is nothing on the other side.
 
