@@ -256,7 +256,7 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
             // the manager doesn't have an office, which requires a chair.
             // assign the job directly at the workshop.
 
-            if (auto workshop = ai.find_room(room_type::workshop, [](room* r) -> bool
+            if (ai.find_room(room_type::workshop, [](room* r) -> bool
                 {
                     if (r->workshop_type != workshop_type::Masons)
                     {
