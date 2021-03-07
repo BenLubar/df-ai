@@ -54,6 +54,9 @@
 			"items": { "$ref": "shared.json#room-name-or-tag" },
 			"uniqueItems": true
 		},
+        "count_as": {
+            "type": "object"
+        },
 		"limits": {
 			"type": "object",
 			"title": "Room Limits",
