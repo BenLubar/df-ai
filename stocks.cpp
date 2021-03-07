@@ -28,6 +28,8 @@ STOCKS_ENUMS
 #undef ENUM_ITEM
 #undef END_ENUM
 
+struct Watch Watch;
+
 void Watch::reset()
 {
     Needed.clear();

@@ -142,7 +142,7 @@ STOCKS_ENUMS
 #undef ENUM_ITEM
 #undef END_ENUM
 
-struct Watch
+extern struct Watch
 {
     std::map<stock_item::item, int32_t> Needed;
     std::map<stock_item::item, int32_t> NeededPerDwarf; // per 100 dwarves, actually
