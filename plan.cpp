@@ -530,7 +530,7 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
     // try to find a vein close to one we already dug
     for (size_t i = 0; i < 16; i++)
     {
-        if (count / 4 >= want_boulders)
+        if (count / 4 >= want_boulders && (want_boulders || i))
         {
             break;
         }
@@ -556,10 +556,13 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
         }
 
         auto v = *it;
-        map_veins.at(mat).erase(it);
+        if (want_boulders)
+        {
+            map_veins.at(mat).erase(it);
+        }
 
-        int32_t cnt = do_dig_vein(out, mat, v.first);
-        if (cnt > 0)
+        int32_t cnt = do_dig_vein(out, mat, v.first, !want_boulders);
+        if (cnt > 0 && want_boulders)
         {
             dug_veins.insert(v.first);
         }
@@ -576,9 +579,12 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
     return count / 4;
 }
 
-int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
+int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b, bool plan_only)
 {
-    ai.debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
+    if (!plan_only)
+    {
+        ai.debug(out, "dig_vein " + world->raws.inorganics[mat]->id);
+    }
 
     int32_t count = 0;
     int16_t fort_miny = 0x7fff;
@@ -694,19 +700,26 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b)
             }
         }
     }
-    for (auto d = todo.begin(); d != todo.end(); d++)
+    if (!plan_only)
     {
-        q.push_back(*d);
-        AI::dig_tile(d->first, d->second);
+        for (auto d : todo)
+        {
+            q.push_back(d);
+            AI::dig_tile(d.first, d.second);
+        }
     }
 
     if (need_shaft)
     {
         df::coord t0{ uint16_t(b.x + (minx + maxx) / 2), uint16_t(b.y + (miny + maxy) / 2), uint16_t(b.z) };
-        room* r = find_typed_corridor(out, corridor_type::veinshaft, t0);
+        room *r = find_typed_corridor(out, corridor_type::veinshaft, t0);
         if (r)
         {
             categorize_all();
+            if (!plan_only)
+            {
+                digroom(out, r);
+            }
         }
     }
 

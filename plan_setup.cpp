@@ -4,6 +4,8 @@
 #include "blueprint.h"
 #include "debug.h"
 
+#include "df/inorganic_raw.h"
+
 class plan_setup_screen_helper
 {
 public:
@@ -58,18 +60,28 @@ void PlanSetup::Run(color_ostream & out)
         return;
     }
 
-    Log("Searching for mineral veins...");
-    ai.plan.list_map_veins(out);
-
     Log("Creating outdoor gathering zones...");
     ai.plan.setup_outdoor_gathering_zones(out);
 
     Log("Searching for caverns...");
     auto res = ai.plan.setup_blueprint_caverns(out);
     if (res == CR_OK)
-        Log("Marked outpost location.");
+        LogQuiet("Marked outpost location.");
     else
-        Log("Could not find a cavern.");
+        LogQuiet("Could not find a cavern.");
+
+    Log("Searching for mineral veins...");
+    ai.plan.list_map_veins(out);
+
+    for (auto & vein : ai.plan.map_veins)
+    {
+        auto ore = df::inorganic_raw::find(vein.first);
+        if (ore->flags.is_set(inorganic_flags::METAL_ORE))
+        {
+            LogQuiet("Planning tunnel to " + ore->id + " vein...");
+            ai.plan.dig_vein(out, vein.first, 0);
+        }
+    }
 
     Log("Finding areas that need access tunnels...");
     ai.plan.make_map_walkable(out);
