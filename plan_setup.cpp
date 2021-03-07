@@ -130,6 +130,7 @@ bool PlanSetup::build_from_blueprint(const blueprints_t & blueprints)
             if (build(blueprints, plan))
             {
                 priorities = plan.priorities;
+                stock_goals = plan.stock_goals;
                 DFAI_DEBUG(blueprint, 1, "Successfully created a blueprint using plan: " << plan.name);
                 return true;
             }
@@ -326,4 +327,5 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
         return false;
     });
     real_priorities = priorities;
+    Watch = stock_goals;
 }

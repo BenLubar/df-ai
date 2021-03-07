@@ -28,8 +28,13 @@ STOCKS_ENUMS
 #undef ENUM_ITEM
 #undef END_ENUM
 
-Watch::Watch()
+void Watch::reset()
 {
+    Needed.clear();
+    NeededPerDwarf.clear();
+    WatchStock.clear();
+    AlsoCount.clear();
+
     Needed[stock_item::ammo_combat] = 50;
     Needed[stock_item::ammo_training] = 50;
     Needed[stock_item::anvil] = 1;
@@ -162,6 +167,136 @@ Watch::Watch()
     AlsoCount.insert(stock_item::statue);
     AlsoCount.insert(stock_item::stone);
     AlsoCount.insert(stock_item::thread);
+}
+
+Json::Value Watch::to_json()
+{
+    Json::Value map(Json::objectValue);
+    for (auto & needed : Needed)
+    {
+        std::ostringstream str;
+        str << needed.first;
+        map[str.str()] = Json::Value(Json::objectValue);
+        map[str.str()]["needed"] = needed.second;
+        if (NeededPerDwarf.count(needed.first))
+        {
+            map[str.str()]["per_cent"] = NeededPerDwarf.at(needed.first);
+        }
+        if (WatchStock.count(needed.first))
+        {
+            map[str.str()]["maximum"] = WatchStock.at(needed.first);
+        }
+    }
+    for (auto & watch : WatchStock)
+    {
+        if (Needed.count(watch.first))
+        {
+            continue;
+        }
+        std::ostringstream str;
+        str << watch.first;
+        map[str.str()] = Json::Value(Json::objectValue);
+        map[str.str()]["maximum"] = watch.second;
+    }
+    for (auto track : AlsoCount)
+    {
+        std::ostringstream str;
+        str << track;
+        map[str.str()] = Json::Value(Json::objectValue);
+        map[str.str()]["track_only"] = true;
+    }
+    return map;
+}
+
+bool Watch::from_json(Json::Value & map, std::string & error)
+{
+    if (!map.isObject())
+    {
+        error = "stock_goals must be an object";
+        return false;
+    }
+
+    reset();
+
+    std::map<std::string, stock_item::item> item_names;
+    for (auto item = stock_item::item(0); item < stock_item::_stock_item_count; item = stock_item::item(item + 1))
+    {
+        std::ostringstream str;
+        str << item;
+        item_names[str.str()] = item;
+    }
+
+    for (auto & member : map.getMemberNames())
+    {
+        if (!item_names.count(member))
+        {
+            error = "unexpected stock_goals item name '" + member + "'";
+            return false;
+        }
+
+        auto item = item_names.at(member);
+
+        Json::Value & v = map[member];
+        size_t count = v.size();
+        if (count == 1 && v.isMember("track_only") && v["track_only"].isBool() && v["track_only"].asBool())
+        {
+            Needed.erase(item);
+            NeededPerDwarf.erase(item);
+            WatchStock.erase(item);
+            AlsoCount.insert(item);
+            continue;
+        }
+
+        if (count == 3 && v.isMember("needed") && v["needed"].isIntegral() && v.isMember("per_cent") && v["per_cent"].isIntegral() && v.isMember("maximum") && v["maximum"].isIntegral())
+        {
+            Needed[item] = v["needed"].asInt();
+            NeededPerDwarf[item] = v["per_cent"].asInt();
+            WatchStock[item] = v["maximum"].asInt();
+            AlsoCount.erase(item);
+            continue;
+        }
+
+        if (count == 2 && v.isMember("needed") && v["needed"].isIntegral() && v.isMember("maximum") && v["maximum"].isIntegral())
+        {
+            Needed[item] = v["needed"].asInt();
+            NeededPerDwarf.erase(item);
+            WatchStock[item] = v["maximum"].asInt();
+            AlsoCount.erase(item);
+            continue;
+        }
+
+        if (count == 2 && v.isMember("needed") && v["needed"].isIntegral() && v.isMember("per_cent") && v["per_cent"].isIntegral())
+        {
+            Needed[item] = v["needed"].asInt();
+            NeededPerDwarf[item] = v["per_cent"].asInt();
+            WatchStock.erase(item);
+            AlsoCount.erase(item);
+            continue;
+        }
+
+        if (count == 1 && v.isMember("needed") && v["needed"].isIntegral())
+        {
+            Needed[item] = v["needed"].asInt();
+            NeededPerDwarf.erase(item);
+            WatchStock.erase(item);
+            AlsoCount.erase(item);
+            continue;
+        }
+
+        if (count == 1 && v.isMember("maximum") && v["maximum"].isIntegral())
+        {
+            Needed.erase(item);
+            NeededPerDwarf.erase(item);
+            WatchStock[item] = v["maximum"].asInt();
+            AlsoCount.erase(item);
+            continue;
+        }
+
+        error = "unexpected format for stock_goals item '" + member + "'";
+        return false;
+    }
+
+    return true;
 }
 
 Stocks::Stocks(AI & ai) :

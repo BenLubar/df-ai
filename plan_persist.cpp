@@ -1,5 +1,6 @@
 #include "ai.h"
 #include "plan.h"
+#include "stocks.h"
 
 #include <unordered_map>
 
@@ -289,6 +290,7 @@ void Plan::save(std::ostream & out)
     all["f"] = converted_furniture;
     all["entrance"] = Json::Int(room_index.at(fort_entrance));
     all["p"] = priorities_to_json(priorities);
+    all["s"] = Watch.to_json();
 
     out << all;
 }
@@ -758,5 +760,11 @@ void Plan::load(std::istream & in)
     {
         std::string error;
         priorities_from_json(priorities, all["p"], error);
+    }
+
+    if (all.isMember("s"))
+    {
+        std::string error;
+        Watch.from_json(all["s"], error);
     }
 }

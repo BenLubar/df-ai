@@ -317,5 +317,15 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
         }
     }
 
+    if (data.isMember("stock_goals"))
+    {
+        Json::Value s = data["stock_goals"];
+        data.removeMember("stock_goals");
+        if (!stock_goals.from_json(s, error))
+        {
+            return false;
+        }
+    }
+
     return apply_unhandled_properties(data, "", error);
 }

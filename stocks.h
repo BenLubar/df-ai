@@ -142,14 +142,17 @@ STOCKS_ENUMS
 #undef ENUM_ITEM
 #undef END_ENUM
 
-const struct Watch
+struct Watch
 {
     std::map<stock_item::item, int32_t> Needed;
     std::map<stock_item::item, int32_t> NeededPerDwarf; // per 100 dwarves, actually
     std::map<stock_item::item, int32_t> WatchStock;
     std::set<stock_item::item> AlsoCount;
 
-    Watch();
+    Watch() { reset(); }
+    void reset();
+    Json::Value to_json();
+    bool from_json(Json::Value &, std::string &);
 } Watch;
 
 class ManagerOrderExclusive : public ExclusiveCallback

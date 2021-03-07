@@ -3,6 +3,7 @@
 #include "dfhack_shared.h"
 #include "room.h"
 #include "plan_priorities.h"
+#include "stocks.h"
 #include "variable_string.h"
 
 #include "json/json.h"
@@ -188,6 +189,7 @@ struct blueprint_plan_template
     std::pair<int16_t, int16_t> padding_x;
     std::pair<int16_t, int16_t> padding_y;
     std::vector<plan_priority_t> priorities;
+    struct Watch stock_goals;
 
     bool apply(Json::Value data, std::string & error);
 };

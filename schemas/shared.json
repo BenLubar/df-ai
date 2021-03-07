@@ -102,5 +102,85 @@
 			}
 		],
 		"default": ""
+	},
+	"stocks_goal_need_or_track": {
+		"type": "object",
+		"anyOf": [
+			{
+				"properties": {
+					"needed": {
+						"type": "integer",
+						"minimum": 1
+					},
+					"per_cent": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},
+				"required": ["needed"]
+			},
+			{ "$ref": "#stocks_goal_track_only" }
+		],
+		"additionalProperties": false
+	},
+	"stocks_goal_need_watch_or_track": {
+		"type": "object",
+		"anyOf": [
+			{
+				"properties": {
+					"needed": {
+						"type": "integer",
+						"minimum": 1
+					},
+					"per_cent": {
+						"type": "integer",
+						"minimum": 1
+					},
+					"maximum": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},
+				"required": ["needed"]
+			},
+			{
+				"properties": {
+					"maximum": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},
+				"required": ["maximum"]
+			},
+			{ "$ref": "#stocks_goal_track_only" }
+		],
+		"additionalProperties": false
+	},
+	"stocks_goal_watch_or_track": {
+		"type": "object",
+		"anyOf": [
+			{
+				"properties": {
+					"maximum": {
+						"type": "integer",
+						"minimum": 1
+					}
+				},
+				"required": ["maximum"]
+			},
+			{ "$ref": "#stocks_goal_track_only" }
+		],
+		"additionalProperties": false
+	},
+	"stocks_goal_track_only": {
+		"type": "object",
+		"properties": {
+			"track_only": {
+				"type": "boolean",
+				"enum": [true]
+			}
+		},
+		"required": ["track_only"],
+		"additionalProperties": false
 	}
 }
