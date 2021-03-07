@@ -405,7 +405,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                 {
                     if (mo->job_type == job_type::CustomReaction && mo->reaction_name == r->code)
                     {
-                        reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)";
+                        reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(mo) << " (" << mo->amount_left << " remaining)\n";
                         already_making = true;
                         break;
                     }
@@ -417,7 +417,7 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                     {
                         if (excl->tmpl.job_type == job_type::CustomReaction && excl->tmpl.reaction_name == r->code)
                         {
-                            reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)";
+                            reason << "already smelting " << MaterialInfo(0, mat_index).toString() << ": " << AI::describe_job(&excl->tmpl) << " (" << excl->amount << " remaining)\n";
                             return true;
                         }
 

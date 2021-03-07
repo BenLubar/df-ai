@@ -467,6 +467,12 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
         return false;
     }
 
+    if (f->type == layout_type::cage_trap && (!ai.stocks.count_free.count(stock_item::mechanism) || ai.stocks.count_free.at(stock_item::mechanism) < 3))
+    {
+        reason << "waiting for more mechanisms";
+        return false;
+    }
+
     if (df::item *itm = ai.stocks.find_free_item(stocks_furniture_type))
     {
         std::ostringstream str;
