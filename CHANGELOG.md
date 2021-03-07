@@ -1,7 +1,14 @@
 # Future
 
+- Important hauling jobs are now prioritized.
+- Priesthoods are now recognized once the temple reaches the required value.
+- Wooden crossbows no longer have a requirement of enough pickaxes and hatchets like melee weapons do.
+
+## Floor Plan
+
 - Blueprints can now change the size of the military (default 25% to 75% of the population of the fortress).
 - Blueprints can now modify the stock item goals.
+- Some mining tunnels are pre-planned at fortress generation to avoid freezing the game later.
 
 # 0.47.05-r1
 

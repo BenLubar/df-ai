@@ -201,7 +201,7 @@ void Stocks::update(color_ostream & out)
                 continue;
             }
 
-            if (job->job_type == job_type::PenLargeAnimal || job->job_type == job_type::BringItemToDepot || job->job_type == job_type::StoreItemInHospital)
+            if (job->job_type == job_type::PenLargeAnimal || job->job_type == job_type::BringItemToDepot || job->job_type == job_type::StoreItemInHospital || job->job_type == job_type::DumpItem)
             {
                 // high priority hauling jobs
                 job->flags.bits.do_now = true;
