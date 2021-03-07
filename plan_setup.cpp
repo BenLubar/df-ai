@@ -131,6 +131,8 @@ bool PlanSetup::build_from_blueprint(const blueprints_t & blueprints)
             {
                 priorities = plan.priorities;
                 stock_goals = plan.stock_goals;
+                military_min = plan.military_min;
+                military_max = plan.military_max;
                 DFAI_DEBUG(blueprint, 1, "Successfully created a blueprint using plan: " << plan.name);
                 return true;
             }
@@ -328,4 +330,6 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
     });
     real_priorities = priorities;
     Watch = stock_goals;
+    ai.pop.military_min = military_min;
+    ai.pop.military_max = military_max;
 }

@@ -46,6 +46,8 @@ Population::Population(AI & ai) :
     pet_check(),
     visitor(),
     resident(),
+    military_min(25),
+    military_max(75),
     update_counter(0),
     onupdate_handle(nullptr),
     seen_death(0),

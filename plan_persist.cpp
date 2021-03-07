@@ -291,6 +291,8 @@ void Plan::save(std::ostream & out)
     all["entrance"] = Json::Int(room_index.at(fort_entrance));
     all["p"] = priorities_to_json(priorities);
     all["s"] = Watch.to_json();
+    all["military_min"] = ai.pop.military_min;
+    all["military_max"] = ai.pop.military_max;
 
     out << all;
 }
@@ -766,5 +768,12 @@ void Plan::load(std::istream & in)
     {
         std::string error;
         Watch.from_json(all["s"], error);
+    }
+
+    if (all.isMember("military_min") && all.isMember("military_max") && all["military_min"].isIntegral() && all["military_max"].isIntegral() &&
+        all["military_min"].asInt() >= 0 && all["military_max"].asInt() <= 100 && all["military_min"].asInt() <= all["military_max"].asInt())
+    {
+        ai.pop.military_min = all["military_min"].asInt();
+        ai.pop.military_max = all["military_max"].asInt();
     }
 }

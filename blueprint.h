@@ -172,13 +172,17 @@ struct blueprint_plan_template
     blueprint_plan_template(const std::string &, const std::string & name) :
         name(name),
         max_retries(25),
-        max_failures(100)
+        max_failures(100),
+        military_min(25),
+        military_max(75)
     {
     }
 
     const std::string name;
     size_t max_retries;
     size_t max_failures;
+    int32_t military_min;
+    int32_t military_max;
     std::string start;
     std::set<std::string> outdoor;
     std::map<std::string, std::set<std::string>> tags;

@@ -41,6 +41,26 @@ bool blueprint_plan_template::apply(Json::Value data, std::string & error)
         max_failures = size_t(value.asInt());
     }
 
+    if (data.isMember("military_limit"))
+    {
+        Json::Value value = data["military_limit"];
+        data.removeMember("military_limit");
+        if (!value.isArray() || value.size() != 2 || !value[0].isIntegral() || !value[1].isIntegral())
+        {
+            error = "military_limit has wrong type (should be [min, max])";
+            return false;
+        }
+
+        if (value[0].asInt() < 0 || value[1].asInt() > 100 || value[0].asInt() > value[1].asInt())
+        {
+            error = "military_limit percentages out of range";
+            return false;
+        }
+
+        military_min = value[0].asInt();
+        military_max = value[1].asInt();
+    }
+
     if (data.isMember("start"))
     {
         Json::Value value = data["start"];

@@ -214,6 +214,19 @@
 				"thread": { "$ref": "shared.json#stocks_goal_track_only" }
 			},
 			"additionalProperties": false
+		},
+		"military_limit": {
+			"type": "array",
+			"title": "Military Limit",
+			"description": "Goal percentage of the population to be in the military (minimum/maximum).",
+			"minItems": 2,
+			"maxItems": 2,
+			"items": {
+				"type": "integer",
+				"minimum": 0,
+				"maximum": 100
+			},
+			"default": [25, 75]
 		}
 	},
 	"required": [

@@ -32,6 +32,7 @@ class PlanSetup : public ExclusiveCallback
     std::vector<room_base::room_t *> rooms;
     std::vector<plan_priority_t> priorities;
     struct Watch stock_goals;
+    int32_t military_min, military_max;
 
     std::map<df::coord, std::pair<room_base::roomindex_t, std::map<std::string, variable_string::context_t>>> room_connect;
     std::map<df::coord, std::string> corridor;

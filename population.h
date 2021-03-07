@@ -43,6 +43,7 @@ public:
     std::set<int32_t> pet_check;
     std::set<int32_t> visitor;
     std::set<int32_t> resident;
+    int32_t military_min, military_max;
 private:
     size_t update_counter;
     OnupdateCallback *onupdate_handle;
