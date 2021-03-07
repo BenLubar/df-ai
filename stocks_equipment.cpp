@@ -33,7 +33,8 @@ REQUIRE_GLOBAL(world);
 // forge weapons
 void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item, int32_t needed, std::ostream & reason, df::job_skill skill, bool training, bool ranged, bool digger)
 {
-    if (skill == job_skill::NONE && !training && ((count_free.at(stock_item::pick) == 0 && !cant_pickaxe) || count_free.at(stock_item::axe) == 0))
+    bool need_picks_or_axes = (count_free.at(stock_item::pick) == 0 && !cant_pickaxe) || count_free.at(stock_item::axe) == 0;
+    if (skill == job_skill::NONE && !training && need_picks_or_axes && !ranged)
     {
         reason << "need more ";
         if (count_free.at(stock_item::pick) == 0)
@@ -110,7 +111,7 @@ void Stocks::queue_need_weapon(color_ostream & out, stock_item::item stock_item,
                 tmpl.material_category.bits.wood = true;
                 add_manager_order(out, tmpl, cnt, reason);
 
-                if (training)
+                if (training || (ranged && need_picks_or_axes))
                 {
                     continue;
                 }
