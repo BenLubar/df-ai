@@ -1,5 +1,8 @@
 # Future
 
+- Blueprints can now change the size of the military (default 25% to 75% of the population of the fortress).
+- Blueprints can now modify the stock item goals.
+
 # 0.47.05-r1
 
 - Disabling the camera now remembers what unit or item you were following.
