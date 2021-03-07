@@ -108,6 +108,8 @@ DFhackCExport command_result plugin_init(color_ostream & out, std::vector<Plugin
         "  Stop writing events to df-ai-events.json\n"
         "ai enable lockstep\n"
         "  Runs Dwarf Fortress as fast as possible, locking animations to the frame rate instead of real time. May cause crashes; use at your own risk.\n"
+        "ai lockstep-seed [number]\n"
+        "  Sets the current emulated timestamp for lockstep mode. Only has any effect in lockstep mode.\n"
         "ai disable lockstep\n"
         "  Undoes \"ai enable lockstep\".\n"
         "ai enable camera\n"
@@ -255,7 +257,7 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         out << "report written to df-ai-report.log" << std::endl;
         return CR_OK;
     }
-    else if (args.size() == 1 && args[0] == "abandon")
+    if (args.size() == 1 && args[0] == "abandon")
     {
         if (!Core::getInstance().isWorldLoaded())
         {
@@ -303,6 +305,14 @@ command_result ai_command(color_ostream & out, std::vector<std::string> & args)
         }
         MODE(lockstep)
         MODE(camera)
+    }
+    if (args.size() == 2 && args[0] == "lockstep-seed")
+    {
+        extern bool lockstep_tick_count_forced;
+        extern volatile uint32_t lockstep_tick_count;
+        lockstep_tick_count_forced = true;
+        lockstep_tick_count = uint32_t(std::strtoul(args[1].c_str(), nullptr, 10));
+        return CR_OK;
     }
 
     return CR_WRONG_USAGE;

@@ -36,7 +36,8 @@ extern "C" DFHACK_IMPORT uint32_t SDL_GetTicks(void);
 extern "C" DFHACK_IMPORT int SDL_SemTryWait(void *sem);
 extern "C" DFHACK_IMPORT uint32_t SDL_ThreadID(void);
 
-static volatile uint32_t lockstep_tick_count = 0;
+bool lockstep_tick_count_forced = false;
+volatile uint32_t lockstep_tick_count = 0;
 volatile bool lockstep_hooked = false;
 volatile bool disabling_plugin = false;
 volatile bool unloading_plugin = false;
@@ -718,13 +719,19 @@ void Hook_Update()
         lockstep_hooked = true;
 
 #ifdef _WIN32
-        lockstep_tick_count = GetTickCount();
+        if (!lockstep_tick_count_forced)
+        {
+            lockstep_tick_count = GetTickCount();
+        }
         DFAI_DEBUG(lockstep, 1, "initial lockstep_tick_count is " << lockstep_tick_count);
         Add_Hook((void *)GetTickCount, Real_GetTickCount, (void *)Fake_GetTickCount);
 #else
         struct timeval tv;
         gettimeofday(&tv, nullptr);
-        lockstep_tick_count = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+        if (!lockstep_tick_count_forced)
+        {
+            lockstep_tick_count = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+        }
         DFAI_DEBUG(lockstep, 1, "initial lockstep_tick_count is " << lockstep_tick_count);
         Add_Hook((void *)gettimeofday, Real_gettimeofday, (void *)Fake_gettimeofday);
 #endif
