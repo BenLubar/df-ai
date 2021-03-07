@@ -5,10 +5,13 @@
 #include "modules/Buildings.h"
 #include "modules/Maps.h"
 
+#include "df/abstract_building.h"
 #include "df/building_cagest.h"
 #include "df/building_trapst.h"
 #include "df/item_cagest.h"
 #include "df/tile_occupancy.h"
+#include "df/viewscreen_dwarfmodest.h"
+#include "df/viewscreen_locationsst.h"
 
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
@@ -466,6 +469,82 @@ bool Plan::digroom(color_ostream & out, room *r, bool immediate)
     return true;
 }
 
+class FinalizeLocationExclusive : public ExclusiveCallback
+{
+    AI & ai;
+    room *r;
+public:
+    FinalizeLocationExclusive(AI & ai, room *r) :
+        ExclusiveCallback("finalize location " + AI::describe_room(r)),
+        ai(ai),
+        r(r)
+    {}
+
+    virtual void Run(color_ostream & out)
+    {
+        if (r->location_type == location_type::temple && r->data2 != -1)
+        {
+            FinalizeTemple(out);
+        }
+    }
+
+    void FinalizeTemple(color_ostream & out)
+    {
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+        Key(interface_key::D_LOCATIONS);
+
+        ExpectedScreen<df::viewscreen_locationsst> view(this);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Locations");
+
+        auto bld = r->dfbuilding();
+
+        bool found = false;
+        for (auto loc : view->locations)
+        {
+            if (loc && loc->id == bld->location_id)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            ai.debug(out, "[ERROR] could not find " + AI::describe_room(r) + " on the list");
+
+            Key(interface_key::LEAVESCREEN);
+
+            ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+
+            return;
+        }
+
+        while (!view->locations.at(view->location_idx) || view->locations.at(view->location_idx)->id != bld->location_id)
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::STANDARDSCROLL_RIGHT);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Occupation");
+
+        Key(interface_key::LOCATION_RECOGNIZE_PRIESTHOOD);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/AssignOccupation");
+
+        Key(interface_key::STANDARDSCROLL_DOWN);
+        Key(interface_key::SELECT);
+
+        ExpectScreen<df::viewscreen_locationsst>("locations/Occupations");
+
+        Key(interface_key::LEAVESCREEN);
+
+        ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/Default");
+    }
+};
+
 bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reason)
 {
     if (r->required_value <= 0)
@@ -492,6 +571,11 @@ bool Plan::monitor_room_value(color_ostream & out, room *r, std::ostream & reaso
 
     if (value >= r->required_value)
     {
+        if (r->type == room_type::location)
+        {
+            events.queue_exclusive(std::make_unique<FinalizeLocationExclusive>(ai, r));
+        }
+
         return true;
     }
 
