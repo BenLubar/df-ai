@@ -1115,7 +1115,7 @@ void Plan::report(std::ostream & out, bool html)
 
 void Plan::categorize_all()
 {
-    std::sort(rooms_and_corridors.begin(), rooms_and_corridors.end(), [&](room *a, room *b) -> bool
+    std::stable_sort(rooms_and_corridors.begin(), rooms_and_corridors.end(), [&](room *a, room *b) -> bool
         {
             if (a->outdoor != b->outdoor)
             {
@@ -1176,22 +1176,22 @@ void Plan::categorize_all()
     if (room_category.count(room_type::stockpile))
     {
         auto & stockpiles = room_category.at(room_type::stockpile);
-        std::sort(stockpiles.begin(), stockpiles.end(), [this](room *a, room *b) -> bool
-        {
-            if (a->level < b->level)
-                return true;
-            if (a->level > b->level)
-                return false;
+        std::stable_sort(stockpiles.begin(), stockpiles.end(), [this](room *a, room *b) -> bool
+            {
+                if (a->level < b->level)
+                    return true;
+                if (a->level > b->level)
+                    return false;
 
-            int16_t ax = a->min.x < fort_entrance->min.x ? -a->min.x : a->min.x;
-            int16_t bx = b->min.x < fort_entrance->min.x ? -b->min.x : b->min.x;
-            if (ax < bx)
-                return true;
-            if (ax > bx)
-                return false;
+                int16_t ax = a->min.x < fort_entrance->min.x ? -a->min.x : a->min.x;
+                int16_t bx = b->min.x < fort_entrance->min.x ? -b->min.x : b->min.x;
+                if (ax < bx)
+                    return true;
+                if (ax > bx)
+                    return false;
 
-            return a->min.y < b->min.y;
-        });
+                return a->min.y < b->min.y;
+            });
     }
 }
 
