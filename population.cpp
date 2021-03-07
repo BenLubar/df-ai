@@ -4,6 +4,7 @@
 #include "thirdparty/weblegends/weblegends-plugin.h"
 
 #include "modules/Job.h"
+#include "modules/Maps.h"
 #include "modules/Materials.h"
 #include "modules/Units.h"
 
@@ -1517,6 +1518,16 @@ void Population::report(std::ostream & out, bool html)
         {
             out << "- " << AI::describe_job(j->item) << "\n";
         }
+        if (ENUM_ATTR(job_type, type, j->item->job_type) == job_type_class::Digging)
+        {
+            out << (html ? "<br/>" : "  ");
+            out << enum_item_key(*Maps::getTileType(j->item->pos));
+            if (auto r = ai.find_room_at(j->item->pos))
+            {
+                out << " in " << AI::describe_room(r, html);
+            }
+            out << (html ? "" : "\n");
+        }
         std::set<size_t> handled_items;
         for (auto & item : j->item->items)
         {
@@ -1701,11 +1712,6 @@ void Population::report(std::ostream & out, bool html)
             {
                 out << AI::describe_unit(unit, html);
             }
-            if (/*auto projectile =*/ ref->getProjectile())
-            {
-                out << "[not yet implemented]";
-                // TODO: describe projectiles
-            }
             if (auto building = ref->getBuilding())
             {
                 room *r = nullptr;
@@ -1723,26 +1729,6 @@ void Population::report(std::ostream & out, bool html)
                 {
                     out << toLower(enum_item_key(building->getType()));
                 }
-            }
-            if (/*auto entity =*/ ref->getEntity())
-            {
-                out << "[not yet implemented]";
-                // TODO: describe entities
-            }
-            if (/*auto artifact =*/ ref->getArtifact())
-            {
-                out << "[not yet implemented]";
-                // TODO: describe artifacts
-            }
-            if (/*auto nemesis =*/ ref->getNemesis())
-            {
-                out << "[not yet implemented]";
-                // TODO: describe nemeses
-            }
-            if (/*auto event =*/ ref->getEvent())
-            {
-                out << "[not yet implemented]";
-                // TODO: describe events
             }
             if (!html)
             {
