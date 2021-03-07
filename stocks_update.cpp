@@ -200,6 +200,13 @@ void Stocks::update(color_ostream & out)
                 job->flags.bits.do_now = true;
                 continue;
             }
+
+            if (job->job_type == job_type::PenLargeAnimal || job->job_type == job_type::BringItemToDepot || job->job_type == job_type::StoreItemInHospital)
+            {
+                // high priority hauling jobs
+                job->flags.bits.do_now = true;
+                continue;
+            }
         }
         if (ai.eventsJson.is_open())
         {
