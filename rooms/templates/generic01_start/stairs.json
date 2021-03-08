@@ -741,6 +741,11 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "stone",
+			"stock_disable": [
+				"StoneOres",
+				"StoneEconomic",
+				"StoneClay"
+			],
 			"min": [3, -2, -1],
 			"max": [5, -2, -1],
 			"workshop": 7
