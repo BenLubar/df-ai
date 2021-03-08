@@ -708,47 +708,47 @@ bool Plan::try_furnish_construction(color_ostream &, df::construction_type ctype
             return true;
         break;
     case construction_type::TrackRampNS:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNS)
             return true;
         break;
     case construction_type::TrackRampNE:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNE)
             return true;
         break;
     case construction_type::TrackRampNW:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNW)
             return true;
         break;
     case construction_type::TrackRampSE:
-        if (tt == tiletype::ConstructedRampTrackS)
+        if (tt == tiletype::ConstructedRampTrackSE)
             return true;
         break;
     case construction_type::TrackRampSW:
-        if (tt == tiletype::ConstructedRampTrackS)
+        if (tt == tiletype::ConstructedRampTrackSW)
             return true;
         break;
     case construction_type::TrackRampEW:
-        if (tt == tiletype::ConstructedRampTrackE)
+        if (tt == tiletype::ConstructedRampTrackEW)
             return true;
         break;
     case construction_type::TrackRampNSE:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNSE)
             return true;
         break;
     case construction_type::TrackRampNSW:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNSW)
             return true;
         break;
     case construction_type::TrackRampNEW:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNEW)
             return true;
         break;
     case construction_type::TrackRampSEW:
-        if (tt == tiletype::ConstructedRampTrackS)
+        if (tt == tiletype::ConstructedRampTrackSEW)
             return true;
         break;
     case construction_type::TrackRampNSEW:
-        if (tt == tiletype::ConstructedRampTrackN)
+        if (tt == tiletype::ConstructedRampTrackNSEW)
             return true;
         break;
     }

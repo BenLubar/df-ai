@@ -442,6 +442,10 @@ int32_t Plan::can_dig_vein(int32_t mat)
         for (auto queued : map_vein_queue.at(mat))
         {
             df::map_block *block = Maps::getTileBlock(queued.first);
+            if (!block)
+            {
+                continue;
+            }
             df::tiletype tt = block->tiletype[queued.first.x & 0xf][queued.first.y & 0xf];
             if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt)) == tiletype_shape_basic::Wall &&
                 ENUM_ATTR(tiletype, material, tt) == tiletype_material::MINERAL &&
@@ -475,6 +479,10 @@ int32_t Plan::dig_vein(color_ostream & out, int32_t mat, int32_t want_boulders)
         q.erase(std::remove_if(q.begin(), q.end(), [this, mat, &count, &out](std::pair<df::coord, df::tile_dig_designation> d) -> bool
         {
             df::map_block *block = Maps::getTileBlock(d.first);
+            if (!block)
+            {
+                return true;
+            }
             df::tiletype tt = block->tiletype[d.first.x & 0xf][d.first.y & 0xf];
             df::tiletype_shape_basic sb = ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, tt));
             if (sb == tiletype_shape_basic::Open)
