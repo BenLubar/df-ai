@@ -19,6 +19,7 @@
 #include "df/incident.h"
 #include "df/job.h"
 #include "df/job_item.h"
+#include "df/job_subtype_surgery.h"
 #include "df/occupation.h"
 #include "df/reaction.h"
 #include "df/reaction_reagent.h"
@@ -1360,13 +1361,29 @@ void Population::report(std::ostream & out, bool html)
                 }
                 case job_type::Surgery:
                 {
-                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.body_part_id));
-                    out << "Performed surgery";
-                    if (part)
+                    auto part = vector_get(caste->body_info.body_parts, static_cast<unsigned int>(op->info.bandage.mat_index));
+                    switch (df::job_subtype_surgery(op->info.bandage.mat_type))
                     {
-                        out << " on " << *part->name_singular.at(0);
+                    case job_subtype_surgery::Surgery:
+                        out << "Performed surgery.";
+                        break;
+                    case job_subtype_surgery::StopBleeding:
+                        out << "Stopped bleeding.";
+                        break;
+                    case job_subtype_surgery::RepairCompoundFracture:
+                        out << "Repaired compound fracture";
+                        if (part)
+                        {
+                            out << " of " << *part->name_singular.at(0);
+                        }
+                        out << ".";
+                        break;
+                    case job_subtype_surgery::RemoveRottenTissue:
+                        out << (op->info.bandage.body_part_id == -1 ? "Excised rotten tissue from " : "Amputated ");
+                        out << (part ? *part->name_singular.at(0) : "unknown part");
+                        out << ".";
+                        break;
                     }
-                    out << ".";
                     break;
                 }
                 case job_type::Suture:
