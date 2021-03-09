@@ -636,6 +636,18 @@
 			"x": -1,
 			"y": 0,
 			"z": 0
+		},
+		{
+			"type": "lever",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "door",
+			"x": 1,
+			"y": 3,
+			"z": 0
 		}
 	],
 	"r": [
@@ -670,7 +682,6 @@
 			"exits": [
 				["generic01_corridor", -1, 1, 0],
 				["generic01_corridor", 3, 1, 0],
-				["generic01_corridor", 1, -1, 0],
 				["generic01_corridor", 1, 3, 0]
 			],
 			"comment": "staircase"
@@ -713,7 +724,10 @@
 			"min": [-2, -5, -1],
 			"max": [2, -3, -1],
 			"accesspath": [1],
-			"layout": [85]
+			"layout": [85],
+			"exits": [
+				["generic01_corridor", 2, -1, 0]
+			]
 		},
 		{
 			"type": "workshop",
@@ -767,6 +781,19 @@
 			"noblesuite": 1,
 			"accesspath": [1],
 			"layout": [87, 89]
+		},
+		{
+			"type": "releasecage",
+			"min": [-1, -5, -2],
+			"max": [1, -3, -2],
+			"build_when_accessible": true,
+			"accesspath": [2],
+			"layout": [90, 91],
+			"exits": [
+				["generic01_corridor", 1, -1, 0],
+				["generic01_corridor", -1, 1, 0],
+				["generic01_corridor", 3, 1, 0]
+			]
 		}
 	]
 }
