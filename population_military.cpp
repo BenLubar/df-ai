@@ -24,6 +24,7 @@
 #include "df/squad_uniform_spec.h"
 #include "df/ui.h"
 #include "df/uniform_category.h"
+#include "df/unit_misc_trait.h"
 #include "df/viewscreen_dwarfmodest.h"
 #include "df/viewscreen_layer_militaryst.h"
 #include "df/world.h"
@@ -743,11 +744,20 @@ void Population::update_military(color_ostream & out)
     std::vector<df::unit *> soldiers;
     std::vector<df::unit *> want_draft;
     std::vector<df::unit *> draft_pool;
+    bool any_migrant = false;
 
     for (auto u : world->units.active)
     {
         if (Units::isCitizen(u))
         {
+            for (auto trait : u->status.misc_traits)
+            {
+                if (trait->id == misc_trait_type::Migrant)
+                {
+                    any_migrant = true;
+                    break;
+                }
+            }
             if (u->military.squad_id == -1)
             {
                 if (military.erase(u->id))
@@ -811,6 +821,12 @@ void Population::update_military(color_ostream & out)
                 ai.plan.getsoldierbarrack(out, u->id);
             }
         }
+    }
+
+    if (any_migrant)
+    {
+        // wait until new arrival status is cleared to do next update.
+        return;
     }
 
     size_t max_military = citizen.size() * military_min / 100;
