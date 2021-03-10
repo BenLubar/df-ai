@@ -29,7 +29,23 @@ void Population::update_caged(color_ostream & out)
         df::item *cage = *it;
         if (!cage->flags.bits.on_ground)
         {
-            continue;
+            bool ignore = true;
+            if (cage->flags.bits.forbid && !cage->flags.bits.trader)
+            {
+                for (auto ref : cage->general_refs)
+                {
+                    auto bld = ref->getBuilding();
+                    if (ref->getType() == general_ref_type::BUILDING_HOLDER && bld && bld->getType() == building_type::TradeDepot)
+                    {
+                        ignore = false;
+                        break;
+                    }
+                }
+            }
+            if (ignore)
+            {
+                continue;
+            }
         }
         for (auto ref = cage->general_refs.begin(); ref != cage->general_refs.end(); ref++)
         {
