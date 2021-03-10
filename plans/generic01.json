@@ -28,6 +28,7 @@
 		]
 	},
 	"outdoor": [
+		"generic01_cage_trap",
 		"generic01_depot",
 		"generic01_mineshaft",
 		"generic01_outdoor_farm",
@@ -42,6 +43,7 @@
 		}
 	},
 	"limits": {
+		"generic01_cage_trap": [20, 100],
 		"generic01_barracks": [4, 8],
 		"generic01_bedroom": [120, 300],
 		"generic01_bedrooms": [20, 50],
@@ -668,6 +670,11 @@
 			}
 		},
 		{
+			"continue": true,
+			"name": "Deconstruct Wagon",
+			"action": "deconstruct_wagons"
+		},
+		{
 			"name": "Remaining Level 1 Workshops",
 			"action": "dig",
 			"match": {
@@ -676,9 +683,13 @@
 			}
 		},
 		{
-			"continue": true,
-			"name": "Deconstruct Wagon",
-			"action": "deconstruct_wagons"
+			"name": "Outdoor Cage Traps",
+			"action": "dig",
+			"match": {
+				"type": "corridor",
+				"outdoor": true,
+				"comment": "cage trap"
+			}
 		},
 		{
 			"continue": true,

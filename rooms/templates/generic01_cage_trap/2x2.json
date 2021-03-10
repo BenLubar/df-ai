@@ -1,0 +1,39 @@
+{
+	"$schema": "https://ben.lubar.me/df-ai-schemas/room-template.json",
+	"f": [
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"min": [0, 0, 0],
+			"max": [1, 1, 0],
+			"outdoor": true,
+			"layout": [0, 1, 2, 3],
+			"comment": "cage trap"
+		}
+	]
+}
