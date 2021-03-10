@@ -355,6 +355,12 @@ room *Plan::find_typed_corridor(color_ostream & out, corridor_type::type type, d
                 return r;
             }
 
+            if (!r->include(cur + df::coord(-1, 0, 0)) && !r->include(cur + df::coord(1, 0, 0)) && !r->include(cur + df::coord(0, -1, 0)) && !r->include(cur + df::coord(0, 1, 0)))
+            {
+                // don't attach to corners
+                continue;
+            }
+
             do
             {
                 room *r2 = new room(

@@ -617,7 +617,8 @@ int32_t Plan::do_dig_vein(color_ostream & out, int32_t mat, df::coord b, bool pl
             for (uint16_t dy = 0; dy < 16; dy++)
             {
                 df::coord c = b + df::coord(dx, dy, 0);
-                if (ai.find_room_at(c))
+                auto r = ai.find_room_at(c);
+                if (r && (r->type != room_type::corridor || r->corridor_type != corridor_type::veinshaft || r->include(c)))
                 {
                     disallow_tile.insert(c);
                 }
