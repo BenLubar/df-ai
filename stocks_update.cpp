@@ -207,13 +207,6 @@ void Stocks::update(color_ostream & out)
                 job->flags.bits.do_now = true;
                 continue;
             }
-
-            if (ENUM_ATTR(job_type, type, job->job_type) == job_type_class::Digging)
-            {
-                // keep the miners working
-                job->flags.bits.do_now = true;
-                continue;
-            }
         }
         if (ai.eventsJson.is_open())
         {
