@@ -1936,7 +1936,7 @@ bool Plan::try_endconstruct(color_ostream & out, room *r, std::ostream & reason)
 
 bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst, std::ostream & reason)
 {
-    auto bld = df::building::find(src->bld_id);
+    auto bld = virtual_cast<df::building_trapst>(df::building::find(src->bld_id));
     if (!bld || bld->getBuildStage() != bld->getMaxBuildStage())
     {
         reason << "lever not constructed";
@@ -1950,11 +1950,14 @@ bool Plan::link_lever(color_ostream &, furniture *src, furniture *dst, std::ostr
         return false;
     }
 
-    for (auto ref : bld->general_refs)
+    for (auto item : bld->contained_items)
     {
-        if (ref->getType() == general_ref_type::BUILDING_TRIGGERTARGET && ref->getBuilding() == tbld)
+        for (auto ref : item->item->general_refs)
         {
-            return true;
+            if (ref->getType() == general_ref_type::BUILDING_TRIGGERTARGET && ref->getBuilding() == tbld)
+            {
+                return true;
+            }
         }
     }
 
