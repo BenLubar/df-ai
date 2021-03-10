@@ -661,28 +661,21 @@
 			}
 		},
 		{
-			"name": "Level 1 Stockpiles",
+			"name": "Jail",
 			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "jail"
+				},
+				"is": 0
+			},
 			"match": {
-				"type": "stockpile",
-				"level": 1,
-				"workshop_not": {}
+				"type": "jail"
 			}
 		},
 		{
 			"continue": true,
-			"name": "Deconstruct Wagon",
-			"action": "deconstruct_wagons"
-		},
-		{
-			"name": "Remaining Level 1 Workshops",
-			"action": "dig",
-			"match": {
-				"type": ["furnace", "workshop"],
-				"level": 1
-			}
-		},
-		{
 			"name": "Outdoor Cage Traps",
 			"action": "dig",
 			"match": {
@@ -725,6 +718,28 @@
 			}
 		},
 		{
+			"name": "Level 1 Stockpiles",
+			"action": "dig",
+			"match": {
+				"type": "stockpile",
+				"level": 1,
+				"workshop_not": {}
+			}
+		},
+		{
+			"continue": true,
+			"name": "Deconstruct Wagon",
+			"action": "deconstruct_wagons"
+		},
+		{
+			"name": "Remaining Level 1 Workshops",
+			"action": "dig",
+			"match": {
+				"type": ["furnace", "workshop"],
+				"level": 1
+			}
+		},
+		{
 			"name": "Barracks",
 			"action": "dig",
 			"count": {
@@ -743,20 +758,6 @@
 			"action": "dig",
 			"match": {
 				"type": "pitcage"
-			}
-		},
-		{
-			"name": "Jail",
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "jail"
-				},
-				"is": 0
-			},
-			"match": {
-				"type": "jail"
 			}
 		},
 		{
