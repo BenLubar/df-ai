@@ -419,8 +419,8 @@ public:
         };
 
         add_uniform_part(interface_key::D_MILITARY_ADD_ARMOR);
-        add_uniform_part(interface_key::D_MILITARY_ADD_PANTS);
         add_uniform_part(interface_key::D_MILITARY_ADD_HELM);
+        add_uniform_part(interface_key::D_MILITARY_ADD_PANTS);
         add_uniform_part(interface_key::D_MILITARY_ADD_GLOVES);
         add_uniform_part(interface_key::D_MILITARY_ADD_BOOTS);
         add_uniform_part(interface_key::D_MILITARY_ADD_SHIELD);
