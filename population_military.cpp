@@ -530,14 +530,14 @@ public:
         }
 
         auto squad = df::squad::find(u->military.squad_id);
-        auto squad_pos = std::find(screen->squads.list.begin(), screen->squads.list.end(), squad);
-        if (!squad || squad_pos == screen->squads.list.end())
+        auto squad_pos = std::find(screen->equip.squads.begin(), screen->equip.squads.end(), squad);
+        if (!squad || squad_pos == screen->equip.squads.end())
         {
             ai.debug(out, "[ERROR] Cannot find squad for unit: " + AI::describe_unit(u));
             return;
         }
 
-        ScrollTo(int32_t(squad_pos - screen->squads.list.begin()));
+        ScrollTo(int32_t(squad_pos - screen->equip.squads.begin()));
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
