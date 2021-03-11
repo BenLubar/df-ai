@@ -13,6 +13,9 @@
 #include "modules/Screen.h"
 #include "modules/Translation.h"
 
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
+#include "df/embark_profile.h"
 #include "df/region_map_entry.h"
 #include "df/viewscreen_adopt_regionst.h"
 #include "df/viewscreen_choose_start_sitest.h"
@@ -682,10 +685,84 @@ void EmbarkExclusive::DisplayEmbarkSite(color_ostream &)
 
 void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
 {
-    ai.debug(out, "choosing \"Play Now\"");
+    ExpectedScreen<df::viewscreen_setupdwarfgamest> view(this);
 
-    Key(interface_key::SELECT);
-    // TODO custom embark loadout
+    if (view->embark_prompt)
+    {
+        Key(interface_key::SELECT);
+
+        return;
+    }
+
+    if (view->show_play_now)
+    {
+        size_t choice = std::uniform_int_distribution<size_t>(0, view->choices.size() - 1)(ai.rng);
+
+        switch (view->choice_types.at(choice))
+        {
+        case df::viewscreen_setupdwarfgamest::PlayNow:
+            ai.debug(out, "choosing \"Play Now\"");
+            break;
+        case df::viewscreen_setupdwarfgamest::Prepare:
+            ai.debug(out, "choosing \"Prepare Carefully\"");
+            break;
+        case df::viewscreen_setupdwarfgamest::Profile:
+            ai.debug(out, "choosing embark profile: \"" + view->choices.at(choice)->name + "\"");
+            break;
+        }
+
+        while (view->choice != int32_t(choice))
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::SELECT);
+
+        return;
+    }
+
+    // TODO: more interesting custom loadout generation
+
+    Key(interface_key::CHANGETAB);
+    Key(interface_key::STANDARDSCROLL_RIGHT);
+
+    auto add_animal = [&](const std::string& name, const std::string& caste_name, int32_t amount)
+    {
+        int32_t start = view->animal_cursor;
+        for (;;)
+        {
+            auto creature = df::creature_raw::find(view->animals.race.at(view->animal_cursor));
+            auto caste = creature->caste.at(view->animals.caste.at(view->animal_cursor));
+            if (creature->creature_id != name || caste->caste_id != caste_name || view->animals.profession.at(view->animal_cursor) != profession::STANDARD)
+            {
+                Key(interface_key::STANDARDSCROLL_DOWN);
+                if (view->animal_cursor == start)
+                {
+                    ai.debug(out, "[ERROR] Could not find creature " + name + ":" + caste_name + " on embark menu.");
+                    return;
+                }
+                continue;
+            }
+
+            for (int32_t i = 0; i < amount; i++)
+            {
+                Key(interface_key::SECONDSCROLL_DOWN);
+            }
+
+            return;
+        }
+    };
+
+    add_animal("CAT", "MALE", 1);
+    add_animal("CAT", "FEMALE", 2);
+    add_animal("DOG", "MALE", 1);
+    add_animal("DOG", "FEMALE", 2);
+    add_animal("BIRD_TURKEY", "MALE", 2);
+    add_animal("BIRD_TURKEY", "FEMALE", 3);
+    add_animal("PIG", "MALE", 1);
+    add_animal("PIG", "FEMALE", 2);
+
+    Key(interface_key::SETUP_EMBARK);
 }
 
 void EmbarkExclusive::ViewTextViewer(color_ostream & out)
