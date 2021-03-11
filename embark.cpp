@@ -735,7 +735,7 @@ void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
             auto caste = creature->caste.at(view->animals.caste.at(view->animal_cursor));
             if (creature->creature_id != name || caste->caste_id != caste_name || view->animals.profession.at(view->animal_cursor) != profession::STANDARD)
             {
-                Key(interface_key::STANDARDSCROLL_DOWN);
+                Key(interface_key::STANDARDSCROLL_UP);
                 if (view->animal_cursor == start)
                 {
                     ai.debug(out, "[ERROR] Could not find creature " + name + ":" + caste_name + " on embark menu.");
