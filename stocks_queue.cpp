@@ -9,9 +9,12 @@
 #include "df/building_furnacest.h"
 #include "df/building_workshopst.h"
 #include "df/buildings_other_id.h"
+#include "df/caste_raw.h"
+#include "df/creature_raw.h"
 #include "df/itemdef_trapcompst.h"
 #include "df/manager_order.h"
 #include "df/manager_order_template.h"
+#include "df/unit_relationship_type.h"
 #include "df/viewscreen_dwarfmodest.h"
 #include "df/world.h"
 
@@ -186,6 +189,65 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
             tmpl.mat_type = 0;
         }
         break;
+    }
+    case stock_item::bone:
+    {
+        for (auto u : world->units.active)
+        {
+            if (u->flags2.bits.slaughter)
+            {
+                reason << "marked for slaughter: " << AI::describe_unit(u);
+                return;
+            }
+        }
+
+        df::unit *biggest_pet = nullptr;
+        int32_t biggest_pet_size = 0;
+        bool biggest_pet_useful = true;
+        for (auto & pet : ai.pop.pet)
+        {
+            if (auto u = df::unit::find(pet.first))
+            {
+                if (u->relationship_ids[unit_relationship_type::Pet] != -1)
+                {
+                    continue;
+                }
+
+                int32_t pet_size = u->body.size_info.size_cur;
+                if (pet.second.bits.hunts_vermin || pet.second.bits.trainable || pet.second.bits.lays_eggs || pet.second.bits.milkable || pet.second.bits.shearable)
+                {
+                    if (!biggest_pet_useful)
+                    {
+                        continue;
+                    }
+
+                    if (biggest_pet_size < pet_size)
+                    {
+                        biggest_pet = u;
+                        biggest_pet_size = pet_size;
+                    }
+                }
+                else
+                {
+                    if (biggest_pet_size < pet_size || biggest_pet_useful)
+                    {
+                        biggest_pet = u;
+                        biggest_pet_size = pet_size;
+                        biggest_pet_useful = false;
+                    }
+                }
+            }
+        }
+        if (biggest_pet)
+        {
+            biggest_pet->flags2.bits.slaughter = true;
+            reason << "marked for slaughter: " << AI::describe_unit(biggest_pet);
+            int32_t age = ai.pop.days_since(biggest_pet->birth_year, biggest_pet->birth_time);
+            auto race = df::creature_raw::find(biggest_pet->race);
+            auto cst = race->caste.at(biggest_pet->caste);
+            ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (need bones)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
+        }
+        return;
     }
     case stock_item::book_binding:
     {

@@ -13,6 +13,7 @@
 #include "df/item_eggst.h"
 #include "df/manager_order.h"
 #include "df/manager_order_template.h"
+#include "df/training_assignment.h"
 #include "df/ui.h"
 #include "df/ui_sidebar_menus.h"
 #include "df/unit_misc_trait.h"
@@ -59,15 +60,6 @@ void Population::update_pets(color_ostream & out)
     pet_check.clear();
     for (auto u : world->units.active)
     {
-        if (!Units::isOwnCiv(u) || Units::isOwnGroup(u) || Units::isOwnRace(u) || u->cultural_identity != -1)
-        {
-            continue;
-        }
-        if (u->flags1.bits.inactive || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.visitor || u->flags2.bits.slaughter)
-        {
-            continue;
-        }
-
         df::creature_raw *race = df::creature_raw::find(u->race);
         df::caste_raw *cst = race->caste[u->caste];
 
@@ -76,7 +68,40 @@ void Population::update_pets(color_ostream & out)
             continue;
         }
 
+        if (u->flags1.bits.inactive || u->flags1.bits.merchant || u->flags1.bits.forest || u->flags2.bits.visitor || u->flags2.bits.slaughter)
+        {
+            continue;
+        }
+
+        if (u->flags1.bits.caged && u->civ_id == -1 && u->cultural_identity == -1 && u->training_level == animal_training_level::WildUntamed)
+        {
+            // train any caught wild animals
+            if (!df::training_assignment::find(u->id))
+            {
+                auto asn = df::allocate<df::training_assignment>();
+                asn->animal_id = u->id;
+                asn->trainer_id = -1;
+                asn->flags.whole = 0;
+                asn->flags.bits.any_trainer = true;
+                insert_into_vector(ui->equipment.training_assignments, &df::training_assignment::animal_id, asn);
+            }
+
+            continue;
+        }
+
+        if (!Units::isOwnCiv(u) || Units::isOwnGroup(u) || Units::isOwnRace(u) || u->cultural_identity != -1)
+        {
+            continue;
+        }
+
         int32_t age = days_since(u->birth_year, u->birth_time);
+
+        if (u->training_level > animal_training_level::SemiWild && u->training_level < animal_training_level::Domesticated)
+        {
+            u->flags2.bits.slaughter = 1;
+            ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (trained wild animal)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
+            continue;
+        }
 
         if (pet.count(u->id))
         {

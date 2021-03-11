@@ -121,6 +121,7 @@
 				"bed": { "$ref": "shared.json#stocks_goal_need_or_track" },
 				"bin": { "$ref": "shared.json#stocks_goal_need_or_track" },
 				"block": { "$ref": "shared.json#stocks_goal_need_or_track" },
+				"bone": { "$ref": "shared.json#stocks_goal_need_watch_or_track" },
 				"book_binding": { "$ref": "shared.json#stocks_goal_need_or_track" },
 				"bookcase": { "$ref": "shared.json#stocks_goal_need_or_track" },
 				"bucket": { "$ref": "shared.json#stocks_goal_need_or_track" },
@@ -183,7 +184,6 @@
 				"wood": { "$ref": "shared.json#stocks_goal_need_or_track" },
 
 				"bag_plant": { "$ref": "shared.json#stocks_goal_watch_or_track" },
-				"bone": { "$ref": "shared.json#stocks_goal_watch_or_track" },
 				"clay": { "$ref": "shared.json#stocks_goal_watch_or_track" },
 				"cloth_nodye": { "$ref": "shared.json#stocks_goal_watch_or_track" },
 				"drink_fruit": { "$ref": "shared.json#stocks_goal_watch_or_track" },
