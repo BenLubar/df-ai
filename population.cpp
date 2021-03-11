@@ -218,7 +218,7 @@ void Population::update_citizenlist(color_ostream & out)
         {
             visitor.insert(u->id);
         }
-        else if (!Units::isOwnGroup(u) && std::find_if(u->occupations.begin(), u->occupations.end(), [](df::occupation *occ) -> bool { return occ->site_id == ui->site_id; }) != u->occupations.end())
+        else if (!Units::isOwnGroup(u) && std::find_if(u->occupations.begin(), u->occupations.end(), [](df::occupation *occ) -> bool { return occ->group_id == ui->group_id; }) != u->occupations.end())
         {
             resident.insert(u->id);
         }
