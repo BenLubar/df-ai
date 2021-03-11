@@ -108,7 +108,7 @@ void ExclusiveCallback::checkScreen(const char *filename, int lineno)
 
         bool isExpectedScreen = expectedScreen->is_instance(curview) &&
             (expectedFocus.empty() || Gui::getFocusString(curview) == expectedFocus) &&
-            (expectedParentFocus.empty() || Gui::getFocusString(curview->parent) == expectedFocus);
+            (expectedParentFocus.empty() || Gui::getFocusString(curview->parent) == expectedParentFocus);
 
         if (first)
         {

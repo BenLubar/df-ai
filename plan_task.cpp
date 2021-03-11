@@ -528,9 +528,10 @@ public:
 
         Key(interface_key::STANDARDSCROLL_RIGHT);
 
-        ExpectScreen<df::viewscreen_locationsst>("locations/Occupation");
+        ExpectScreen<df::viewscreen_locationsst>("locations/Occupations");
 
         Key(interface_key::LOCATION_RECOGNIZE_PRIESTHOOD);
+        Key(interface_key::SELECT);
 
         ExpectScreen<df::viewscreen_locationsst>("locations/AssignOccupation");
 
