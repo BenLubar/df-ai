@@ -31,7 +31,9 @@ class Population
             uint32_t milkable : 1;
             uint32_t shearable : 1;
             uint32_t hunts_vermin : 1;
+            uint32_t trainable : 1;
             uint32_t grazer : 1;
+            uint32_t lays_eggs : 1;
         } bits;
     };
 

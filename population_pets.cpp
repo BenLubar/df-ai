@@ -140,7 +140,9 @@ void Population::update_pets(color_ostream & out)
         flags.bits.milkable = 0;
         flags.bits.shearable = 0;
         flags.bits.hunts_vermin = 0;
+        flags.bits.trainable = 0;
         flags.bits.grazer = 0;
+        flags.bits.lays_eggs = 0;
 
         if (cst->flags.is_set(caste_raw_flags::MILKABLE))
         {
@@ -155,6 +157,11 @@ void Population::update_pets(color_ostream & out)
         if (cst->flags.is_set(caste_raw_flags::HUNTS_VERMIN))
         {
             flags.bits.hunts_vermin = 1;
+        }
+
+        if (cst->flags.is_set(caste_raw_flags::TRAINABLE_HUNTING) || cst->flags.is_set(caste_raw_flags::TRAINABLE_WAR))
+        {
+            flags.bits.trainable = 1;
         }
 
         if (cst->flags.is_set(caste_raw_flags::GRAZER))
@@ -172,6 +179,11 @@ void Population::update_pets(color_ostream & out)
                 u->flags2.bits.slaughter = 1;
                 ai.debug(out, stl_sprintf("marked %dy%dm%dd old %s:%s for slaughter (no pasture)", age / 12 / 28, (age / 28) % 12, age % 28, race->creature_id.c_str(), cst->caste_id.c_str()));
             }
+        }
+
+        if (cst->flags.is_set(caste_raw_flags::LAYS_EGGS))
+        {
+            flags.bits.lays_eggs = 1;
         }
 
         pet[u->id] = flags;

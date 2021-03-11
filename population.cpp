@@ -568,9 +568,19 @@ void Population::report(std::ostream & out, bool html)
             trait("hunts vermin");
         }
 
+        if (it.second.bits.trainable)
+        {
+            trait("trainable");
+        }
+
         if (it.second.bits.grazer)
         {
             trait("grazer");
+        }
+
+        if (it.second.bits.lays_eggs)
+        {
+            trait("lays eggs");
         }
 
         if (!first)
