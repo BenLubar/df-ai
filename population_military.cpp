@@ -744,7 +744,6 @@ void Population::update_military(color_ostream & out)
     std::vector<df::unit *> soldiers;
     std::vector<df::unit *> want_draft;
     std::vector<df::unit *> draft_pool;
-    bool any_migrant = false;
 
     for (auto u : world->units.active)
     {
@@ -754,8 +753,8 @@ void Population::update_military(color_ostream & out)
             {
                 if (trait->id == misc_trait_type::Migrant)
                 {
-                    any_migrant = true;
-                    break;
+                    // wait until new arrival status is cleared to do next update.
+                    return;
                 }
             }
             if (u->military.squad_id == -1)
@@ -777,6 +776,23 @@ void Population::update_military(color_ostream & out)
                 {
                     military[u->id] = u->military.squad_id;
                     ai.plan.getsoldierbarrack(out, u->id);
+                }
+
+                std::vector<Units::NoblePosition> positions;
+                if (Units::getNoblePositions(&positions, u))
+                {
+                    for (auto & pos : positions)
+                    {
+                        if (pos.position->responsibilities[entity_position_responsibility::ACCOUNTING] ||
+                            pos.position->responsibilities[entity_position_responsibility::MANAGE_PRODUCTION] ||
+                            pos.position->responsibilities[entity_position_responsibility::TRADE])
+                        {
+                            std::vector<df::unit *> dismiss;
+                            dismiss.push_back(u);
+                            events.queue_exclusive(std::make_unique<MilitarySetupExclusive::Dismiss>(ai, dismiss.begin(), dismiss.end()));
+                            break;
+                        }
+                    }
                 }
 
                 auto squad = df::squad::find(u->military.squad_id);
@@ -821,12 +837,6 @@ void Population::update_military(color_ostream & out)
                 ai.plan.getsoldierbarrack(out, u->id);
             }
         }
-    }
-
-    if (any_migrant)
-    {
-        // wait until new arrival status is cleared to do next update.
-        return;
     }
 
     size_t max_military = citizen.size() * military_min / 100;
