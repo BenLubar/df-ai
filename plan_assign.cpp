@@ -435,14 +435,31 @@ df::building *Plan::getpasture(color_ostream & out, int32_t pet_id)
     df::unit *pet = df::unit::find(pet_id);
 
     // don't assign multiple pastures
-    if (df::general_ref *ref = Units::getGeneralRef(pet, general_ref_type::BUILDING_CIVZONE_ASSIGNED))
+    if (auto ref = Units::getGeneralRef(pet, general_ref_type::BUILDING_CIVZONE_ASSIGNED))
     {
-        return ref->getBuilding();
+        auto bld = ref->getBuilding();
+        if (auto r = ai.find_room(room_type::pasture, [bld](room *r_) -> bool { return r_->dfbuilding() == bld; }))
+        {
+            if (r->low_grass())
+            {
+                r->users.erase(pet->id);
+                bld = nullptr;
+            }
+        }
+
+        if (bld)
+        {
+            return bld;
+        }
     }
 
     size_t limit = 1000 - (11 * 11 * 1000 / df::creature_raw::find(pet->race)->caste[pet->caste]->misc.grazer); // 1000 = arbitrary, based on dfwiki?pasture
     if (room *r = ai.find_room(room_type::pasture, [limit](room *r_) -> bool
     {
+        if (r_->low_grass())
+        {
+            return false;
+        }
         size_t sum = 0;
         for (auto it = r_->users.begin(); it != r_->users.end(); it++)
         {

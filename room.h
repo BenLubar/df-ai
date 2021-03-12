@@ -260,6 +260,7 @@ struct room
     df::building *dfbuilding() const;
     int32_t compute_value() const;
     int32_t distance_to(const room *other) const;
+    bool low_grass() const;
 };
 
 struct furniture

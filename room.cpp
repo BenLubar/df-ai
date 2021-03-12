@@ -485,3 +485,27 @@ int32_t room::distance_to(const room *other) const
     // not connected
     return 0x10000 + distance + max_distance;
 }
+
+bool room::low_grass() const
+{
+    df::coord sz = size();
+    int32_t size_tiles = sz.x * sz.y;
+    int32_t grass_tiles = 0;
+
+    for (int16_t x = 0; x <= sz.x; x++)
+    {
+        for (int16_t y = 0; y < sz.y; y++)
+        {
+            if (auto tt = Maps::getTileType(min + df::coord(x, y, 0)))
+            {
+                auto tm = ENUM_ATTR(tiletype, material, *tt);
+                if (tm == tiletype_material::GRASS_LIGHT || tm == tiletype_material::GRASS_DARK)
+                {
+                    grass_tiles++;
+                }
+            }
+        }
+    }
+
+    return grass_tiles < size_tiles / 5;
+}
