@@ -543,7 +543,7 @@ public:
 
         ExpectScreen<df::viewscreen_layer_militaryst>("layer_military/Equip/Customize/View/Positions");
 
-        auto position = std::find(screen->positions.assigned.begin(), screen->positions.assigned.end(), u);
+        auto position = std::find(screen->equip.units.begin(), screen->equip.units.end(), u);
         if (position == screen->positions.assigned.end())
         {
             ai.debug(out, "[ERROR] Cannot find unit in squad: " + AI::describe_unit(u));
