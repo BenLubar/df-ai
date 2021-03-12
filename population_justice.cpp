@@ -86,7 +86,6 @@ void Population::update_caged(color_ostream & out)
                     {
                         if (auto owner = Items::getOwner(ii->item))
                         {
-                            ai.debug(out, "pop: cannot strip item " + AI::describe_item(ii->item) + " owned by " + AI::describe_unit(owner));
                             continue;
                         }
                         waiting_items++;
@@ -299,40 +298,5 @@ void Population::update_crimes(color_ostream & out)
         {
             ai.debug(out, "[Crime] Waiting for sentencing for " + AI::describe_unit(convicted) + ", who was convicted of the crime of " + accusation + with_victim + ".");
         }
-    }
-
-    for (auto p : ui->punishments)
-    {
-        if (!p->beating && !p->hammer_strikes && !p->prison_counter)
-        {
-            continue;
-        }
-        std::string message("[Crime] Waiting for punishment: ");
-        message += AI::describe_unit(df::unit::find(p->criminal));
-        message += "\n        Officer: ";
-        message += AI::describe_unit(df::unit::find(p->officer));
-        if (p->beating)
-        {
-            message += "\n        Awaiting beating";
-        }
-        if (p->hammer_strikes)
-        {
-            message += "\n        Remaining hammer strikes: " + stl_sprintf("%d", p->hammer_strikes);
-        }
-        if (p->prison_counter)
-        {
-            int32_t days_remaining = (p->prison_counter + 120) / 120;
-            message += "\n        Remaining jail time: ";
-            message += stl_sprintf("%d", days_remaining);
-            if (days_remaining == 1)
-            {
-                message += " day";
-            }
-            else
-            {
-                message += " days";
-            }
-        }
-        ai.debug(out, message);
     }
 }
