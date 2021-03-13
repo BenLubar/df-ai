@@ -881,17 +881,17 @@ static void init_managed_workshop(color_ostream &, room *, df::building *bld)
 
 bool Plan::try_construct_tradedepot(color_ostream &, room *r, std::ostream & reason)
 {
-    std::vector<df::item *> boulds;
-    if (find_items(items_other_id::BOULDER, boulds, 3, false, true))
+    std::vector<df::item *> blocks;
+    if (find_items(items_other_id::BLOCKS, blocks, 3, false, true))
     {
         df::building *bld = Buildings::allocInstance(r->min, building_type::TradeDepot);
         Buildings::setSize(bld, r->size());
-        Buildings::constructWithItems(bld, boulds);
+        Buildings::constructWithItems(bld, blocks);
         r->bld_id = bld->id;
         add_task(task_type::check_construct, r);
         return true;
     }
-    reason << "have " << boulds.size() << "/3 boulders";
+    reason << "have " << blocks.size() << "/3 blocks";
     return false;
 }
 
@@ -1065,7 +1065,9 @@ bool Plan::try_construct_workshop(color_ostream & out, room *r, std::ostream & r
     else
     {
         df::item *bould;
-        if (find_item(items_other_id::BOULDER, bould, false, true) ||
+        if (find_item(items_other_id::BLOCKS, bould) ||
+            // use boulder if we can't find blocks
+            find_item(items_other_id::BOULDER, bould, false, true) ||
             // use wood if we can't find stone
             find_item(items_other_id::WOOD, bould))
         {
