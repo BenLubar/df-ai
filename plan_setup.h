@@ -75,4 +75,6 @@ private:
     bool have_minimum_requirements(std::map<std::string, size_t> & counts, std::map<std::string, std::map<std::string, size_t>> & instance_counts, const blueprint_plan_template & plan);
     void remove_unused_rooms();
     void handle_stairs_special();
+    bool distance_at_most(size_t r1, size_t r2, size_t max);
+    void add_extra_doors();
 };

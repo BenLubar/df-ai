@@ -196,6 +196,9 @@ bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_temp
     DFAI_DEBUG(blueprint, 1, "Simplifying staircases...");
     handle_stairs_special();
 
+    DFAI_DEBUG(blueprint, 1, "Adding extra doors...");
+    add_extra_doors();
+
     return true;
 }
 
@@ -887,4 +890,154 @@ void PlanSetup::handle_stairs_special()
             f->construction = construction_type::Floor;
         }
     }
+}
+
+bool PlanSetup::distance_at_most(size_t r1, size_t r2, size_t max)
+{
+    if (r1 == r2)
+    {
+        return true;
+    }
+
+    if (max == 0)
+    {
+        return false;
+    }
+
+    max--;
+
+    for (auto ap1 : rooms.at(r1)->accesspath)
+    {
+        if (distance_at_most(ap1, r2, max))
+        {
+            return true;
+        }
+    }
+
+    for (auto ap2 : rooms.at(r2)->accesspath)
+    {
+        if (distance_at_most(r1, ap2, max))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void PlanSetup::add_extra_doors()
+{
+    std::vector<room_base::room_t *> door_rooms;
+
+    auto check_door = [&](size_t r1, size_t r2, int16_t x, int16_t y, int16_t z)
+    {
+        df::coord c(x, y, z);
+
+        if (interior.count(c) || no_room.count(c))
+        {
+            return;
+        }
+
+        if (distance_at_most(r1, r2, 3))
+        {
+            return;
+        }
+
+        auto door_room = new room_base::room_t();
+        door_room->min = c;
+        door_room->max = c;
+        door_room->build_when_accessible = true;
+        door_room->accesspath.push_back(r1);
+        door_room->accesspath.push_back(r2);
+        door_room->layout.push_back(layout.size());
+        auto door = new room_base::furniture_t();
+        door->type = layout_type::door;
+        layout.push_back(door);
+        door_rooms.push_back(door_room);
+
+        interior[c] = "door";
+        no_room[c] = "door";
+    };
+
+    for (auto it1 = rooms.begin(); it1 != rooms.end(); it1++)
+    {
+        auto r1 = *it1;
+        size_t i1 = size_t(it1 - rooms.begin());
+
+        if (!r1 || r1->type != room_type::corridor || r1->corridor_type != corridor_type::corridor || r1->outdoor || r1->in_corridor)
+        {
+            continue;
+        }
+
+        if (r1->min.x >= r1->max.x - 1 || r1->min.y >= r1->max.y - 1 || r1->min.z != r1->max.z)
+        {
+            continue;
+        }
+
+        for (auto it2 = rooms.begin(); it2 != rooms.end(); it2++)
+        {
+            auto r2 = *it2;
+            size_t i2 = size_t(it2 - rooms.begin());
+
+            if (!r2 || r2->type != room_type::corridor || r2->corridor_type != corridor_type::corridor || r2->outdoor || r2->in_corridor)
+            {
+                continue;
+            }
+
+            if (r2->min.x >= r2->max.x - 1 || r2->min.y >= r2->max.y - 1 || r2->min.z != r2->max.z || r1->min.z != r2->min.z)
+            {
+                continue;
+            }
+
+            if (r2->min.x == r1->max.x + 2)
+            {
+                if (r2->min.y <= r1->min.y && r2->max.y >= r1->min.y)
+                {
+                    check_door(i1, i2, r1->max.x + 1, r1->min.y, r1->min.z);
+                }
+                if (r2->min.y <= r1->max.y && r2->max.y >= r1->max.y)
+                {
+                    check_door(i1, i2, r1->max.x + 1, r1->max.y, r1->min.z);
+                }
+            }
+
+            if (r2->min.y == r1->max.y + 2)
+            {
+                if (r2->min.x <= r1->min.x && r2->max.x >= r1->min.x)
+                {
+                    check_door(i1, i2, r1->min.x, r1->max.y + 1, r1->min.z);
+                }
+                if (r2->min.x <= r1->max.x && r2->max.x >= r1->max.x)
+                {
+                    check_door(i1, i2, r1->max.x, r1->max.y + 1, r1->min.z);
+                }
+            }
+
+            if (r2->max.x == r1->min.x - 2)
+            {
+                if (r2->min.y <= r1->min.y && r2->max.y >= r1->min.y)
+                {
+                    check_door(i1, i2, r1->min.x - 1, r1->min.y, r1->min.z);
+                }
+                if (r2->min.y <= r1->max.y && r2->max.y >= r1->max.y)
+                {
+                    check_door(i1, i2, r1->min.x - 1, r1->max.y, r1->min.z);
+                }
+            }
+
+            if (r2->max.y == r1->min.y - 2)
+            {
+                if (r2->min.x <= r1->min.x && r2->max.x >= r1->min.x)
+                {
+                    check_door(i1, i2, r1->min.x, r1->min.y - 1, r1->min.z);
+                }
+                if (r2->min.x <= r1->max.x && r2->max.x >= r1->max.x)
+                {
+                    check_door(i1, i2, r1->max.x, r1->min.y - 1, r1->min.z);
+                }
+            }
+        }
+    }
+
+    rooms.insert(rooms.end(), door_rooms.begin(), door_rooms.end());
 }
