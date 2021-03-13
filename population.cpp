@@ -256,6 +256,17 @@ void Population::update_citizenlist(color_ostream & out)
             ai.event("del citizen", payload);
         }
     }
+
+    std::ofstream discard;
+    color_ostream_wrapper discard_wrapper(discard);
+    if (config.manage_labors == "autolabor")
+    {
+        Core::getInstance().runCommand(discard_wrapper, stl_sprintf("autolabor HERBALIST 1 %d", int(citizen.size() / 5)));
+    }
+    else if (config.manage_labors == "labormanager")
+    {
+        Core::getInstance().runCommand(discard_wrapper, stl_sprintf("labormanager max HERBALIST %d", int(citizen.size() / 5)));
+    }
 }
 
 void Population::update_jobs(color_ostream &)
