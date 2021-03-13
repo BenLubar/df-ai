@@ -61,7 +61,8 @@
 		"generic01_pasture": [0, 10],
 		"generic01_pitting_tower": [1, 1],
 		"generic01_stair": [0, 100],
-		"generic01_start": [1, 1]
+		"generic01_start": [1, 1],
+		"generic01_well": [1, 1]
 	},
 	"instance_limits": {
 		"generic01_location": {
@@ -479,6 +480,14 @@
 			}
 		},
 		{
+			"name": "Well",
+			"action": "dig",
+			"match": {
+				"type": "corridor",
+				"comment": "well"
+			}
+		},
+		{
 			"name": "Farmer's Workshop",
 			"action": "dig",
 			"count": {
@@ -718,6 +727,13 @@
 			}
 		},
 		{
+			"name": "Pitting Tower",
+			"action": "dig",
+			"match": {
+				"type": "pitcage"
+			}
+		},
+		{
 			"name": "Level 1 Stockpiles",
 			"action": "dig",
 			"match": {
@@ -740,33 +756,40 @@
 			}
 		},
 		{
-			"name": "Barracks",
-			"action": "dig",
-			"count": {
-				"match": {
-					"status_not": "plan",
-					"type": "barracks"
-				},
-				"is": 0
-			},
-			"match": {
-				"type": "barracks"
-			}
-		},
-		{
-			"name": "Pitting Tower",
-			"action": "dig",
-			"match": {
-				"type": "pitcage"
-			}
-		},
-		{
 			"continue": true,
 			"name": "Allow Unused Common Rooms",
 			"action": "past_initial_phase"
 		},
 		{
-			"name": "Level 2 Stockpiles",
+			"name": "Level 2 Food Stockpiles",
+			"action": "dig",
+			"match": {
+				"type": "stockpile",
+				"stockpile_type": "food",
+				"level": 2,
+				"workshop_not": {}
+			}
+		},
+		{
+			"name": "Selected Level 2 and 3 Furnaces",
+			"action": "dig",
+			"match": {
+				"type": "furnace",
+				"furnace_type": ["WoodFurnace", "Smelter"],
+				"level": [2, 3]
+			}
+		},
+		{
+			"name": "Selected Level 2 and 3 Workshops",
+			"action": "dig",
+			"match": {
+				"type": "workshop",
+				"workshop_type": ["Carpenters", "Clothiers", "Craftsdwarfs", "Dyers", "Farmers", "Kitchen", "Loom", "Masons", "Mechanics", "MetalsmithsForge", "Still"],
+				"level": [2, 3]
+			}
+		},
+		{
+			"name": "Remaining Level 2 Stockpiles",
 			"action": "dig",
 			"match": {
 				"type": "stockpile",
@@ -775,11 +798,19 @@
 			}
 		},
 		{
-			"name": "Level 2 Workshops",
+			"name": "Remaining Level 2 Workshops",
 			"action": "dig",
 			"match": {
 				"type": ["workshop", "furnace"],
 				"level": 2
+			}
+		},
+		{
+			"name": "Cavern Outpost",
+			"action": "dig",
+			"match": {
+				"type": "outpost",
+				"outpost_type": "cavern"
 			}
 		},
 		{
@@ -856,6 +887,10 @@
 			}
 		},
 		{
+			"name": "Find Next Cavern",
+			"action": "dig_next_cavern_outpost"
+		},
+		{
 			"name": "Additional Barracks",
 			"action": "dig",
 			"match": {
@@ -877,10 +912,6 @@
 				"status_not": ["plan", "dig"],
 				"type": ["bedroom", "nobleroom", "corridor", "workshop", "furnace", "farmplot"]
 			}
-		},
-		{
-			"name": "Find Next Cavern",
-			"action": "dig_next_cavern_outpost"
 		},
 		{
 			"name": "Remaining Stockpiles",
