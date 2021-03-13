@@ -65,15 +65,17 @@ public:
     Camera camera;
     Trade trade;
 
-    OnupdateCallback *status_onupdate;
     OnupdateCallback *pause_onupdate;
     OnupdateCallback *tag_enemies_onupdate;
+    OnupdateCallback *announcements_onupdate;
     std::set<std::string> seen_focus;
     std::set<std::string> seen_cvname;
     int32_t last_good_x, last_good_y, last_good_z;
     int32_t last_pause_id, last_pause_repeats;
     bool skip_persist;
+    int32_t last_announcement_id;
     char lockstep_log_buffer[25][80];
+    uint8_t lockstep_log_color[25];
 
     AI();
     ~AI();
@@ -93,7 +95,7 @@ public:
     static bool is_dwarfmode_viewscreen();
 
     static void write_df(std::ostream & out, const std::string & str, const std::string & newline = "\n", const std::string & suffix = "\n", std::function<std::string(const std::string &)> translate = DF2UTF);
-    void write_lockstep(std::string str);
+    void write_lockstep(std::string str, uint8_t color = 7);
 
     void debug(color_ostream & out, const std::string & str);
 
@@ -106,6 +108,7 @@ public:
     void statechanged(color_ostream & out, state_change_event event);
     static void abandon(color_ostream & out);
     bool tag_enemies(color_ostream & out);
+    void watch_announcements();
     static df::unit *is_attacking_citizen(df::unit *u);
     static df::unit *is_hunting_target(df::unit *u);
     static bool is_in_conflict(df::unit *u, std::function<bool(df::activity_event_conflictst *)> filter = [](df::activity_event_conflictst *) -> bool { return true; });

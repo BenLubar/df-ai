@@ -18,6 +18,7 @@
 #include "df/job.h"
 #include "df/manager_order.h"
 #include "df/manager_order_template.h"
+#include "df/report.h"
 #include "df/world.h"
 
 REQUIRE_GLOBAL(cur_year);
@@ -206,7 +207,7 @@ void AI::write_df(std::ostream & out, const std::string & str, const std::string
     out.flush();
 }
 
-void AI::write_lockstep(std::string str)
+void AI::write_lockstep(std::string str, uint8_t color)
 {
     int32_t lines = 1;
     size_t pos = 0;
@@ -246,6 +247,7 @@ void AI::write_lockstep(std::string str)
     for (size_t src = lines, dst = 0; src < 25; src++, dst++)
     {
         memcpy(lockstep_log_buffer[dst], lockstep_log_buffer[src], 80);
+        lockstep_log_color[dst] = lockstep_log_color[src];
     }
 
     for (size_t i = 0, y = 25 - lines; y < 25; y++)
@@ -266,6 +268,7 @@ void AI::write_lockstep(std::string str)
         {
             i++;
         }
+        lockstep_log_color[y] = color;
     }
 }
 
@@ -354,4 +357,24 @@ std::string AI::report(bool html)
     report_section(str, "Stocks", stocks, html);
     report_section(str, "Events", events, html);
     return str.str();
+}
+
+void AI::watch_announcements()
+{
+    for (auto it = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), [this](df::report *r) -> bool { return r->id == last_announcement_id; }).base(); it != world->status.announcements.end(); it++)
+    {
+        last_announcement_id = (*it)->id;
+        if (!(*it)->flags.bits.announcement)
+        {
+            continue;
+        }
+
+        uint8_t color = uint8_t((*it)->color);
+        if ((*it)->bright)
+        {
+            color |= 64;
+        }
+
+        write_lockstep((*it)->text, color);
+    }
 }

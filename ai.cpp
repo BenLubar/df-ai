@@ -33,9 +33,9 @@ AI::AI() :
     stocks{ *this },
     camera{ *this },
     trade{ *this },
-    status_onupdate{ nullptr },
     pause_onupdate{ nullptr },
     tag_enemies_onupdate{ nullptr },
+    announcements_onupdate{ nullptr },
     seen_focus{},
     seen_cvname{ "viewscreen_dwarfmodest" },
     last_good_x{ -1 },
@@ -43,7 +43,8 @@ AI::AI() :
     last_good_z{ -1 },
     last_pause_id{ -1 },
     last_pause_repeats{ 0 },
-    skip_persist{ false }
+    skip_persist{ false },
+    last_announcement_id{ -1 }
 {
     Gui::getViewCoords(last_good_x, last_good_y, last_good_z);
 
@@ -53,6 +54,7 @@ AI::AI() :
         {
             lockstep_log_buffer[y][x] = ' ';
         }
+        lockstep_log_color[y] = 7;
     }
 
     if (config.random_embark)
@@ -240,6 +242,7 @@ command_result AI::onupdate_register(color_ostream & out)
             return false;
         });
         tag_enemies_onupdate = events.onupdate_register("df-ai tag_enemies", 1200, 1200, [this](color_ostream & out) { tag_enemies(out); });
+        announcements_onupdate = events.onupdate_register("df-ai announcement watcher", 1, 1, [this](color_ostream &) { watch_announcements(); });
         events.onstatechange_register_once("world unload watcher", [this](color_ostream & out, state_change_event st) -> bool
         {
             if (st == SC_WORLD_UNLOADED)
@@ -268,9 +271,9 @@ command_result AI::onupdate_unregister(color_ostream & out)
         res = pop.onupdate_unregister(out);
     if (res == CR_OK)
     {
-        events.onupdate_unregister(status_onupdate);
         events.onupdate_unregister(pause_onupdate);
         events.onupdate_unregister(tag_enemies_onupdate);
+        events.onupdate_unregister(announcements_onupdate);
     }
     return res;
 }

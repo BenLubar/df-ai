@@ -387,7 +387,7 @@ static void lockstep_handlemovie(bool flushall)
                     {
                         for (y2 = 0; y2 < init->display.grid_y; y2++)
                         {
-                            gview->supermoviebuffer[gview->supermovie_pos] = 7;
+                            gview->supermoviebuffer[gview->supermovie_pos] = y2 < 25 ? dwarfAI->lockstep_log_color[y2] : 7;
 
                             gview->supermovie_pos++;
                         }
