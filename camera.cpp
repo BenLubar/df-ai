@@ -161,7 +161,8 @@ void Camera::update(color_ostream &)
             DFAI_DEBUG(camera, 4, "adding candidate: " << AI::describe_unit(u) << " (primary antagonist)");
             targets0.push_back(u);
         }
-        else if (u->flags1.bits.marauder ||
+        else if (u->training_level != animal_training_level::Domesticated &&
+            (u->flags1.bits.marauder ||
             u->flags1.bits.zombie ||
             u->flags1.bits.skeleton ||
             u->flags1.bits.active_invader ||
@@ -188,7 +189,7 @@ void Camera::update(color_ostream &)
                 {
                     return virtual_cast<df::creature_interaction_effect_body_transformationst>(ce) != nullptr;
                 }) != s.end();
-            }) != u->syndromes.active.end())
+            }) != u->syndromes.active.end()))
         {
             DFAI_DEBUG(camera, 4, "adding candidate: " << AI::describe_unit(u) << " (conflict)");
             targets1.push_back(u);
