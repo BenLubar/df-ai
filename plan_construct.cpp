@@ -533,7 +533,7 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t,
     }
     if (!mecha)
     {
-        if (block)
+        if (!block)
         {
             reason << ", ";
         }
@@ -541,7 +541,7 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t,
     }
     if (!buckt)
     {
-        if (block || mecha)
+        if (!block || !mecha)
         {
             reason << ", ";
         }
@@ -549,7 +549,7 @@ bool Plan::try_furnish_well(color_ostream &, room *r, furniture *f, df::coord t,
     }
     if (!chain)
     {
-        if (block || mecha || buckt)
+        if (!block || !mecha || !buckt)
         {
             reason << ", ";
         }

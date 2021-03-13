@@ -347,25 +347,9 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         break;
     }
     case stock_item::clothes_feet:
-    {
-        queue_need_clothes(out, what, reason);
-        return;
-    }
     case stock_item::clothes_hands:
-    {
-        queue_need_clothes(out, what, reason);
-        return;
-    }
     case stock_item::clothes_head:
-    {
-        queue_need_clothes(out, what, reason);
-        return;
-    }
     case stock_item::clothes_legs:
-    {
-        queue_need_clothes(out, what, reason);
-        return;
-    }
     case stock_item::clothes_torso:
     {
         queue_need_clothes(out, what, reason);

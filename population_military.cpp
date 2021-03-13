@@ -195,13 +195,13 @@ public:
         ScrollTo(linear_index(screen->squads.list, selected_squad));
 
         bool should_reassign_leader = true;
-        if (ai.pop.resident.count(unit_id))
+        if (!ai.pop.resident.count(unit_id))
         {
-            // Mercenaries can't lead squads.
             should_reassign_leader = false;
         }
         else
         {
+            // Mercenaries can't lead squads.
             for (auto pos : selected_squad->positions)
             {
                 if (pos)
