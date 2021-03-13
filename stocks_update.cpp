@@ -207,6 +207,13 @@ void Stocks::update(color_ostream & out)
                 job->flags.bits.do_now = true;
                 continue;
             }
+
+            if (job->job_type == job_type::ConstructBuilding)
+            {
+                // otherwise dwarves sit in one place
+                job->flags.bits.do_now = true;
+                continue;
+            }
         }
         if (ai.eventsJson.is_open())
         {
