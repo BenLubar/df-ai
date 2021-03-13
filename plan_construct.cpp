@@ -882,7 +882,7 @@ static void init_managed_workshop(color_ostream &, room *, df::building *bld)
 bool Plan::try_construct_tradedepot(color_ostream &, room *r, std::ostream & reason)
 {
     std::vector<df::item *> blocks;
-    if (find_items(items_other_id::BLOCKS, blocks, 3, false, true))
+    if (find_items(items_other_id::BLOCKS, blocks, 3))
     {
         df::building *bld = Buildings::allocInstance(r->min, building_type::TradeDepot);
         Buildings::setSize(bld, r->size());
