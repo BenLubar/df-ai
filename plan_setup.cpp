@@ -276,7 +276,7 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
                                 break;
                             }
                         }
-                        if (!has_layout)
+                        if (!has_layout && (t.z != z || !in->require_grass))
                         {
                             furniture *f = new furniture();
                             if (t.z == z)
