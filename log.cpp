@@ -364,7 +364,9 @@ void AI::watch_announcements()
     for (auto it = std::find_if(world->status.announcements.rbegin(), world->status.announcements.rend(), [this](df::report *r) -> bool { return r->id == last_announcement_id; }).base(); it != world->status.announcements.end(); it++)
     {
         last_announcement_id = (*it)->id;
-        if (!(*it)->flags.bits.announcement)
+        if (!(*it)->flags.bits.announcement ||
+            (*it)->type == announcement_type::UNABLE_TO_COMPLETE_BUILDING ||
+            (*it)->type == announcement_type::CONSTRUCTION_SUSPENDED)
         {
             continue;
         }
