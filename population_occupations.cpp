@@ -274,12 +274,16 @@ public:
                 {
                     auto ent = df::historical_entity::find(party->entity_ids.at(0));
                     auto name = ent ? &ent->name : nullptr;
-                    return name ? AI::describe_name(*name, true) : "(unknown)";
+                    return name ? AI::describe_name(*name, true) + ", " + enum_item_key(ent->type) : "(unknown)";
                 }
 
                 if (!party->histfig_ids.empty())
                 {
                     auto fig = df::historical_figure::find(party->histfig_ids.at(0));
+                    if (auto u = fig ? df::unit::find(fig->unit_id) : nullptr)
+                    {
+                        return AI::describe_unit(u);
+                    }
                     auto name = fig ? &fig->name : nullptr;
                     return name ? AI::describe_name(*name, false) : "(unknown)";
                 }
