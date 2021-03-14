@@ -78,13 +78,13 @@ bool AI::tag_enemies(color_ostream & out)
             {
                 found = pop.military_random_squad_attack_unit(out, u, "undead") || found;
             }
-            else if (u->flags1.bits.marauder)
-            {
-                found = pop.military_random_squad_attack_unit(out, u, "marauder") || found;
-            }
             else if (u->flags1.bits.active_invader)
             {
                 found = pop.military_random_squad_attack_unit(out, u, "active invader") || found;
+            }
+            else if (u->flags1.bits.marauder)
+            {
+                found = pop.military_random_squad_attack_unit(out, u, "marauder") || found;
             }
             else if (u->flags2.bits.underworld)
             {
