@@ -65,6 +65,11 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
 // smooth only the inside of the room and any walls, but not adjacent floors
 void Plan::smooth_cistern_access(color_ostream & out, room *r)
 {
+    if (r->type != room_type::cistern && (r->type != room_type::corridor || r->corridor_type != corridor_type::aqueduct))
+    {
+        return;
+    }
+
     std::set<df::coord> tiles;
     for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
     {
