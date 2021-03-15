@@ -257,6 +257,7 @@ void PlanSetup::create_from_blueprint(room * & fort_entrance, std::vector<room *
         out->temporary = in->temporary;
         out->outdoor = in->outdoor;
         out->build_when_accessible = in->build_when_accessible;
+        out->channel_enable = in->channel_enable;
 
         if (in->outdoor && !in->require_floor)
         {

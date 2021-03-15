@@ -22,10 +22,10 @@ bool Plan::construct_cistern(color_ostream & out, room *r)
     smooth_cistern(out, r);
 
     // remove boulders
-    dump_items_access(out, r);
+    room_items(out, r, [](df::item *i) { i->flags.bits.dump = true; });
 
     // build levers for floodgates
-    wantdig(out, ai.find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern; }));
+    wantdig(out, r->workshop);
 
     // check smoothing progress, channel intermediate levels
     if (r->cistern_type == cistern_type::well)
@@ -44,6 +44,20 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
     }
 
     std::set<df::coord> tiles;
+    for (auto f : r->layout)
+    {
+        for (int16_t dx = -1; dx <= 1; dx++)
+        {
+            for (int16_t dy = -1; dy <= 1; dy++)
+            {
+                df::coord c = r->min + f->pos + df::coord(dx, dy, 0);
+                if (c.x < r->min.x || c.x > r->max.x || c.y < r->min.y || c.y > r->max.y)
+                {
+                    tiles.insert(c);
+                }
+            }
+        }
+    }
     for (int16_t z = r->min.z; z <= r->max.z; z++)
     {
         for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
@@ -193,8 +207,9 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
 {
     if (!m_c_lever_in)
     {
-        room *well = ai.find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern; });
-        for (auto f : well->layout)
+        m_c_cistern = ai.find_room(room_type::cistern, [](room* r) -> bool { return r->cistern_type == cistern_type::well; });
+        m_c_reserve = ai.find_room(room_type::cistern, [](room* r) -> bool { return r->cistern_type == cistern_type::reserve; });
+        for (auto f : m_c_cistern->workshop->layout)
         {
             if (f->type == layout_type::lever)
             {
@@ -204,8 +219,6 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                     m_c_lever_out = f;
             }
         }
-        m_c_cistern = ai.find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::well; });
-        m_c_reserve = ai.find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::reserve; });
         if (m_c_reserve->channel_enable.isValid())
         {
             m_c_testgate_delay = m_c_cistern->channeled ? -1 : 2;
@@ -387,7 +400,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
             }
             else
             {
-                room *well = ai.find_room(room_type::location, [](room *r) -> bool { return r->location_type == location_type::tavern; });
+                room *well = m_c_cistern->workshop;
                 if (Maps::getTileDesignation(well->min + df::coord(-2, well->size().y / 2, 0))->bits.flow_size == 7)
                 {
                     // something went not as planned, but we have a water source
@@ -528,21 +541,8 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
 
 bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
 {
-    if (r->type == room_type::location && r->location_type == location_type::tavern)
+    if (f->target)
     {
-        if (!f->target)
-        {
-            room *cistern = ai.find_room(room_type::cistern, [](room *r) -> bool { return r->cistern_type == cistern_type::reserve; });
-            for (auto gate : cistern->layout)
-            {
-                if (gate->type == layout_type::floodgate && gate->internal == f->internal)
-                {
-                    f->target = gate;
-                    break;
-                }
-            }
-        }
-
         std::ofstream discard;
         if (link_lever(out, f, f->target, discard))
         {

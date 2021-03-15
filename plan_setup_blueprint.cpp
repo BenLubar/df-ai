@@ -6,6 +6,8 @@
 #include "modules/Maps.h"
 
 #include "df/block_square_event_grassst.h"
+#include "df/feature_init_outdoor_riverst.h"
+#include "df/feature_outdoor_riverst.h"
 #include "df/map_block.h"
 #include "df/world.h"
 
@@ -198,6 +200,9 @@ bool PlanSetup::build(const blueprints_t & blueprints, const blueprint_plan_temp
 
     DFAI_DEBUG(blueprint, 1, "Adding extra doors...");
     add_extra_doors();
+
+    DFAI_DEBUG(blueprint, 1, "Handling special exits...");
+    handle_special_exits();
 
     return true;
 }
@@ -1041,4 +1046,183 @@ void PlanSetup::add_extra_doors()
     }
 
     rooms.insert(rooms.end(), door_rooms.begin(), door_rooms.end());
+}
+
+void PlanSetup::handle_special_exits()
+{
+    for (auto r : rooms)
+    {
+        if (!r)
+        {
+            continue;
+        }
+
+        for (auto & exit : r->exits)
+        {
+            if (exit.second.count("_aqueduct_to_river"))
+            {
+                df::feature_init_outdoor_riverst *river_init = nullptr;
+                for (auto f : world->features.map_features)
+                {
+                    river_init = virtual_cast<df::feature_init_outdoor_riverst>(f);
+                    if (river_init)
+                    {
+                        break;
+                    }
+                }
+
+                if (!river_init)
+                {
+                    // no river, no aqueduct
+                    continue;
+                }
+
+                auto river = river_init->feature;
+
+                std::map<df::coord, df::coord> source_tile;
+                std::vector<df::coord> check_0, check_1, check_2;
+
+                auto queue_direction = [&](df::coord c0, int16_t dx, int16_t dy, int16_t dz, df::coord prev)
+                {
+                    df::coord c1 = c0;
+                    c1.x += dx;
+                    c1.y += dy;
+                    c1.z += dz;
+
+                    if (!ai.plan.map_tile_in_rock(c1) || source_tile.count(c1))
+                    {
+                        return;
+                    }
+
+                    source_tile[c1] = prev;
+                    (c0 == prev ? check_2 : check_1).push_back(c1);
+                };
+                auto check_river = [&](df::coord c) -> bool
+                {
+                    auto td = Maps::getTileDesignation(c);
+                    if (!td)
+                    {
+                        return false;
+                    }
+
+                    if (td->bits.feature_local)
+                    {
+                        df::coord2d xy(
+                            uint16_t(c.x / 48 + world->map.region_x),
+                            uint16_t(c.y / 48 + world->map.region_y)
+                        );
+
+                        for (size_t i = 0; i < river->embark_pos.size(); i++)
+                        {
+                            if (river->embark_pos[i] == xy)
+                            {
+                                if (c.z >= river->min_map_z.at(i) && c.z <= river->max_map_z.at(i))
+                                {
+                                    return true;
+                                }
+
+                                break;
+                            }
+                        }
+                    }
+
+                    return false;
+                };
+
+                df::coord origin = r->min + exit.first;
+                check_0.push_back(origin);
+
+                while (!check_0.empty() || !check_1.empty() || !check_2.empty())
+                {
+                    for (df::coord cur : check_0)
+                    {
+                        df::coord prev = source_tile.count(cur) ? source_tile.at(cur) : cur;
+
+                        df::coord adjacent_river;
+                        if (Maps::getTileDesignation(cur.x, cur.y, cur.z + 1)->bits.light)
+                        {
+                            if (check_river(cur + df::coord(-2, 0, 0)))
+                            {
+                                adjacent_river = cur + df::coord(-1, 0, 1);
+                            }
+                            else if (check_river(cur + df::coord(2, 0, 0)))
+                            {
+                                adjacent_river = cur + df::coord(1, 0, 1);
+                            }
+                            else if (check_river(cur + df::coord(0, -2, 0)))
+                            {
+                                adjacent_river = cur + df::coord(0, -1, 1);
+                            }
+                            else if (check_river(cur + df::coord(0, 2, 0)))
+                            {
+                                adjacent_river = cur + df::coord(0, 1, 1);
+                            }
+                        }
+
+                        if (!adjacent_river.isValid())
+                        {
+                            bool bad_position = false;
+                            if (cur != origin)
+                            {
+                                for (int16_t dx = -1; dx <= 1; dx++)
+                                {
+                                    for (int16_t dy = -1; dy <= 1; dy++)
+                                    {
+                                        df::coord c = cur + df::coord(dx, dy, 0);
+                                        if (interior.count(c) || (no_room.count(c) && no_room.at(c) != r->blueprint) || (no_corridor.count(c) && no_corridor.at(c) != r->blueprint))
+                                        {
+                                            bad_position = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (!bad_position)
+                            {
+                                queue_direction(cur, -1, 0, 0, prev.y == cur.y && prev.z == cur.z ? prev : cur);
+                                queue_direction(cur, 1, 0, 0, prev.y == cur.y && prev.z == cur.z ? prev : cur);
+                                queue_direction(cur, 0, -1, 0, prev.x == cur.x && prev.z == cur.z ? prev : cur);
+                                queue_direction(cur, 0, 1, 0, prev.x == cur.x && prev.z == cur.z ? prev : cur);
+                                // can't go down z-levels
+                                queue_direction(cur, 0, 0, 1, prev.x == cur.x && prev.y == cur.y ? prev : cur);
+                            }
+
+                            continue;
+                        }
+
+                        r->channel_enable = adjacent_river;
+                        if (prev.x != cur.x || prev.y != cur.y)
+                            prev = cur;
+                        cur.z++;
+                        source_tile[cur] = prev;
+
+                        do
+                        {
+                            room_base::room_t* r2 = new room_base::room_t();
+                            r2->corridor_type = corridor_type::aqueduct;
+                            r2->min = df::coord(std::min(cur.x, prev.x), std::min(cur.y, prev.y), std::min(cur.z, prev.z));
+                            r2->max = df::coord(std::max(cur.x, prev.x), std::max(cur.y, prev.y), std::max(cur.z, prev.z));
+                            r->accesspath.push_back(rooms.size());
+                            rooms.push_back(r2);
+
+                            cur = prev;
+                            if (source_tile.count(cur))
+                            {
+                                prev = source_tile.at(cur);
+                            }
+                        } while (prev != cur);
+
+                        check_0.clear();
+                        check_1.clear();
+                        check_2.clear();
+                        break;
+                    }
+
+                    check_0 = std::move(check_1);
+                    check_1 = std::move(check_2);
+                }
+            }
+        }
+    }
 }

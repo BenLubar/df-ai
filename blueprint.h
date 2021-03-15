@@ -107,6 +107,8 @@ struct room_base
 
         variable_string::context_t context;
         std::string blueprint;
+
+        df::coord channel_enable;
     };
 
     ~room_base();

@@ -389,6 +389,14 @@
 			}
 		},
 		{
+			"name": "Well",
+			"action": "dig",
+			"match": {
+				"type": "corridor",
+				"comment": "well"
+			}
+		},
+		{
 			"name": "Additional Mason's Workshop",
 			"action": "dig",
 			"count": {
@@ -477,14 +485,6 @@
 			},
 			"match": {
 				"type": "cemetery"
-			}
-		},
-		{
-			"name": "Well",
-			"action": "dig",
-			"match": {
-				"type": "corridor",
-				"comment": "well"
 			}
 		},
 		{

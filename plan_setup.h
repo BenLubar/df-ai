@@ -77,4 +77,5 @@ private:
     void handle_stairs_special();
     bool distance_at_most(size_t r1, size_t r2, size_t max);
     void add_extra_doors();
+    void handle_special_exits();
 };

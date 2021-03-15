@@ -500,27 +500,30 @@ bool room_blueprint::warn(std::string & error)
         {
             furniture_used.at(fi) = true;
 
-            auto f = layout.at(fi);
-            df::coord pos = r->min + f->pos;
-            if (pos.x > r->max.x + 1)
+            if (r->type != room_type::cistern)
             {
-                error = stl_sprintf("room %d, furniture %zu: furniture outside of east wall", int(ri - rooms.begin()), fi);
-                return true;
-            }
-            if (pos.y > r->max.y + 1)
-            {
-                error = stl_sprintf("room %d, furniture %zu: furniture outside of south wall", int(ri - rooms.begin()), fi);
-                return true;
-            }
-            if (pos.x < r->min.x - 1)
-            {
-                error = stl_sprintf("room %d, furniture %zu: furniture outside of west wall", int(ri - rooms.begin()), fi);
-                return true;
-            }
-            if (pos.y < r->min.y - 1)
-            {
-                error = stl_sprintf("room %d, furniture %zu: furniture outside of north wall", int(ri - rooms.begin()), fi);
-                return true;
+                auto f = layout.at(fi);
+                df::coord pos = r->min + f->pos;
+                if (pos.x > r->max.x + 1)
+                {
+                    error = stl_sprintf("room %d, furniture %zu: furniture outside of east wall", int(ri - rooms.begin()), fi);
+                    return true;
+                }
+                if (pos.y > r->max.y + 1)
+                {
+                    error = stl_sprintf("room %d, furniture %zu: furniture outside of south wall", int(ri - rooms.begin()), fi);
+                    return true;
+                }
+                if (pos.x < r->min.x - 1)
+                {
+                    error = stl_sprintf("room %d, furniture %zu: furniture outside of west wall", int(ri - rooms.begin()), fi);
+                    return true;
+                }
+                if (pos.y < r->min.y - 1)
+                {
+                    error = stl_sprintf("room %d, furniture %zu: furniture outside of north wall", int(ri - rooms.begin()), fi);
+                    return true;
+                }
             }
         }
     }
@@ -625,6 +628,7 @@ void room_blueprint::build_cache()
                     {
                         for (int16_t dy = -1; dy <= 1; dy++)
                         {
+                            no_corridor.insert(r->min + f->pos + df::coord(dx, dy, 0));
                             no_room.insert(r->min + f->pos + df::coord(dx, dy, 0));
                         }
                     }
