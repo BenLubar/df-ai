@@ -23,8 +23,10 @@
 			"exits": [
 				["generic01_bedroom", 0, -1, 0],
 				["generic01_bedroom", 0, 3, 0],
-				["generic01_bedroom", 3, -1, 0],
-				["generic01_bedroom", 3, 3, 0],
+				["generic01_bedroom", 2, -1, 0],
+				["generic01_bedroom", 2, 3, 0],
+				["generic01_bedroom", 4, -1, 0],
+				["generic01_bedroom", 4, 3, 0],
 				["generic01_bedroom", 6, -1, 0],
 				["generic01_bedroom", 6, 3, 0],
 				["generic01_bedrooms", 7, 1, 0],

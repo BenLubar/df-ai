@@ -3,7 +3,7 @@
 	"f": [
 		{
 			"type": "bed",
-			"x": 1,
+			"x": 2,
 			"y": 0,
 			"z": 0,
 			"makeroom": true
@@ -11,29 +11,29 @@
 		{
 			"type": "cabinet",
 			"x": 1,
-			"y": 1,
+			"y": 0,
 			"z": 0,
 			"ignore": true
 		},
 		{
 			"type": "chest",
 			"x": 0,
-			"y": 1,
+			"y": 0,
 			"z": 0,
 			"ignore": true
 		},
 		{
 			"type": "door",
-			"x": 0,
-			"y": -1,
+			"x": 3,
+			"y": 0,
 			"z": 0
 		}
 	],
 	"r": [
 		{
 			"type": "bedroom",
-			"min": [0, 1, 0],
-			"max": [1, 2, 0],
+			"min": [-3, 0, 0],
+			"max": [-1, 0, 0],
 			"layout": [0, 1, 2, 3]
 		}
 	]

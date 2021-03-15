@@ -952,6 +952,7 @@ void PlanSetup::add_extra_doors()
         door_room->layout.push_back(layout.size());
         auto door = new room_base::furniture_t();
         door->type = layout_type::door;
+        door->ignore = true;
         layout.push_back(door);
         door_rooms.push_back(door_room);
 
