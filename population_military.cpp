@@ -248,7 +248,7 @@ public:
 
                         if (auto u = df::unit::find(fig->unit_id))
                         {
-                            if (squad->leader_position == u->military.squad_position)
+                            if (u->military.squad_position == 0)
                             {
                                 continue;
                             }
