@@ -34,7 +34,6 @@
 			"x": 0,
 			"y": 2,
 			"z": 0,
-			"internal": true,
 			"target": 6
 		},
 		{
@@ -42,6 +41,7 @@
 			"x": 0,
 			"y": 4,
 			"z": 0,
+			"internal": true,
 			"target": 10
 		},
 		{
@@ -73,24 +73,80 @@
 		},
 		{
 			"type": "floodgate",
-			"x": -1,
+			"x": -2,
 			"y": 3,
-			"z": 0
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"construction": "Floor",
 			"x": 5,
 			"y": 3,
 			"z": 0
+		},
+		{
+			"construction": "Floor",
+			"x": -1,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "chest",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "chest",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 0,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 5,
+			"z": 0
+		},
+		{
+			"type": "table",
+			"x": 0,
+			"y": 6,
+			"z": 0
+		},
+		{
+			"type": "chair",
+			"x": 1,
+			"y": 6,
+			"z": 0
 		}
 	],
 	"r": [
 		{
-			"type": "corridor",
+			"type": "location",
+			"location_type": "tavern",
 			"min": [-3, -7, 0],
 			"max": [3, -1, 0],
-			"accesspath": [1, 2, 3],
-			"layout": [0, 1, 2, 4, 5],
+			"accesspath": [1, 2, 3, 4],
+			"layout": [0, 1, 2, 4, 5, 13, 14, 15, 16, 17, 18, 19, 20],
 			"comment": "well"
 		},
 		{
@@ -105,6 +161,7 @@
 			"min": [-3, -5, -3],
 			"max": [5, -3, -1],
 			"workshop": 0,
+			"accesspath": [3],
 			"layout": [6, 7, 8, 9]
 		},
 		{
@@ -113,9 +170,36 @@
 			"min": [-11, -7, -1],
 			"max": [-7, -1, -1],
 			"workshop": 0,
-			"layout": [10, 11],
+			"layout": [10, 11, 12],
 			"exits": [
-				["_aqueduct_to_river", -2, 3, 0]
+				["_aqueduct_to_river", -3, 3, 0]
+			]
+		},
+		{
+			"type": "stockpile",
+			"stockpile_type": "food",
+			"min": [-1, -7, 0],
+			"max": [3, -7, 0],
+			"workshop": 0,
+			"comment": "tavern - booze stockpile",
+			"stock_disable": [
+				"FoodMeat",
+				"FoodFish",
+				"FoodUnpreparedFish",
+				"FoodEgg",
+				"FoodPlants",
+				"FoodCheesePlant",
+				"FoodCheeseAnimal",
+				"FoodSeeds",
+				"FoodLeaves",
+				"FoodMilledPlant",
+				"FoodBoneMeal",
+				"FoodFat",
+				"FoodPaste",
+				"FoodPressedMaterial",
+				"FoodExtractPlant",
+				"FoodExtractAnimal",
+				"FoodMiscLiquid"
 			]
 		}
 	]

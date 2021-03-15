@@ -1143,19 +1143,19 @@ void PlanSetup::handle_special_exits()
                         {
                             if (check_river(cur + df::coord(-2, 0, 0)))
                             {
-                                adjacent_river = cur + df::coord(-1, 0, 1);
+                                adjacent_river = cur + df::coord(-1, 0, 0);
                             }
                             else if (check_river(cur + df::coord(2, 0, 0)))
                             {
-                                adjacent_river = cur + df::coord(1, 0, 1);
+                                adjacent_river = cur + df::coord(1, 0, 0);
                             }
                             else if (check_river(cur + df::coord(0, -2, 0)))
                             {
-                                adjacent_river = cur + df::coord(0, -1, 1);
+                                adjacent_river = cur + df::coord(0, -1, 0);
                             }
                             else if (check_river(cur + df::coord(0, 2, 0)))
                             {
-                                adjacent_river = cur + df::coord(0, 1, 1);
+                                adjacent_river = cur + df::coord(0, 1, 0);
                             }
                         }
 

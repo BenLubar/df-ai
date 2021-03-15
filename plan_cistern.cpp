@@ -130,7 +130,7 @@ bool Plan::try_digcistern(color_ostream & out, room *r)
 
     // XXX hardcoded layout..
     int32_t cnt = 0;
-    int16_t acc_y = r->accesspath[0]->min.y;
+    int16_t acc_y = (r->min.y + r->max.y) / 2;
     for (int16_t z = r->min.z + 1; z <= r->max.z; z++)
     {
         for (int16_t x = r->max.x; x >= r->min.x; x--)
@@ -221,7 +221,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
         }
         if (m_c_reserve->channel_enable.isValid())
         {
-            m_c_testgate_delay = m_c_cistern->channeled ? -1 : 2;
+            m_c_testgate_delay = m_c_reserve->channeled ? -1 : 2;
         }
     }
 
@@ -323,6 +323,10 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                 room *r = todo.front();
                 todo.pop_front();
                 todo.insert(todo.end(), r->accesspath.begin(), r->accesspath.end());
+                if (r->type != room_type::cistern && (r->type != room_type::corridor || r->corridor_type != corridor_type::aqueduct))
+                {
+                    continue;
+                }
                 for (int16_t x = r->min.x - 1; empty && x <= r->max.x + 1; x++)
                 {
                     for (int16_t y = r->min.y - 1; empty && y <= r->max.y + 1; y++)
@@ -334,7 +338,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                             {
                                 std::string msg = stl_sprintf("unsmoothed %s (%d, %d, %d) %s", enum_item_key_str(*Maps::getTileType(t)), x, y, z, AI::describe_room(r).c_str());
                                 ai.debug(out, "cistern: " + msg);
-                                reason << msg;
+                                reason << msg << "\n";
                                 empty = false;
                                 break;
                             }
@@ -347,7 +351,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                                     {
                                         std::string msg = stl_sprintf("unit (%d, %d, %d) (%s) %s", x, y, z, AI::describe_unit(*u).c_str(), AI::describe_room(r).c_str());
                                         ai.debug(out, "cistern: " + msg);
-                                        reason << msg;
+                                        reason << msg << "\n";
                                         break;
                                     }
                                 }
@@ -364,6 +368,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                                     {
                                         std::string msg = stl_sprintf("item (%d, %d, %d) (%s) %s", x, y, z, AI::describe_item(i).c_str(), AI::describe_room(r).c_str());
                                         ai.debug(out, "cistern: " + msg);
+                                        i->flags.bits.dump = true;
                                         break;
                                     }
                                 }
@@ -375,14 +380,14 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                 }
             }
 
-            if (empty && !dump_items_access(out, m_c_reserve))
+            if (empty)
             {
                 if (!f_out_closed)
                 {
                     // avoid floods. wait for the output to be closed.
                     reason << "waiting for output floodgate to be closed: ";
                     pull_lever(out, m_c_lever_out, reason);
-                    m_c_testgate_delay = 4;
+                    m_c_testgate_delay = 1;
                 }
                 else
                 {
@@ -417,7 +422,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
                         if (f_out_closed)
                             pull_lever(out, m_c_lever_out, reason);
                     }
-                    m_c_testgate_delay = 16;
+                    m_c_testgate_delay = 1;
                     reason << "not ready to channel";
                 }
             }

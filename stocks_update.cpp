@@ -214,6 +214,13 @@ void Stocks::update(color_ostream & out)
                 job->flags.bits.do_now = true;
                 continue;
             }
+
+            if (job->job_type == job_type::DetailFloor || job->job_type == job_type::DetailWall || job->job_type == job_type::DigChannel)
+            {
+                // cistern is high priority, and helps avoid running out of time on location agreements
+                job->flags.bits.do_now = true;
+                continue;
+            }
         }
         if (ai.eventsJson.is_open())
         {

@@ -476,6 +476,19 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
                 reason << "reserving mechanisms for rescue_caged task";
                 return false;
             }
+            if (t->type == task_type::monitor_cistern && ai.find_room(room_type::cistern, [](room *r) -> bool { return r->status > room_status::plan && !r->channeled; }))
+            {
+                reason << "reserving mechanisms for cistern";
+                return false;
+            }
+        }
+        for (auto t : tasks_furniture)
+        {
+            if (t->type == task_type::furnish && t->f->type == layout_type::lever)
+            {
+                reason << "reserving mechanisms for lever";
+                return false;
+            }
         }
     }
 
