@@ -163,7 +163,6 @@ void Camera::update(color_ostream &)
         }
         else if (u->training_level != animal_training_level::Domesticated &&
             (u->flags1.bits.marauder ||
-            u->flags1.bits.zombie ||
             u->flags1.bits.skeleton ||
             u->flags1.bits.active_invader ||
             u->flags2.bits.underworld ||
