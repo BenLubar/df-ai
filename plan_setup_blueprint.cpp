@@ -639,7 +639,7 @@ bool PlanSetup::try_add_room_outdoor_shared(const room_blueprint & rb, std::map<
         {
             add_count(rb, plan, counts, instance_counts);
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(pos) << ".");
-            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z));
+            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), pos.x, pos.y, pos.z), true);
             return true;
         }
 
@@ -684,7 +684,7 @@ bool PlanSetup::try_add_room_connect(const room_blueprint & rb, std::map<std::st
         {
             add_count(rb, plan, counts, instance_counts);
             DFAI_DEBUG(blueprint, 3, "Placed " << DBG_ROOM(rb) << " at " << DBG_COORD(std::get<1>(chosen)) << ".");
-            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z));
+            LogQuiet(stl_sprintf("Placed %s/%s/%s at (%d, %d, %d)", rb.type.c_str(), rb.tmpl_name.c_str(), rb.name.c_str(), std::get<1>(chosen).x, std::get<1>(chosen).y, std::get<1>(chosen).z), true);
             return true;
         }
 

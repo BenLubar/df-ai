@@ -27,6 +27,7 @@ class PlanSetup : public ExclusiveCallback
 {
     AI & ai;
     int32_t next_noblesuite;
+    int32_t quieter_count;
 
     std::vector<room_base::furniture_t *> layout;
     std::vector<room_base::room_t *> rooms;
@@ -49,7 +50,7 @@ public:
 
 private:
     void Log(const std::string &);
-    void LogQuiet(const std::string &);
+    void LogQuiet(const std::string &, bool);
 
     bool build_from_blueprint(const blueprints_t & blueprints);
     void create_from_blueprint(room * & fort_entrance, std::vector<room *> & real_rooms_and_corridors, std::vector<plan_priority_t> & real_priorities) const;

@@ -25,7 +25,8 @@ public:
 PlanSetup::PlanSetup(AI & ai) :
     ExclusiveCallback("blueprint setup", 2),
     ai(ai),
-    next_noblesuite(0)
+    next_noblesuite(0),
+    quieter_count(0)
 {
 }
 
@@ -66,9 +67,9 @@ void PlanSetup::Run(color_ostream & out)
     Log("Searching for caverns...");
     auto res = ai.plan.setup_blueprint_caverns(out);
     if (res == CR_OK)
-        LogQuiet("Marked outpost location.");
+        LogQuiet("Marked outpost location.", false);
     else
-        LogQuiet("Could not find a cavern.");
+        LogQuiet("Could not find a cavern.", false);
 
     Log("Searching for mineral veins...");
     ai.plan.list_map_veins(out);
@@ -78,7 +79,7 @@ void PlanSetup::Run(color_ostream & out)
         auto ore = df::inorganic_raw::find(vein.first);
         if (ore->flags.is_set(inorganic_flags::METAL_ORE))
         {
-            LogQuiet("Planning tunnel to " + ore->id + " vein...");
+            LogQuiet("Planning tunnel to " + ore->id + " vein...", false);
             ai.plan.dig_vein(out, vein.first, 0);
         }
     }
@@ -94,10 +95,11 @@ void PlanSetup::Log(const std::string & message)
 {
     ai.debug(Core::getInstance().getConsole(), "[Setup] " + message);
     log.push_back(std::make_pair(message, true));
+    quieter_count = 0;
     Delay();
 }
 
-void PlanSetup::LogQuiet(const std::string & message)
+void PlanSetup::LogQuiet(const std::string & message, bool quieter)
 {
     int count = 5;
     for (auto it = log.rbegin(); it != log.rend(); it++)
@@ -115,6 +117,15 @@ void PlanSetup::LogQuiet(const std::string & message)
         }
     }
     log.push_back(std::make_pair(message, false));
+    if (quieter)
+    {
+        quieter_count++;
+        if (quieter_count < 3)
+        {
+            return;
+        }
+    }
+    quieter_count = 0;
     Delay();
 }
 
