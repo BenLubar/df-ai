@@ -64,8 +64,13 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
         }
         break;
     }
-    case announcement_type::BERSERK_CITIZEN:
     case announcement_type::UNDEAD_ATTACK:
+        if (!tag_enemies(out))
+        {
+            debug(out, "[ERROR] could not find enemy combatants");
+        }
+        break;
+    case announcement_type::BERSERK_CITIZEN:
     case announcement_type::CAVE_COLLAPSE:
         break;
     case announcement_type::DIG_CANCEL_DAMP:
@@ -102,6 +107,10 @@ void AI::handle_pause_event(color_ostream & out, df::report *announce)
         if (std::mismatch(prefix.begin(), prefix.end(), type.begin()).first == prefix.end())
         {
             debug(out, "pause: an ambush!");
+            if (!tag_enemies(out))
+            {
+                debug(out, "[ERROR] could not find enemy combatants");
+            }
         }
         else
         {
