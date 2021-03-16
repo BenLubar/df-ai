@@ -71,9 +71,9 @@
 	"instance_limits": {
 		"generic01_location": {
 			"guildhall": [0, 5],
-			"library": [1, 2],
-			"tavern": [1, 1],
-			"temple": [1, 7]
+			"library": [1, 3],
+			"tavern": [0, 2],
+			"temple": [1, 8]
 		},
 		"generic01_outdoor_farm": {
 			"food": [0, 30],
@@ -88,7 +88,7 @@
 			"coins": [0, 1],
 			"corpses": [0, 1],
 			"finished_goods": [1, 5],
-			"food": [2, 20],
+			"food": [2, 10],
 			"fresh_raw_hide": [1, 2],
 			"furniture": [1, 5],
 			"gems": [1, 2],
@@ -923,6 +923,54 @@
 			"action": "dig",
 			"match": {
 				"type": ["workshop", "furnace"]
+			}
+		},
+		{
+			"name": "Third Tavern",
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "tavern"
+				},
+				"is": 2
+			},
+			"match": {
+				"type": "location",
+				"location_type": "tavern"
+			}
+		},
+		{
+			"name": "Third Library",
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "library"
+				},
+				"is": 2
+			},
+			"match": {
+				"type": "location",
+				"location_type": "library"
+			}
+		},
+		{
+			"name": "Third Temple",
+			"action": "dig",
+			"count": {
+				"match": {
+					"status_not": "plan",
+					"type": "location",
+					"location_type": "temple"
+				},
+				"is": 2
+			},
+			"match": {
+				"type": "location",
+				"location_type": "temple"
 			}
 		},
 		{
