@@ -1025,6 +1025,7 @@ public:
                 Key(interface_key::D_SQUADS_KILL_LIST);
                 DFAI_ASSERT(ui->squads.in_kill_list, "failed to enter target list");
 
+                bool remove_only = true;
                 for (auto kill_orders_unit : kill_orders_squad.second)
                 {
                     auto unit_it = std::find_if(ui->squads.kill_targets.begin(), ui->squads.kill_targets.end(), [&](df::unit *u) -> bool
@@ -1050,6 +1051,7 @@ public:
                     }
 
                     Key(static_cast<df::interface_key>(interface_key::SEC_OPTION1 + unit_pos - first_unit));
+                    remove_only = false;
                 }
 
                 Key(interface_key::SELECT);
@@ -1059,6 +1061,12 @@ public:
                 {
                     Key(interface_key::LEAVESCREEN);
                     Delay();
+
+                    if (remove_only)
+                    {
+                        Key(interface_key::D_SQUADS_CANCEL_ORDER);
+                        Delay();
+                    }
                 }
 
                 if (ui->squads.in_kill_order)
