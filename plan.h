@@ -169,7 +169,7 @@ public:
     bool try_setup_farmplot(color_ostream & out, room *r, std::ostream & reason);
     bool try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostream & reason);
 
-    bool setup_lever(color_ostream & out, room *r, furniture *f);
+    bool setup_lever(color_ostream & out, room *r, furniture *f, std::ostream & reason);
     bool link_lever(color_ostream & out, furniture *src, furniture *dst, std::ostream & reason);
     bool pull_lever(color_ostream & out, furniture *f, std::ostream & reason);
 

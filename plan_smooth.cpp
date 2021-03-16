@@ -14,20 +14,40 @@ REQUIRE_GLOBAL(world);
 bool Plan::smooth_room(color_ostream &, room *r, bool engrave)
 {
     std::set<df::coord> tiles;
+    auto insert_tile = [&](df::coord t)
+    {
+        auto tt = Maps::getTileType(t);
+        auto & room_z = room_by_z.at(t.z);
+        if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *tt)) != tiletype_shape_basic::Wall ||
+            std::find_if(room_z.begin(), room_z.end(), [t](room* o) -> bool { return o->include(t) && o->dig_mode(t) != tile_dig_designation::No &&
+                std::find_if(o->layout.begin(), o->layout.end(), [t, o](furniture* f) -> bool { return o->min + f->pos == t &&
+                    f->dig == tile_dig_designation::No && f->construction == construction_type::Wall; }) == o->layout.end(); }) == room_z.end())
+        {
+            tiles.insert(t);
+        }
+    };
+    for (auto f : r->layout)
+    {
+        if (f->type == layout_type::door)
+        {
+            continue;
+        }
+
+        for (int16_t dx = -1; dx <= 1; dx++)
+        {
+            for (int16_t dy = -1; dy <= 1; dy++)
+            {
+                insert_tile(r->min + f->pos + df::coord(dx, dy, 0));
+            }
+        }
+    }
     for (int16_t x = r->min.x - 1; x <= r->max.x + 1; x++)
     {
         for (int16_t y = r->min.y - 1; y <= r->max.y + 1; y++)
         {
             for (int16_t z = r->min.z; z <= r->max.z; z++)
             {
-                df::coord t(x, y, z);
-                if (ENUM_ATTR(tiletype_shape, basic_shape, ENUM_ATTR(tiletype, shape, *Maps::getTileType(t))) != tiletype_shape_basic::Wall ||
-                    std::find_if(room_by_z.at(z).begin(), room_by_z.at(z).end(), [t](room *o) -> bool { return o->include(t) && o->dig_mode(t) != tile_dig_designation::No &&
-                        std::find_if(o->layout.begin(), o->layout.end(), [t, o](furniture *f) -> bool { return o->min + f->pos == t &&
-                            f->dig == tile_dig_designation::No && f->construction == construction_type::Wall; }) == o->layout.end(); }) == room_by_z.at(z).end())
-                {
-                    tiles.insert(t);
-                }
+                insert_tile(df::coord(x, y, z));
             }
         }
     }

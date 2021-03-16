@@ -46,9 +46,10 @@
 		},
 		{
 			"type": "floodgate",
-			"x": -2,
-			"y": 1,
-			"z": 2
+			"x": 6,
+			"y": 3,
+			"z": 0,
+			"ignore": true
 		},
 		{
 			"dig": "UpDownStair",
@@ -75,8 +76,7 @@
 			"type": "floodgate",
 			"x": -2,
 			"y": 3,
-			"z": 0,
-			"ignore": true
+			"z": 0
 		},
 		{
 			"construction": "Floor",
@@ -162,7 +162,7 @@
 			"max": [5, -3, -1],
 			"workshop": 0,
 			"accesspath": [3],
-			"layout": [6, 7, 8, 9]
+			"layout": [7, 8, 9]
 		},
 		{
 			"type": "cistern",
@@ -170,7 +170,7 @@
 			"min": [-11, -7, -1],
 			"max": [-7, -1, -1],
 			"workshop": 0,
-			"layout": [10, 11, 12],
+			"layout": [6, 10, 11, 12],
 			"exits": [
 				["_aqueduct_to_river", -3, 3, 0]
 			]

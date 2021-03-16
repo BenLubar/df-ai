@@ -23,7 +23,7 @@ public:
 };
 
 PlanSetup::PlanSetup(AI & ai) :
-    ExclusiveCallback("blueprint setup"),
+    ExclusiveCallback("blueprint setup", 2),
     ai(ai),
     next_noblesuite(0),
     quieter_count(0)

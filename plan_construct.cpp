@@ -14,6 +14,7 @@
 #include "df/building_def_item.h"
 #include "df/building_def_workshopst.h"
 #include "df/building_doorst.h"
+#include "df/building_floodgatest.h"
 #include "df/building_furnacest.h"
 #include "df/building_hatchst.h"
 #include "df/building_stockpilest.h"
@@ -476,11 +477,6 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
                 reason << "reserving mechanisms for rescue_caged task";
                 return false;
             }
-            if (t->type == task_type::monitor_cistern && ai.find_room(room_type::cistern, [](room *r) -> bool { return r->status > room_status::plan && !r->channeled; }))
-            {
-                reason << "reserving mechanisms for cistern";
-                return false;
-            }
         }
         for (auto t : tasks_furniture)
         {
@@ -489,6 +485,45 @@ bool Plan::try_furnish(color_ostream & out, room *r, furniture *f, std::ostream 
                 reason << "reserving mechanisms for lever";
                 return false;
             }
+        }
+        if (ai.find_room(room_type::cistern, [](room *r) -> bool
+            {
+                for (auto f : r->layout)
+                {
+                    if (f->type != layout_type::floodgate)
+                    {
+                        continue;
+                    }
+                    if (auto bld = virtual_cast<df::building_floodgatest>(df::building::find(f->bld_id)))
+                    {
+                        bool is_attached = false;
+                        for (auto i : bld->contained_items)
+                        {
+                            for (auto ref : i->item->general_refs)
+                            {
+                                if (ref->getType() == general_ref_type::BUILDING_TRIGGER)
+                                {
+                                    is_attached = true;
+                                    break;
+                                }
+                            }
+                            if (is_attached)
+                            {
+                                break;
+                            }
+                        }
+
+                        if (!is_attached)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }))
+        {
+            reason << "reserving mechanisms for cistern";
+            return false;
         }
     }
 
@@ -1816,7 +1851,7 @@ bool Plan::try_endfurnish(color_ostream & out, room *r, furniture *f, std::ostre
     }
     else if (f->type == layout_type::lever)
     {
-        return setup_lever(out, r, f);
+        return setup_lever(out, r, f, reason);
     }
 
     if (r->type == room_type::jail && (f->type == layout_type::cage || f->type == layout_type::restraint))

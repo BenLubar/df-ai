@@ -238,7 +238,7 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
 
     if (l_in && f_in && !f_out && !l_in->linked_mechanisms.empty())
     {
-        if (!f_in->gate_flags.bits.closing && !f_in->gate_flags.bits.closed)
+        if (f_in->gate_flags.bits.closing || f_in->gate_flags.bits.closed)
         {
             if (!f_in->gate_flags.bits.opening)
             {
@@ -544,21 +544,21 @@ void Plan::monitor_cistern(color_ostream & out, std::ostream & reason)
     }
 }
 
-bool Plan::setup_lever(color_ostream & out, room *r, furniture *f)
+bool Plan::setup_lever(color_ostream & out, room *r, furniture *f, std::ostream & reason)
 {
-    if (f->target)
+    if (!f->target)
     {
-        std::ofstream discard;
-        if (link_lever(out, f, f->target, discard))
+        return true;
+    }
+    if (link_lever(out, f, f->target, reason))
+    {
+        pull_lever(out, f, reason);
+        if (f->internal)
         {
-            pull_lever(out, f, discard);
-            if (f->internal)
-            {
-                add_task(task_type::monitor_cistern);
-            }
-
-            return true;
+            add_task(task_type::monitor_cistern);
         }
+
+        return true;
     }
     return false;
 }
