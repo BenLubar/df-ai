@@ -13,7 +13,6 @@
 			"generic01_corridor_stair"
 		],
 		"generic01_generic": [
-			"generic01_barracks",
 			"generic01_bedrooms",
 			"generic01_cemetery",
 			"generic01_corridor",
@@ -25,6 +24,11 @@
 			"generic01_underground_farm_start",
 			"generic01_workshop_3x3",
 			"generic01_workshop_5x5"
+		],
+		"generic01_wide": [
+			"generic01_barracks",
+			"generic01_stockpile",
+			"generic01_well"
 		]
 	},
 	"outdoor": [
