@@ -16,8 +16,6 @@
 REQUIRE_GLOBAL(cur_year);
 REQUIRE_GLOBAL(cur_year_tick);
 
-const static size_t wantdig_max = 2; // dig at most this much wantdig rooms at a time
-
 static bool want_reupdate = false;
 
 void Plan::update(color_ostream &)
@@ -76,6 +74,8 @@ void Plan::update(color_ostream &)
             switch (t.type)
             {
             case task_type::want_dig:
+            {
+                size_t wantdig_max = ai.stocks.count_total.count(stock_item::pick) ? std::max(ai.stocks.count_total.at(stock_item::pick), 2) : 2;
                 if (any_immediate())
                 {
                     reason << "waiting for more important room to be dug";
@@ -90,6 +90,7 @@ void Plan::update(color_ostream &)
                     reason << "dig queue " << t.r->queue << " has " << nrdig[t.r->queue] << " of " << wantdig_max << " slots already filled";
                 }
                 break;
+            }
             case task_type::dig_room:
             case task_type::dig_room_immediate:
                 fixup_open(out, t.r);
