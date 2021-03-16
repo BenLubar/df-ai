@@ -55,7 +55,7 @@
 		"generic01_infirmary": [1, 5],
 		"generic01_jail": [1, 3],
 		"generic01_mineshaft": [1, 1],
-		"generic01_mineshaft_segment": [1, 20],
+		"generic01_mineshaft_segment": [1, 3],
 		"generic01_nobleroom": [4, 8],
 		"generic01_outpost_entrance": [1, 1],
 		"generic01_pasture": [0, 10],

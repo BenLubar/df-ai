@@ -74,8 +74,24 @@ void PlanSetup::Run(color_ostream & out)
     Log("Searching for mineral veins...");
     ai.plan.list_map_veins(out);
 
+    df::coord mining_basis = ai.plan.fort_entrance->pos();
+    if (auto veinshaft = ai.find_room(room_type::corridor, [](room *r) -> bool { return r->corridor_type == corridor_type::veinshaft; }))
+    {
+        mining_basis = veinshaft->pos();
+    }
+
     for (auto & vein : ai.plan.map_veins)
     {
+        std::stable_sort(vein.second.begin(), vein.second.end(), [&](std::pair<df::coord, int32_t> a, std::pair<df::coord, int32_t> b) -> bool
+            {
+                auto dist = [](df::coord c0, df::coord c1) -> int32_t
+                {
+                    df::coord d = df::coord(c0.x * 16, c0.y * 16, c0.z) - c1;
+                    return d.x * d.x + d.y * d.y + d.z * d.z;
+                };
+                return dist(a.first, mining_basis) < dist(b.first, mining_basis);
+            });
+
         auto ore = df::inorganic_raw::find(vein.first);
         if (ore->flags.is_set(inorganic_flags::METAL_ORE))
         {

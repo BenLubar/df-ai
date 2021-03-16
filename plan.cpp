@@ -408,7 +408,7 @@ command_result Plan::list_map_veins(color_ostream &)
                 {
                     if (auto vein = virtual_cast<df::block_square_event_mineralst>(event))
                     {
-                        map_veins[vein->inorganic_mat][block->map_pos] = count_tile_bitmask(vein->tile_bitmask);
+                        map_veins[vein->inorganic_mat].push_back(std::make_pair(block->map_pos, count_tile_bitmask(vein->tile_bitmask)));
                     }
                 }
             }
