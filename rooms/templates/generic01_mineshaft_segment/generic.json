@@ -2,79 +2,11 @@
 	"$schema": "https://ben.lubar.me/df-ai-schemas/room-template.json",
 	"f": [
 		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 2,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 0,
-			"y": 3,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
 			"x": 5,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
 			"y": 1,
 			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
+			"construction": "UpDownStair",
+			"dig": "UpDownStair"
 		},
 		{
 			"x": 5,
@@ -84,100 +16,11 @@
 			"dig": "UpDownStair"
 		},
 		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
 			"x": 5,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
 			"y": 1,
 			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 3,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 0,
-			"y": 4,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 5,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
+			"construction": "UpDownStair",
+			"dig": "UpDownStair"
 		},
 		{
 			"x": 5,
@@ -187,474 +30,11 @@
 			"dig": "UpDownStair"
 		},
 		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 0,
-			"y": 2,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 4,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "TrackNS"
-		},
-		{
-			"x": 0,
-			"y": 3,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackNE"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackEW"
-		},
-		{
-			"x": 5,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
 			"x": 5,
 			"y": 1,
 			"z": 0,
 			"construction": "UpDownStair",
 			"dig": "UpDownStair"
-		},
-		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "TrackNS"
-		},
-		{
-			"x": 5,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackEW"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackNW"
-		},
-		{
-			"x": 0,
-			"y": 2,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 2,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackNW"
-		},
-		{
-			"x": 2,
-			"y": 5,
-			"z": 0,
-			"construction": "TrackS"
-		},
-		{
-			"x": 6,
-			"y": 4,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 4,
-			"y": 5,
-			"z": 0,
-			"construction": "TrackS"
-		},
-		{
-			"x": 4,
-			"y": 6,
-			"z": 0,
-			"construction": "TrackNE"
-		},
-		{
-			"x": 3,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 3,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 5,
-			"y": 1,
-			"z": 0,
-			"construction": "UpDownStair",
-			"dig": "UpDownStair"
-		},
-		{
-			"x": 6,
-			"y": 4,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 6,
-			"y": 3,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 1,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 5,
-			"y": 1,
-			"z": 0,
-			"construction": "UpDownStair",
-			"dig": "UpDownStair"
-		},
-		{
-			"x": 6,
-			"y": 3,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 6,
-			"y": 2,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 6,
-			"y": 4,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackSE"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackEW"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackNS"
-		},
-		{
-			"x": 0,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 0,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 1,
-			"y": 6,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 3,
-			"y": 0,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackSW"
-		},
-		{
-			"x": 6,
-			"y": 3,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 5,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 5,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 6,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
 		},
 		{
 			"x": 5,
@@ -665,210 +45,155 @@
 			"stairs_special": true
 		},
 		{
-			"x": 6,
-			"y": 2,
-			"z": 0,
-			"construction": "TrackRampNS"
-		},
-		{
-			"x": 3,
-			"y": 1,
-			"z": 0,
-			"dig": "No",
-			"construction": "Wall"
-		},
-		{
-			"x": 6,
-			"y": 4,
-			"z": 0,
-			"construction": "Wall",
-			"dig": "No"
-		},
-		{
-			"x": 6,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackNS"
-		},
-		{
-			"x": 5,
+			"type": "cage_trap",
+			"x": 0,
 			"y": 0,
-			"z": 0,
-			"construction": "TrackEW"
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 2,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "cage_trap",
+			"x": 1,
+			"y": 2,
+			"z": 0
 		},
 		{
 			"x": 4,
 			"y": 0,
 			"z": 0,
-			"construction": "TrackSE"
-		},
-		{
-			"x": 4,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackN"
-		},
-		{
-			"x": 0,
-			"y": 2,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 2,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackSW"
-		},
-		{
-			"x": 2,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackN"
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 2,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 2,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 2,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 2,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 2,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 2,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 0,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 1,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 0,
-			"y": 2,
-			"z": 0
-		},
-		{
-			"type": "cage_trap",
-			"x": 1,
-			"y": 2,
-			"z": 0
+			"construction": "UpDownStair",
+			"dig": "UpDownStair"
 		},
 		{
 			"x": 4,
@@ -885,7 +210,7 @@
 			"min": [-3, -3, 0],
 			"max": [3, 3, 0],
 			"build_when_accessible": true,
-			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+			"layout": [0]
 		},
 		{
 			"type": "outpost",
@@ -894,7 +219,7 @@
 			"max": [3, 3, -1],
 			"build_when_accessible": true,
 			"accesspath": [0],
-			"layout": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+			"layout": [1]
 		},
 		{
 			"type": "outpost",
@@ -903,7 +228,7 @@
 			"max": [3, 3, -2],
 			"build_when_accessible": true,
 			"accesspath": [1],
-			"layout": [31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53]
+			"layout": [2]
 		},
 		{
 			"type": "outpost",
@@ -912,7 +237,7 @@
 			"max": [3, 3, -3],
 			"build_when_accessible": true,
 			"accesspath": [2],
-			"layout": [54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68]
+			"layout": [3]
 		},
 		{
 			"type": "outpost",
@@ -921,7 +246,7 @@
 			"max": [3, 3, -4],
 			"build_when_accessible": true,
 			"accesspath": [3],
-			"layout": [69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84]
+			"layout": [4]
 		},
 		{
 			"type": "outpost",
@@ -930,9 +255,8 @@
 			"max": [3, 3, -5],
 			"build_when_accessible": true,
 			"accesspath": [4],
-			"layout": [85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107],
+			"layout": [5],
 			"exits": [
-				["dummy_minecart_exit", 0, 2, -1],
 				["generic01_mineshaft_segment", 3, 3, -1]
 			]
 		},
@@ -942,7 +266,7 @@
 			"min": [-1, 4, -5],
 			"max": [1, 5, -5],
 			"accesspath": [5],
-			"layout": [108, 109, 110, 111, 112, 113]
+			"layout": [6, 7, 8, 9, 10, 11]
 		},
 		{
 			"type": "corridor",
@@ -950,7 +274,7 @@
 			"min": [-5, -1, -5],
 			"max": [-4, 1, -5],
 			"accesspath": [5],
-			"layout": [114, 115, 116, 117, 118, 119]
+			"layout": [12, 13, 14, 15, 16, 17]
 		},
 		{
 			"type": "corridor",
@@ -958,7 +282,7 @@
 			"min": [-1, -5, -2],
 			"max": [1, -4, -2],
 			"accesspath": [2],
-			"layout": [120, 121, 122, 123, 124, 125]
+			"layout": [18, 19, 20, 21, 22, 23]
 		},
 		{
 			"type": "corridor",
@@ -966,26 +290,27 @@
 			"min": [4, -1, -2],
 			"max": [5, 1, -2],
 			"accesspath": [2],
-			"layout": [126, 127, 128, 129, 130, 131]
+			"layout": [24, 25, 26, 27, 28, 29]
 		},
 		{
 			"type": "stockpile",
 			"stockpile_type": "stone",
 			"min": [-2, -2, -2],
-			"max": [2, 1, -2],
+			"max": [2, 2, -2],
 			"in_corridor": true,
 			"build_when_accessible": true,
 			"accesspath": [2],
-			"layout": [132]
+			"layout": [30]
 		},
 		{
 			"type": "stockpile",
 			"stockpile_type": "stone",
-			"min": [-2, -1, -5],
+			"min": [-2, -2, -5],
 			"max": [2, 2, -5],
 			"in_corridor": true,
 			"build_when_accessible": true,
-			"accesspath": [5]
+			"accesspath": [5],
+			"layout": [31]
 		}
 	]
 }

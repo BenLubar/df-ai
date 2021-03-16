@@ -8,48 +8,6 @@
 			"z": 0,
 			"dig": "DownStair",
 			"construction": "DownStair"
-		},
-		{
-			"x": 2,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackN"
-		},
-		{
-			"x": 2,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackSW"
-		},
-		{
-			"x": 1,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackEW"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"construction": "TrackSE"
-		},
-		{
-			"x": 0,
-			"y": 1,
-			"z": 0,
-			"construction": "TrackNS"
-		},
-		{
-			"x": 0,
-			"y": 2,
-			"z": 0,
-			"dig": "Channel"
-		},
-		{
-			"x": 0,
-			"y": 0,
-			"z": 0,
-			"dig": "Channel"
 		}
 	],
 	"r": [
@@ -59,9 +17,8 @@
 			"min": [-3, -3, 0],
 			"max": [3, 3, 0],
 			"outdoor": true,
-			"layout": [0, 1, 2, 3, 4, 5, 6],
+			"layout": [0],
 			"exits": [
-				["dummy_minecart_exit", 0, 2, -1],
 				["generic01_mineshaft_segment", 3, 3, -1]
 			],
 			"comment": "mining outpost"
@@ -74,11 +31,7 @@
 			"outdoor": true,
 			"in_corridor": true,
 			"build_when_accessible": true,
-			"accesspath": [0],
-			"layout": [7],
-			"exits": [
-				["dummy_minecart_exit", 0, 0, -1]
-			]
+			"accesspath": [0]
 		}
 	]
 }
