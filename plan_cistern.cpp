@@ -51,7 +51,7 @@ void Plan::smooth_cistern(color_ostream & out, room *r)
             for (int16_t dy = -1; dy <= 1; dy++)
             {
                 df::coord c = r->min + f->pos + df::coord(dx, dy, 0);
-                if (c.x < r->min.x || c.x > r->max.x || c.y < r->min.y || c.y > r->max.y)
+                if (c.x < r->min.x || c.x > r->max.x || c.y < r->min.y || c.y > r->max.y || c.z < r->min.z || c.z > r->max.z)
                 {
                     tiles.insert(c);
                 }
