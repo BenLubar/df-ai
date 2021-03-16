@@ -24,7 +24,7 @@ static bool select_most_abundant_metal(const std::map<int32_t, int32_t> & potent
         return a.second < b.second;
     });
 
-    if (max != actual_bars.end() && max->second > 0)
+    if (max != actual_bars.end() && max->second > 5)
     {
         chosen_type = max->first;
         return true;

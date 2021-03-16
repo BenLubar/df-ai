@@ -150,7 +150,7 @@ void Watch::reset()
     WatchStock[stock_item::goblinite] = 0;
     WatchStock[stock_item::honey] = 0;
     WatchStock[stock_item::honeycomb] = 0;
-    WatchStock[stock_item::metal_ore] = 6;
+    WatchStock[stock_item::metal_ore] = 2;
     WatchStock[stock_item::metal_strand] = 0;
     WatchStock[stock_item::milk] = 0;
     WatchStock[stock_item::mill_plant] = 4;
