@@ -5,6 +5,7 @@
 #include "modules/Items.h"
 #include "modules/Materials.h"
 
+#include "df/building_farmplotst.h"
 #include "df/creature_raw.h"
 #include "df/inorganic_raw.h"
 #include "df/item_armorst.h"
@@ -584,6 +585,49 @@ void Stocks::report(std::ostream & out, bool html)
         else
         {
             out << "- " << mat->material.state_name[matter_state::Solid] << ": " << t.second << "\n";
+        }
+    }
+
+    if (html)
+    {
+        out << "</tbody></table><h2 id=\"Stocks_Plants\">Plants</h2><table><thead><tr><th>Plant</th><th>Gathered</th><th>Planted</th><th>Seeds</th></tr></thead><tbody>";
+    }
+    else
+    {
+        out << "\n## Plants\n";
+    }
+    std::map<int16_t, size_t> planted_seeds;
+    for (auto bld : world->buildings.other[buildings_other_id::FARM_PLOT])
+    {
+        if (auto farm = virtual_cast<df::building_farmplotst>(bld))
+        {
+            for (auto i : farm->contained_items)
+            {
+                if (i->item->getType() == item_type::SEEDS)
+                {
+                    planted_seeds[i->item->getPlantID()]++;
+                }
+            }
+        }
+    }
+    for (auto p : world->raws.plants.all)
+    {
+        if (!plants.count(p->index) && !seeds.count(p->index) && !planted_seeds.count(p->index))
+        {
+            continue;
+        }
+
+        size_t have_plants = plants.count(p->index) ? plants.at(p->index) : 0;
+        size_t have_seeds = seeds.count(p->index) ? seeds.at(p->index) : 0;
+        size_t have_planted_seeds = planted_seeds.count(p->index) ? planted_seeds.at(p->index) : 0;
+
+        if (html)
+        {
+            out << "<tr><th>" << html_escape(DF2UTF(p->name_plural)) << "</th><td class=\"num\">" << have_plants << "</td><td class=\"num\">" << have_planted_seeds << "</td><td class=\"num\">" << have_seeds << "</td></tr>";
+        }
+        else
+        {
+            out << "- " << DF2UTF(p->name_plural) << ": " << have_plants << ", " << have_planted_seeds << " planted, " << have_seeds << " seeds\n";
         }
     }
 
