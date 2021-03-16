@@ -153,6 +153,7 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "stone",
+			"level": 5,
 			"min": [-2, -2, -2],
 			"max": [2, 2, -2],
 			"in_corridor": true,

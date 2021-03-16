@@ -26,6 +26,7 @@
 		{
 			"type": "stockpile",
 			"stockpile_type": "stone",
+			"level": 4,
 			"min": [-3, -1, 0],
 			"max": [3, 3, 0],
 			"outdoor": true,
