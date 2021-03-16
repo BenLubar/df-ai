@@ -48,7 +48,7 @@
 			"type": "floodgate",
 			"x": 6,
 			"y": 3,
-			"z": 0,
+			"z": -1,
 			"ignore": true
 		},
 		{
@@ -79,7 +79,8 @@
 			"z": 0
 		},
 		{
-			"construction": "Floor",
+			"dig": "Channel",
+			"construction": "NONE",
 			"x": 5,
 			"y": 3,
 			"z": 0
@@ -137,6 +138,13 @@
 			"x": 1,
 			"y": 6,
 			"z": 0
+		},
+		{
+			"dig": "Ramp",
+			"construction": "Ramp",
+			"x": 5,
+			"y": 3,
+			"z": -1
 		}
 	],
 	"r": [
@@ -167,10 +175,10 @@
 		{
 			"type": "cistern",
 			"cistern_type": "reserve",
-			"min": [-11, -7, -1],
-			"max": [-7, -1, -1],
+			"min": [-11, -7, 0],
+			"max": [-7, -1, 0],
 			"workshop": 0,
-			"layout": [6, 10, 11, 12],
+			"layout": [6, 10, 11, 12, 21],
 			"exits": [
 				["_aqueduct_to_river", -3, 3, 0]
 			]

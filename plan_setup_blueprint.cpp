@@ -1164,12 +1164,13 @@ void PlanSetup::handle_special_exits()
                             bool bad_position = false;
                             if (cur != origin)
                             {
+                                bad_position = (no_room.count(cur) && no_room.at(cur) != r->blueprint) || (no_corridor.count(cur) && no_corridor.at(cur) != r->blueprint);
                                 for (int16_t dx = -1; dx <= 1; dx++)
                                 {
                                     for (int16_t dy = -1; dy <= 1; dy++)
                                     {
                                         df::coord c = cur + df::coord(dx, dy, 0);
-                                        if (interior.count(c) || (no_room.count(c) && no_room.at(c) != r->blueprint) || (no_corridor.count(c) && no_corridor.at(c) != r->blueprint))
+                                        if (interior.count(c))
                                         {
                                             bad_position = true;
                                             break;
