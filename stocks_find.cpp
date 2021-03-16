@@ -633,17 +633,15 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     }
     case stock_item::quern:
     {
-        return find_item_info(items_other_id::QUERN, [](df::item *) -> bool { return true; }, &count_stacks, [](df::item *) -> bool
-        {
-            // also count used querns
-            return true;
-        });
+        return find_item_info(items_other_id::QUERN);
     }
     case stock_item::quire:
     {
-        return find_item_helper_tool(tool_uses::CONTAIN_WRITING, [](df::itemdef_toolst *def) -> bool
+        return find_item_info(items_other_id::TOOL, [this](df::item *i) -> bool
         {
-            return def->flags.is_set(tool_flags::INCOMPLETE_ITEM);
+            auto def = virtual_cast<df::item_toolst>(i)->subtype;
+            return std::find(def->tool_use.begin(), def->tool_use.end(), tool_uses::CONTAIN_WRITING) != def->tool_use.end() &&
+                def->flags.is_set(tool_flags::INCOMPLETE_ITEM) && !i->hasSpecificImprovements(improvement_type::WRITING);
         });
     }
     case stock_item::quiver:
