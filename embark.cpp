@@ -16,6 +16,7 @@
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
 #include "df/embark_profile.h"
+#include "df/item.h"
 #include "df/region_map_entry.h"
 #include "df/viewscreen_adopt_regionst.h"
 #include "df/viewscreen_choose_start_sitest.h"
@@ -761,6 +762,24 @@ void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
     add_animal("BIRD_TURKEY", "FEMALE", 3);
     add_animal("PIG", "MALE", 1);
     add_animal("PIG", "FEMALE", 2);
+
+    Key(interface_key::STANDARDSCROLL_LEFT);
+    for (size_t i = 0; i < view->items.size(); i++)
+    {
+        auto item = view->items.at(i);
+        if (item->getType() != item_type::WEAPON || item->getMeleeSkill() != job_skill::MINING)
+        {
+            continue;
+        }
+
+        while (view->item_cursor != int32_t(i))
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::SECONDSCROLL_DOWN);
+        break;
+    }
 
     Key(interface_key::SETUP_EMBARK);
 }
