@@ -1,14 +1,37 @@
 # Future
 
+- Added announcements to the lockstep movie recording log.
+- Added plants to the stocks report.
+- Adjusted thresholds for metal bar usage to avoid getting stuck on foreign metals.
+- Animals are moved between pastures as grass runs out.
+- Caught wild animals are now trained and butchered.
+- Fixed the camera following pets and non-active military.
+- Fixed the military equipment confiscation logic failing when a captain of the guard exists.
+- Fixed military uniforms assigning non-metal helmets.
+- If the broker, bookkeeper, or manager somehow ends up in the military, they are dismissed.
 - Important hauling jobs are now prioritized.
+- Military drafting now waits until all migrants leave their "migrant" state.
 - Priesthoods are now recognized once the temple reaches the required value.
+- The AI can now use custom embark profiles.
+- The AI tries to make sure there are bones available.
 - Wooden crossbows no longer have a requirement of enough pickaxes and hatchets like melee weapons do.
+- Written-on quires are no longer counted as quires for stockkeeping.
 
 ## Floor Plan
 
+- Added doors between corridors that are far apart in the plan but physically nearby.
+- Blocks are used instead of boulders when possible.
 - Blueprints can now change the size of the military (default 25% to 75% of the population of the fortress).
 - Blueprints can now modify the stock item goals.
+- Cage traps are now delayed if another use for mechanisms is active, such as freeing caged units, building levers, or setting up the cistern.
+- Cage traps are scattered around the exterior of the fortress for extra defense.
+- Fixed constructed floors being generated in pastures.
+- Improved the layout of bedrooms.
+- Moved the cage release area to the interior of the fortress.
+- Simplified the mining outpost's layout.
 - Some mining tunnels are pre-planned at fortress generation to avoid freezing the game later.
+- The number of rooms that can be built at once increases as more picks are available.
+- The well and cistern have been re-added to the floor plan.
 
 # 0.47.05-r1
 
