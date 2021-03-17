@@ -222,14 +222,7 @@ void Stocks::update(color_ostream & out)
                 continue;
             }
 
-            if (job->job_type == job_type::CarveUpDownStaircase || job->job_type == job_type::CarveDownwardStaircase || job->job_type == job_type::CarveUpwardStaircase)
-            {
-                // otherwise the miners get stuck in the mining outpost and starve to death
-                job->flags.bits.do_now = true;
-                continue;
-            }
-
-            if (job->job_type == job_type::ConstructMechanisms || job->job_type == job_type::ConstructFloodgate)
+            if (job->job_type == job_type::ConstructMechanisms || job->job_type == job_type::ConstructFloodgate || job->job_type == job_type::MakeChain)
             {
                 // very important building parts
                 job->flags.bits.do_now = true;
