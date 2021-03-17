@@ -98,7 +98,7 @@ bool AI::tag_enemies(color_ostream & out)
             {
                 found = pop.military_cancel_attack_order(out, u, "hunting target of " + AI::describe_unit(hunter)) || found;
             }
-            else if (auto citizen = is_attacking_citizen(u))
+            else if (auto citizen = u->flags2.bits.roaming_wilderness_population_source ? is_attacking_citizen(u) : nullptr)
             {
                 found = pop.military_random_squad_attack_unit(out, u, "attacking citizen: " + AI::describe_unit(citizen)) || found;
             }
