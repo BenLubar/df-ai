@@ -6,6 +6,8 @@
 
 #include "df/inorganic_raw.h"
 
+REQUIRE_GLOBAL(pause_state);
+
 class plan_setup_screen_helper
 {
 public:
@@ -18,6 +20,10 @@ public:
         if (auto screen = Gui::getViewscreenByType<viewscreen_ai_plan_setupst>())
         {
             Screen::dismiss(screen);
+        }
+        if (*pause_state)
+        {
+            *pause_state = false;
         }
     }
 };
