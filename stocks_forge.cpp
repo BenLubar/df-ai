@@ -326,8 +326,10 @@ int32_t Stocks::may_forge_bars(color_ostream & out, int32_t mat_index, std::ostr
                         continue;
                 }
 
-                if (rri->metal_ore != -1 && i->getMaterial() == 0)
+                if (rri->metal_ore != -1)
                 {
+                    if (i->getMaterial() != 0)
+                        continue;
                     bool found = false;
                     auto & mis = world->raws.inorganics[i->getMaterialIndex()]->metal_ore.mat_index;
                     for (auto mi : mis)
