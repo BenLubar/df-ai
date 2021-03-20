@@ -415,6 +415,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
 
     for (auto it : trade->broker_items)
     {
+        if (it->getType() == item_type::BIN)
+        {
+            continue;
+        }
         if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(it))
         {
             continue;
@@ -476,6 +480,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
             bool found = false;
             for (size_t i = 0; i < trade->broker_items.size(); i++)
             {
+                if (trade->broker_items.at(i)->getType() == item_type::BIN)
+                {
+                    continue;
+                }
                 if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(trade->broker_items.at(i)))
                 {
                     continue;
@@ -593,6 +601,10 @@ void PerformTradeExclusive::Run(color_ostream & out)
                 {
                     for (size_t i = 0; i < trade->broker_items.size(); i++)
                     {
+                        if (trade->broker_items.at(i)->getType() == item_type::BIN)
+                        {
+                            continue;
+                        }
                         if (trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] >= ethic_response::MISGUIDED && trade->entity->entity_raw->ethic[ethic_type::KILL_PLANT] <= ethic_response::UNTHINKABLE && represents_plant_murder(trade->broker_items.at(i)))
                         {
                             continue;

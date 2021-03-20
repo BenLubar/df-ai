@@ -4,11 +4,15 @@
 #include "df/general_ref.h"
 #include "df/item_foodst.h"
 
-bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
+bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item, bool checkContainer)
 {
     for (auto ref : item->general_refs)
     {
         if (ref->getType() == general_ref_type::IS_ARTIFACT)
+        {
+            return false;
+        }
+        if (checkContainer && ref->getType() == general_ref_type::CONTAINED_IN_ITEM && willing_to_trade_item(out, ref->getItem()))
         {
             return false;
         }
@@ -37,7 +41,7 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
         break;
     }
 
-    if (item->isFoodStorage())
+    if (item->isFoodStorage() || item->getType() == item_type::BIN)
     {
         bool any_contents = false;
 
@@ -47,7 +51,7 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
             {
                 any_contents = true;
 
-                if (!willing_to_trade_item(out, ref->getItem()))
+                if (!willing_to_trade_item(out, ref->getItem(), false))
                 {
                     return false;
                 }

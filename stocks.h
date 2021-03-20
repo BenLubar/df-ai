@@ -330,7 +330,7 @@ public:
 
     bool need_more(stock_item::item type);
 
-    bool willing_to_trade_item(color_ostream & out, df::item *item);
+    bool willing_to_trade_item(color_ostream & out, df::item *item, bool checkContainer = true);
     bool want_trader_item(color_ostream & out, df::item *item, const std::vector<df::item *> & already_want);
     bool want_trader_item_more(df::item *a, df::item *b);
 };
