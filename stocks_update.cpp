@@ -73,13 +73,13 @@ void Stocks::update(color_ostream & out)
     }
 
     updating.clear();
-    for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
+    for (auto needed : Watch.Needed)
     {
-        updating.push_back(it->first);
+        updating.push_back(needed.first);
     }
-    for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
+    for (auto watch : Watch.WatchStock)
     {
-        updating.push_back(it->first);
+        updating.push_back(watch.first);
     }
     updating_count = updating;
     updating_count.insert(updating_count.end(), Watch.AlsoCount.begin(), Watch.AlsoCount.end());
@@ -233,37 +233,37 @@ void Stocks::update(color_ostream & out)
         {
             std::ostringstream stringify;
             Json::Value payload(Json::objectValue);
-            for (auto it = Watch.Needed.begin(); it != Watch.Needed.end(); it++)
+            for (auto item : Watch.Needed)
             {
                 Json::Value needed(Json::arrayValue);
-                needed.append(count_free.at(it->first));
-                needed.append(num_needed(it->first));
-                needed.append(count_total.at(it->first));
+                needed.append(count_free.at(item.first));
+                needed.append(num_needed(item.first));
+                needed.append(count_total.at(item.first));
                 stringify.str(std::string());
                 stringify.clear();
-                stringify << it->first;
+                stringify << item.first;
                 payload[stringify.str()] = needed;
             }
-            for (auto it = Watch.WatchStock.begin(); it != Watch.WatchStock.end(); it++)
+            for (auto item : Watch.WatchStock)
             {
                 Json::Value watch(Json::arrayValue);
-                watch.append(count_free.at(it->first));
-                watch.append(-it->second);
-                watch.append(count_total.at(it->first));
+                watch.append(count_free.at(item.first));
+                watch.append(-item.second - 1);
+                watch.append(count_total.at(item.first));
                 stringify.str(std::string());
                 stringify.clear();
-                stringify << it->first;
+                stringify << item.first;
                 payload[stringify.str()] = watch;
             }
-            for (auto it = Watch.AlsoCount.begin(); it != Watch.AlsoCount.end(); it++)
+            for (auto item : Watch.AlsoCount)
             {
                 Json::Value also(Json::arrayValue);
-                also.append(count_free.at(*it));
+                also.append(count_free.at(item));
                 also.append(0);
-                also.append(count_total.at(*it));
+                also.append(count_total.at(item));
                 stringify.str(std::string());
                 stringify.clear();
-                stringify << *it;
+                stringify << item;
                 payload[stringify.str()] = also;
             }
             ai.event("stocks update", payload);
@@ -276,17 +276,17 @@ void Stocks::update(color_ostream & out)
 void Stocks::count_plants(color_ostream &)
 {
     plants.clear();
-    for (auto it = world->items.other[items_other_id::PLANT].begin(); it != world->items.other[items_other_id::PLANT].end(); it++)
+    for (auto i : world->items.other[items_other_id::PLANT])
     {
-        df::item_plantst *p = virtual_cast<df::item_plantst>(*it);
+        auto p = virtual_cast<df::item_plantst>(i);
         if (p && is_item_free(p))
         {
             plants[p->mat_index] += p->stack_size;
         }
     }
-    for (auto it = world->items.other[items_other_id::PLANT_GROWTH].begin(); it != world->items.other[items_other_id::PLANT_GROWTH].end(); it++)
+    for (auto i : world->items.other[items_other_id::PLANT_GROWTH])
     {
-        df::item_plant_growthst *p = virtual_cast<df::item_plant_growthst>(*it);
+        auto p = virtual_cast<df::item_plant_growthst>(i);
         if (p && is_item_free(p))
         {
             plants[p->mat_index] += p->stack_size;
@@ -324,17 +324,16 @@ void Stocks::update_ingots(color_ostream & out)
 
 void Stocks::update_corpses(color_ostream & out)
 {
-    room *r = ai.find_room(room_type::garbagedump);
+    auto r = ai.find_room(room_type::garbagedump);
     if (!r)
     {
         updating_corpses = false;
         return;
     }
-    df::coord t = r->min - df::coord(0, 0, 1);
+    df::coord t = r->min + df::coord(1, 0, -1);
 
-    for (auto it = world->items.other[items_other_id::ANY_CORPSE].begin(); it != world->items.other[items_other_id::ANY_CORPSE].end(); it++)
+    for (auto i : world->items.other[items_other_id::ANY_CORPSE])
     {
-        df::item *i = *it;
         int16_t race = -1;
         int16_t caste = -1;
         df::historical_figure *hf = nullptr;
@@ -364,15 +363,23 @@ void Stocks::update_corpses(color_ostream & out)
             i->flags.bits.forbid = false;
         }
     }
+    for (auto i : world->items.other[items_other_id::IN_PLAY])
+    {
+        if (i->pos == t && i->flags.bits.forbid)
+        {
+            // unforbid all dumped garbage
+            i->flags.bits.forbid = false;
+        }
+    }
     updating_corpses = false;
 }
 
 void Stocks::update_slabs(color_ostream & out)
 {
-    for (auto it = world->items.other[items_other_id::SLAB].begin(); it != world->items.other[items_other_id::SLAB].end(); it++)
+    for (auto i : world->items.other[items_other_id::SLAB])
     {
-        df::item_slabst *i = virtual_cast<df::item_slabst>(*it);
-        if (is_item_free(i) && i->engraving_type == slab_engraving_type::Memorial)
+        auto slab = virtual_cast<df::item_slabst>(i);
+        if (slab && is_item_free(slab) && slab->engraving_type == slab_engraving_type::Memorial)
         {
             df::coord pos;
             pos.clear();
@@ -415,7 +422,7 @@ void Stocks::update_slabs(color_ostream & out)
                 std::vector<df::item *> item;
                 item.push_back(i);
                 Buildings::constructWithItems(bld, item);
-                ai.debug(out, "slabbing " + AI::describe_unit(df::unit::find(df::historical_figure::find(i->topic)->unit_id)) + ": " + i->description);
+                ai.debug(out, "slabbing " + AI::describe_unit(df::unit::find(df::historical_figure::find(slab->topic)->unit_id)) + ": " + slab->description);
             }
         }
     }
