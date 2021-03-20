@@ -6,9 +6,35 @@
 
 bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
 {
-    if (virtual_cast<df::item_foodst>(item))
+    for (auto ref : item->general_refs)
     {
+        if (ref->getType() == general_ref_type::IS_ARTIFACT)
+        {
+            return false;
+        }
+    }
+
+    switch (item->getType())
+    {
+    case item_type::FOOD:
+        // sell meals, buy meal ingredients
         return true;
+    case item_type::GOBLET:
+    case item_type::AMULET:
+    case item_type::BRACELET:
+    case item_type::CROWN:
+    case item_type::EARRING:
+    case item_type::FIGURINE:
+    case item_type::RING:
+    case item_type::SCEPTER:
+    case item_type::TOTEM:
+        // crafts are high-value and easily replaceable
+        return true;
+    case item_type::GEM:
+        // large gems are useless
+        return true;
+    default:
+        break;
     }
 
     if (item->isFoodStorage())
@@ -36,8 +62,14 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item)
 
 bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector<df::item *> & already_want)
 {
-    if (item->getType() == item_type::CAGE)
+    if (item->hasSpecificImprovements(improvement_type::WRITING) || item->getType() == item_type::BOOK)
     {
+        return true;
+    }
+
+    switch (item->getType())
+    {
+    case item_type::CAGE:
         for (auto ref : item->general_refs)
         {
             if (ref->getType() == general_ref_type::CONTAINS_UNIT)
@@ -45,50 +77,45 @@ bool Stocks::want_trader_item(color_ostream &, df::item *item, const std::vector
                 return true;
             }
         }
-    }
-
-    if (item->hasSpecificImprovements(improvement_type::WRITING) || item->getType() == item_type::BOOK)
-    {
+        return false;
+    case item_type::WOOD:
+    case item_type::BOULDER:
+    case item_type::BAR:
+    case item_type::CLOTH:
+    case item_type::SKIN_TANNED:
+    case item_type::THREAD:
+        // materials are always useful
         return true;
-    }
-
-    if (item->getType() == item_type::WOOD || item->getType() == item_type::BOULDER || item->getType() == item_type::BAR)
-    {
+    case item_type::CHEESE:
+    case item_type::EGG:
+    case item_type::FISH:
+    case item_type::FISH_RAW:
+    case item_type::MEAT:
+    case item_type::PLANT:
+    case item_type::PLANT_GROWTH:
+        // more food is always good
         return true;
-    }
-
-    if (item->getType() == item_type::CLOTH || item->getType() == item_type::SKIN_TANNED || item->getType() == item_type::THREAD)
-    {
+    case item_type::INSTRUMENT:
+        // let the dwarves have some fun
         return true;
-    }
-
-    if (item->getType() == item_type::CHEESE || item->getType() == item_type::EGG || item->getType() == item_type::FISH || item->getType() == item_type::FISH_RAW || item->getType() == item_type::MEAT || item->getType() == item_type::PLANT || item->getType() == item_type::PLANT_GROWTH)
+    case item_type::ANVIL:
     {
-        return true;
-    }
-
-    if (item->getType() == item_type::INSTRUMENT)
-    {
-        return true;
-    }
-
-    if (item->getType() == item_type::ANVIL)
-    {
-        int32_t anvils_wanted = -int32_t(std::count_if(already_want.begin(), already_want.end(), [](df::item *i) -> bool { return i->getType() == item_type::ANVIL; }));
+        int32_t anvils_wanted = -int32_t(std::count_if(already_want.begin(), already_want.end(), [](df::item* i) -> bool { return i->getType() == item_type::ANVIL; }));
         anvils_wanted -= count_free[stock_item::anvil];
         ai.find_room(room_type::workshop, [&anvils_wanted](room *r) -> bool
-        {
-            if (r->workshop_type == workshop_type::MetalsmithsForge && !r->dfbuilding())
             {
-                anvils_wanted++;
-            }
-            return false;
-        });
+                if (r->workshop_type == workshop_type::MetalsmithsForge && !r->dfbuilding())
+                {
+                    anvils_wanted++;
+                }
+                return false;
+            });
 
         return anvils_wanted >= 0;
     }
-
-    return false;
+    default:
+        return false;
+    }
 }
 
 bool Stocks::want_trader_item_more(df::item *a, df::item *b)

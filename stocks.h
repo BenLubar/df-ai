@@ -62,6 +62,7 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(clothes_torso) \
     ENUM_ITEM(coal) \
     ENUM_ITEM(coffin) \
+    ENUM_ITEM(crafts) \
     ENUM_ITEM(crutch) \
     ENUM_ITEM(die) \
     ENUM_ITEM(door) \

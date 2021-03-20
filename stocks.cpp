@@ -72,6 +72,7 @@ void Watch::reset()
     Needed[stock_item::clothes_torso] = 2;
     Needed[stock_item::coal] = 12;
     Needed[stock_item::coffin] = 2;
+    Needed[stock_item::crafts] = 50;
     Needed[stock_item::crutch] = 1;
     Needed[stock_item::die] = 3;
     Needed[stock_item::door] = 4;
@@ -132,6 +133,7 @@ void Watch::reset()
     NeededPerDwarf[stock_item::clothes_head] = 20;
     NeededPerDwarf[stock_item::clothes_legs] = 20;
     NeededPerDwarf[stock_item::clothes_torso] = 20;
+    NeededPerDwarf[stock_item::crafts] = 50;
     NeededPerDwarf[stock_item::drink] = 200;
     NeededPerDwarf[stock_item::meal] = 100;
     NeededPerDwarf[stock_item::slab] = 10;
@@ -158,7 +160,7 @@ void Watch::reset()
     WatchStock[stock_item::raw_fish] = 0;
     WatchStock[stock_item::rough_gem] = 6;
     WatchStock[stock_item::shell] = 1;
-    WatchStock[stock_item::skull] = 2;
+    WatchStock[stock_item::skull] = 0;
     WatchStock[stock_item::tallow] = 1;
     WatchStock[stock_item::thread_plant] = 10;
     WatchStock[stock_item::wool] = 0;

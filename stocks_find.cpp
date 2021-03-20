@@ -339,6 +339,25 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::COFFIN);
     }
+    case stock_item::crafts:
+    {
+        return find_item_info(items_other_id::IN_PLAY, [](df::item *i) -> bool
+        {
+            switch (i->getType())
+            {
+            case item_type::AMULET:
+            case item_type::BRACELET:
+            case item_type::CROWN:
+            case item_type::EARRING:
+            case item_type::FIGURINE:
+            case item_type::RING:
+            case item_type::SCEPTER:
+                return true;
+            default:
+                return false;
+            }
+        });
+    }
     case stock_item::crutch:
     {
         return find_item_info(items_other_id::CRUTCH);

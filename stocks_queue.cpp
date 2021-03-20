@@ -376,6 +376,19 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         tmpl.mat_type = 0;
         break;
     }
+    case stock_item::crafts:
+    {
+        tmpl.job_type = job_type::MakeCrafts;
+        if (count_free.at(stock_item::stone) > count_free.at(stock_item::wood))
+        {
+            tmpl.mat_type = 0;
+        }
+        else
+        {
+            tmpl.material_category.bits.wood = 1;
+        }
+        break;
+    }
     case stock_item::crutch:
     {
         tmpl.job_type = job_type::ConstructCrutch;
