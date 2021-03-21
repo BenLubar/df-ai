@@ -135,7 +135,7 @@ struct gathering_zone_hide_hook : df::building_civzonest {
 
     DEFINE_VMETHOD_INTERPOSE(bool, isVisibleInViewport, (df::map_viewport *viewport))
     {
-        if (this->zone_flags.whole == (T_zone_flags::mask_gather | T_zone_flags::mask_active))
+        if (this->zone_flags.whole == (T_zone_flags::mask_gather | T_zone_flags::mask_water_source | T_zone_flags::mask_active))
         {
             return false;
         }
@@ -1362,7 +1362,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
     setup_outdoor_gathering_zones_counters[1] = 0;
     setup_outdoor_gathering_zones_counters[2] = 0;
     setup_outdoor_gathering_zones_ground.clear();
-    events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 10, [this](color_ostream & out) -> bool
+    events.onupdate_register_once("df-ai plan setup_outdoor_gathering_zones", 1, [this](color_ostream & out) -> bool
     {
         int16_t & x = setup_outdoor_gathering_zones_counters[0];
         int16_t & y = setup_outdoor_gathering_zones_counters[1];
@@ -1397,6 +1397,7 @@ command_result Plan::setup_outdoor_gathering_zones(color_ostream &)
                 bld->is_room = true;
 
                 bld->zone_flags.bits.active = 1;
+                bld->zone_flags.bits.water_source = 1;
                 bld->zone_flags.bits.gather = 1;
                 bld->gather_flags.bits.pick_trees = 1;
                 bld->gather_flags.bits.pick_shrubs = 1;

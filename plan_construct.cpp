@@ -1561,6 +1561,14 @@ protected:
         else if (r->type == room_type::location)
         {
             Key(interface_key::CIVZONE_MEETING);
+            for (auto f : r->layout)
+            {
+                if (f->type == layout_type::well)
+                {
+                    Key(interface_key::CIVZONE_WATER_SOURCE);
+                    break;
+                }
+            }
             Key(interface_key::ASSIGN_LOCATION);
             ExpectScreen<df::viewscreen_dwarfmodest>("dwarfmode/ZonesLocationInfo");
             Key(interface_key::LOCATION_NEW);
