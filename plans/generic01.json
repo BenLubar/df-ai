@@ -693,7 +693,6 @@
 			}
 		},
 		{
-			"continue": true,
 			"name": "Library",
 			"action": "dig",
 			"count": {
@@ -730,6 +729,14 @@
 			"action": "dig",
 			"match": {
 				"type": "pitcage"
+			}
+		},
+		{
+			"name": "Cavern Outpost",
+			"action": "dig",
+			"match": {
+				"type": "outpost",
+				"outpost_type": "cavern"
 			}
 		},
 		{
@@ -802,14 +809,6 @@
 			"match": {
 				"type": ["workshop", "furnace"],
 				"level": 2
-			}
-		},
-		{
-			"name": "Cavern Outpost",
-			"action": "dig",
-			"match": {
-				"type": "outpost",
-				"outpost_type": "cavern"
 			}
 		},
 		{
