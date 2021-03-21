@@ -780,6 +780,23 @@ void EmbarkExclusive::ViewSetupDwarfGame(color_ostream & out)
         Key(interface_key::SECONDSCROLL_DOWN);
         break;
     }
+    for (size_t i = 0; i < view->items.size(); i++)
+    {
+        auto item = view->items.at(i);
+        if (item->getType() != item_type::BUCKET)
+        {
+            continue;
+        }
+
+        while (view->item_cursor != int32_t(i))
+        {
+            Key(interface_key::STANDARDSCROLL_DOWN);
+        }
+
+        Key(interface_key::SECONDSCROLL_DOWN);
+        Key(interface_key::SECONDSCROLL_DOWN);
+        break;
+    }
 
     Key(interface_key::SETUP_EMBARK);
 }
