@@ -98,6 +98,7 @@ void Watch::reset()
     Needed[stock_item::pick] = 2;
     Needed[stock_item::pipe_section] = 1;
     Needed[stock_item::plaster_powder] = 1;
+    Needed[stock_item::potash] = 5;
     Needed[stock_item::quern] = 3;
     Needed[stock_item::quire] = 5;
     Needed[stock_item::quiver] = 2;
@@ -136,6 +137,7 @@ void Watch::reset()
     NeededPerDwarf[stock_item::crafts] = 50;
     NeededPerDwarf[stock_item::drink] = 200;
     NeededPerDwarf[stock_item::meal] = 100;
+    NeededPerDwarf[stock_item::potash] = 15;
     NeededPerDwarf[stock_item::slab] = 10;
     NeededPerDwarf[stock_item::soap] = 20;
     NeededPerDwarf[stock_item::toy] = 5;

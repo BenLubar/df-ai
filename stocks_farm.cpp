@@ -67,8 +67,9 @@ void Stocks::farmplot(color_ostream & out, room *r, bool initial)
         may.push_back(i);
     }
 
-    // XXX 1st plot = the one with a door
-    bool isfirst = !r->layout.empty();
+    bld->farm_flags.bits.seasonal_fertilize = true;
+
+    bool isfirst = ai.find_room(room_type::farmplot, [&](room *other) -> bool { return r->farm_type == other->farm_type && r->outdoor == other->outdoor; }) == r;
     for (int8_t season = 0; season < 4; season++)
     {
         std::vector<int32_t> pids;

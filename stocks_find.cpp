@@ -7,6 +7,7 @@
 #include "modules/Units.h"
 
 #include "df/building_trapst.h"
+#include "df/builtin_mats.h"
 #include "df/caste_raw.h"
 #include "df/creature_raw.h"
 #include "df/entity_raw.h"
@@ -182,8 +183,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
-            MaterialInfo mat(i);
-            return mat.material && mat.material->id == "ASH";
+            return i->getMaterial() == builtin_mats::ASH;
         });
     }
     case stock_item::axe:
@@ -331,8 +331,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
-            MaterialInfo mat(i);
-            return mat.material && mat.material->id == "COAL";
+            return i->getMaterial() == builtin_mats::COAL;
         });
     }
     case stock_item::coffin:
@@ -570,8 +569,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
     {
         return find_item_info(items_other_id::LIQUID_MISC, [](df::item *i) -> bool
         {
-            MaterialInfo mat(i);
-            return mat.material && mat.material->id == "LYE";
+            return i->getMaterial() == builtin_mats::LYE;
         });
     }
     case stock_item::meal:
@@ -648,6 +646,13 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         {
             MaterialInfo mat(i);
             return mat.material && mat.material->hardens_with_water.mat_type != -1;
+        });
+    }
+    case stock_item::potash:
+    {
+        return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
+        {
+            return i->getMaterial() == builtin_mats::POTASH;
         });
     }
     case stock_item::quern:
@@ -770,7 +775,7 @@ Stocks::find_item_info Stocks::find_item_helper(stock_item::item k)
         return find_item_info(items_other_id::BAR, [](df::item *i) -> bool
         {
             MaterialInfo mat(i);
-            return mat.material && mat.material->id == "SOAP";
+            return mat.material && mat.material->flags.is_set(material_flags::SOAP);
         });
     }
     case stock_item::splint:

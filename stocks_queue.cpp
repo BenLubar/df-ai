@@ -602,6 +602,12 @@ void Stocks::queue_need(color_ostream & out, stock_item::item what, int32_t amou
         input.push_back(stock_item::bag);
         break;
     }
+    case stock_item::potash:
+    {
+        tmpl.job_type = job_type::MakePotashFromAsh;
+        input.push_back(stock_item::ash);
+        break;
+    }
     case stock_item::quern:
     {
         tmpl.job_type = job_type::ConstructQuern;

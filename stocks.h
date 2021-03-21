@@ -100,6 +100,7 @@ BEGIN_ENUM(stock, item) \
     ENUM_ITEM(pick) \
     ENUM_ITEM(pipe_section) \
     ENUM_ITEM(plaster_powder) \
+    ENUM_ITEM(potash) \
     ENUM_ITEM(quern) \
     ENUM_ITEM(quire) \
     ENUM_ITEM(quiver) \
