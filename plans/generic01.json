@@ -32,6 +32,7 @@
 		]
 	},
 	"outdoor": [
+		"generic01_apiary",
 		"generic01_cage_trap",
 		"generic01_depot",
 		"generic01_mineshaft",
@@ -47,6 +48,7 @@
 		}
 	},
 	"limits": {
+		"generic01_apiary": [1, 1],
 		"generic01_cage_trap": [20, 100],
 		"generic01_barracks": [4, 8],
 		"generic01_bedroom": [120, 300],
@@ -474,6 +476,14 @@
 			},
 			"match": {
 				"type": "cemetery"
+			}
+		},
+		{
+			"name": "Apiary",
+			"action": "dig",
+			"match": {
+				"type": "corridor",
+				"comment": "apiary"
 			}
 		},
 		{

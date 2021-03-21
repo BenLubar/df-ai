@@ -1,0 +1,135 @@
+{
+	"$schema": "https://ben.lubar.me/df-ai-schemas/room-template.json",
+	"f": [
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 4,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 6,
+			"y": 0,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 4,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 6,
+			"y": 1,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 4,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 6,
+			"y": 2,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 4,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 6,
+			"y": 3,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 0,
+			"y": 4,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 2,
+			"y": 4,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 4,
+			"y": 4,
+			"z": 0
+		},
+		{
+			"type": "hive",
+			"x": 6,
+			"y": 4,
+			"z": 0
+		}
+	],
+	"r": [
+		{
+			"type": "corridor",
+			"min": [-3, -2, 0],
+			"max": [3, 2, 0],
+			"outdoor": true,
+			"layout": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+			"comment": "apiary"
+		}
+	]
+}
