@@ -195,7 +195,9 @@ void AI::dig_tile(df::coord t, df::tile_dig_designation dig)
     Maps::getTileOccupancy(t)->bits.dig_marked = 0;
     if (dig != tile_dig_designation::No)
     {
-        Maps::getTileBlock(t)->flags.bits.designated = 1;
+        auto block = Maps::getTileBlock(t);
+        block->flags.bits.designated = true;
+        block->dsgn_check_cooldown = 0;
     }
 }
 

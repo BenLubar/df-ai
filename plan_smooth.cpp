@@ -144,7 +144,9 @@ bool Plan::smooth(std::set<df::coord> tiles, bool engrave)
     {
         Maps::getTileDesignation(t)->bits.smooth = engrave ? 2 : 1;
         Maps::getTileOccupancy(t)->bits.dig_marked = 0;
-        Maps::getTileBlock(t)->flags.bits.designated = 1;
+        auto block = Maps::getTileBlock(t);
+        block->flags.bits.designated = true;
+        block->dsgn_check_cooldown = 0;
     }
 
     return all_already_smooth;
