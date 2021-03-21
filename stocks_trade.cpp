@@ -53,6 +53,7 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item, bool che
 
                 if (!willing_to_trade_item(out, ref->getItem(), false))
                 {
+                    ai.debug(out, "not willing to move " + AI::describe_item(item) + " to trade depot: contains " + AI::describe_item(ref->getItem()));
                     return false;
                 }
             }
