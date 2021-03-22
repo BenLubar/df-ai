@@ -43,23 +43,31 @@ bool Stocks::willing_to_trade_item(color_ostream & out, df::item *item, bool che
 
     if (item->isFoodStorage() || item->getType() == item_type::BIN)
     {
-        bool any_contents = false;
+        bool can_trade_any = false;
+        df::item *not_trading = nullptr;
 
         for (auto ref : item->general_refs)
         {
             if (ref->getType() == general_ref_type::CONTAINS_ITEM)
             {
-                any_contents = true;
-
-                if (!willing_to_trade_item(out, ref->getItem(), false))
+                if (willing_to_trade_item(out, ref->getItem(), false))
                 {
-                    ai.debug(out, "not willing to move " + AI::describe_item(item) + " to trade depot: contains " + AI::describe_item(ref->getItem()));
-                    return false;
+                    can_trade_any = true;
+                }
+                else if (!not_trading)
+                {
+                    not_trading = ref->getItem();
                 }
             }
         }
 
-        return any_contents;
+        if (can_trade_any && not_trading)
+        {
+            ai.debug(out, "not willing to move " + AI::describe_item(item) + " to trade depot: contains " + AI::describe_item(not_trading));
+            return false;
+        }
+
+        return can_trade_any;
     }
 
     return false;
