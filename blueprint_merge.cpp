@@ -607,7 +607,10 @@ void room_blueprint::build_cache()
             }
             else if (r->type == room_type::corridor && r->corridor_type == corridor_type::corridor)
             {
-                interior.insert(r->min + f->pos);
+                if (f->type != layout_type::door)
+                {
+                    interior.insert(r->min + f->pos);
+                }
                 no_room.insert(r->min + f->pos);
             }
             else if (r->in_corridor || !r->require_walls || r->outdoor)
