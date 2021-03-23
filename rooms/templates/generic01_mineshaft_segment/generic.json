@@ -200,7 +200,8 @@
 			"y": 0,
 			"z": 0,
 			"construction": "UpDownStair",
-			"dig": "UpDownStair"
+			"dig": "UpDownStair",
+			"stairs_special": true
 		}
 	],
 	"r": [
