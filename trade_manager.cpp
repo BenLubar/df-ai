@@ -134,7 +134,7 @@ void Population::update_trading(color_ostream & out)
 
         if (!broker->job.current_job || broker->job.current_job->job_type != job_type::TradeAtDepot)
         {
-            ai.debug(out, "[trade] Waiting for the broker to do their job: " + AI::describe_unit(broker) + "(currently: " + AI::describe_job(broker) + ") " + AI::describe_room(ai.find_room_at(Units::getPosition(broker))));
+            ai.debug(out, "[trade] Waiting for the broker to do " + std::string(ENUM_ATTR(pronoun_type, posessive, broker->sex)) + " job: " + AI::describe_unit(broker) + " (currently: " + AI::describe_job(broker) + ") " + AI::describe_room(ai.find_room_at(Units::getPosition(broker))));
             if (caravan->time_remaining < 1000 && set_up_trading(out, true, true))
             {
                 ai.debug(out, "[trade] Broker took too long. Allowing any dwarf to trade this season.");
