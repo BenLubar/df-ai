@@ -200,7 +200,7 @@ void Config::save(color_ostream & out)
     setComment(v["world_size"], Json::Int(world_size), "// 0: pocket, 1: smaller, 2: small, 3: medium, 4: large");
     setComment(v["camera"], camera, "// true or false: should the AI automatically follow dwarves it thinks are interesting?");
     setComment(v["fps_meter"], fps_meter, "// true or false: should the AI hide the FPS meter when in a menu? (the FPS meter is always hidden in lockstep mode)");
-    setComment(v["manage_labors"], manage_labors, "// the name of a DFHack plugin that manages labors, in quotes, or \"\" for no automated labor management. \"autolabor\" and \"labormanger\" are specifically supported.");
+    setComment(v["manage_labors"], manage_labors, "// the name of a DFHack plugin that manages labors, in quotes, or \"\" for no automated labor management. \"autolabor\" and \"labormanager\" are specifically supported.");
     setComment(v["manage_nobles"], manage_nobles, "// true or false: should the AI assign administrators in the fortress?");
     setComment(v["cancel_announce"], Json::Int(cancel_announce), "// how many job cancellation notices to show. 0: none, 1: some, 2: most, 3: all");
     setComment(v["lockstep"], lockstep, "// true or false: should the AI make Dwarf Fortress think it's running at 100 simulation ticks, 50 graphical frames per second? this option is most useful when recording as lag will not affect animation speeds in the CMV files. the game will not accept input if this is set to true. does not work in TEXT mode.");
