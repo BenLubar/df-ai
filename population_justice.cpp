@@ -84,7 +84,7 @@ void Population::update_caged(color_ostream & out)
 
                     for (auto ii : u->inventory)
                     {
-                        if (auto owner = Items::getOwner(ii->item))
+                        if (Items::getOwner(ii->item))
                         {
                             continue;
                         }

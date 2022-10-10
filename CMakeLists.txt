@@ -128,7 +128,7 @@ set(Boost_USE_DEBUG_RUNTIME OFF)
 find_package(Boost 1.67.0 REQUIRED COMPONENTS context)
 include_directories(${Boost_INCLUDE_DIRS})
 
-LIST(APPEND PROJECT_LIBS jsoncpp_lib_static lua ${ZLIB_LIBRARIES} ${Boost_LIBRARIES})
+LIST(APPEND PROJECT_LIBS jsoncpp_static lua ${ZLIB_LIBRARIES} ${Boost_LIBRARIES})
 
 IF(UNIX)
     IF(APPLE)
